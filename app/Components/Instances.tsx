@@ -1,19 +1,9 @@
 // app/InstanceContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { db } from "./firebase";
+import { db } from "../firebase";
 import { ref, onValue, push, set, off, onDisconnect, remove, get } from "firebase/database";
 import type { DataSnapshot } from "firebase/database";
-
-// Types
-export type InstanceType = "public" | "private";
-type User = { id: string; displayName: string; isPremium: boolean };
-type Instance = {
-  id: string;
-  type: InstanceType;
-  users: User[];
-  createdBy: string;
-  url: string;
-};
+import type { Instance, InstanceType, User } from "../types";
 
 type InstanceFromDB = Omit<Instance, "id" | "users"> & { users?: Record<string, User> };
 
