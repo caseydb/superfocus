@@ -13,12 +13,14 @@ const InstanceContext = createContext<{
   joinInstance: (instanceId: string) => void;
   createInstance: (type: InstanceType) => void;
   leaveInstance: () => void;
+  user: User;
 }>({
   instances: [],
   currentInstance: null,
   joinInstance: () => {},
   createInstance: () => {},
   leaveInstance: () => {},
+  user: { id: "", displayName: "", isPremium: false },
 });
 
 export const useInstance = () => useContext(InstanceContext);
@@ -134,7 +136,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [currentInstance, user]);
 
   return (
-    <InstanceContext.Provider value={{ instances, currentInstance, joinInstance, createInstance, leaveInstance }}>
+    <InstanceContext.Provider value={{ instances, currentInstance, joinInstance, createInstance, leaveInstance, user }}>
       {children}
     </InstanceContext.Provider>
   );
