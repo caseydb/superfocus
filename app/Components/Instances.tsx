@@ -71,13 +71,14 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // If currentInstance is set, update it with the latest data
       if (currentInstance) {
         const updated = list.find((inst) => inst.id === currentInstance.id);
-        if (updated) setCurrentInstance(updated);
+        if (updated && JSON.stringify(updated) !== JSON.stringify(currentInstance)) {
+          setCurrentInstance(updated);
+        }
       }
     };
     onValue(instancesRef, handleValue);
     return () => off(instancesRef, "value", handleValue);
-    // eslint-disable-next-line
-  }, [currentInstance]);
+  }, []);
 
   // Create a new instance and join it
   const createInstance = useCallback(

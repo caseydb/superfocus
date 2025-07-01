@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
 
-export default function Timer() {
+export default function Timer({ onActiveChange }: { onActiveChange?: (isActive: boolean) => void }) {
   const { currentInstance } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
   const roomKey = currentInstance?.id ?? "no-room";
@@ -13,20 +13,32 @@ export default function Timer() {
   // Reset timer when room changes
   useEffect(() => {
     setSeconds(0);
-    setRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
+    setRunning(false);
   }, [roomKey]);
+
+  // Notify parent of running state
+  useEffect(() => {
+    if (onActiveChange) onActiveChange(running);
+  }, [running, onActiveChange]);
 
   useEffect(() => {
     if (running) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
         setSeconds((s) => s + 1);
       }, 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [running]);
 
