@@ -2,6 +2,7 @@
 
 import { InstanceProvider, useInstance } from "./Instances";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Define InstanceType to match the Instances.tsx type
 type InstanceType = "public" | "private";
@@ -9,6 +10,14 @@ type InstanceType = "public" | "private";
 function InstanceJoiner() {
   const { instances, currentInstance, joinInstance, createInstance, leaveInstance } = useInstance();
   const [type, setType] = useState<InstanceType>("public");
+  const router = useRouter();
+
+  // Redirect to room URL when joining a room
+  useEffect(() => {
+    if (currentInstance) {
+      router.push(`/${currentInstance.url}`);
+    }
+  }, [currentInstance, router]);
 
   // Leave room on tab close or refresh
   useEffect(() => {
@@ -18,28 +27,12 @@ function InstanceJoiner() {
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [currentInstance, leaveInstance]);
 
+  // If user is in a room, they should be redirected to the room URL
   if (currentInstance) {
     return (
       <div className="bg-white/90 rounded-xl shadow-xl p-8 w-full max-w-md flex flex-col items-center gap-4">
-        <h2 className="text-2xl font-bold mb-2">
-          In Room: <span className="text-blue-600">{currentInstance.id.slice(-5)}</span>
-        </h2>
-        <div className="flex flex-wrap gap-2 justify-center mb-4">
-          {currentInstance.users.map((u) => (
-            <span key={u.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium shadow-sm">
-              {u.displayName}
-            </span>
-          ))}
-        </div>
-        <p className="text-gray-500">
-          Type: <span className="capitalize">{currentInstance.type}</span>
-        </p>
-        <button
-          className="mt-4 bg-red-500 text-white px-4 py-2 rounded-full font-medium hover:bg-red-600 transition"
-          onClick={leaveInstance}
-        >
-          Leave Room
-        </button>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="text-gray-600">Redirecting to room...</p>
       </div>
     );
   }
@@ -68,6 +61,7 @@ function InstanceJoiner() {
               <div>
                 <span className="font-bold text-blue-700">{instance.type.toUpperCase()}</span>
                 <span className="ml-2 text-gray-600">({instance.users.length}/5)</span>
+                <div className="text-xs text-gray-500">/{instance.url}</div>
               </div>
               <button
                 className="bg-blue-500 text-white px-3 py-1 rounded-full font-medium hover:bg-blue-600 transition"

@@ -12,6 +12,7 @@ type Instance = {
   type: InstanceType;
   users: User[];
   createdBy: string;
+  url: string;
 };
 
 type InstanceFromDB = Omit<Instance, "id" | "users"> & { users?: Record<string, User> };
@@ -44,6 +45,16 @@ function getOrCreateUser(): User {
   };
   window.sessionStorage.setItem("mockUser", JSON.stringify(newUser));
   return newUser;
+}
+
+// Generate a random readable URL for the room
+function generateRoomUrl(): string {
+  const adjectives = ["swift", "bright", "calm", "bold", "cool", "deep", "fast", "kind", "warm", "zen"];
+  const nouns = ["tiger", "eagle", "wolf", "bear", "fox", "lion", "hawk", "shark", "deer", "owl"];
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const number = Math.floor(Math.random() * 1000);
+  return `${adjective}-${noun}-${number}`;
 }
 
 export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -81,10 +92,12 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (type: InstanceType) => {
       const instancesRef = ref(db, "instances");
       const newInstanceRef = push(instancesRef);
+      const roomUrl = generateRoomUrl();
       const newInstance: Omit<Instance, "id" | "users"> & { users: { [id: string]: User } } = {
         type,
         users: { [user.id]: user },
         createdBy: user.id,
+        url: roomUrl,
       };
       set(newInstanceRef, newInstance);
       // Add onDisconnect logic for the user in the new instance
@@ -115,15 +128,15 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Leave the current instance
   const leaveInstance = useCallback(() => {
     if (!currentInstance) return;
-    const userRef = ref(db, `instances/${currentInstance.id}/users/${user.id}`);
-    setCurrentInstance(null);
-    set(userRef, null).then(() => {
+    const instanceToLeave = currentInstance; // Store reference before setting to null
+    const userRef = ref(db, `instances/${instanceToLeave.id}/users/${user.id}`);
+    remove(userRef).then(() => {
       // After removing user, check if any users remain
-      const usersRef = ref(db, `instances/${currentInstance.id}/users`);
+      const usersRef = ref(db, `instances/${instanceToLeave.id}/users`);
       get(usersRef).then((snapshot) => {
-        if (!snapshot.exists() && currentInstance.type === "public") {
+        if (!snapshot.exists() && instanceToLeave.type === "public") {
           // No users left and it's a public room, delete the room
-          const instanceRef = ref(db, `instances/${currentInstance.id}`);
+          const instanceRef = ref(db, `instances/${instanceToLeave.id}`);
           remove(instanceRef);
         }
       });
