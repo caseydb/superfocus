@@ -1,12 +1,11 @@
 "use client";
 
 import { useInstance } from "../Components/Instances";
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Lobby() {
   const { instances, currentInstance, joinInstance, createInstance, leaveInstance } = useInstance();
-  const [type, setType] = useState<"public" | "private">("public");
   const router = useRouter();
 
   // Redirect to room URL when joining a room
@@ -24,6 +23,18 @@ export default function Lobby() {
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [currentInstance, leaveInstance]);
 
+  useEffect(() => {
+    if (instances.length > 0) {
+      console.log("Active rooms:");
+      instances.forEach((instance) => {
+        console.log(`Room: ${instance.url}, Type: ${instance.type}, Users: ${instance.users.length}`);
+      });
+    }
+  }, [instances]);
+
+  // Calculate total users in all rooms
+  const totalUsers = instances.reduce((sum, instance) => sum + instance.users.length, 0);
+
   // If user is in a room, they should be redirected to the room URL
   if (currentInstance) {
     return (
@@ -35,59 +46,43 @@ export default function Lobby() {
   }
 
   return (
-    <div className="bg-white/90 rounded-xl shadow-xl p-8 w-full max-w-md flex flex-col items-center gap-6">
-      <button
-        className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-2 px-6 rounded-full shadow-lg hover:scale-105 transition mb-2"
-        onClick={() => {
-          const available = instances.find((i) => i.users.length < 5 && i.type === "public");
-          if (available) {
-            joinInstance(available.id);
-          } else {
-            createInstance("public");
-          }
-        }}
-      >
-        🚀 Quick Join
-      </button>
-      <div className="w-full">
-        <h3 className="text-lg font-semibold mb-2">Active Rooms</h3>
-        <ul className="space-y-2">
-          {instances.length === 0 && <li className="text-gray-400">No rooms yet.</li>}
-          {instances.map((instance) => (
-            <li key={instance.id} className="flex items-center justify-between bg-gray-100 rounded-lg px-4 py-2">
-              <div>
-                <span className="font-bold text-blue-700">{instance.type.toUpperCase()}</span>
-                <span className="ml-2 text-gray-600">({instance.users.length}/5)</span>
-                <div className="text-xs text-gray-500">/{instance.url}</div>
-              </div>
-              <button
-                className="bg-blue-500 text-white px-3 py-1 rounded-full font-medium hover:bg-blue-600 transition"
-                onClick={() => joinInstance(instance.id)}
-              >
-                Join
-              </button>
-            </li>
-          ))}
-        </ul>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
+      <div className="w-full flex flex-col items-center mb-10 mt-8">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-4 drop-shadow-lg">
+          Drop In. Lock In. Get Sh*t Done.
+        </h1>
+        <p className="text-lg md:text-2xl text-gray-300 text-center max-w-2xl mx-auto opacity-90 font-medium">
+          Real-time focus rooms where you work alongside others.
+        </p>
       </div>
-      <div className="w-full flex flex-col items-center gap-2">
-        <h3 className="text-lg font-semibold">Create a Room</h3>
-        <div className="flex gap-2">
-          <select
-            className="border rounded px-2 py-1"
-            value={type}
-            onChange={(e) => setType(e.target.value as "public" | "private")}
-          >
-            <option value="public">Public</option>
-            <option value="private">Private</option>
-          </select>
-          <button
-            className="bg-green-500 text-white px-4 py-1 rounded-full font-medium hover:bg-green-600 transition"
-            onClick={() => createInstance(type)}
-          >
-            Create
-          </button>
+      <div className="bg-gray-900/90 rounded-2xl shadow-2xl p-10 w-full max-w-2xl flex flex-col items-center gap-8 border-4 border-yellow-500">
+        <h1 className="text-4xl font-extrabold text-yellow-400 mb-2 tracking-tight">Join a Room</h1>
+        <button
+          className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-extrabold py-5 px-12 rounded-full shadow-2xl hover:scale-105 transition mb-2 text-2xl border-4 border-yellow-400 drop-shadow-lg"
+          onClick={() => {
+            const available = instances.find((i) => i.users.length < 5 && i.type === "public");
+            if (available) {
+              joinInstance(available.id);
+            } else {
+              createInstance("public");
+            }
+          }}
+        >
+          🚀 Quick Join
+        </button>
+        <div className="text-yellow-200 text-lg mt-2 mb-4 font-mono opacity-80 text-center">
+          {totalUsers > 0
+            ? `There ${totalUsers === 1 ? "is" : "are"} ${totalUsers} other ${
+                totalUsers === 1 ? "person" : "people"
+              } working right now`
+            : "Be the first to start working!"}
         </div>
+        <button
+          className="bg-gray-800 text-gray-300 px-4 py-2 rounded-full font-medium hover:bg-gray-700 transition mt-2 text-base border border-gray-700"
+          onClick={() => createInstance("private")}
+        >
+          Create Private Room
+        </button>
       </div>
     </div>
   );

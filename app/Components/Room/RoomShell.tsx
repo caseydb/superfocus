@@ -50,36 +50,48 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   }, [currentInstance, user]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>;
   }
   if (!roomFound) {
     return (
-      <div>
-        <p>Room not found.</p>
-        <button onClick={() => router.push("/")}>Go to Lobby</button>
+      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+        <div className="bg-gray-900/90 rounded-2xl shadow-2xl p-10 w-full max-w-lg flex flex-col items-center gap-8 border-4 border-yellow-500">
+          <p className="text-2xl font-bold text-red-400">Room not found.</p>
+          <button
+            className="bg-yellow-500 text-black px-6 py-2 rounded-full font-bold hover:bg-yellow-400 transition"
+            onClick={() => router.push("/")}
+          >
+            Go to Lobby
+          </button>
+        </div>
       </div>
     );
   }
   if (currentInstance) {
     return (
-      <div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
         <ActiveWorkers roomId={currentInstance.id} />
-        <h2>Room: {currentInstance.url}</h2>
-        <div>
-          Users:
-          {currentInstance.users.map((u) => (
-            <span key={u.id}>{u.displayName} </span>
-          ))}
+        <div className="bg-gray-900/90 rounded-2xl shadow-2xl p-10 w-full max-w-lg flex flex-col items-center gap-8 border-4 border-yellow-500">
+          <h2 className="text-3xl font-extrabold text-yellow-400 mb-2">Room: {currentInstance.url}</h2>
+          <div className="mb-4">
+            <span className="font-bold text-yellow-400">Users:</span>
+            {currentInstance.users.map((u) => (
+              <span key={u.id} className="ml-2 text-white font-mono">
+                {u.displayName}
+              </span>
+            ))}
+          </div>
+          <button
+            className="bg-yellow-500 text-black px-6 py-2 rounded-full font-bold hover:bg-yellow-400 transition"
+            onClick={() => {
+              leaveInstance();
+              router.push("/");
+            }}
+          >
+            Leave Room
+          </button>
+          <Timer onActiveChange={handleActiveChange} />
         </div>
-        <button
-          onClick={() => {
-            leaveInstance();
-            router.push("/");
-          }}
-        >
-          Leave Room
-        </button>
-        <Timer onActiveChange={handleActiveChange} />
       </div>
     );
   }

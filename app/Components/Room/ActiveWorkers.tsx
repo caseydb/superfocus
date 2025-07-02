@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { db } from "../../firebase";
 import { ref, onValue, off } from "firebase/database";
 
-export default function ActiveWorkers({ roomId }: { roomId: string }) {
+export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
 
   useEffect(() => {
@@ -23,10 +23,17 @@ export default function ActiveWorkers({ roomId }: { roomId: string }) {
   if (activeUsers.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-8 z-50 text-base font-mono bg-white/80 rounded shadow px-4 py-2">
-      <div className="font-bold mb-1">Active Users:</div>
+    <div className="fixed top-4 left-8 z-50 text-base font-mono opacity-70 select-none">
       {activeUsers.map((u) => (
-        <div key={u.id}>{u.displayName}</div>
+        <div
+          key={u.id}
+          className={`text-gray-400 transition-opacity duration-300 ${
+            flyingUserIds.includes(u.id) ? "opacity-0" : "opacity-100"
+          }`}
+          style={{ height: "2rem" }}
+        >
+          {u.displayName} is actively working
+        </div>
       ))}
     </div>
   );
