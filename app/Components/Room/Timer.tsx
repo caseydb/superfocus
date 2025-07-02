@@ -2,7 +2,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
 
-export default function Timer({ onActiveChange }: { onActiveChange?: (isActive: boolean) => void }) {
+export default function Timer({
+  onActiveChange,
+  disabled,
+}: // task,
+{
+  onActiveChange?: (isActive: boolean) => void;
+  disabled?: boolean;
+  // task?: string;
+}) {
   const { currentInstance } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
   const roomKey = currentInstance?.id ?? "no-room";
@@ -48,10 +56,6 @@ export default function Timer({ onActiveChange }: { onActiveChange?: (isActive: 
   function handleStop() {
     setRunning(false);
   }
-  function handleReset() {
-    setSeconds(0);
-    setRunning(false);
-  }
 
   // Format as hh:mm:ss
   const hours = Math.floor(seconds / 3600)
@@ -64,22 +68,34 @@ export default function Timer({ onActiveChange }: { onActiveChange?: (isActive: 
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="text-4xl font-mono">
+      <div className="text-4xl mb-2 font-mono">
         {hours}:{minutes}:{secs}
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-4">
         {!running ? (
-          <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleStart}>
+          <button
+            className="bg-white text-black font-extrabold text-2xl px-12 py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40"
+            onClick={handleStart}
+            disabled={disabled}
+          >
             Start
           </button>
         ) : (
-          <button className="bg-yellow-500 text-white px-4 py-2 rounded" onClick={handleStop}>
-            Stop
-          </button>
+          <>
+            <button
+              className="bg-white text-black font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
+              onClick={handleStop}
+            >
+              Pause
+            </button>
+            <button
+              className="bg-green-500 text-white font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
+              onClick={handleStop}
+            >
+              Complete
+            </button>
+          </>
         )}
-        <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded" onClick={handleReset}>
-          Reset
-        </button>
       </div>
     </div>
   );

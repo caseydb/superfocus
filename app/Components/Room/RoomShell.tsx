@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
-import Timer from "./Timer";
 import ActiveWorkers from "./ActiveWorkers";
 import { db } from "../../firebase";
-import { ref, set, remove, onDisconnect } from "firebase/database";
+import { ref, set, remove } from "firebase/database";
 import TaskInput from "./TaskInput";
+import Timer from "./Timer";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, leaveInstance, user } = useInstance();
@@ -15,7 +15,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.displayName);
-  const [task, setTask] = useState<string | null>(null);
+  const [task, setTask] = useState("");
+  const [timerRunning, setTimerRunning] = useState(false);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -30,18 +31,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
     setLoading(false);
   }, [instances, roomUrl, currentInstance, joinInstance]);
-
-  // Handle active user status in Firebase
-  const handleActiveChange = (isActive: boolean) => {
-    if (!currentInstance || !user) return;
-    const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-    if (isActive) {
-      set(activeRef, { id: user.id, displayName: user.displayName });
-      onDisconnect(activeRef).remove();
-    } else {
-      remove(activeRef);
-    }
-  };
 
   // Clean up on unmount or room change
   useEffect(() => {
@@ -64,9 +53,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     set(activeRef, { id: user.id, displayName: editedName });
   };
 
-  const handleLockIn = (taskValue: string) => {
-    setTask(taskValue);
-    // Optionally: start timer, update Firebase, etc.
+  // Track active user status in Firebase RTDB
+  const handleActiveChange = (isActive: boolean) => {
+    if (!currentInstance || !user) return;
+    const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+    if (isActive) {
+      set(activeRef, { id: user.id, displayName: user.displayName });
+      setTimerRunning(true);
+    } else {
+      remove(activeRef);
+      setTimerRunning(false);
+    }
   };
 
   if (loading) {
@@ -129,16 +126,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         </div>
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
-        {task === null ? (
-          <div className="flex flex-col items-center justify-center">
-            <TaskInput onLockIn={handleLockIn} />
-          </div>
-        ) : (
-          <div className="w-full max-w-lg flex flex-col items-center gap-8">
-            <Timer onActiveChange={handleActiveChange} />
-            {/* Add any other room UI here as needed */}
-          </div>
-        )}
+        <div className="flex flex-col items-center justify-center">
+          <TaskInput task={task} setTask={setTask} disabled={timerRunning} />
+          <Timer onActiveChange={handleActiveChange} disabled={!task.trim()} />
+        </div>
         {/* Bottom bar controls */}
         <div className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-blue-400 transition-colors">
           History

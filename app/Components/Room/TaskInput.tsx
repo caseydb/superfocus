@@ -1,16 +1,24 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 
-export default function TaskInput({ onLockIn }: { onLockIn: (task: string) => void }) {
-  const [task, setTask] = useState("");
-  const maxLen = 69;
+const maxLen = 69;
+
+export default function TaskInput({
+  task,
+  setTask,
+  disabled,
+}: {
+  task: string;
+  setTask: (t: string) => void;
+  disabled: boolean;
+}) {
   const chars = task.length;
   const minWidth = 650;
   const maxWidth = 800;
-  const [inputWidth, setInputWidth] = useState(minWidth);
+  const [inputWidth, setInputWidth] = React.useState(minWidth);
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const [isFocused, setIsFocused] = useState(false);
+  const [isFocused, setIsFocused] = React.useState(false);
 
   React.useEffect(() => {
     if (spanRef.current) {
@@ -47,6 +55,7 @@ export default function TaskInput({ onLockIn }: { onLockIn: (task: string) => vo
         style={{ width: inputWidth }}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
+        disabled={disabled}
       />
       {/* Custom underline with larger gap */}
       <div
@@ -54,20 +63,15 @@ export default function TaskInput({ onLockIn }: { onLockIn: (task: string) => vo
         style={{
           width: inputWidth,
           height: "2px",
-          marginBottom: "20px",
+          marginBottom: "50px",
           borderRadius: "2px",
         }}
       />
-      <div className="text-gray-400 text-xl mb-4 text-center">
-        {chars} / {maxLen}
-      </div>
-      <button
-        className="bg-white text-black font-extrabold text-2xl px-12 py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 mb-8"
-        disabled={!task.trim() || chars > maxLen}
-        onClick={() => onLockIn(task.trim())}
-      >
-        Start
-      </button>
+      {isFocused && (
+        <div className="text-gray-400 text-xl mb-4 text-center">
+          {chars} / {maxLen}
+        </div>
+      )}
     </div>
   );
 }
