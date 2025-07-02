@@ -53,8 +53,11 @@ export default function Timer({ onActiveChange }: { onActiveChange?: (isActive: 
     setRunning(false);
   }
 
-  // Format as mm:ss
-  const minutes = Math.floor(seconds / 60)
+  // Format as hh:mm:ss
+  const hours = Math.floor(seconds / 3600)
+    .toString()
+    .padStart(2, "0");
+  const minutes = Math.floor((seconds % 3600) / 60)
     .toString()
     .padStart(2, "0");
   const secs = (seconds % 60).toString().padStart(2, "0");
@@ -62,7 +65,7 @@ export default function Timer({ onActiveChange }: { onActiveChange?: (isActive: 
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="text-4xl font-mono">
-        {minutes}:{secs}
+        {hours}:{minutes}:{secs}
       </div>
       <div className="flex gap-2">
         {!running ? (
