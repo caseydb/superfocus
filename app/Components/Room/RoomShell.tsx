@@ -8,20 +8,20 @@ import { ref, set, remove, push } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
+import Controls from "./Controls";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, leaveInstance, user } = useInstance();
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
   const router = useRouter();
-  const [editingName, setEditingName] = useState(false);
-  const [editedName, setEditedName] = useState(user.displayName);
   const [task, setTask] = useState("");
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
   const [showHistory, setShowHistory] = useState(false);
   const timerSecondsRef = React.useRef<number>(0);
+  const [showQuitModal, setShowQuitModal] = useState(false);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -47,17 +47,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, [currentInstance, user]);
 
-  // Update activeUsers in Firebase when name changes
-  const handleNameChange = async () => {
-    if (!currentInstance) return;
-    setEditingName(false);
-    // Update user context (if possible)
-    user.displayName = editedName;
-    // Update in Firebase activeUsers
-    const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-    set(activeRef, { id: user.id, displayName: editedName });
-  };
-
   // Track active user status in Firebase RTDB
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
@@ -72,7 +61,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   };
 
   const handleClear = () => {
-    // If timer > 0, log as quit early
+    if (timerSecondsRef.current > 0 && task.trim()) {
+      setShowQuitModal(true);
+      return;
+    }
+    setTask("");
+    setTimerRunning(false);
+    setTimerResetKey((k) => k + 1);
+  };
+
+  const handleQuitConfirm = () => {
     if (timerSecondsRef.current > 0 && currentInstance && user && task.trim()) {
       const hours = Math.floor(timerSecondsRef.current / 3600)
         .toString()
@@ -92,6 +90,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTask("");
     setTimerRunning(false);
     setTimerResetKey((k) => k + 1);
+    setShowQuitModal(false);
+  };
+
+  const handlePushOn = () => {
+    setShowQuitModal(false);
   };
 
   // Complete handler: reset timer, clear input, set inactive
@@ -147,30 +150,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </button>
         </div>
         {/* User name in top right */}
-        <div className="fixed top-4 right-8 z-50">
-          {editingName ? (
-            <input
-              className="bg-black text-gray-200 border-b-2 border-yellow-400 text-lg font-bold outline-none px-2 py-1"
-              value={editedName}
-              autoFocus
-              onChange={(e) => setEditedName(e.target.value)}
-              onBlur={handleNameChange}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleNameChange();
-                if (e.key === "Escape") setEditingName(false);
-              }}
-              maxLength={32}
-              style={{ minWidth: 80 }}
-            />
-          ) : (
-            <span
-              className="text-lg font-bold text-gray-300 cursor-pointer select-none"
-              onClick={() => setEditingName(true)}
-            >
-              {user.displayName}
-            </span>
-          )}
-        </div>
+        <Controls className="fixed top-4 right-8 z-50" />
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
         {!showHistory ? (
@@ -208,6 +188,32 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         >
           Clear
         </div>
+        {showQuitModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="bg-red-600 rounded-2xl shadow-2xl px-6 py-8 flex flex-col items-center gap-6 border-4 border-red-700"
+              style={{ minWidth: 350, maxWidth: "90vw" }}
+            >
+              <div className="text-white text-3xl font-extrabold text-center mb-4">
+                Quiting? This will be logged to history.
+              </div>
+              <div className="flex gap-6 mt-2">
+                <button
+                  className="bg-white text-red-600 font-bold text-xl px-8 py-3 rounded-lg shadow hover:bg-red-100 transition"
+                  onClick={handleQuitConfirm}
+                >
+                  Quit
+                </button>
+                <button
+                  className="bg-white text-gray-700 font-bold text-xl px-8 py-3 rounded-lg shadow hover:bg-gray-200 transition"
+                  onClick={handlePushOn}
+                >
+                  Push On
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
