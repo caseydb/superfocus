@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
+import { db } from "../../firebase";
+import { ref, set, onValue, off } from "firebase/database";
 
 export default function Timer({
   onActiveChange,
@@ -15,7 +17,7 @@ export default function Timer({
   onComplete?: (duration: string) => void;
   secondsRef?: React.RefObject<number>;
 }) {
-  const { currentInstance } = useInstance();
+  const { currentInstance, user } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
   const roomKey = currentInstance?.id ?? "no-room";
   const [seconds, setSeconds] = useState(0);
@@ -56,7 +58,17 @@ export default function Timer({
 
   function handleStart() {
     setRunning(true);
+    notifyEvent("start");
   }
+
+  // Add event notification for start, complete, and quit
+  function notifyEvent(type: "start" | "complete" | "quit") {
+    if (currentInstance) {
+      const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
+      set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
+    }
+  }
+
   function handleStop() {
     setRunning(false);
   }
@@ -81,6 +93,31 @@ export default function Timer({
   React.useEffect(() => {
     if (secondsRef) secondsRef.current = seconds;
   }, [seconds, secondsRef]);
+
+  // Listen for event notifications (🥊🏆💀)
+  useEffect(() => {
+    if (!currentInstance) return;
+    const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
+    let timeout: NodeJS.Timeout | null = null;
+    const handle = onValue(lastEventRef, (snap) => {
+      const val = snap.val();
+      if (val && val.displayName && val.type) {
+        let emoji = "";
+        if (val.type === "start") emoji = "🥊";
+        if (val.type === "complete") emoji = "🏆";
+        if (val.type === "quit") emoji = "💀";
+        document.title = `${emoji} ${val.displayName}`;
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          document.title = "Create Next App";
+        }, 5000);
+      }
+    });
+    return () => {
+      off(lastEventRef, "value", handle);
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [currentInstance]);
 
   return (
     <div className="flex flex-col items-center gap-4">

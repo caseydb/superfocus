@@ -70,6 +70,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
   };
 
+  // Add event notification for complete and quit
+  function notifyEvent(type: "complete" | "quit") {
+    if (currentInstance) {
+      const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
+      set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
+    }
+  }
+
   const handleQuitConfirm = () => {
     if (timerSecondsRef.current > 0 && currentInstance && user && task.trim()) {
       const hours = Math.floor(timerSecondsRef.current / 3600)
@@ -86,6 +94,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         duration: `${hours}:${minutes}:${secs}`,
         timestamp: Date.now(),
       });
+      notifyEvent("quit");
     }
     setTask("");
     setTimerRunning(false);
@@ -113,6 +122,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         duration,
         timestamp: Date.now(),
       });
+      notifyEvent("complete");
     }
   };
 
