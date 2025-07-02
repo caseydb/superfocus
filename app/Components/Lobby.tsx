@@ -46,19 +46,19 @@ export default function Lobby() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-      <div className="w-full flex flex-col items-center mb-10 mt-8">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-4 drop-shadow-lg">
+    <div className="h-screen flex flex-col items-center justify-center bg-black text-white overflow-hidden">
+      <div className="w-full flex flex-col items-center mb-20 mt-2">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
           Drop In. Lock In. Get Sh*t Done.
         </h1>
         <p className="text-lg md:text-2xl text-gray-300 text-center max-w-2xl mx-auto opacity-90 font-medium">
           Real-time focus rooms where you work alongside others.
         </p>
       </div>
-      <div className="bg-gray-900/90 rounded-2xl shadow-2xl p-10 w-full max-w-2xl flex flex-col items-center gap-8 border-4 border-yellow-500">
+      <div className="bg-gray-900/90 mb-10 rounded-2xl shadow-2xl p-8 w-full max-w-2xl flex flex-col items-center gap-6 border-4 border-yellow-500">
         <h1 className="text-4xl font-extrabold text-yellow-400 mb-2 tracking-tight">Join a Room</h1>
         <button
-          className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-extrabold py-5 px-12 rounded-full shadow-2xl hover:scale-105 transition mb-2 text-2xl border-4 border-yellow-400 drop-shadow-lg"
+          className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-extrabold py-4 px-10 rounded-full shadow-2xl hover:scale-105 transition mb-1 text-2xl border-4 border-yellow-400 drop-shadow-lg"
           onClick={() => {
             const available = instances.find((i) => i.users.length < 5 && i.type === "public");
             if (available) {
@@ -70,7 +70,7 @@ export default function Lobby() {
         >
           🚀 Quick Join
         </button>
-        <div className="text-yellow-200 text-lg mt-2 mb-4 font-mono opacity-80 text-center">
+        <div className="text-yellow-200 text-lg mt-1 mb-2 font-mono opacity-80 text-center">
           {totalUsers > 0
             ? `There ${totalUsers === 1 ? "is" : "are"} ${totalUsers} other ${
                 totalUsers === 1 ? "person" : "people"
@@ -78,7 +78,7 @@ export default function Lobby() {
             : "Be the first to start working!"}
         </div>
         <button
-          className="bg-gray-800 text-gray-300 px-4 py-2 rounded-full font-medium hover:bg-gray-700 transition mt-2 text-base border border-gray-700"
+          className="bg-gray-800 text-gray-300 px-4 py-2 rounded-full font-medium hover:bg-gray-700 transition mt-1 text-base border border-gray-700"
           onClick={() => createInstance("private")}
         >
           Create Private Room
