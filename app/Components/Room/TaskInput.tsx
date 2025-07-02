@@ -76,12 +76,13 @@ export default function TaskInput({
       />
       {/* Custom underline with larger gap */}
       <div
-        className={`mx-auto transition-colors duration-200${isFocused ? " bg-yellow-400" : " bg-gray-700"}`}
+        className={`mx-auto transition-colors duration-200${isFocused ? "" : " bg-gray-700"}`}
         style={{
           width: inputWidth,
           height: "2px",
           marginBottom: "50px",
           borderRadius: "2px",
+          background: isFocused ? "#00b4ff" : undefined,
         }}
       />
       {showLimitPopup && (

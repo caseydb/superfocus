@@ -10,6 +10,8 @@ import Timer from "./Timer";
 import History from "./History";
 import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
+import Leaderboard from "./Leaderboard";
+import Sounds from "./Sounds";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, leaveInstance, user } = useInstance();
@@ -31,6 +33,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       userId?: string;
     }[]
   >([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -189,6 +192,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           flyingPlaceholders={[]}
           activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
         />
+        <Sounds roomId={currentInstance.id} />
         {/* Leave Room button at top center */}
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
           <button
@@ -219,6 +223,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               startRef={timerStartRef}
               onComplete={handleComplete}
               secondsRef={timerSecondsRef}
+              requiredTask={!!task.trim()}
             />
           </div>
         ) : (
@@ -226,16 +231,19 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         )}
         {/* Bottom bar controls */}
         <button
-          className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-blue-400 transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+          className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
           onClick={() => setShowHistory((v) => !v)}
         >
           {showHistory ? "Back to Room" : "History"}
         </button>
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-yellow-400 transition-colors">
+        <div
+          className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
+          onClick={() => setShowLeaderboard(true)}
+        >
           Leaderboard
         </div>
         <div
-          className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-red-400 transition-colors"
+          className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
           onClick={handleClear}
         >
           Clear
@@ -265,6 +273,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             </div>
           </div>
+        )}
+        {showLeaderboard && currentInstance && (
+          <Leaderboard roomId={currentInstance.id} onClose={() => setShowLeaderboard(false)} />
         )}
       </div>
     );

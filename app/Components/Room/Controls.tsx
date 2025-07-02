@@ -21,7 +21,7 @@ export default function Controls({ className = "" }: { className?: string }) {
     <div className={className}>
       {editingName ? (
         <input
-          className="bg-black text-gray-200 border-b-2 border-yellow-400 text-lg font-bold outline-none px-2 py-1"
+          className="bg-black text-gray-200 border-b-2 text-lg font-bold outline-none px-2 py-1"
           value={editedName}
           autoFocus
           onChange={(e) => setEditedName(e.target.value)}
@@ -31,7 +31,7 @@ export default function Controls({ className = "" }: { className?: string }) {
             if (e.key === "Escape") setEditingName(false);
           }}
           maxLength={32}
-          style={{ minWidth: 80 }}
+          style={{ minWidth: 80, borderBottomColor: "#00b4ff", borderBottomWidth: 2 }}
         />
       ) : (
         <span

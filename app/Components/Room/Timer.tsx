@@ -10,12 +10,14 @@ export default function Timer({
   startRef,
   onComplete,
   secondsRef,
+  requiredTask = true,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
   startRef?: React.RefObject<() => void>;
   onComplete?: (duration: string) => void;
   secondsRef?: React.RefObject<number>;
+  requiredTask?: boolean;
 }) {
   const { currentInstance, user } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
@@ -23,12 +25,57 @@ export default function Timer({
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const notificationActiveRef = useRef(false);
+
+  // Helper to format time as hh:mm:ss
+  function formatTime(s: number) {
+    const hours = Math.floor(s / 3600)
+      .toString()
+      .padStart(2, "0");
+    const minutes = Math.floor((s % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = (s % 60).toString().padStart(2, "0");
+    return `${hours}:${minutes}:${secs}`;
+  }
+
+  // Live update tab title with timer value when running
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    function updateTitle() {
+      if (running) {
+        document.title = formatTime(seconds);
+      } else {
+        document.title = "Get Shit Done";
+      }
+    }
+    if (running) {
+      interval = setInterval(updateTitle, 1000);
+      updateTitle(); // Set immediately
+    } else {
+      document.title = "Get Shit Done";
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [running, seconds]);
+
+  // Track when timer started for accurate live updates
+  const startTimeRef = useRef<number>(Date.now());
+  useEffect(() => {
+    if (running) {
+      startTimeRef.current = Date.now() - seconds * 1000;
+    }
+  }, [running]);
 
   // Reset timer when room changes
   useEffect(() => {
     setSeconds(0);
     if (intervalRef.current) clearInterval(intervalRef.current);
     setRunning(false);
+    if (!notificationActiveRef.current) {
+      document.title = "Get Shit Done";
+    }
   }, [roomKey]);
 
   // Notify parent of running state
@@ -99,7 +146,12 @@ export default function Timer({
     if (!currentInstance) return;
     const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
     let timeout: NodeJS.Timeout | null = null;
+    let firstRun = true;
     const handle = onValue(lastEventRef, (snap) => {
+      if (firstRun) {
+        firstRun = false;
+        return;
+      }
       const val = snap.val();
       if (val && val.displayName && val.type) {
         let emoji = "";
@@ -109,7 +161,12 @@ export default function Timer({
         document.title = `${emoji} ${val.displayName}`;
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
-          document.title = "Create Next App";
+          // Resume timer or default title immediately after notification
+          if (running) {
+            document.title = formatTime(seconds);
+          } else {
+            document.title = "Get Shit Done";
+          }
         }, 5000);
       }
     });
@@ -117,7 +174,7 @@ export default function Timer({
       off(lastEventRef, "value", handle);
       if (timeout) clearTimeout(timeout);
     };
-  }, [currentInstance]);
+  }, [currentInstance, running, seconds]);
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -129,7 +186,7 @@ export default function Timer({
           <button
             className="bg-white text-black font-extrabold text-2xl px-12 py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40"
             onClick={handleStart}
-            disabled={disabled}
+            disabled={disabled || !requiredTask}
           >
             Start
           </button>

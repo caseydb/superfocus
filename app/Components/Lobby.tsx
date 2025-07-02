@@ -57,13 +57,13 @@ export default function Lobby() {
       </div>
       <div
         className="bg-gray-900/90 mb-10 rounded-2xl shadow-2xl p-8 w-full max-w-2xl flex flex-col items-center gap-6 border-4"
-        style={{ borderColor: "#38b6ff" }}
+        style={{ borderColor: "#00b4ff" }}
       >
         <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Join a Room</h1>
         <button
           className="bg-white text-black font-extrabold py-4 px-10 rounded-full shadow transition mb-1 text-2xl border"
-          style={{ borderColor: "#38b6ff" }}
-          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#d6f3ff")}
+          style={{ borderColor: "#00b4ff" }}
+          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#00b4ff")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
           onClick={() => {
             const available = instances.find((i) => i.users.length < 5 && i.type === "public");
@@ -85,8 +85,8 @@ export default function Lobby() {
         </div>
         <button
           className="bg-white text-gray-700 px-4 py-2 rounded-full font-medium transition mt-1 text-base border"
-          style={{ borderColor: "#38b6ff" }}
-          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#d6f3ff")}
+          style={{ borderColor: "#00b4ff" }}
+          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#00b4ff")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
           onClick={() => createInstance("private")}
         >

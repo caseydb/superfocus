@@ -51,17 +51,18 @@ body {
   0% {
     left: 0;
     opacity: 1;
-    /* color: #4ade80; */
   }
-  71.4% {
-    left: 110vw;
+  50% {
+    left: 55vw;
     opacity: 1;
-    /* color: #4ade80; */
+  }
+  60% {
+    left: 66vw;
+    opacity: 1;
   }
   100% {
     left: 110vw;
     opacity: 0;
-    /* color: #000; */
   }
 }
 
@@ -74,7 +75,7 @@ body {
 }
 
 .animate-fly-across {
-  animation: fly-across 7s linear forwards;
+  animation: fly-across 6s linear forwards;
 }
 
 html,
