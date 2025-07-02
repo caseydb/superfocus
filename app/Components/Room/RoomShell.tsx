@@ -4,9 +4,10 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import ActiveWorkers from "./ActiveWorkers";
 import { db } from "../../firebase";
-import { ref, set, remove } from "firebase/database";
+import { ref, set, remove, push } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
+import History from "./History";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, leaveInstance, user } = useInstance();
@@ -17,6 +18,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [editedName, setEditedName] = useState(user.displayName);
   const [task, setTask] = useState("");
   const [timerRunning, setTimerRunning] = useState(false);
+  const [timerResetKey, setTimerResetKey] = useState(0);
+  const timerStartRef = React.useRef<() => void>(null!);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -63,6 +67,31 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     } else {
       remove(activeRef);
       setTimerRunning(false);
+    }
+  };
+
+  const handleClear = () => {
+    setTask("");
+    setTimerRunning(false);
+    setTimerResetKey((k) => k + 1);
+  };
+
+  // Complete handler: reset timer, clear input, set inactive
+  const handleComplete = (duration: string) => {
+    setTask("");
+    setTimerRunning(false);
+    setTimerResetKey((k) => k + 1);
+    if (currentInstance && user) {
+      const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+      remove(activeRef);
+      // Save to history
+      const historyRef = ref(db, `instances/${currentInstance.id}/history`);
+      push(historyRef, {
+        displayName: user.displayName,
+        task,
+        duration,
+        timestamp: Date.now(),
+      });
     }
   };
 
@@ -126,18 +155,38 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         </div>
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
-        <div className="flex flex-col items-center justify-center">
-          <TaskInput task={task} setTask={setTask} disabled={timerRunning} />
-          <Timer onActiveChange={handleActiveChange} disabled={!task.trim()} />
-        </div>
+        {!showHistory ? (
+          <div className="flex flex-col items-center justify-center">
+            <TaskInput
+              task={task}
+              setTask={setTask}
+              disabled={timerRunning}
+              onStart={() => timerStartRef.current && timerStartRef.current()}
+            />
+            <Timer
+              key={timerResetKey}
+              onActiveChange={handleActiveChange}
+              startRef={timerStartRef}
+              onComplete={handleComplete}
+            />
+          </div>
+        ) : (
+          <History roomId={currentInstance.id} />
+        )}
         {/* Bottom bar controls */}
-        <div className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-blue-400 transition-colors">
-          History
-        </div>
+        <button
+          className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-blue-400 transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+          onClick={() => setShowHistory((v) => !v)}
+        >
+          {showHistory ? "Back to Room" : "History"}
+        </button>
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-yellow-400 transition-colors">
           Leaderboard
         </div>
-        <div className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-red-400 transition-colors">
+        <div
+          className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-red-400 transition-colors"
+          onClick={handleClear}
+        >
           Clear
         </div>
       </div>

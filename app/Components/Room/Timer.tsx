@@ -5,11 +5,13 @@ import { useInstance } from "../../Components/Instances";
 export default function Timer({
   onActiveChange,
   disabled,
-}: // task,
-{
+  startRef,
+  onComplete,
+}: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
-  // task?: string;
+  startRef?: React.RefObject<() => void>;
+  onComplete?: (duration: string) => void;
 }) {
   const { currentInstance } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
@@ -66,6 +68,13 @@ export default function Timer({
     .padStart(2, "0");
   const secs = (seconds % 60).toString().padStart(2, "0");
 
+  // Expose handleStart to parent via ref
+  React.useEffect(() => {
+    if (startRef) {
+      startRef.current = handleStart;
+    }
+  });
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="text-4xl mb-2 font-mono">
@@ -90,7 +99,7 @@ export default function Timer({
             </button>
             <button
               className="bg-green-500 text-white font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
-              onClick={handleStop}
+              onClick={() => onComplete && onComplete(`${hours}:${minutes}:${secs}`)}
             >
               Complete
             </button>
