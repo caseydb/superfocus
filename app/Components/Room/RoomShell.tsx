@@ -19,7 +19,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [roomFound, setRoomFound] = useState(false);
   const router = useRouter();
   const [task, setTask] = useState("");
-  const [timerRunning, setTimerRunning] = useState(false);
+  const [inputLocked, setInputLocked] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
   const [showHistory, setShowHistory] = useState(false);
@@ -65,10 +66,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
     if (isActive) {
       set(activeRef, { id: user.id, displayName: user.displayName });
-      setTimerRunning(true);
+      setInputLocked(true);
+      setHasStarted(true);
     } else {
       remove(activeRef);
-      setTimerRunning(false);
+      setInputLocked(true); // keep locked until complete/clear/quit
     }
   };
 
@@ -78,8 +80,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       return;
     }
     setTask("");
-    setTimerRunning(false);
     setTimerResetKey((k) => k + 1);
+    setInputLocked(false);
+    setHasStarted(false);
   };
 
   // Add event notification for complete and quit
@@ -123,8 +126,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }, 7000);
     }
     setTask("");
-    setTimerRunning(false);
     setTimerResetKey((k) => k + 1);
+    setInputLocked(false);
+    setHasStarted(false);
     setShowQuitModal(false);
   };
 
@@ -135,8 +139,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Complete handler: reset timer, clear input, set inactive
   const handleComplete = (duration: string) => {
     setTask("");
-    setTimerRunning(false);
     setTimerResetKey((k) => k + 1);
+    setInputLocked(false);
+    setHasStarted(false);
     if (currentInstance && user) {
       const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
       remove(activeRef);
@@ -214,7 +219,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <TaskInput
               task={task}
               setTask={setTask}
-              disabled={timerRunning}
+              disabled={hasStarted && inputLocked}
               onStart={() => timerStartRef.current && timerStartRef.current()}
             />
             <Timer
@@ -225,6 +230,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               secondsRef={timerSecondsRef}
               requiredTask={!!task.trim()}
             />
+            <button
+              className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+              onClick={handleClear}
+            >
+              Clear
+            </button>
           </div>
         ) : (
           <History roomId={currentInstance.id} />
@@ -241,12 +252,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           onClick={() => setShowLeaderboard(true)}
         >
           Leaderboard
-        </div>
-        <div
-          className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
-          onClick={handleClear}
-        >
-          Clear
         </div>
         {showQuitModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">

@@ -32,6 +32,12 @@ export default function Sounds({ roomId }: { roomId: string }) {
     return () => off(lastEventRef, "value", handle);
   }, [roomId]);
 
+  useEffect(() => {
+    if (completeRef.current) completeRef.current.volume = 0.2;
+    if (startedRef.current) startedRef.current.volume = 0.2;
+    if (quitRef.current) quitRef.current.volume = 0.2;
+  }, []);
+
   return (
     <>
       <audio ref={completeRef} src="/complete.mp3" preload="auto" />
