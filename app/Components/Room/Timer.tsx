@@ -7,11 +7,13 @@ export default function Timer({
   disabled,
   startRef,
   onComplete,
+  secondsRef,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
   startRef?: React.RefObject<() => void>;
   onComplete?: (duration: string) => void;
+  secondsRef?: React.RefObject<number>;
 }) {
   const { currentInstance } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
@@ -74,6 +76,11 @@ export default function Timer({
       startRef.current = handleStart;
     }
   });
+
+  // Update secondsRef with the current seconds value
+  React.useEffect(() => {
+    if (secondsRef) secondsRef.current = seconds;
+  }, [seconds, secondsRef]);
 
   return (
     <div className="flex flex-col items-center gap-4">

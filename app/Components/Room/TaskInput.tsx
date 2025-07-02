@@ -57,7 +57,9 @@ export default function TaskInput({
         value={task}
         onChange={(e) => setTask(e.target.value.slice(0, maxLen))}
         maxLength={maxLen}
-        className="text-center text-3xl md:text-5xl font-semibold bg-transparent outline-none text-white mb-6 placeholder-gray-500 leading-tight mx-auto overflow-hidden resize-none"
+        className={`text-center text-3xl md:text-5xl font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
+          disabled ? "cursor-not-allowed" : "bg-transparent"
+        }`}
         placeholder="What are you focusing on?"
         autoFocus
         rows={1}

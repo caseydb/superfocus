@@ -21,6 +21,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
   const [showHistory, setShowHistory] = useState(false);
+  const timerSecondsRef = React.useRef<number>(0);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -71,6 +72,23 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   };
 
   const handleClear = () => {
+    // If timer > 0, log as quit early
+    if (timerSecondsRef.current > 0 && currentInstance && user && task.trim()) {
+      const hours = Math.floor(timerSecondsRef.current / 3600)
+        .toString()
+        .padStart(2, "0");
+      const minutes = Math.floor((timerSecondsRef.current % 3600) / 60)
+        .toString()
+        .padStart(2, "0");
+      const secs = (timerSecondsRef.current % 60).toString().padStart(2, "0");
+      const historyRef = ref(db, `instances/${currentInstance.id}/history`);
+      push(historyRef, {
+        displayName: user.displayName,
+        task: task + " (Quit Early)",
+        duration: `${hours}:${minutes}:${secs}`,
+        timestamp: Date.now(),
+      });
+    }
     setTask("");
     setTimerRunning(false);
     setTimerResetKey((k) => k + 1);
@@ -168,6 +186,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               onActiveChange={handleActiveChange}
               startRef={timerStartRef}
               onComplete={handleComplete}
+              secondsRef={timerSecondsRef}
             />
           </div>
         ) : (

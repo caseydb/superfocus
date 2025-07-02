@@ -14,6 +14,10 @@ interface HistoryEntry {
 export default function History({ roomId }: { roomId: string }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const PAGE_SIZE = 15;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
+  const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     if (!roomId) return;
@@ -38,29 +42,37 @@ export default function History({ roomId }: { roomId: string }) {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto mt-16">
-      <h2 className="text-3xl font-extrabold text-center text-white mb-8">History</h2>
-      <table className="w-full text-left border-separate border-spacing-y-2">
+    <div className="w-[820px] mx-auto mt-10">
+      <h2 className="text-2xl font-extrabold text-center text-white mb-4">History</h2>
+      <table className="w-full text-left border-separate border-spacing-y-0">
         <thead>
-          <tr className="text-gray-400 text-lg">
-            <th className="px-4">Name</th>
-            <th className="px-4">Task</th>
-            <th className="px-4">Time</th>
+          <tr className="text-gray-400 text-base">
+            <th className="px-1">Name</th>
+            <th className="px-1">Task</th>
+            <th className="px-1">Time</th>
           </tr>
         </thead>
         <tbody>
-          {history.map((entry, i) => (
+          {paginated.map((entry, i) => (
             <tr key={i}>
-              <td className="px-4 text-white font-mono whitespace-nowrap">{entry.displayName}</td>
               <td
-                className={`px-4 font-mono ${
+                className={`px-1 py-0.5 font-mono whitespace-nowrap ${
                   entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                 }`}
+                title={entry.displayName}
               >
-                {entry.task}
+                {entry.displayName}
               </td>
               <td
-                className={`px-4 font-mono ${
+                className={`px-1 py-0.5 font-mono ${
+                  entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                }`}
+                title={entry.task}
+              >
+                {entry.task.length > 50 ? entry.task.slice(0, 50) + "..." : entry.task}
+              </td>
+              <td
+                className={`px-1 py-0.5 font-mono ${
                   entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                 }`}
               >
@@ -70,6 +82,36 @@ export default function History({ roomId }: { roomId: string }) {
           ))}
         </tbody>
       </table>
+      {/* Pagination controls */}
+      {history.length > PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-8 mt-8">
+          <button
+            className={`px-3 py-1.5 w-28 rounded-md text-base font-mono transition-colors ${
+              page === 1
+                ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
+                : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+            }`}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </button>
+          <span className="text-gray-300 text-xl font-mono">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className={`px-3 py-1.5 w-28 rounded-md text-base font-mono transition-colors ${
+              page === totalPages
+                ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
+                : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+            }`}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
       {history.length === 0 && <div className="text-gray-400 text-center mt-8">No history yet.</div>}
     </div>
   );
