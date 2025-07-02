@@ -46,14 +46,14 @@ export default function Timer({
       if (running) {
         document.title = formatTime(seconds);
       } else {
-        document.title = "Get Shit Done";
+        document.title = "Locked In";
       }
     }
     if (running) {
       interval = setInterval(updateTitle, 1000);
       updateTitle(); // Set immediately
     } else {
-      document.title = "Get Shit Done";
+      document.title = "Locked In";
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -74,7 +74,7 @@ export default function Timer({
     if (intervalRef.current) clearInterval(intervalRef.current);
     setRunning(false);
     if (!notificationActiveRef.current) {
-      document.title = "Get Shit Done";
+      document.title = "Locked In";
     }
   }, [roomKey]);
 
@@ -165,7 +165,7 @@ export default function Timer({
           if (running) {
             document.title = formatTime(seconds);
           } else {
-            document.title = "Get Shit Done";
+            document.title = "Locked In";
           }
         }, 5000);
       }
