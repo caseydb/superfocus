@@ -9,6 +9,7 @@ import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
 import Controls from "./Controls";
+import FlyingMessages from "./FlyingMessages";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, leaveInstance, user } = useInstance();
@@ -22,6 +23,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showHistory, setShowHistory] = useState(false);
   const timerSecondsRef = React.useRef<number>(0);
   const [showQuitModal, setShowQuitModal] = useState(false);
+  const [flyingMessages, setFlyingMessages] = useState<
+    {
+      id: string;
+      text: string;
+      color: string;
+      userId?: string;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -95,6 +104,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         timestamp: Date.now(),
       });
       notifyEvent("quit");
+      // Add flying message for quit
+      const id = `${user.id}-quit-${Date.now()}`;
+      setFlyingMessages((msgs) => [
+        ...msgs,
+        {
+          id,
+          text: `💀 ${user.displayName}`,
+          color: "text-red-500",
+          userId: user.id,
+        },
+      ]);
+      setTimeout(() => {
+        setFlyingMessages((msgs) => msgs.filter((m) => m.id !== id));
+      }, 7000);
     }
     setTask("");
     setTimerRunning(false);
@@ -123,6 +146,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         timestamp: Date.now(),
       });
       notifyEvent("complete");
+      // Add flying message
+      const id = `${user.id}-${Date.now()}`;
+      setFlyingMessages((msgs) => [
+        ...msgs,
+        {
+          id,
+          text: `🏆 ${user.displayName}`,
+          color: "text-green-400",
+          userId: user.id,
+        },
+      ]);
+      setTimeout(() => {
+        setFlyingMessages((msgs) => msgs.filter((m) => m.id !== id));
+      }, 7000);
     }
   };
 
@@ -147,6 +184,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   if (currentInstance) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
+        <FlyingMessages
+          flyingMessages={flyingMessages}
+          flyingPlaceholders={[]}
+          activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
+        />
         {/* Leave Room button at top center */}
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
           <button
