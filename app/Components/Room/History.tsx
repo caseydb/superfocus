@@ -1,7 +1,7 @@
 //History
 
 import React, { useEffect, useState } from "react";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
 interface HistoryEntry {
@@ -21,7 +21,7 @@ export default function History({ roomId }: { roomId: string }) {
 
   useEffect(() => {
     if (!roomId) return;
-    const historyRef = ref(db, `instances/${roomId}/history`);
+    const historyRef = ref(rtdb, `instances/${roomId}/history`);
     const handle = onValue(historyRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {

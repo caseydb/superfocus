@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import ActiveWorkers from "./ActiveWorkers";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, set, remove, push } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
@@ -54,7 +54,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     return () => {
       if (currentInstance && user) {
-        const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+        const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
         remove(activeRef);
       }
     };
@@ -63,7 +63,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Track active user status in Firebase RTDB
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
-    const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+    const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
     if (isActive) {
       set(activeRef, { id: user.id, displayName: user.displayName });
       setInputLocked(true);
@@ -88,7 +88,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Add event notification for complete and quit
   function notifyEvent(type: "complete" | "quit") {
     if (currentInstance) {
-      const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
+      const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
       set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
     }
   }
@@ -102,7 +102,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         .toString()
         .padStart(2, "0");
       const secs = (timerSecondsRef.current % 60).toString().padStart(2, "0");
-      const historyRef = ref(db, `instances/${currentInstance.id}/history`);
+      const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
       push(historyRef, {
         displayName: user.displayName,
         task: task + " (Quit Early)",
@@ -143,10 +143,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setInputLocked(false);
     setHasStarted(false);
     if (currentInstance && user) {
-      const activeRef = ref(db, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+      const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
       remove(activeRef);
       // Save to history
-      const historyRef = ref(db, `instances/${currentInstance.id}/history`);
+      const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
       push(historyRef, {
         displayName: user.displayName,
         task,

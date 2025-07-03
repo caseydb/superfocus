@@ -1,7 +1,7 @@
 //Leaderboard
 
 import React, { useEffect, useState } from "react";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
 interface HistoryEntry {
@@ -34,7 +34,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
 
   useEffect(() => {
     if (!roomId) return;
-    const historyRef = ref(db, `instances/${roomId}/history`);
+    const historyRef = ref(rtdb, `instances/${roomId}/history`);
     const handle = onValue(historyRef, (snapshot) => {
       const data = snapshot.val();
       const userMap: Record<string, LeaderboardEntry> = {};

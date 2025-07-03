@@ -1,12 +1,30 @@
 "use client";
 
 import { useInstance } from "../Components/Instances";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import SignOut from "./SignOut";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import SignInEmail from "./SignInEmail";
+import { signInWithGoogle } from "@/lib/auth";
+import Image from "next/image";
 
 export default function Lobby() {
   const { instances, currentInstance, joinInstance, createInstance, leaveInstance } = useInstance();
   const router = useRouter();
+  const [signedIn, setSignedIn] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => setSignedIn(!!user));
+    return () => unsub();
+  }, []);
+
+  // Close modal when signed in
+  useEffect(() => {
+    if (signedIn) setShowSignInModal(false);
+  }, [signedIn]);
 
   // Redirect to room URL when joining a room
   useEffect(() => {
@@ -47,7 +65,12 @@ export default function Lobby() {
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-black text-white overflow-hidden">
-      <div className="w-full flex flex-col items-center mb-20 mt-2">
+      {signedIn && (
+        <div className="fixed top-6 right-8 z-50">
+          <SignOut />
+        </div>
+      )}
+      <div className="w-full flex flex-col items-center mb-10 mt-2">
         <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
           Drop In. Lock In. Get Sh*t Done.
         </h1>
@@ -55,8 +78,40 @@ export default function Lobby() {
           Level up your work with others in the zone.
         </p>
       </div>
+      {!signedIn && (
+        <div className="flex flex-col items-center mb-8">
+          <button
+            onClick={() => signInWithGoogle()}
+            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#00b4ff] transition"
+          >
+            <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
+            Continue with Google
+          </button>
+          <div className="mt-4 text-gray-300 text-base">
+            Don&apos;t have an account?{" "}
+            <button
+              className="font-bold underline underline-offset-2 hover:text-[#00b4ff] transition"
+              onClick={() => setShowSignInModal(true)}
+            >
+              Sign up
+            </button>
+          </div>
+        </div>
+      )}
+      {showSignInModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setShowSignInModal(false)}
+        >
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <SignInEmail />
+          </div>
+        </div>
+      )}
       <div
-        className="bg-gray-900/90 mb-10 rounded-2xl shadow-2xl p-8 w-full max-w-2xl flex flex-col items-center gap-6 border-4"
+        className={`bg-gray-900/90 mb-10 rounded-2xl shadow-2xl p-8 w-full max-w-2xl flex flex-col items-center gap-6 border-4 transition-all duration-200 ${
+          !signedIn ? "opacity-40 pointer-events-none grayscale" : ""
+        }`}
         style={{ borderColor: "#00b4ff" }}
       >
         <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Join a Room</h1>

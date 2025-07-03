@@ -1,9 +1,11 @@
 // app/InstanceContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { db } from "../firebase";
+import { rtdb } from "../../lib/firebase";
 import { ref, onValue, push, set, off, onDisconnect, remove, get } from "firebase/database";
 import type { DataSnapshot } from "firebase/database";
 import type { Instance, InstanceType, User } from "../types";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 type InstanceFromDB = Omit<Instance, "id" | "users"> & { users?: Record<string, User> };
 
@@ -52,11 +54,25 @@ function generateRoomUrl(): string {
 export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [currentInstance, setCurrentInstance] = useState<Instance | null>(null);
-  const [user] = useState<User>(getOrCreateUser());
+  const [user, setUser] = useState<User>(getOrCreateUser());
+
+  // Update user from Firebase Auth if signed in
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          id: firebaseUser.uid,
+          displayName: firebaseUser.displayName || firebaseUser.email || "Anonymous",
+          isPremium: false, // update if you have premium logic
+        });
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Listen for real-time updates to instances
   useEffect(() => {
-    const instancesRef = ref(db, "instances");
+    const instancesRef = ref(rtdb, "instances");
     const handleValue = (snapshot: DataSnapshot) => {
       const data = snapshot.val() || {};
       const list: Instance[] = Object.entries(data).map(([id, value]) => {
@@ -83,7 +99,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Create a new instance and join it
   const createInstance = useCallback(
     (type: InstanceType) => {
-      const instancesRef = ref(db, "instances");
+      const instancesRef = ref(rtdb, "instances");
       const newInstanceRef = push(instancesRef);
       const roomUrl = generateRoomUrl();
       const newInstance: Omit<Instance, "id" | "users"> & { users: { [id: string]: User } } = {
@@ -94,7 +110,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
       set(newInstanceRef, newInstance);
       // Add onDisconnect logic for the user in the new instance
-      const userRef = ref(db, `instances/${newInstanceRef.key}/users/${user.id}`);
+      const userRef = ref(rtdb, `instances/${newInstanceRef.key}/users/${user.id}`);
       onDisconnect(userRef).remove();
       setCurrentInstance({ ...newInstance, id: newInstanceRef.key!, users: [user] });
     },
@@ -104,7 +120,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Join an existing instance
   const joinInstance = useCallback(
     (instanceId: string) => {
-      const instanceRef = ref(db, `instances/${instanceId}/users/${user.id}`);
+      const instanceRef = ref(rtdb, `instances/${instanceId}/users/${user.id}`);
       set(instanceRef, user);
       onDisconnect(instanceRef).remove();
       setCurrentInstance((prev) => {
@@ -122,14 +138,14 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const leaveInstance = useCallback(() => {
     if (!currentInstance) return;
     const instanceToLeave = currentInstance; // Store reference before setting to null
-    const userRef = ref(db, `instances/${instanceToLeave.id}/users/${user.id}`);
+    const userRef = ref(rtdb, `instances/${instanceToLeave.id}/users/${user.id}`);
     remove(userRef).then(() => {
       // After removing user, check if any users remain
-      const usersRef = ref(db, `instances/${instanceToLeave.id}/users`);
+      const usersRef = ref(rtdb, `instances/${instanceToLeave.id}/users`);
       get(usersRef).then((snapshot) => {
         if (!snapshot.exists() && instanceToLeave.type === "public") {
           // No users left and it's a public room, delete the room
-          const instanceRef = ref(db, `instances/${instanceToLeave.id}`);
+          const instanceRef = ref(rtdb, `instances/${instanceToLeave.id}`);
           remove(instanceRef);
         }
       });

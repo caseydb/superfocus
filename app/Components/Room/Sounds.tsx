@@ -1,7 +1,7 @@
 //Sounds
 
 import React, { useEffect, useRef } from "react";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
 export default function Sounds({ roomId }: { roomId: string }) {
@@ -12,7 +12,7 @@ export default function Sounds({ roomId }: { roomId: string }) {
 
   useEffect(() => {
     if (!roomId) return;
-    const lastEventRef = ref(db, `instances/${roomId}/lastEvent`);
+    const lastEventRef = ref(rtdb, `instances/${roomId}/lastEvent`);
     let firstRun = true;
     const handle = onValue(lastEventRef, (snap) => {
       if (firstRun) {

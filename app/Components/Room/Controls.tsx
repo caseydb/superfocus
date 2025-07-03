@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, set } from "firebase/database";
 
 export default function Controls({ className = "" }: { className?: string }) {
@@ -39,7 +39,7 @@ export default function Controls({ className = "" }: { className?: string }) {
     if (!currentInstance) return;
     user.displayName = editedName;
     // Only update in users, not activeUsers
-    const userRef = ref(db, `instances/${currentInstance.id}/users/${user.id}`);
+    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
     set(userRef, { ...user, displayName: editedName });
   };
 

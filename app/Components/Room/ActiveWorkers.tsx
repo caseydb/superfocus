@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
@@ -8,7 +8,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
 
   useEffect(() => {
     if (!roomId) return;
-    const activeRef = ref(db, `instances/${roomId}/activeUsers`);
+    const activeRef = ref(rtdb, `instances/${roomId}/activeUsers`);
     const handle = onValue(activeRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {

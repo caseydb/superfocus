@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
-import { db } from "../../firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, set, onValue, off } from "firebase/database";
 
 export default function Timer({
@@ -111,7 +111,7 @@ export default function Timer({
   // Add event notification for start, complete, and quit
   function notifyEvent(type: "start" | "complete" | "quit") {
     if (currentInstance) {
-      const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
+      const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
       set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
     }
   }
@@ -144,7 +144,7 @@ export default function Timer({
   // Listen for event notifications (🥊🏆💀)
   useEffect(() => {
     if (!currentInstance) return;
-    const lastEventRef = ref(db, `instances/${currentInstance.id}/lastEvent`);
+    const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
     let timeout: NodeJS.Timeout | null = null;
     let firstRun = true;
     const handle = onValue(lastEventRef, (snap) => {
