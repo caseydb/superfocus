@@ -71,7 +71,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-10 py-8 w-[600px] max-w-full flex flex-col items-center gap-6 border-4 border-[#181f2a]"
+        className="bg-[#181f2a] rounded-3xl shadow-2xl px-10 py-8 w-[800px] max-w-full flex flex-col items-center gap-6 border-4 border-[#181f2a]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between w-full mb-2">
@@ -118,7 +118,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
           </tbody>
         </table>
         <button
-          className="mt-6 bg-[#00b4ff] text-black font-extrabold text-xl px-10 py-3 rounded-lg shadow hover:bg-[#38d6ff] transition"
+          className="mt-6 bg-[#00b4ff] text-black font-extrabold text-xl px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
           onClick={onClose}
         >
           Close

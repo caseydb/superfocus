@@ -38,6 +38,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
@@ -278,10 +279,24 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           {/* Bottom bar controls */}
           <button
             className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-            onClick={() => setShowHistory((v) => !v)}
+            onClick={() => {
+              if (currentInstance.type === "public") {
+                setShowHistoryTooltip(true);
+                setTimeout(() => setShowHistoryTooltip(false), 3000);
+              } else {
+                setShowHistory((v) => !v);
+              }
+            }}
           >
             {showHistory ? "Back to Room" : "History"}
           </button>
+          {/* History tooltip for public rooms */}
+          {showHistoryTooltip && (
+            <div className="fixed bottom-16 left-8 z-50 bg-[#181A1B] text-white px-4 py-2 rounded-lg shadow-lg border border-[#23272b] text-sm font-mono">
+              History is only available in private rooms.
+              <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#181A1B] border-r border-b border-[#23272b] transform rotate-45"></div>
+            </div>
+          )}
           <div
             className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
             onClick={() => setShowLeaderboard(true)}
