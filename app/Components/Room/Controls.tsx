@@ -45,7 +45,7 @@ export default function Controls({ className = "" }: { className?: string }) {
 
   return (
     <div className={className + " select-none"}>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-8">
         {editingName ? (
           <input
             className="bg-black text-gray-200 border-b-2 text-lg font-bold outline-none px-2 py-1"
@@ -69,7 +69,7 @@ export default function Controls({ className = "" }: { className?: string }) {
           </span>
         )}
         {/* Speaker icon and menu (Sound) to the right of the name */}
-        <div className="relative ml-3">
+        <div className="relative ml-1">
           <span
             ref={soundIconRef}
             className="cursor-pointer flex items-center"
@@ -268,11 +268,10 @@ export default function Controls({ className = "" }: { className?: string }) {
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 bg-black border border-white rounded shadow-lg z-50"
-          style={{ minWidth: 140 }}
+          className="absolute right-0 mt-2 bg-black text-white rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
         >
           <button
-            className="w-full px-6 py-3 text-white bg-black border border-white rounded font-bold text-base hover:bg-gray-900 transition text-center"
+            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-center"
             style={{ outline: "none" }}
             onClick={() => {}}
           >
