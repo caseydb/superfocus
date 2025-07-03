@@ -13,7 +13,12 @@ export default function Sounds({ roomId }: { roomId: string }) {
   useEffect(() => {
     if (!roomId) return;
     const lastEventRef = ref(db, `instances/${roomId}/lastEvent`);
+    let firstRun = true;
     const handle = onValue(lastEventRef, (snap) => {
+      if (firstRun) {
+        firstRun = false;
+        return;
+      }
       const val = snap.val();
       if (val && val.timestamp !== lastEventTimestamp.current) {
         lastEventTimestamp.current = val.timestamp;
