@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
-export default function Sounds({ roomId }: { roomId: string }) {
+export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; localVolume?: number }) {
   const completeRef = useRef<HTMLAudioElement>(null);
   const startedRef = useRef<HTMLAudioElement>(null);
   const quitRef = useRef<HTMLAudioElement>(null);
@@ -38,10 +38,10 @@ export default function Sounds({ roomId }: { roomId: string }) {
   }, [roomId]);
 
   useEffect(() => {
-    if (completeRef.current) completeRef.current.volume = 0.2;
-    if (startedRef.current) startedRef.current.volume = 0.2;
-    if (quitRef.current) quitRef.current.volume = 0.2;
-  }, []);
+    if (completeRef.current) completeRef.current.volume = localVolume;
+    if (startedRef.current) startedRef.current.volume = localVolume;
+    if (quitRef.current) quitRef.current.volume = localVolume;
+  }, [localVolume]);
 
   return (
     <>

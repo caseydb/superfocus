@@ -1,18 +1,23 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set } from "firebase/database";
+import { ref, set, onValue, off } from "firebase/database";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
-export default function Controls({ className = "" }: { className?: string }) {
+interface ControlsProps {
+  className?: string;
+  localVolume: number;
+  setLocalVolume: (v: number) => void;
+}
+
+export default function Controls({ className = "", localVolume, setLocalVolume }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.displayName);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userMenuOpenSound, setUserMenuOpenSound] = useState(false);
-  const [localVolume, setLocalVolume] = useState(0.2);
   const soundDropdownRef = useRef<HTMLDivElement>(null);
   const soundIconRef = useRef<HTMLSpanElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,6 +51,28 @@ export default function Controls({ className = "" }: { className?: string }) {
     const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
     set(userRef, { ...user, displayName: editedName });
   };
+
+  // Sync volume to RTDB when it changes
+  useEffect(() => {
+    if (!currentInstance || !user?.id) return;
+    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+    set(userRef, { ...user, displayName: user.displayName, volume: localVolume });
+  }, [localVolume, currentInstance, user]);
+
+  // On mount, load volume from RTDB if present
+  useEffect(() => {
+    if (!currentInstance || !user?.id) return;
+    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+    const handle = onValue(userRef, (snap) => {
+      const data = snap.val();
+      if (data && typeof data.volume === "number") {
+        setLocalVolume(data.volume);
+      }
+    });
+    return () => {
+      off(userRef, "value", handle);
+    };
+  }, [currentInstance, user, setLocalVolume]);
 
   return (
     <div className={className + " select-none"}>

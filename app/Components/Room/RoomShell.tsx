@@ -36,6 +36,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }[]
   >([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [localVolume, setLocalVolume] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem("lockedin_volume");
+      if (stored !== null) return Number(stored);
+    }
+    return 0.2;
+  });
+
+  // Persist volume to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("lockedin_volume", String(localVolume));
+    }
+  }, [localVolume]);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -214,13 +228,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
         {/* User name in top left */}
-        <Controls className="fixed top-4 right-8 z-50" />
+        <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
         <FlyingMessages
           flyingMessages={flyingMessages}
           flyingPlaceholders={[]}
           activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
         />
-        <Sounds roomId={currentInstance.id} />
+        <Sounds roomId={currentInstance.id} localVolume={localVolume} />
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
         <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
