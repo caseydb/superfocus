@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
 import { db } from "../../firebase";
 import { ref, set } from "firebase/database";
@@ -8,6 +8,31 @@ export default function Controls({ className = "" }: { className?: string }) {
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.displayName);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userMenuOpenSound, setUserMenuOpenSound] = useState(false);
+  const [localVolume, setLocalVolume] = useState(0.2);
+  const soundDropdownRef = useRef<HTMLDivElement>(null);
+  const soundIconRef = useRef<HTMLSpanElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownIconRef = useRef<HTMLSpanElement>(null);
+  const sliderRef = useRef<HTMLInputElement>(null);
+
+  // Close menus on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      const isInSoundMenu = soundDropdownRef.current && soundDropdownRef.current.contains(target);
+      const isInSoundIcon = soundIconRef.current && soundIconRef.current.contains(target);
+      const isInDropdownMenu = dropdownRef.current && dropdownRef.current.contains(target);
+      const isInDropdownIcon = dropdownIconRef.current && dropdownIconRef.current.contains(target);
+      // Only close if click is outside both menus and both icons
+      if (!isInSoundMenu && !isInSoundIcon && !isInDropdownMenu && !isInDropdownIcon) {
+        setUserMenuOpenSound(false);
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const handleNameChange = async () => {
     setEditingName(false);
@@ -19,7 +44,7 @@ export default function Controls({ className = "" }: { className?: string }) {
   };
 
   return (
-    <div className={className + " relative select-none"}>
+    <div className={className + " select-none"}>
       <div className="flex items-center gap-1">
         {editingName ? (
           <input
@@ -43,24 +68,213 @@ export default function Controls({ className = "" }: { className?: string }) {
             {user.displayName}
           </span>
         )}
-        {/* Speaker icon placeholder */}
-        <span className="ml-1 mr-1">🔊</span>
+        {/* Speaker icon and menu (Sound) to the right of the name */}
+        <div className="relative ml-3">
+          <span
+            ref={soundIconRef}
+            className="cursor-pointer flex items-center"
+            onClick={() => {
+              if (userMenuOpenSound) {
+                setUserMenuOpenSound(false);
+              } else {
+                setUserMenuOpenSound(true);
+                setDropdownOpen(false);
+              }
+            }}
+            title="Sound settings"
+          >
+            {localVolume === 0 ? (
+              // Muted macOS-style speaker icon (white for header)
+              <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
+                <g>
+                  <rect x="2" y="8" width="5" height="8" rx="1" fill="#fff" />
+                  <polygon points="7,8 14,3 14,21 7,16" fill="#fff" />
+                  <path
+                    d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M24 3.5c3.5 4 3.5 13 0 17"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  {/* White border for mute line (underneath, slightly thicker and longer) */}
+                  <line x1="9" y1="6" x2="26" y2="21.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+                  {/* Red mute line (on top, slightly thicker and longer) */}
+                  <line x1="9" y1="6" x2="26" y2="21.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                </g>
+              </svg>
+            ) : (
+              // Unmuted macOS-style speaker icon (white for header)
+              <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
+                <g>
+                  <rect x="2" y="8" width="5" height="8" rx="1" fill="#fff" />
+                  <polygon points="7,8 14,3 14,21 7,16" fill="#fff" />
+                  <path
+                    d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M24 3.5c3.5 4 3.5 13 0 17"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </g>
+              </svg>
+            )}
+          </span>
+          {userMenuOpenSound && (
+            <div
+              ref={soundDropdownRef}
+              className="absolute right-0 mt-2 bg-black text-white rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
+            >
+              <div className="flex flex-col items-start justify-between py-1 px-2">
+                <span className="text-base mb-1">Sound</span>
+                <div className="relative flex items-center w-40 h-8">
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 z-10 text-gray-700 pointer-events-none ml-0">
+                    {localVolume === 0 ? (
+                      // Muted macOS-style speaker icon (black for slider)
+                      <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
+                        <g>
+                          <rect x="2" y="8" width="5" height="8" rx="1" fill="#111" />
+                          <polygon points="7,8 14,3 14,21 7,16" fill="#111" />
+                          <path
+                            d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                            stroke="#111"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                            stroke="#111"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M24 3.5c3.5 4 3.5 13 0 17"
+                            stroke="#111"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          <line x1="9" y1="6" x2="26" y2="21.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+                          <line
+                            x1="9"
+                            y1="6"
+                            x2="26"
+                            y2="21.5"
+                            stroke="#ef4444"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </svg>
+                    ) : (
+                      // Unmuted macOS-style speaker icon (black for slider)
+                      <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
+                        <g>
+                          <rect x="2" y="8" width="5" height="8" rx="1" fill="#111" />
+                          <polygon points="7,8 14,3 14,21 7,16" fill="#111" />
+                          <path
+                            d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                            stroke="#111"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                            stroke="#111"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M24 3.5c3.5 4 3.5 13 0 17"
+                            stroke="#111"
+                            strokeWidth="1.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </svg>
+                    )}
+                  </span>
+                  <input
+                    ref={sliderRef}
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={localVolume}
+                    onChange={(e) => setLocalVolume(Number(e.target.value))}
+                    className="w-full h-6 rounded-full appearance-none outline-none slider-thumb-custom"
+                    style={{
+                      background: (() => {
+                        const offset = (24 / 320) * 100; // thumbWidth/sliderWidth
+                        const edge = localVolume * (100 - offset) + offset / 2;
+                        return `linear-gradient(to right, #fff 0%, #fff ${edge}%, #9ca3af ${edge}%, #9ca3af 100%)`;
+                      })(),
+                      borderRadius: "9999px",
+                      boxShadow: "0 0 0 1px #d1d5db",
+                      height: "1.5rem",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         {/* Dropdown arrow */}
-        <span className="cursor-pointer text-white text-lg" onClick={() => setDropdownOpen((v) => !v)}>
+        <span
+          ref={dropdownIconRef}
+          className="cursor-pointer text-white text-lg"
+          onClick={() => {
+            setDropdownOpen((v) => {
+              if (!v) setUserMenuOpenSound(false);
+              return !v;
+            });
+          }}
+        >
           ▼
         </span>
       </div>
       {dropdownOpen && (
         <div
+          ref={dropdownRef}
           className="absolute right-0 mt-2 bg-black border border-white rounded shadow-lg z-50"
           style={{ minWidth: 140 }}
         >
           <button
             className="w-full px-6 py-3 text-white bg-black border border-white rounded font-bold text-base hover:bg-gray-900 transition text-center"
             style={{ outline: "none" }}
-            onClick={() => {
-              /* No-op for now */
-            }}
+            onClick={() => {}}
           >
             Sign Out
           </button>

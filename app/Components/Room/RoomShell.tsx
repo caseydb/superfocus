@@ -192,6 +192,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   if (currentInstance) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
+        {/* User name in top left */}
+        <Controls className="fixed top-4 right-8 z-50" />
         <FlyingMessages
           flyingMessages={flyingMessages}
           flyingPlaceholders={[]}
@@ -210,8 +212,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             Leave Room
           </button>
         </div>
-        {/* User name in top right */}
-        <Controls className="fixed top-4 right-8 z-50" />
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
         {!showHistory ? (
