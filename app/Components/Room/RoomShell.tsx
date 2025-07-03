@@ -151,7 +151,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         ...msgs,
         {
           id,
-          text: `💀 ${user.displayName}`,
+          text: `💀 ${user.displayName} folded faster than a lawn chair.`,
           color: "text-red-500",
           userId: user.id,
         },
@@ -196,7 +196,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         ...msgs,
         {
           id,
-          text: `🏆 ${user.displayName}`,
+          text: `🏆 ${user.displayName} has successfully completed a task!`,
           color: "text-green-400",
           userId: user.id,
         },

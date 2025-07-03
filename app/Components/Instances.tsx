@@ -43,6 +43,23 @@ function getOrCreateUser(): User {
   return newUser;
 }
 
+// Process display name from auth
+function processDisplayName(firebaseUser: { displayName?: string | null; email?: string | null }): string {
+  // Use displayName if available
+  if (firebaseUser.displayName) {
+    return firebaseUser.displayName;
+  }
+
+  // Process email if available
+  if (firebaseUser.email) {
+    const username = firebaseUser.email.split("@")[0];
+    // Capitalize first letter and keep the rest as is
+    return username.charAt(0).toUpperCase() + username.slice(1);
+  }
+
+  return "Anonymous";
+}
+
 // Generate a random readable URL for the room
 function generateRoomUrl(): string {
   const adjectives = ["swift", "bright", "calm", "bold", "cool", "deep", "fast", "kind", "warm", "zen"];
@@ -65,7 +82,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (firebaseUser) {
         setUser({
           id: firebaseUser.uid,
-          displayName: firebaseUser.displayName || firebaseUser.email || "Anonymous",
+          displayName: processDisplayName(firebaseUser),
           isPremium: false, // update if you have premium logic
         });
         setUserReady(true);
