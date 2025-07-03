@@ -88,3 +88,65 @@ body,
   background: #000 !important;
   overflow: hidden;
 }
+
+/* Custom range slider thumb for full-height blue circle */
+.slider-thumb-custom {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2rem; /* Track height */
+  background: transparent;
+  outline: none;
+  position: relative;
+  z-index: 1;
+}
+
+.slider-thumb-custom::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #fff; /* White thumb */
+  border: 2px solid #fff;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.slider-thumb-custom::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #fff;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.slider-thumb-custom::-ms-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #fff;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.slider-thumb-custom::-webkit-slider-runnable-track {
+  height: 2rem;
+  border-radius: 9999px;
+}
+.slider-thumb-custom::-ms-fill-lower,
+.slider-thumb-custom::-ms-fill-upper {
+  height: 2rem;
+  border-radius: 9999px;
+}
+.slider-thumb-custom::-moz-range-track {
+  height: 2rem;
+  border-radius: 9999px;
+}
+
+.slider-thumb-custom:focus {
+  outline: none;
+}
