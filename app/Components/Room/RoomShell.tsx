@@ -214,34 +214,38 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         </div>
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
-        {!showHistory ? (
-          <div className="flex flex-col items-center justify-center">
-            <TaskInput
-              task={task}
-              setTask={setTask}
-              disabled={hasStarted && inputLocked}
-              onStart={() => timerStartRef.current && timerStartRef.current()}
-            />
-            <Timer
-              key={timerResetKey}
-              onActiveChange={handleActiveChange}
-              startRef={timerStartRef}
-              onComplete={handleComplete}
-              secondsRef={timerSecondsRef}
-              requiredTask={!!task.trim()}
-            />
-            {task.trim() && (
+        <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
+          <TaskInput
+            task={task}
+            setTask={setTask}
+            disabled={hasStarted && inputLocked}
+            onStart={() => timerStartRef.current && timerStartRef.current()}
+          />
+        </div>
+        <div className={showHistory ? "" : "hidden"}>
+          <History roomId={currentInstance.id} />
+        </div>
+        {/* Timer is always mounted, just hidden when history is open */}
+        <div style={{ display: showHistory ? "none" : "block" }} className="flex flex-col items-center justify-center">
+          <Timer
+            key={timerResetKey}
+            onActiveChange={handleActiveChange}
+            startRef={timerStartRef}
+            onComplete={handleComplete}
+            secondsRef={timerSecondsRef}
+            requiredTask={!!task.trim()}
+          />
+          {task.trim() && (
+            <div className="flex justify-center w-full">
               <button
                 className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
                 onClick={handleClear}
               >
                 Clear
               </button>
-            )}
-          </div>
-        ) : (
-          <History roomId={currentInstance.id} />
-        )}
+            </div>
+          )}
+        </div>
         {/* Bottom bar controls */}
         <button
           className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"

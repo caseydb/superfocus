@@ -16,6 +16,7 @@ const InstanceContext = createContext<{
   createInstance: (type: InstanceType) => void;
   leaveInstance: () => void;
   user: User;
+  userReady: boolean;
 }>({
   instances: [],
   currentInstance: null,
@@ -23,6 +24,7 @@ const InstanceContext = createContext<{
   createInstance: () => {},
   leaveInstance: () => {},
   user: { id: "", displayName: "", isPremium: false },
+  userReady: false,
 });
 
 export const useInstance = () => useContext(InstanceContext);
@@ -55,6 +57,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [instances, setInstances] = useState<Instance[]>([]);
   const [currentInstance, setCurrentInstance] = useState<Instance | null>(null);
   const [user, setUser] = useState<User>(getOrCreateUser());
+  const [userReady, setUserReady] = useState(false);
 
   // Update user from Firebase Auth if signed in
   useEffect(() => {
@@ -65,6 +68,9 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           displayName: firebaseUser.displayName || firebaseUser.email || "Anonymous",
           isPremium: false, // update if you have premium logic
         });
+        setUserReady(true);
+      } else {
+        setUserReady(false);
       }
     });
     return () => unsub();
@@ -99,6 +105,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Create a new instance and join it
   const createInstance = useCallback(
     (type: InstanceType) => {
+      if (!userReady) return;
       const instancesRef = ref(rtdb, "instances");
       const newInstanceRef = push(instancesRef);
       const roomUrl = generateRoomUrl();
@@ -114,12 +121,13 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       onDisconnect(userRef).remove();
       setCurrentInstance({ ...newInstance, id: newInstanceRef.key!, users: [user] });
     },
-    [user]
+    [user, userReady]
   );
 
   // Join an existing instance
   const joinInstance = useCallback(
     (instanceId: string) => {
+      if (!userReady) return;
       const instanceRef = ref(rtdb, `instances/${instanceId}/users/${user.id}`);
       set(instanceRef, user);
       onDisconnect(instanceRef).remove();
@@ -131,7 +139,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return userExists ? inst : { ...inst, users: [...inst.users, user] };
       });
     },
-    [user, instances]
+    [user, userReady, instances]
   );
 
   // Leave the current instance
@@ -153,7 +161,9 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [currentInstance, user]);
 
   return (
-    <InstanceContext.Provider value={{ instances, currentInstance, joinInstance, createInstance, leaveInstance, user }}>
+    <InstanceContext.Provider
+      value={{ instances, currentInstance, joinInstance, createInstance, leaveInstance, user, userReady }}
+    >
       {children}
     </InstanceContext.Provider>
   );
