@@ -9,6 +9,12 @@ interface HistoryEntry {
   task: string;
   duration: string;
   timestamp: number;
+  userId?: string;
+}
+
+interface User {
+  id: string;
+  displayName: string;
 }
 
 export default function History({ roomId }: { roomId: string }) {
@@ -18,6 +24,21 @@ export default function History({ roomId }: { roomId: string }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [users, setUsers] = useState<Record<string, User>>({});
+
+  useEffect(() => {
+    if (!roomId) return;
+    const usersRef = ref(rtdb, `instances/${roomId}/users`);
+    const handle = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setUsers(data);
+      } else {
+        setUsers({});
+      }
+    });
+    return () => off(usersRef, "value", handle);
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -69,7 +90,7 @@ export default function History({ roomId }: { roomId: string }) {
                 }`}
                 title={entry.displayName}
               >
-                {entry.displayName}
+                {entry.userId && users[entry.userId]?.displayName ? users[entry.userId].displayName : entry.displayName}
               </td>
               <td
                 className={`px-1 py-0.5 font-mono ${

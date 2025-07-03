@@ -15,7 +15,7 @@ import Sounds from "./Sounds";
 import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
-  const { instances, currentInstance, joinInstance, leaveInstance, user, userReady } = useInstance();
+  const { instances, currentInstance, joinInstance, user, userReady } = useInstance();
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
   const router = useRouter();
@@ -105,6 +105,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const secs = (timerSecondsRef.current % 60).toString().padStart(2, "0");
       const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
       push(historyRef, {
+        userId: user.id,
         displayName: user.displayName,
         task: task + " (Quit Early)",
         duration: `${hours}:${minutes}:${secs}`,
@@ -149,6 +150,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Save to history
       const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
       push(historyRef, {
+        userId: user.id,
         displayName: user.displayName,
         task,
         duration,
@@ -219,18 +221,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
         />
         <Sounds roomId={currentInstance.id} />
-        {/* Leave Room button at top center */}
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
-          <button
-            className="bg-yellow-500 text-black px-6 py-2 rounded-full font-bold hover:bg-yellow-400 transition"
-            onClick={() => {
-              leaveInstance();
-              router.push("/");
-            }}
-          >
-            Leave Room
-          </button>
-        </div>
         <ActiveWorkers roomId={currentInstance.id} />
         {/* Main content: TaskInput or Timer/room UI */}
         <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
