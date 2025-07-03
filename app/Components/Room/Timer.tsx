@@ -11,6 +11,8 @@ export default function Timer({
   onComplete,
   secondsRef,
   requiredTask = true,
+  task,
+  onTaskRestore,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
@@ -18,6 +20,8 @@ export default function Timer({
   onComplete?: (duration: string) => void;
   secondsRef?: React.RefObject<number>;
   requiredTask?: boolean;
+  task?: string;
+  onTaskRestore?: (task: string) => void;
 }) {
   const { currentInstance, user } = useInstance();
   // Use the room ID as a key so timer resets when switching rooms
@@ -26,6 +30,50 @@ export default function Timer({
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const notificationActiveRef = useRef(false);
+
+  // Helper to save timer state to localStorage
+  const saveTimerState = React.useCallback(
+    (secs: number, isRunning: boolean) => {
+      if (typeof window !== "undefined" && roomKey !== "no-room") {
+        const timerState = {
+          seconds: secs,
+          running: isRunning,
+          task: task || "",
+          roomKey: roomKey,
+          userId: user?.id,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem("lockedin_timer_state", JSON.stringify(timerState));
+      }
+    },
+    [roomKey, user?.id, task]
+  );
+
+  // Helper to load timer state from localStorage
+  const loadTimerState = React.useCallback(() => {
+    if (typeof window !== "undefined" && roomKey !== "no-room") {
+      const saved = localStorage.getItem("lockedin_timer_state");
+      if (saved) {
+        try {
+          const timerState = JSON.parse(saved);
+          // Only restore if it's for the same room and user
+          if (timerState.roomKey === roomKey && timerState.userId === user?.id) {
+            return timerState;
+          }
+        } catch (e) {
+          console.error("Error parsing saved timer state:", e);
+        }
+      }
+    }
+    return null;
+  }, [roomKey, user?.id]);
+
+  // Helper to clear timer state from localStorage
+  const clearTimerState = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("lockedin_timer_state");
+    }
+  };
 
   // Helper to format time as hh:mm:ss
   function formatTime(s: number) {
@@ -66,22 +114,55 @@ export default function Timer({
     if (running) {
       startTimeRef.current = Date.now() - seconds * 1000;
     }
-  }, [running]);
+  }, [running, seconds]);
 
-  // Reset timer when room changes
+  // Load timer state on mount or room change
   useEffect(() => {
-    setSeconds(0);
+    const savedState = loadTimerState();
+    if (savedState && savedState.seconds > 0) {
+      // Restore timer state but always set running to false (paused)
+      setSeconds(savedState.seconds);
+      setRunning(false);
+      // Restore task if it exists and callback is provided
+      if (savedState.task && onTaskRestore) {
+        onTaskRestore(savedState.task);
+      }
+    } else {
+      // Reset timer when room changes or no saved state
+      setSeconds(0);
+      setRunning(false);
+    }
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setRunning(false);
     if (!notificationActiveRef.current) {
       document.title = "Locked In";
     }
-  }, [roomKey]);
+  }, [roomKey, loadTimerState, onTaskRestore]);
 
   // Notify parent of running state
   useEffect(() => {
     if (onActiveChange) onActiveChange(running);
   }, [running, onActiveChange]);
+
+  // Save timer state when it changes
+  useEffect(() => {
+    if (seconds > 0 || running) {
+      saveTimerState(seconds, running);
+    }
+  }, [seconds, running, saveTimerState]);
+
+  // Handle browser close/refresh to pause timer and save state
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (running || seconds > 0) {
+        saveTimerState(seconds, false); // Always save as paused
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [seconds, running, saveTimerState]);
 
   useEffect(() => {
     if (running) {
@@ -200,7 +281,12 @@ export default function Timer({
             </button>
             <button
               className="bg-green-500 text-white font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
-              onClick={() => onComplete && onComplete(`${hours}:${minutes}:${secs}`)}
+              onClick={() => {
+                clearTimerState(); // Clear saved state when completing
+                if (onComplete) {
+                  onComplete(`${hours}:${minutes}:${secs}`);
+                }
+              }}
             >
               Complete
             </button>

@@ -48,6 +48,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return 0.2;
   });
 
+  // Check if there's a saved timer state with time > 0
+  const hasSavedTimerState = () => {
+    if (typeof window !== "undefined" && currentInstance) {
+      const saved = localStorage.getItem("lockedin_timer_state");
+      if (saved) {
+        try {
+          const timerState = JSON.parse(saved);
+          return timerState.roomKey === currentInstance.id && timerState.userId === user?.id && timerState.seconds > 0;
+        } catch {
+          return false;
+        }
+      }
+    }
+    return false;
+  };
+
   // Persist volume to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -125,6 +141,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
+    // Clear saved timer state when clearing
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("lockedin_timer_state");
+    }
   };
 
   // Add event notification for complete and quit
@@ -173,6 +193,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setInputLocked(false);
     setHasStarted(false);
     setShowQuitModal(false);
+    // Clear saved timer state when quitting
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("lockedin_timer_state");
+    }
   };
 
   const handlePushOn = () => {
@@ -185,6 +209,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
+    // Clear saved timer state when completing
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("lockedin_timer_state");
+    }
     if (currentInstance && user) {
       const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
       remove(activeRef);
@@ -274,7 +302,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <TaskInput
               task={task}
               setTask={setTask}
-              disabled={hasStarted && inputLocked}
+              disabled={(hasStarted && inputLocked) || hasSavedTimerState()}
               onStart={() => timerStartRef.current && timerStartRef.current()}
             />
           </div>
@@ -293,6 +321,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               onComplete={handleComplete}
               secondsRef={timerSecondsRef}
               requiredTask={!!task.trim()}
+              task={task}
+              onTaskRestore={setTask}
             />
             {task.trim() && (
               <div className="flex justify-center w-full">
