@@ -230,12 +230,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               secondsRef={timerSecondsRef}
               requiredTask={!!task.trim()}
             />
-            <button
-              className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-              onClick={handleClear}
-            >
-              Clear
-            </button>
+            {task.trim() && (
+              <button
+                className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+                onClick={handleClear}
+              >
+                Clear
+              </button>
+            )}
           </div>
         ) : (
           <History roomId={currentInstance.id} />
@@ -248,7 +250,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           {showHistory ? "Back to Room" : "History"}
         </button>
         <div
-          className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
+          className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
           onClick={() => setShowLeaderboard(true)}
         >
           Leaderboard

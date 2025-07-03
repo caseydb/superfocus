@@ -41,6 +41,14 @@ export default function History({ roomId }: { roomId: string }) {
     return <div className="text-white text-center mt-10">Loading history...</div>;
   }
 
+  if (history.length === 0) {
+    return (
+      <div className="w-[820px] mx-auto mt-10">
+        <h2 className="text-2xl font-extrabold text-center text-white mb-4">No History Yet</h2>
+      </div>
+    );
+  }
+
   return (
     <div className="w-[820px] mx-auto mt-10">
       <h2 className="text-2xl font-extrabold text-center text-white mb-4">History</h2>
@@ -112,7 +120,6 @@ export default function History({ roomId }: { roomId: string }) {
           </button>
         </div>
       )}
-      {history.length === 0 && <div className="text-gray-400 text-center mt-8">No history yet.</div>}
     </div>
   );
 }
