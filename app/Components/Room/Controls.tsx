@@ -302,7 +302,7 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
           className="absolute right-0 mt-2 bg-black text-white rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
         >
           <button
-            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-center"
+            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
             style={{ outline: "none" }}
             onClick={async () => {
               await signOut(auth);
@@ -311,7 +311,7 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
             Sign Out
           </button>
           <button
-            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-center"
+            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
             style={{ outline: "none" }}
             onClick={() => {
               leaveInstance();

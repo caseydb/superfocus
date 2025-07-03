@@ -36,6 +36,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }[]
   >([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
@@ -226,92 +228,162 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   }
   if (currentInstance) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
-        {/* User name in top left */}
-        <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
-        <FlyingMessages
-          flyingMessages={flyingMessages}
-          flyingPlaceholders={[]}
-          activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
-        />
-        <Sounds roomId={currentInstance.id} localVolume={localVolume} />
-        <ActiveWorkers roomId={currentInstance.id} />
-        {/* Main content: TaskInput or Timer/room UI */}
-        <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
-          <TaskInput
-            task={task}
-            setTask={setTask}
-            disabled={hasStarted && inputLocked}
-            onStart={() => timerStartRef.current && timerStartRef.current()}
+      <>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
+          {/* User name in top left */}
+          <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
+          <FlyingMessages
+            flyingMessages={flyingMessages}
+            flyingPlaceholders={[]}
+            activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
           />
-        </div>
-        <div className={showHistory ? "" : "hidden"}>
-          <History roomId={currentInstance.id} />
-        </div>
-        {/* Timer is always mounted, just hidden when history is open */}
-        <div style={{ display: showHistory ? "none" : "block" }} className="flex flex-col items-center justify-center">
-          <Timer
-            key={timerResetKey}
-            onActiveChange={handleActiveChange}
-            startRef={timerStartRef}
-            onComplete={handleComplete}
-            secondsRef={timerSecondsRef}
-            requiredTask={!!task.trim()}
-          />
-          {task.trim() && (
-            <div className="flex justify-center w-full">
-              <button
-                className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-                onClick={handleClear}
+          <Sounds roomId={currentInstance.id} localVolume={localVolume} />
+          <ActiveWorkers roomId={currentInstance.id} />
+          {/* Main content: TaskInput or Timer/room UI */}
+          <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
+            <TaskInput
+              task={task}
+              setTask={setTask}
+              disabled={hasStarted && inputLocked}
+              onStart={() => timerStartRef.current && timerStartRef.current()}
+            />
+          </div>
+          <div className={showHistory ? "" : "hidden"}>
+            <History roomId={currentInstance.id} />
+          </div>
+          {/* Timer is always mounted, just hidden when history is open */}
+          <div
+            style={{ display: showHistory ? "none" : "block" }}
+            className="flex flex-col items-center justify-center"
+          >
+            <Timer
+              key={timerResetKey}
+              onActiveChange={handleActiveChange}
+              startRef={timerStartRef}
+              onComplete={handleComplete}
+              secondsRef={timerSecondsRef}
+              requiredTask={!!task.trim()}
+            />
+            {task.trim() && (
+              <div className="flex justify-center w-full">
+                <button
+                  className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+                  onClick={handleClear}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
+          {/* Bottom bar controls */}
+          <button
+            className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            onClick={() => setShowHistory((v) => !v)}
+          >
+            {showHistory ? "Back to Room" : "History"}
+          </button>
+          <div
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
+            onClick={() => setShowLeaderboard(true)}
+          >
+            Leaderboard
+          </div>
+          <button
+            className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            onClick={() => {
+              setShowInviteModal(true);
+            }}
+          >
+            + Invite People
+          </button>
+          {showQuitModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="bg-red-600 rounded-2xl shadow-2xl px-6 py-8 flex flex-col items-center gap-6 border-4 border-red-700"
+                style={{ minWidth: 350, maxWidth: "90vw" }}
               >
-                Clear
-              </button>
+                <div className="text-white text-3xl font-extrabold text-center mb-4">
+                  Quiting? This will be logged to history.
+                </div>
+                <div className="flex gap-6 mt-2">
+                  <button
+                    className="bg-white text-red-600 font-bold text-xl px-8 py-3 rounded-lg shadow hover:bg-red-100 transition"
+                    onClick={handleQuitConfirm}
+                  >
+                    Quit
+                  </button>
+                  <button
+                    className="bg-white text-gray-700 font-bold text-xl px-8 py-3 rounded-lg shadow hover:bg-gray-200 transition"
+                    onClick={handlePushOn}
+                  >
+                    Push On
+                  </button>
+                </div>
+              </div>
             </div>
           )}
+          {showLeaderboard && currentInstance && (
+            <Leaderboard roomId={currentInstance.id} onClose={() => setShowLeaderboard(false)} />
+          )}
         </div>
-        {/* Bottom bar controls */}
-        <button
-          className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-          onClick={() => setShowHistory((v) => !v)}
-        >
-          {showHistory ? "Back to Room" : "History"}
-        </button>
-        <div
-          className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
-          onClick={() => setShowLeaderboard(true)}
-        >
-          Leaderboard
-        </div>
-        {showQuitModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Invite Modal - rendered as separate overlay */}
+        {showInviteModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            onClick={() => setShowInviteModal(false)}
+          >
             <div
-              className="bg-red-600 rounded-2xl shadow-2xl px-6 py-8 flex flex-col items-center gap-6 border-4 border-red-700"
-              style={{ minWidth: 350, maxWidth: "90vw" }}
+              className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-white text-3xl font-extrabold text-center mb-4">
-                Quiting? This will be logged to history.
-              </div>
-              <div className="flex gap-6 mt-2">
+              {/* Close button */}
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
+                onClick={() => setShowInviteModal(false)}
+              >
+                ×
+              </button>
+
+              <h2 className="text-2xl font-bold text-white mb-6">Invite link</h2>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={window.location.href}
+                  readOnly
+                  className="flex-1 px-4 py-3 rounded-lg bg-[#23272b] text-gray-300 border border-[#23272b] focus:border-[#00b4ff] outline-none font-mono text-sm"
+                />
                 <button
-                  className="bg-white text-red-600 font-bold text-xl px-8 py-3 rounded-lg shadow hover:bg-red-100 transition"
-                  onClick={handleQuitConfirm}
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 3000);
+                  }}
+                  className={`px-6 py-3 font-bold rounded-lg hover:scale-105 transition-all flex items-center gap-2 ${
+                    copied ? "bg-green-500 text-white" : "bg-[#00b4ff] text-white"
+                  } w-24 justify-center`}
                 >
-                  Quit
-                </button>
-                <button
-                  className="bg-white text-gray-700 font-bold text-xl px-8 py-3 rounded-lg shadow hover:bg-gray-200 transition"
-                  onClick={handlePushOn}
-                >
-                  Push On
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="8" y="8" width="12" height="12" rx="2" ry="2" fill="currentColor"></rect>
+                    <rect
+                      x="4"
+                      y="4"
+                      width="12"
+                      height="12"
+                      rx="2"
+                      ry="2"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    ></rect>
+                  </svg>
+                  {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
             </div>
           </div>
         )}
-        {showLeaderboard && currentInstance && (
-          <Leaderboard roomId={currentInstance.id} onClose={() => setShowLeaderboard(false)} />
-        )}
-      </div>
+      </>
     );
   }
   return null;
