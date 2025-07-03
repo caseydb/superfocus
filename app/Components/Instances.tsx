@@ -70,7 +70,8 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
         setUserReady(true);
       } else {
-        setUserReady(false);
+        setUser(getOrCreateUser());
+        setUserReady(true);
       }
     });
     return () => unsub();
@@ -139,7 +140,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return userExists ? inst : { ...inst, users: [...inst.users, user] };
       });
     },
-    [user, userReady, instances]
+    [user, instances, userReady]
   );
 
   // Leave the current instance

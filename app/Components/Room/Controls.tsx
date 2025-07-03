@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set } from "firebase/database";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function Controls({ className = "" }: { className?: string }) {
   const { user, currentInstance } = useInstance();
@@ -273,7 +275,9 @@ export default function Controls({ className = "" }: { className?: string }) {
           <button
             className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-center"
             style={{ outline: "none" }}
-            onClick={() => {}}
+            onClick={async () => {
+              await signOut(auth);
+            }}
           >
             Sign Out
           </button>

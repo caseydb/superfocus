@@ -12,9 +12,10 @@ import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
 import Leaderboard from "./Leaderboard";
 import Sounds from "./Sounds";
+import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
-  const { instances, currentInstance, joinInstance, leaveInstance, user } = useInstance();
+  const { instances, currentInstance, joinInstance, leaveInstance, user, userReady } = useInstance();
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
   const router = useRouter();
@@ -171,6 +172,24 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   };
 
+  if (!userReady || !user.id || user.id.startsWith("user-")) {
+    // Not signed in: mask everything with SignIn
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+        <div className="flex flex-col items-center justify-center w-full h-full">
+          <div className="w-full flex flex-col items-center mb-10 mt-2">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
+              Drop In. Lock In. Get Sh*t Done.
+            </h1>
+            <p className="text-lg md:text-2xl text-gray-300 text-center max-w-2xl mx-auto opacity-90 font-medium">
+              Level up your work with others in the zone.
+            </p>
+          </div>
+          <SignIn />
+        </div>
+      </div>
+    );
+  }
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>;
   }

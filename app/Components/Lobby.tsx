@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import SignOut from "./SignOut";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import SignInEmail from "./SignInEmail";
+import SignIn from "./SignIn";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
 
@@ -104,7 +104,7 @@ export default function Lobby() {
           onClick={() => setShowSignInModal(false)}
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <SignInEmail />
+            <SignIn />
           </div>
         </div>
       )}
