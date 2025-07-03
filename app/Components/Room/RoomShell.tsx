@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import ActiveWorkers from "./ActiveWorkers";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, remove, push } from "firebase/database";
+import { ref, set, remove, push, onValue, off } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
@@ -39,6 +39,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
+  const [realTimeUserCount, setRealTimeUserCount] = useState(0);
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
@@ -53,6 +54,21 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       window.localStorage.setItem("lockedin_volume", String(localVolume));
     }
   }, [localVolume]);
+
+  // Listen to real-time user count from RTDB
+  useEffect(() => {
+    if (!currentInstance) return;
+    const usersRef = ref(rtdb, `instances/${currentInstance.id}/users`);
+    const handle = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setRealTimeUserCount(Object.keys(data).length);
+      } else {
+        setRealTimeUserCount(0);
+      }
+    });
+    return () => off(usersRef, "value", handle);
+  }, [currentInstance]);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -233,6 +249,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
           {/* User name in top left */}
           <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
+          {/* Room type indicator at top center */}
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono select-none">
+            {currentInstance.type === "private" ? "Private Room" : "Public Room"} (
+            {realTimeUserCount === 1 ? "Just you" : `${realTimeUserCount} ppl`})
+          </div>
           <FlyingMessages
             flyingMessages={flyingMessages}
             flyingPlaceholders={[]}
