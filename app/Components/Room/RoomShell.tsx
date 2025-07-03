@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import ActiveWorkers from "./ActiveWorkers";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, remove, push, onValue, off } from "firebase/database";
+import { ref, set, remove, push, onValue, off, onDisconnect } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
@@ -86,6 +86,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Clean up on unmount or room change
   useEffect(() => {
+    // Set up disconnect handling when component mounts or user/instance changes
+    if (currentInstance && user) {
+      const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+      onDisconnect(activeRef).remove();
+    }
+
     return () => {
       if (currentInstance && user) {
         const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
@@ -100,6 +106,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
     if (isActive) {
       set(activeRef, { id: user.id, displayName: user.displayName });
+      // Set up automatic cleanup when user disconnects
+      onDisconnect(activeRef).remove();
       setInputLocked(true);
       setHasStarted(true);
     } else {
