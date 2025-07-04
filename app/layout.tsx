@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: "Drop In. Lock In. Get Sh*t Done. Level up your work with others in the zone.",
     images: [
       {
-        url: "/meta.png",
+        url: "https://locked-in.work/meta.png",
         width: 1200,
         height: 630,
         alt: "Locked In - Productivity App",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Locked In",
     description: "Drop In. Lock In. Get Sh*t Done. Level up your work with others in the zone.",
-    images: ["/meta.png"],
+    images: ["https://locked-in.work/meta.png"],
   },
   icons: {
     icon: "/favicon.png",
