@@ -15,6 +15,9 @@ export default function Lobby() {
   const router = useRouter();
   const [signedIn, setSignedIn] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showPrivateRoomModal, setShowPrivateRoomModal] = useState(false);
+  const [privateRoomName, setPrivateRoomName] = useState("");
+  const [roomNameError, setRoomNameError] = useState("");
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => setSignedIn(!!user));
@@ -52,6 +55,26 @@ export default function Lobby() {
 
   // Calculate total users in all rooms
   const totalUsers = instances.reduce((sum, instance) => sum + instance.users.length, 0);
+
+  // Check if room name is already taken
+  const isRoomNameTaken = (name: string) => {
+    return instances.some((instance) => instance.url === name);
+  };
+
+  const handleCreatePrivateRoom = () => {
+    const roomName = privateRoomName.trim();
+    if (!roomName) return;
+
+    if (isRoomNameTaken(roomName)) {
+      setRoomNameError("Room name already taken. Please choose a different name.");
+      return;
+    }
+
+    createInstance("private", roomName);
+    setShowPrivateRoomModal(false);
+    setPrivateRoomName("");
+    setRoomNameError("");
+  };
 
   // If user is in a room, they should be redirected to the room URL
   if (currentInstance) {
@@ -139,15 +162,87 @@ export default function Lobby() {
             : "Be the first to start working!"}
         </div>
         <button
-          className="bg-white text-gray-700 px-4 py-2 rounded-full font-medium transition mt-1 text-base border"
+          className="bg-white text-black px-4 py-2 rounded-full font-medium transition mt-1 text-base border"
           style={{ borderColor: "#00b4ff" }}
           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#00b4ff")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
-          onClick={() => createInstance("private")}
+          onClick={() => setShowPrivateRoomModal(true)}
         >
           Create Private Room
         </button>
       </div>
+
+      {/* Private Room Name Modal */}
+      {showPrivateRoomModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
+              onClick={() => {
+                setShowPrivateRoomModal(false);
+                setPrivateRoomName("");
+                setRoomNameError("");
+              }}
+            >
+              ×
+            </button>
+
+            <h2 className="text-2xl font-bold text-white mb-6">Create Private Room</h2>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Room Name</label>
+              <input
+                type="text"
+                value={privateRoomName}
+                onChange={(e) => {
+                  setPrivateRoomName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                  setRoomNameError(""); // Clear error when typing
+                }}
+                placeholder="my-awesome-room"
+                className={`w-full px-4 py-3 rounded-lg bg-[#23272b] text-white border outline-none font-mono ${
+                  roomNameError ? "border-red-500 focus:border-red-500" : "border-[#23272b] focus:border-[#00b4ff]"
+                }`}
+                maxLength={30}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && privateRoomName.trim()) {
+                    handleCreatePrivateRoom();
+                  } else if (e.key === "Escape") {
+                    setShowPrivateRoomModal(false);
+                    setPrivateRoomName("");
+                    setRoomNameError("");
+                  }
+                }}
+              />
+              {roomNameError ? (
+                <p className="text-xs text-red-400 mt-2">{roomNameError}</p>
+              ) : (
+                <p className="text-xs text-gray-400 mt-2">Only lowercase letters, numbers, and hyphens allowed</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                onClick={() => {
+                  setShowPrivateRoomModal(false);
+                  setPrivateRoomName("");
+                  setRoomNameError("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-3 bg-[#00b4ff] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+                disabled={!privateRoomName.trim()}
+                onClick={handleCreatePrivateRoom}
+              >
+                Create Room
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

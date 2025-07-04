@@ -13,7 +13,7 @@ const InstanceContext = createContext<{
   instances: Instance[];
   currentInstance: Instance | null;
   joinInstance: (instanceId: string) => void;
-  createInstance: (type: InstanceType) => void;
+  createInstance: (type: InstanceType, customUrl?: string) => void;
   leaveInstance: () => void;
   user: User;
   userReady: boolean;
@@ -62,8 +62,8 @@ function processDisplayName(firebaseUser: { displayName?: string | null; email?:
 
 // Generate a random readable URL for the room
 function generateRoomUrl(): string {
-  const adjectives = ["swift", "bright", "calm", "bold", "cool", "deep", "fast", "kind", "warm", "zen"];
-  const nouns = ["tiger", "eagle", "wolf", "bear", "fox", "lion", "hawk", "shark", "deer", "owl"];
+  const adjectives = ["swift", "bright", "calm", "bold", "cool", "fast", "kind", "warm", "zen"];
+  const nouns = ["tiger", "eagle", "wolf", "bear", "fox", "lion", "hawk", "shark", "deer", "owl", "kiwi"];
   const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
   const noun = nouns[Math.floor(Math.random() * nouns.length)];
   const number = Math.floor(Math.random() * 1000);
@@ -122,11 +122,11 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Create a new instance and join it
   const createInstance = useCallback(
-    (type: InstanceType) => {
+    (type: InstanceType, customUrl?: string) => {
       if (!userReady) return;
       const instancesRef = ref(rtdb, "instances");
       const newInstanceRef = push(instancesRef);
-      const roomUrl = generateRoomUrl();
+      const roomUrl = customUrl || generateRoomUrl();
       const newInstance: Omit<Instance, "id" | "users"> & { users: { [id: string]: User } } = {
         type,
         users: { [user.id]: user },
