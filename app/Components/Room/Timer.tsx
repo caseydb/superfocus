@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off, remove } from "firebase/database";
+import { ref, set, onValue, off, remove, DataSnapshot } from "firebase/database";
 
 export default function Timer({
   onActiveChange,
@@ -111,7 +111,7 @@ export default function Timer({
 
     const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
 
-    const handle = onValue(timerStateRef, (snapshot) => {
+    const handleTimerState = (snapshot: DataSnapshot) => {
       const timerState = snapshot.val();
 
       if (timerState) {
@@ -128,7 +128,7 @@ export default function Timer({
           currentSeconds = timerState.totalSeconds || 0;
         }
 
-        // Update local state from Firebase
+        // Normal restoration - don't check user count here
         setSeconds(currentSeconds);
         setRunning(isRunning);
 
@@ -143,12 +143,40 @@ export default function Timer({
       }
 
       isInitializedRef.current = true;
-    });
+    };
+
+    const handle = onValue(timerStateRef, handleTimerState);
 
     return () => {
       off(timerStateRef, "value", handle);
     };
   }, [currentInstance, user?.id, onTaskRestore]);
+
+  // Separate effect: Listen for user count changes and pause timer when room becomes empty
+  useEffect(() => {
+    if (!currentInstance || !user?.id) return;
+
+    const usersRef = ref(rtdb, `instances/${currentInstance.id}/users`);
+
+    const handleUserCountChange = (snapshot: DataSnapshot) => {
+      const usersData = snapshot.val();
+      const userCount = usersData ? Object.keys(usersData).length : 0;
+
+      // If room becomes empty and timer is running, pause it immediately
+      if (userCount === 0 && running) {
+        console.log(`⏸️ Auto-pausing timer - room became empty (accumulated ${seconds} seconds)`);
+        setRunning(false);
+        // Save paused state to Firebase
+        saveTimerState(false, seconds, task);
+      }
+    };
+
+    const handle = onValue(usersRef, handleUserCountChange);
+
+    return () => {
+      off(usersRef, "value", handle);
+    };
+  }, [currentInstance, user?.id, running, seconds, task, saveTimerState]);
 
   // Notify parent of running state
   useEffect(() => {
