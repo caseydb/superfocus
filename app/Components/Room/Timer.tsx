@@ -75,16 +75,19 @@ export default function Timer({
     }
   };
 
-  // Helper to format time as hh:mm:ss
+  // Helper to format time as mm:ss or hh:mm:ss based on duration
   function formatTime(s: number) {
-    const hours = Math.floor(s / 3600)
-      .toString()
-      .padStart(2, "0");
+    const hours = Math.floor(s / 3600);
     const minutes = Math.floor((s % 3600) / 60)
       .toString()
       .padStart(2, "0");
     const secs = (s % 60).toString().padStart(2, "0");
-    return `${hours}:${minutes}:${secs}`;
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, "0")}:${minutes}:${secs}`;
+    } else {
+      return `${minutes}:${secs}`;
+    }
   }
 
   // Live update tab title with timer value when running
@@ -201,15 +204,6 @@ export default function Timer({
     setRunning(false);
   }
 
-  // Format as hh:mm:ss
-  const hours = Math.floor(seconds / 3600)
-    .toString()
-    .padStart(2, "0");
-  const minutes = Math.floor((seconds % 3600) / 60)
-    .toString()
-    .padStart(2, "0");
-  const secs = (seconds % 60).toString().padStart(2, "0");
-
   // Expose handleStart to parent via ref
   React.useEffect(() => {
     if (startRef) {
@@ -259,9 +253,7 @@ export default function Timer({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="text-4xl mb-2 font-mono">
-        {hours}:{minutes}:{secs}
-      </div>
+      <div className="text-4xl mb-2 font-mono">{formatTime(seconds)}</div>
       <div className="flex gap-4">
         {!running ? (
           <button
@@ -284,7 +276,7 @@ export default function Timer({
               onClick={() => {
                 clearTimerState(); // Clear saved state when completing
                 if (onComplete) {
-                  onComplete(`${hours}:${minutes}:${secs}`);
+                  onComplete(formatTime(seconds));
                 }
               }}
             >
