@@ -113,8 +113,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     // Path to user's tab count
     const tabCountRef = ref(rtdb, `instances/${currentInstance.id}/tabCounts/${user.id}`);
 
-    // Increment tab count when this tab opens
-    console.log(`🔌 Incrementing tab count for user: ${user.displayName}`);
+    // Increment tab count when this tab opens/joins room
+    console.log(`🔌 User ${user.displayName} joining room ${currentInstance.id} - incrementing tab count`);
     runTransaction(tabCountRef, (currentData) => {
       const currentCount = currentData?.count || 0;
       const newCount = currentCount + 1;
@@ -132,7 +132,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const tabCount = data?.count || 0;
       userTabCountRef.current = tabCount;
 
-      console.log(`🔌 User ${user.displayName} has ${tabCount} tabs open`);
+      console.log(`🔌 User ${user.displayName} has ${tabCount} tabs open in room ${currentInstance.id}`);
 
       // Only set up user disconnect handler if this is the only tab
       if (tabCount === 1) {
@@ -146,10 +146,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
     });
 
+    // Add beforeunload listener to track page navigation/refresh
+    const handleBeforeUnload = () => {
+      console.log(`🔌 Page unloading for user ${user.displayName} (navigation/refresh/close)`);
+      // Note: We don't need to manually decrement here as the useEffect cleanup will handle it
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     return () => {
-      // Manual cleanup when component unmounts
-      console.log(`🔌 Disconnecting now! Decrementing tab count for user: ${user.displayName}`);
+      // Remove event listener
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+
+      // Manual cleanup when component unmounts (covers tab close, navigation away, room change, etc.)
+      console.log(`🔌 User ${user.displayName} leaving room ${currentInstance.id} - decrementing tab count`);
       console.log(`🔌 Current tab count before cleanup: ${userTabCountRef.current}`);
+      console.log(`🔌 Cleanup reason: Component unmount (tab close, navigation, or room change)`);
 
       // Atomically decrement the tab count
       runTransaction(tabCountRef, (currentData) => {
@@ -159,14 +171,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
         if (newCount === 0) {
           // Remove the tab count entry if this was the last tab
-          console.log("🔌 Disconnecting now! Manual cleanup for user (last tab):", user.displayName);
+          console.log("🔌 Last tab for user - removing from room entirely:", user.displayName);
           const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
           const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
           remove(activeRef);
           remove(usersRef); // Also remove from main users list
           return null; // Remove the entire node
         } else {
-          // Just decrement the count
+          // Just decrement the count - user still has other tabs open
+          console.log(`🔌 User still has ${newCount} tabs open - keeping in room`);
           return {
             count: newCount,
             displayName: user.displayName,
@@ -175,10 +188,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
       })
         .then((result) => {
-          console.log(`🔌 Transaction completed successfully:`, result);
+          console.log(`🔌 Tab count decrement transaction completed:`, result);
         })
         .catch((error) => {
-          console.error(`🔌 Transaction failed:`, error);
+          console.error(`🔌 Tab count decrement transaction failed:`, error);
         });
 
       off(tabCountRef, "value", handle);
