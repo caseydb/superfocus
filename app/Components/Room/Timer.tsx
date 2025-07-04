@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off } from "firebase/database";
+import { ref, set, onValue, off, remove } from "firebase/database";
 
 export default function Timer({
   onActiveChange,
@@ -24,56 +24,50 @@ export default function Timer({
   onTaskRestore?: (task: string) => void;
 }) {
   const { currentInstance, user } = useInstance();
-  // Use the room ID as a key so timer resets when switching rooms
-  const roomKey = currentInstance?.id ?? "no-room";
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const notificationActiveRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
-  // Helper to save timer state to localStorage
+  // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
-    (secs: number, isRunning: boolean) => {
-      if (typeof window !== "undefined" && roomKey !== "no-room") {
-        const timerState = {
-          seconds: secs,
-          running: isRunning,
-          task: task || "",
-          roomKey: roomKey,
-          userId: user?.id,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem("lockedin_timer_state", JSON.stringify(timerState));
-      }
-    },
-    [roomKey, user?.id, task]
-  );
+    (isRunning: boolean, baseSeconds: number = 0, taskText?: string) => {
+      if (currentInstance && user?.id) {
+        const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+        const now = Date.now();
 
-  // Helper to load timer state from localStorage
-  const loadTimerState = React.useCallback(() => {
-    if (typeof window !== "undefined" && roomKey !== "no-room") {
-      const saved = localStorage.getItem("lockedin_timer_state");
-      if (saved) {
-        try {
-          const timerState = JSON.parse(saved);
-          // Only restore if it's for the same room and user
-          if (timerState.roomKey === roomKey && timerState.userId === user?.id) {
-            return timerState;
-          }
-        } catch (e) {
-          console.error("Error parsing saved timer state:", e);
+        if (isRunning) {
+          // Store when timer started and base seconds
+          set(timerStateRef, {
+            running: true,
+            startTime: now,
+            baseSeconds: baseSeconds, // seconds accumulated before this start
+            task: taskText || task || "",
+            lastUpdate: now,
+          });
+          console.log(`💾 DEBUG: Started timer - baseSeconds: ${baseSeconds}`);
+        } else {
+          // Store paused state with total accumulated seconds
+          set(timerStateRef, {
+            running: false,
+            totalSeconds: baseSeconds,
+            task: taskText || task || "",
+            lastUpdate: now,
+          });
+          console.log(`💾 DEBUG: Paused timer - totalSeconds: ${baseSeconds}`);
         }
       }
-    }
-    return null;
-  }, [roomKey, user?.id]);
+    },
+    [currentInstance, user?.id, task]
+  );
 
-  // Helper to clear timer state from localStorage
-  const clearTimerState = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("lockedin_timer_state");
+  // Helper to clear timer state from Firebase
+  const clearTimerState = React.useCallback(() => {
+    if (currentInstance && user?.id) {
+      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      remove(timerStateRef);
+      console.log(`🗑️ DEBUG: Cleared timer state from Firebase`);
     }
-  };
+  }, [currentInstance, user?.id]);
 
   // Helper to format time as mm:ss or hh:mm:ss based on duration
   function formatTime(s: number) {
@@ -111,84 +105,75 @@ export default function Timer({
     };
   }, [running, seconds]);
 
-  // Track when timer started for accurate live updates
-  const startTimeRef = useRef<number>(Date.now());
+  // Listen for timer state changes from Firebase (for cross-tab sync)
   useEffect(() => {
-    if (running) {
-      startTimeRef.current = Date.now() - seconds * 1000;
+    if (!currentInstance || !user?.id) {
+      isInitializedRef.current = false;
+      return;
     }
-  }, [running, seconds]);
 
-  // Load timer state on mount or room change
-  useEffect(() => {
-    const savedState = loadTimerState();
-    if (savedState && savedState.seconds > 0) {
-      // Restore timer state but always set running to false (paused)
-      setSeconds(savedState.seconds);
-      setRunning(false);
-      // Restore task if it exists and callback is provided
-      if (savedState.task && onTaskRestore) {
-        onTaskRestore(savedState.task);
+    const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+
+    const handle = onValue(timerStateRef, (snapshot) => {
+      const timerState = snapshot.val();
+
+      if (timerState) {
+        const isRunning = timerState.running || false;
+        let currentSeconds = 0;
+
+        if (isRunning && timerState.startTime) {
+          // Calculate current seconds: base + elapsed time since start
+          const elapsedMs = Date.now() - timerState.startTime;
+          const elapsedSeconds = Math.floor(elapsedMs / 1000);
+          currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+        } else {
+          // Use stored total seconds when paused
+          currentSeconds = timerState.totalSeconds || 0;
+        }
+
+        console.log(`📥 DEBUG: Received timer state - ${currentSeconds}s, running: ${isRunning}`);
+
+        // Update local state from Firebase
+        setSeconds(currentSeconds);
+        setRunning(isRunning);
+
+        // Restore task if it exists and we haven't initialized yet
+        if (timerState.task && onTaskRestore && !isInitializedRef.current) {
+          onTaskRestore(timerState.task);
+        }
+      } else if (isInitializedRef.current) {
+        // Only reset if we were already initialized (not on first load)
+        console.log(`🔄 DEBUG: No timer state found - resetting to 0`);
+        setSeconds(0);
+        setRunning(false);
       }
-    } else {
-      // Reset timer when room changes or no saved state
-      setSeconds(0);
-      setRunning(false);
-    }
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (!notificationActiveRef.current) {
-      document.title = "Locked In";
-    }
-  }, [roomKey, loadTimerState, onTaskRestore]);
+
+      isInitializedRef.current = true;
+    });
+
+    return () => {
+      off(timerStateRef, "value", handle);
+    };
+  }, [currentInstance, user?.id, onTaskRestore]);
 
   // Notify parent of running state
   useEffect(() => {
     if (onActiveChange) onActiveChange(running);
   }, [running, onActiveChange]);
 
-  // Save timer state when it changes
-  useEffect(() => {
-    if (seconds > 0 || running) {
-      saveTimerState(seconds, running);
-    }
-  }, [seconds, running, saveTimerState]);
-
-  // Handle browser close/refresh to pause timer and save state
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (running || seconds > 0) {
-        saveTimerState(seconds, false); // Always save as paused
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [seconds, running, saveTimerState]);
-
+  // Update display every second when running (local only, no Firebase writes)
   useEffect(() => {
     if (running) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
+      const interval = setInterval(() => {
         setSeconds((s) => s + 1);
       }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      return () => clearInterval(interval);
     }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
   }, [running]);
 
   function handleStart() {
     setRunning(true);
+    saveTimerState(true, seconds); // Save start state to Firebase
     notifyEvent("start");
   }
 
@@ -202,6 +187,7 @@ export default function Timer({
 
   function handleStop() {
     setRunning(false);
+    saveTimerState(false, seconds); // Save paused state to Firebase
   }
 
   // Expose handleStart to parent via ref
@@ -274,7 +260,7 @@ export default function Timer({
             <button
               className="bg-green-500 text-white font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
               onClick={() => {
-                clearTimerState(); // Clear saved state when completing
+                clearTimerState(); // Clear Firebase state when completing
                 if (onComplete) {
                   onComplete(formatTime(seconds));
                 }

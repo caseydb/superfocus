@@ -48,21 +48,25 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return 0.2;
   });
 
-  // Check if there's a saved timer state with time > 0
-  const hasSavedTimerState = () => {
-    if (typeof window !== "undefined" && currentInstance) {
-      const saved = localStorage.getItem("lockedin_timer_state");
-      if (saved) {
-        try {
-          const timerState = JSON.parse(saved);
-          return timerState.roomKey === currentInstance.id && timerState.userId === user?.id && timerState.seconds > 0;
-        } catch {
-          return false;
-        }
-      }
+  // Track if there's an active timer state from Firebase
+  const [hasActiveTimer, setHasActiveTimer] = useState(false);
+
+  // Listen for timer state to determine if input should be locked
+  useEffect(() => {
+    if (!currentInstance || !user?.id) {
+      setHasActiveTimer(false);
+      return;
     }
-    return false;
-  };
+
+    const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+    const handle = onValue(timerStateRef, (snapshot) => {
+      const timerState = snapshot.val();
+      setHasActiveTimer(!!(timerState && timerState.seconds > 0));
+      console.log(`🔍 DEBUG: Timer state check - hasActiveTimer: ${!!(timerState && timerState.seconds > 0)}`);
+    });
+
+    return () => off(timerStateRef, "value", handle);
+  }, [currentInstance, user?.id]);
 
   // Persist volume to localStorage whenever it changes
   useEffect(() => {
@@ -141,9 +145,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
-    // Clear saved timer state when clearing
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("lockedin_timer_state");
+    // Clear Firebase timer state when clearing
+    if (currentInstance && user?.id) {
+      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      remove(timerStateRef);
     }
   };
 
@@ -193,9 +198,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setInputLocked(false);
     setHasStarted(false);
     setShowQuitModal(false);
-    // Clear saved timer state when quitting
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("lockedin_timer_state");
+    // Clear Firebase timer state when quitting
+    if (currentInstance && user?.id) {
+      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      remove(timerStateRef);
     }
   };
 
@@ -209,9 +215,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
-    // Clear saved timer state when completing
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("lockedin_timer_state");
+    // Clear Firebase timer state when completing
+    if (currentInstance && user?.id) {
+      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      remove(timerStateRef);
     }
     if (currentInstance && user) {
       const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
@@ -306,7 +313,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <TaskInput
               task={task}
               setTask={setTask}
-              disabled={(hasStarted && inputLocked) || hasSavedTimerState()}
+              disabled={(hasStarted && inputLocked) || hasActiveTimer}
               onStart={() => timerStartRef.current && timerStartRef.current()}
             />
           </div>
