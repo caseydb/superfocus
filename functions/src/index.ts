@@ -47,7 +47,6 @@ export const cleanUpEmptyPublicRooms = functions.database
       // Check if users node is now empty or missing
       if (!instance.users || Object.keys(instance.users).length === 0) {
         await instanceRef.remove();
-        console.log(`Deleted empty public room: ${instanceId}`);
       }
     }
     return null;

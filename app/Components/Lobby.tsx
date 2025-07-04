@@ -44,15 +44,6 @@ export default function Lobby() {
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [currentInstance, leaveInstance]);
 
-  useEffect(() => {
-    if (instances.length > 0) {
-      console.log("Active rooms:");
-      instances.forEach((instance) => {
-        console.log(`Room: ${instance.url}, Type: ${instance.type}, Users: ${instance.users.length}`);
-      });
-    }
-  }, [instances]);
-
   // Calculate total users in all rooms
   const totalUsers = instances.reduce((sum, instance) => sum + instance.users.length, 0);
 

@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import ActiveWorkers from "./ActiveWorkers";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, remove, push, onValue, off, onDisconnect } from "firebase/database";
+import { ref, set, remove, push, onValue, off, onDisconnect, runTransaction } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
@@ -62,7 +62,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const handle = onValue(timerStateRef, (snapshot) => {
       const timerState = snapshot.val();
       setHasActiveTimer(!!(timerState && timerState.seconds > 0));
-      console.log(`🔍 DEBUG: Timer state check - hasActiveTimer: ${!!(timerState && timerState.seconds > 0)}`);
     });
 
     return () => off(timerStateRef, "value", handle);
@@ -104,19 +103,85 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setLoading(false);
   }, [instances, roomUrl, currentInstance, joinInstance]);
 
-  // Clean up on unmount or room change
+  // Track user tab count to handle multi-tab scenarios
+  const userTabCountRef = React.useRef(0);
+
+  // Clean up on unmount or room change - only if this is the last tab
   useEffect(() => {
-    // Set up disconnect handling when component mounts or user/instance changes
-    if (currentInstance && user) {
-      const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-      onDisconnect(activeRef).remove();
-    }
+    if (!currentInstance || !user) return;
+
+    // Path to user's tab count
+    const tabCountRef = ref(rtdb, `instances/${currentInstance.id}/tabCounts/${user.id}`);
+
+    // Increment tab count when this tab opens
+    console.log(`🔌 Incrementing tab count for user: ${user.displayName}`);
+    runTransaction(tabCountRef, (currentData) => {
+      const currentCount = currentData?.count || 0;
+      const newCount = currentCount + 1;
+      console.log(`🔌 Atomic increment: ${currentCount} -> ${newCount}`);
+      return {
+        count: newCount,
+        displayName: user.displayName,
+        lastUpdated: Date.now(),
+      };
+    });
+
+    // Listen to tab count changes
+    const handle = onValue(tabCountRef, (snapshot) => {
+      const data = snapshot.val();
+      const tabCount = data?.count || 0;
+      userTabCountRef.current = tabCount;
+
+      console.log(`🔌 User ${user.displayName} has ${tabCount} tabs open`);
+
+      // Only set up user disconnect handler if this is the only tab
+      if (tabCount === 1) {
+        console.log("🔌 Setting up disconnect handler for user (last tab):", user.displayName);
+        const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+        const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+        onDisconnect(activeRef).remove();
+        onDisconnect(usersRef).remove(); // Also remove from main users list
+        // Also set up disconnect handler to decrement count
+        onDisconnect(tabCountRef).remove();
+      }
+    });
 
     return () => {
-      if (currentInstance && user) {
-        const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-        remove(activeRef);
-      }
+      // Manual cleanup when component unmounts
+      console.log(`🔌 Disconnecting now! Decrementing tab count for user: ${user.displayName}`);
+      console.log(`🔌 Current tab count before cleanup: ${userTabCountRef.current}`);
+
+      // Atomically decrement the tab count
+      runTransaction(tabCountRef, (currentData) => {
+        const currentCount = currentData?.count || 0;
+        const newCount = Math.max(0, currentCount - 1);
+        console.log(`🔌 Atomic decrement: ${currentCount} -> ${newCount}`);
+
+        if (newCount === 0) {
+          // Remove the tab count entry if this was the last tab
+          console.log("🔌 Disconnecting now! Manual cleanup for user (last tab):", user.displayName);
+          const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+          const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+          remove(activeRef);
+          remove(usersRef); // Also remove from main users list
+          return null; // Remove the entire node
+        } else {
+          // Just decrement the count
+          return {
+            count: newCount,
+            displayName: user.displayName,
+            lastUpdated: Date.now(),
+          };
+        }
+      })
+        .then((result) => {
+          console.log(`🔌 Transaction completed successfully:`, result);
+        })
+        .catch((error) => {
+          console.error(`🔌 Transaction failed:`, error);
+        });
+
+      off(tabCountRef, "value", handle);
     };
   }, [currentInstance, user]);
 
@@ -126,12 +191,26 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
     if (isActive) {
       set(activeRef, { id: user.id, displayName: user.displayName });
-      // Set up automatic cleanup when user disconnects
-      onDisconnect(activeRef).remove();
+      // Set up automatic cleanup when user disconnects (only if this is the last tab)
+      if (userTabCountRef.current === 1) {
+        console.log("🔌 Setting up disconnect handler for active user (last tab):", user.displayName);
+        onDisconnect(activeRef).remove();
+      } else {
+        console.log(
+          `🔌 Skipping disconnect handler for active user (${userTabCountRef.current} tabs open):`,
+          user.displayName
+        );
+      }
       setInputLocked(true);
       setHasStarted(true);
     } else {
-      remove(activeRef);
+      // Only remove from activeUsers if this is the last tab
+      if (userTabCountRef.current === 1) {
+        console.log("🔌 Disconnecting now! Removing active user (last tab):", user.displayName);
+        remove(activeRef);
+      } else {
+        console.log(`🔌 Keeping active user (${userTabCountRef.current} tabs still open):`, user.displayName);
+      }
       setInputLocked(true); // keep locked until complete/clear/quit
     }
   };

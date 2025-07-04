@@ -44,7 +44,6 @@ export default function Timer({
             task: taskText || task || "",
             lastUpdate: now,
           });
-          console.log(`💾 DEBUG: Started timer - baseSeconds: ${baseSeconds}`);
         } else {
           // Store paused state with total accumulated seconds
           set(timerStateRef, {
@@ -53,7 +52,6 @@ export default function Timer({
             task: taskText || task || "",
             lastUpdate: now,
           });
-          console.log(`💾 DEBUG: Paused timer - totalSeconds: ${baseSeconds}`);
         }
       }
     },
@@ -65,7 +63,6 @@ export default function Timer({
     if (currentInstance && user?.id) {
       const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
       remove(timerStateRef);
-      console.log(`🗑️ DEBUG: Cleared timer state from Firebase`);
     }
   }, [currentInstance, user?.id]);
 
@@ -131,8 +128,6 @@ export default function Timer({
           currentSeconds = timerState.totalSeconds || 0;
         }
 
-        console.log(`📥 DEBUG: Received timer state - ${currentSeconds}s, running: ${isRunning}`);
-
         // Update local state from Firebase
         setSeconds(currentSeconds);
         setRunning(isRunning);
@@ -143,7 +138,6 @@ export default function Timer({
         }
       } else if (isInitializedRef.current) {
         // Only reset if we were already initialized (not on first load)
-        console.log(`🔄 DEBUG: No timer state found - resetting to 0`);
         setSeconds(0);
         setRunning(false);
       }

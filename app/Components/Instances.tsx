@@ -1,7 +1,7 @@
 // app/InstanceContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { rtdb } from "../../lib/firebase";
-import { ref, onValue, push, set, off, onDisconnect, remove, get } from "firebase/database";
+import { ref, onValue, push, set, off, remove, get } from "firebase/database";
 import type { DataSnapshot } from "firebase/database";
 import type { Instance, InstanceType, User } from "../types";
 import { onAuthStateChanged } from "firebase/auth";
@@ -134,9 +134,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         url: roomUrl,
       };
       set(newInstanceRef, newInstance);
-      // Add onDisconnect logic for the user in the new instance
-      const userRef = ref(rtdb, `instances/${newInstanceRef.key}/users/${user.id}`);
-      onDisconnect(userRef).remove();
+      // NOTE: Disconnect handling is now managed by RoomShell component with tab counting
       setCurrentInstance({ ...newInstance, id: newInstanceRef.key!, users: [user] });
     },
     [user, userReady]
@@ -148,7 +146,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!userReady) return;
       const instanceRef = ref(rtdb, `instances/${instanceId}/users/${user.id}`);
       set(instanceRef, user);
-      onDisconnect(instanceRef).remove();
+      // NOTE: Disconnect handling is now managed by RoomShell component with tab counting
       setCurrentInstance((prev) => {
         const inst = instances.find((i) => i.id === instanceId);
         if (!inst) return prev;
