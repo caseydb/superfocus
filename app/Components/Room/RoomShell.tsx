@@ -282,6 +282,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   if (currentInstance) {
     return (
       <>
+        {/* Active work border overlay */}
+        {hasStarted && inputLocked && (
+          <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>
+        )}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
           {/* User name in top left */}
           <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
@@ -327,7 +331,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             {task.trim() && (
               <div className="flex justify-center w-full">
                 <button
-                  className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+                  className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
                   onClick={handleClear}
                 >
                   Clear
@@ -337,7 +341,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Bottom bar controls */}
           <button
-            className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
             onClick={() => {
               if (currentInstance.type === "public") {
                 setShowHistoryTooltip(true);
@@ -357,13 +361,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             </div>
           )}
           <div
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors"
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors"
             onClick={() => setShowLeaderboard(true)}
           >
             Leaderboard
           </div>
           <button
-            className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#00b4ff] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
             onClick={() => {
               setShowInviteModal(true);
             }}
@@ -425,7 +429,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   type="text"
                   value={window.location.href}
                   readOnly
-                  className="flex-1 px-4 py-3 rounded-lg bg-[#23272b] text-gray-300 border border-[#23272b] focus:border-[#00b4ff] outline-none font-mono text-sm"
+                  className="flex-1 px-4 py-3 rounded-lg bg-[#23272b] text-gray-300 border border-[#23272b] focus:border-[#FFAA00] outline-none font-mono text-sm"
                 />
                 <button
                   onClick={() => {
@@ -434,7 +438,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                     setTimeout(() => setCopied(false), 3000);
                   }}
                   className={`px-6 py-3 font-bold rounded-lg hover:scale-105 transition-all flex items-center gap-2 ${
-                    copied ? "bg-green-500 text-white" : "bg-[#00b4ff] text-white"
+                    copied ? "bg-green-500 text-white" : "bg-[#FFAA00] text-white"
                   } w-24 justify-center`}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

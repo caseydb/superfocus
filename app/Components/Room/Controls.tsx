@@ -80,7 +80,7 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
         {editingName ? (
           <input
             className="bg-black text-gray-200 border-b-2 text-lg font-bold outline-none px-2 py-1"
-            style={{ minWidth: 80, borderBottomColor: "#00b4ff", borderBottomWidth: 2 }}
+            style={{ minWidth: 80, borderBottomColor: "#FFAA00", borderBottomWidth: 2 }}
             value={editedName}
             autoFocus
             onChange={(e) => setEditedName(e.target.value)}

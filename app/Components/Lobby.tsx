@@ -105,7 +105,7 @@ export default function Lobby() {
         <div className="flex flex-col items-center mb-8">
           <button
             onClick={() => signInWithGoogle()}
-            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#00b4ff] transition"
+            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#FFAA00] transition"
           >
             <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
             Continue with Google
@@ -113,7 +113,7 @@ export default function Lobby() {
           <div className="mt-4 text-gray-300 text-base">
             Don&apos;t have an account?{" "}
             <button
-              className="font-bold underline underline-offset-2 hover:text-[#00b4ff] transition"
+              className="font-bold underline underline-offset-2 hover:text-[#FFAA00] transition"
               onClick={() => setShowSignInModal(true)}
             >
               Sign up
@@ -135,13 +135,13 @@ export default function Lobby() {
         className={`bg-gray-900/90 mb-10 rounded-2xl shadow-2xl p-8 w-full max-w-2xl flex flex-col items-center gap-6 border-4 transition-all duration-200 ${
           !signedIn ? "opacity-40 pointer-events-none grayscale" : ""
         }`}
-        style={{ borderColor: "#00b4ff" }}
+        style={{ borderColor: "#FFAA00" }}
       >
         <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Join a Room</h1>
         <button
           className="bg-white text-black font-extrabold py-4 px-10 rounded-full shadow transition mb-1 text-2xl border"
-          style={{ borderColor: "#00b4ff" }}
-          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#00b4ff")}
+          style={{ borderColor: "#FFAA00" }}
+          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
           onClick={() => {
             const available = instances.find((i) => i.users.length < 5 && i.type === "public");
@@ -163,8 +163,8 @@ export default function Lobby() {
         </div>
         <button
           className="bg-white text-black px-4 py-2 rounded-full font-medium transition mt-1 text-base border"
-          style={{ borderColor: "#00b4ff" }}
-          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#00b4ff")}
+          style={{ borderColor: "#FFAA00" }}
+          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
           onClick={() => setShowPrivateRoomModal(true)}
         >
@@ -200,7 +200,7 @@ export default function Lobby() {
                 }}
                 placeholder="my-awesome-room"
                 className={`w-full px-4 py-3 rounded-lg bg-[#23272b] text-white border outline-none font-mono ${
-                  roomNameError ? "border-red-500 focus:border-red-500" : "border-[#23272b] focus:border-[#00b4ff]"
+                  roomNameError ? "border-red-500 focus:border-red-500" : "border-[#23272b] focus:border-[#FFAA00]"
                 }`}
                 maxLength={30}
                 autoFocus
@@ -233,7 +233,8 @@ export default function Lobby() {
                 Cancel
               </button>
               <button
-                className="flex-1 px-4 py-3 bg-[#00b4ff] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+                // className="flex-1 px-4 py-3 bg-[#00b4ff] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-[#FFAA00] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
                 disabled={!privateRoomName.trim()}
                 onClick={handleCreatePrivateRoom}
               >

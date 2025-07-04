@@ -118,7 +118,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
           </tbody>
         </table>
         <button
-          className="mt-6 bg-[#00b4ff] text-black font-extrabold text-xl px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
+          className="mt-6 bg-[#FFAA00] text-black font-extrabold text-xl px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
           onClick={onClose}
         >
           Close

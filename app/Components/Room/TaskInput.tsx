@@ -82,7 +82,7 @@ export default function TaskInput({
           height: "2px",
           marginBottom: "50px",
           borderRadius: "2px",
-          background: isFocused && !disabled ? "#00b4ff" : undefined,
+          background: isFocused && !disabled ? "#FFAA00" : undefined,
         }}
       />
       {showLimitPopup && (
