@@ -18,14 +18,23 @@ interface LeaderboardEntry {
 }
 
 function formatTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600)
-    .toString()
-    .padStart(2, "0");
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-    .toString()
-    .padStart(2, "0");
-  const secs = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${hours}:${minutes}:${secs}`;
+  // Handle invalid input
+  if (isNaN(totalSeconds) || totalSeconds < 0) {
+    return "00:00:00";
+  }
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  // Format based on duration length (same as Timer component)
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  } else {
+    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
 }
 
 export default function Leaderboard({ roomId, onClose }: { roomId: string; onClose: () => void }) {
@@ -41,18 +50,38 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
       if (data) {
         Object.values(data as Record<string, HistoryEntry>).forEach((entry) => {
           if (entry.task.toLowerCase().includes("quit early")) return;
-          // Parse duration as hh:mm:ss
-          const [h, m, s] = entry.duration.split(":").map(Number);
-          const seconds = h * 3600 + m * 60 + s;
-          if (!userMap[entry.displayName]) {
-            userMap[entry.displayName] = {
-              displayName: entry.displayName,
-              tasksCompleted: 0,
-              totalSeconds: 0,
-            };
+
+          // Parse duration more robustly
+          let seconds = 0;
+          if (entry.duration && typeof entry.duration === "string") {
+            const parts = entry.duration.split(":").map(Number);
+            if (parts.length === 3) {
+              // hh:mm:ss format
+              const [h, m, s] = parts;
+              if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+                seconds = h * 3600 + m * 60 + s;
+              }
+            } else if (parts.length === 2) {
+              // mm:ss format
+              const [m, s] = parts;
+              if (!isNaN(m) && !isNaN(s)) {
+                seconds = m * 60 + s;
+              }
+            }
           }
-          userMap[entry.displayName].tasksCompleted += 1;
-          userMap[entry.displayName].totalSeconds += seconds;
+
+          // Only process if we got valid seconds
+          if (seconds > 0) {
+            if (!userMap[entry.displayName]) {
+              userMap[entry.displayName] = {
+                displayName: entry.displayName,
+                tasksCompleted: 0,
+                totalSeconds: 0,
+              };
+            }
+            userMap[entry.displayName].tasksCompleted += 1;
+            userMap[entry.displayName].totalSeconds += seconds;
+          }
         });
       }
       const arr = Object.values(userMap).sort(
