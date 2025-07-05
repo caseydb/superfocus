@@ -113,7 +113,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
 
   if (history.length === 0) {
     return (
-      <div className="w-full max-w-none sm:w-[600px] sm:max-w-[600px] md:w-[700px] md:max-w-[700px] lg:w-[820px] lg:max-w-[820px] mx-auto mt-6 sm:mt-10 px-1 sm:px-0">
+      <div className="w-full max-w-none sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto mt-6 sm:mt-10 px-4 sm:px-8">
         <h2 className="text-xl sm:text-2xl font-extrabold text-center text-white mb-4">History</h2>
         {onClose && (
           <div className="flex justify-center mb-4">
@@ -131,7 +131,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   }
 
   return (
-    <div className="w-full max-w-none sm:w-[600px] sm:max-w-[600px] md:w-[700px] md:max-w-[700px] lg:w-[820px] lg:max-w-[820px] mx-auto mt-6 sm:mt-10 px-1 sm:px-0">
+    <div className="w-full max-w-none sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto mt-6 sm:mt-10 px-4 sm:px-8">
       <h2 className="text-xl sm:text-2xl font-extrabold text-center text-white mb-4">History</h2>
       {onClose && (
         <div className="flex justify-center mb-4">
@@ -186,19 +186,19 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
 
         {/* Desktop Table Layout */}
         <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-y-0 min-w-[300px]">
+          <table className="w-full text-left border-separate border-spacing-y-0 min-w-[600px]">
             <thead>
               <tr className="text-gray-400 text-base">
-                <th className="px-2 py-1">Name</th>
+                <th className="px-2 py-1 w-48">Name</th>
                 <th className="px-2 py-1">Task</th>
-                <th className="px-2 py-1">Time</th>
+                <th className="pl-8 pr-2 py-1 w-32">Time</th>
               </tr>
             </thead>
             <tbody>
               {displayEntries.map((entry, i) => (
                 <tr key={i}>
                   <td
-                    className={`px-2 py-1 font-mono whitespace-nowrap text-base ${
+                    className={`px-2 py-1 font-mono whitespace-nowrap text-base w-48 ${
                       entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                     }`}
                     title={entry.displayName}
@@ -213,10 +213,10 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
                     }`}
                     title={entry.task}
                   >
-                    {entry.task.length > 50 ? entry.task.slice(0, 50) + "..." : entry.task}
+                    {entry.task.length > 120 ? entry.task.slice(0, 120) + "..." : entry.task}
                   </td>
                   <td
-                    className={`px-2 py-1 font-mono whitespace-nowrap text-base ${
+                    className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-base w-32 ${
                       entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
                     }`}
                   >
