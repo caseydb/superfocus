@@ -226,6 +226,10 @@ export default function Timer({
               className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48"
               onClick={() => {
                 clearTimerState(); // Clear Firebase state when completing
+                // Reset timer's internal state
+                setSeconds(0);
+                setRunning(false);
+                notifyEvent("complete");
                 if (onComplete) {
                   onComplete(formatTime(seconds));
                 }
