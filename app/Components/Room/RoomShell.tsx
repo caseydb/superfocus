@@ -482,7 +482,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Invite others - desktop only: bottom right corner */}
           <button
-            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden lg:flex items-center"
+            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center"
             onClick={() => setShowInviteModal(true)}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
