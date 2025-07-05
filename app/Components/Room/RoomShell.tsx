@@ -453,9 +453,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return (
       <>
         {/* Active work border overlay */}
-        {hasStarted && inputLocked && (
-          <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>
-        )}
+        {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
           {/* User name in top left */}
           <Controls
