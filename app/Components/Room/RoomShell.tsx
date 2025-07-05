@@ -381,7 +381,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         )}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
           {/* User name in top left */}
-          <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
+          <Controls
+            className="fixed top-4 right-8 z-50"
+            localVolume={localVolume}
+            setLocalVolume={setLocalVolume}
+            showHistory={showHistory}
+            setShowHistory={setShowHistory}
+            showHistoryTooltip={showHistoryTooltip}
+            setShowHistoryTooltip={setShowHistoryTooltip}
+            instanceType={currentInstance.type}
+          />
           {/* Room type indicator bottom center */}
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-base font-mono select-none">
             {currentInstance.type === "private" ? "Private Room" : "Public Room"} (
@@ -411,7 +420,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             />
           </div>
           <div className={showHistory ? "" : "hidden"}>
-            <History roomId={currentInstance.id} />
+            <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
           </div>
           {/* Timer is always mounted, just hidden when history is open */}
           <div
@@ -439,33 +448,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             )}
           </div>
-          {/* Bottom bar controls - History above Leaderboard */}
+
           <button
-            className="fixed bottom-10 left-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-            onClick={() => {
-              if (currentInstance.type === "public") {
-                setShowHistoryTooltip(true);
-                setTimeout(() => setShowHistoryTooltip(false), 3000);
-              } else {
-                setShowHistory((v) => !v);
-              }
-            }}
-          >
-            {showHistory ? "Back to Room" : "History"}
-          </button>
-          {/* History tooltip for public rooms */}
-          {showHistoryTooltip && (
-            <div className="fixed bottom-20 left-8 z-50 bg-[#181A1B] text-white px-4 py-2 rounded-lg shadow-lg border border-[#23272b] text-sm font-mono">
-              History is only available in private rooms.
-              <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#181A1B] border-r border-b border-[#23272b] transform rotate-45"></div>
-            </div>
-          )}
-          <div
-            className="fixed bottom-4 left-8 z-40 text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors"
+            className="fixed bottom-4 left-8 z-40 text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none"
             onClick={() => setShowLeaderboard(true)}
           >
             Leaderboard
-          </div>
+          </button>
           {/* <button
             className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
             onClick={() => {

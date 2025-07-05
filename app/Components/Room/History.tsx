@@ -17,7 +17,7 @@ interface User {
   displayName: string;
 }
 
-export default function History({ roomId }: { roomId: string }) {
+export default function History({ roomId, onClose }: { roomId: string; onClose?: () => void }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const PAGE_SIZE = 15;
@@ -65,7 +65,18 @@ export default function History({ roomId }: { roomId: string }) {
   if (history.length === 0) {
     return (
       <div className="w-[820px] mx-auto mt-10">
-        <h2 className="text-2xl font-extrabold text-center text-white mb-4">No History Yet</h2>
+        <h2 className="text-2xl font-extrabold text-center text-white mb-4">History</h2>
+        {onClose && (
+          <div className="flex justify-center mb-4">
+            <button
+              className="text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
+              onClick={onClose}
+            >
+              Back to timer
+            </button>
+          </div>
+        )}
+        <div className="text-center text-white">No History Yet</div>
       </div>
     );
   }
@@ -73,6 +84,16 @@ export default function History({ roomId }: { roomId: string }) {
   return (
     <div className="w-[820px] mx-auto mt-10">
       <h2 className="text-2xl font-extrabold text-center text-white mb-4">History</h2>
+      {onClose && (
+        <div className="flex justify-center mb-4">
+          <button
+            className="text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
+            onClick={onClose}
+          >
+            Back to timer
+          </button>
+        </div>
+      )}
       <table className="w-full text-left border-separate border-spacing-y-0">
         <thead>
           <tr className="text-gray-400 text-base">

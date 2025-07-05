@@ -10,9 +10,23 @@ interface ControlsProps {
   className?: string;
   localVolume: number;
   setLocalVolume: (v: number) => void;
+  showHistory: boolean;
+  setShowHistory: (show: boolean) => void;
+  showHistoryTooltip: boolean;
+  setShowHistoryTooltip: (show: boolean) => void;
+  instanceType: "public" | "private";
 }
 
-export default function Controls({ className = "", localVolume, setLocalVolume }: ControlsProps) {
+export default function Controls({
+  className = "",
+  localVolume,
+  setLocalVolume,
+  showHistory,
+  setShowHistory,
+  showHistoryTooltip,
+  setShowHistoryTooltip,
+  instanceType,
+}: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.displayName);
@@ -311,11 +325,17 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
           <button
             className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
             style={{ outline: "none" }}
-            onClick={async () => {
-              await signOut(auth);
+            onClick={() => {
+              if (instanceType === "public") {
+                setShowHistoryTooltip(true);
+                setTimeout(() => setShowHistoryTooltip(false), 3000);
+              } else {
+                setShowHistory(!showHistory);
+              }
+              setDropdownOpen(false);
             }}
           >
-            Sign Out
+            {showHistory ? "Back to Room" : "History"}
           </button>
           <button
             className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
@@ -327,6 +347,22 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
           >
             Leave Room
           </button>
+          <button
+            className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
+            style={{ outline: "none" }}
+            onClick={async () => {
+              await signOut(auth);
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
+      {/* History tooltip for public rooms */}
+      {showHistoryTooltip && (
+        <div className="fixed bottom-20 left-8 z-50 bg-[#181A1B] text-white px-4 py-2 rounded-lg shadow-lg border border-[#23272b] text-sm font-mono">
+          History is only available in private rooms.
+          <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#181A1B] border-r border-b border-[#23272b] transform rotate-45"></div>
         </div>
       )}
     </div>
