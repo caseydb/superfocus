@@ -12,7 +12,6 @@ export default function Timer({
   secondsRef,
   requiredTask = true,
   task,
-  onTaskRestore,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
@@ -21,7 +20,6 @@ export default function Timer({
   secondsRef?: React.RefObject<number>;
   requiredTask?: boolean;
   task?: string;
-  onTaskRestore?: (task: string) => void;
 }) {
   const { currentInstance, user } = useInstance();
   const [seconds, setSeconds] = useState(0);
@@ -30,7 +28,7 @@ export default function Timer({
 
   // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
-    (isRunning: boolean, baseSeconds: number = 0, taskText?: string) => {
+    (isRunning: boolean, baseSeconds: number = 0) => {
       if (currentInstance && user?.id) {
         const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
         const now = Date.now();
@@ -41,7 +39,7 @@ export default function Timer({
             running: true,
             startTime: now,
             baseSeconds: baseSeconds, // seconds accumulated before this start
-            task: taskText || task || "",
+            task: task || "",
             lastUpdate: now,
           });
         } else {
@@ -49,7 +47,7 @@ export default function Timer({
           set(timerStateRef, {
             running: false,
             totalSeconds: baseSeconds,
-            task: taskText || task || "",
+            task: task || "",
             lastUpdate: now,
           });
         }
@@ -110,11 +108,6 @@ export default function Timer({
         // Normal restoration - don't check user count here
         setSeconds(currentSeconds);
         setRunning(isRunning);
-
-        // Restore task if it exists and we haven't initialized yet
-        if (timerState.task && onTaskRestore && !isInitializedRef.current) {
-          onTaskRestore(timerState.task);
-        }
       } else if (isInitializedRef.current) {
         // Only reset if we were already initialized (not on first load)
         setSeconds(0);
@@ -129,7 +122,7 @@ export default function Timer({
     return () => {
       off(timerStateRef, "value", handle);
     };
-  }, [currentInstance, user?.id, onTaskRestore]);
+  }, [currentInstance, user?.id]);
 
   // Separate effect: Listen for user count changes and pause timer when room becomes empty
   useEffect(() => {
@@ -145,7 +138,7 @@ export default function Timer({
       if (userCount === 0 && running) {
         setRunning(false);
         // Save paused state to Firebase
-        saveTimerState(false, seconds, task);
+        saveTimerState(false, seconds);
       }
     };
 
@@ -170,6 +163,22 @@ export default function Timer({
       return () => clearInterval(interval);
     }
   }, [running]);
+
+  // Pause timer when user leaves the page (closes tab, refreshes, or navigates away)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (running) {
+        // Pause the timer and save state to Firebase
+        saveTimerState(false, seconds);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [running, seconds, task, saveTimerState]);
 
   function handleStart() {
     setRunning(true);
@@ -212,7 +221,7 @@ export default function Timer({
             onClick={handleStart}
             disabled={disabled || !requiredTask}
           >
-            Start
+            {seconds > 0 ? "Resume" : "Start"}
           </button>
         ) : (
           <>
@@ -225,13 +234,11 @@ export default function Timer({
             <button
               className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48"
               onClick={() => {
-                clearTimerState(); // Clear Firebase state when completing
-                // Reset timer's internal state
-                setSeconds(0);
-                setRunning(false);
+                const completionTime = formatTime(seconds);
+                clearTimerState(); // Clear Firebase state when completing - this will trigger the listener to reset local state
                 notifyEvent("complete");
                 if (onComplete) {
-                  onComplete(formatTime(seconds));
+                  onComplete(completionTime);
                 }
               }}
             >

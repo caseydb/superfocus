@@ -62,22 +62,32 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
     const handle = onValue(timerStateRef, (snapshot) => {
       const timerState = snapshot.val();
-      let currentSeconds = 0;
-      if (timerState.running && timerState.startTime) {
-        // Calculate current seconds for running timer: base + elapsed time since start
-        const elapsedMs = Date.now() - timerState.startTime;
-        const elapsedSeconds = Math.floor(elapsedMs / 1000);
-        currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+
+      if (timerState) {
+        let currentSeconds = 0;
+        if (timerState.running && timerState.startTime) {
+          // Calculate current seconds for running timer: base + elapsed time since start
+          const elapsedMs = Date.now() - timerState.startTime;
+          const elapsedSeconds = Math.floor(elapsedMs / 1000);
+          currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+        } else {
+          // Use stored total seconds when paused
+          currentSeconds = timerState.totalSeconds || 0;
+        }
+        // Timer is considered active if it has accumulated time (running or paused)
+        setHasActiveTimer(currentSeconds > 0);
+
+        // Restore task if timer has accumulated time and current task is empty
+        if (currentSeconds > 0 && timerState.task && !task.trim()) {
+          setTask(timerState.task);
+        }
       } else {
-        // Use stored total seconds when paused
-        currentSeconds = timerState.totalSeconds || 0;
+        setHasActiveTimer(false);
       }
-      // Timer is considered active if it has accumulated time (running or paused)
-      setHasActiveTimer(currentSeconds > 0);
     });
 
     return () => off(timerStateRef, "value", handle);
-  }, [currentInstance, user?.id]);
+  }, [currentInstance, user?.id, task]);
 
   // Persist volume to localStorage whenever it changes
   useEffect(() => {
@@ -520,7 +530,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               secondsRef={timerSecondsRef}
               requiredTask={!!task.trim()}
               task={task}
-              onTaskRestore={setTask}
             />
             {task.trim() && (
               <div className="flex justify-center w-full">
