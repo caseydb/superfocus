@@ -9,12 +9,18 @@ interface HistoryEntry {
   task: string;
   duration: string;
   timestamp: number;
+  userId?: string;
 }
 
 interface LeaderboardEntry {
   displayName: string;
   tasksCompleted: number;
   totalSeconds: number;
+}
+
+interface User {
+  id: string;
+  displayName: string;
 }
 
 function formatTime(totalSeconds: number) {
@@ -40,6 +46,21 @@ function formatTime(totalSeconds: number) {
 export default function Leaderboard({ roomId, onClose }: { roomId: string; onClose: () => void }) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<Record<string, User>>({});
+
+  useEffect(() => {
+    if (!roomId) return;
+    const usersRef = ref(rtdb, `instances/${roomId}/users`);
+    const handle = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setUsers(data);
+      } else {
+        setUsers({});
+      }
+    });
+    return () => off(usersRef, "value", handle);
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -50,6 +71,13 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
       if (data) {
         Object.values(data as Record<string, HistoryEntry>).forEach((entry) => {
           if (entry.task.toLowerCase().includes("quit early")) return;
+
+          // Use userId as key, fallback to displayName for legacy entries
+          const userKey = entry.userId || entry.displayName;
+
+          // Get current display name (check users first, fallback to stored name)
+          const currentDisplayName =
+            entry.userId && users[entry.userId]?.displayName ? users[entry.userId].displayName : entry.displayName;
 
           // Parse duration more robustly
           let seconds = 0;
@@ -72,15 +100,18 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
 
           // Only process if we got valid seconds
           if (seconds > 0) {
-            if (!userMap[entry.displayName]) {
-              userMap[entry.displayName] = {
-                displayName: entry.displayName,
+            if (!userMap[userKey]) {
+              userMap[userKey] = {
+                displayName: currentDisplayName,
                 tasksCompleted: 0,
                 totalSeconds: 0,
               };
+            } else {
+              // Update display name to current one (in case it changed)
+              userMap[userKey].displayName = currentDisplayName;
             }
-            userMap[entry.displayName].tasksCompleted += 1;
-            userMap[entry.displayName].totalSeconds += seconds;
+            userMap[userKey].tasksCompleted += 1;
+            userMap[userKey].totalSeconds += seconds;
           }
         });
       }
@@ -91,7 +122,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
       setLoading(false);
     });
     return () => off(historyRef, "value", handle);
-  }, [roomId]);
+  }, [roomId, users]);
 
   if (loading) {
     return <div className="text-white text-center mt-10">Loading leaderboard...</div>;
@@ -132,7 +163,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
             </thead>
             <tbody>
               {entries.map((entry, i) => (
-                <React.Fragment key={entry.displayName}>
+                <React.Fragment key={`${entry.displayName}-${i}`}>
                   <tr
                     className="text-white text-sm sm:text-base md:text-lg font-mono align-middle"
                     style={{ height: 48 }}
