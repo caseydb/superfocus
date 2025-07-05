@@ -288,6 +288,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     if (currentInstance && user?.id) {
       const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
       remove(timerStateRef);
+      // Remove user from activeUsers when quitting (same as complete)
+      const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+      remove(activeRef);
     }
   };
 
