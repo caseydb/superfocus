@@ -34,7 +34,6 @@ export default function Controls({
   setShowInviteModal,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
-  const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user.displayName);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userMenuOpenSound, setUserMenuOpenSound] = useState(false);
@@ -64,15 +63,6 @@ export default function Controls({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
-
-  const handleNameChange = async () => {
-    setEditingName(false);
-    if (!currentInstance) return;
-    user.displayName = editedName;
-    // Only update in users, not activeUsers
-    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-    set(userRef, { ...user, displayName: editedName });
-  };
 
   // Sync volume to RTDB when it changes
   useEffect(() => {
@@ -286,28 +276,17 @@ export default function Controls({
         <div className="ml-3 sm:ml-3 flex flex-col">
           {/* First name with dropdown arrow */}
           <div className="flex items-center">
-            {editingName ? (
-              <input
-                className="bg-black text-gray-200 border-b-2 text-lg font-bold outline-none px-2 py-1 hidden sm:block"
-                style={{ minWidth: 80, borderBottomColor: "#FFAA00", borderBottomWidth: 2 }}
-                value={editedName}
-                autoFocus
-                onChange={(e) => setEditedName(e.target.value)}
-                onBlur={handleNameChange}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleNameChange();
-                  if (e.key === "Escape") setEditingName(false);
-                }}
-                maxLength={32}
-              />
-            ) : (
-              <span
-                className="text-base font-mono text-gray-400 select-none cursor-pointer hidden sm:block"
-                onClick={() => setEditingName(true)}
-              >
-                {user.displayName.split(" ")[0]}
-              </span>
-            )}
+            <span
+              className="text-base font-mono text-gray-400 select-none cursor-pointer hidden sm:block"
+              onClick={() => {
+                setDropdownOpen((v) => {
+                  if (!v) setUserMenuOpenSound(false);
+                  return !v;
+                });
+              }}
+            >
+              {user.displayName.split(" ")[0]}
+            </span>
             {/* Mobile hamburger icon (screens < 640px) */}
             <span
               className="text-2xl font-mono text-gray-400 select-none cursor-pointer block sm:hidden"
@@ -336,42 +315,180 @@ export default function Controls({
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 bg-black text-gray-400 rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50 hidden sm:block"
+          className="absolute right-0 mt-2 bg-[#181A1B] text-gray-400 rounded-2xl shadow-2xl py-6 px-4 min-w-[320px] border border-[#23272b] z-50 hidden sm:block"
         >
-          <button
-            className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
-            style={{ outline: "none" }}
-            onClick={() => {
-              if (instanceType === "public") {
-                setShowHistoryTooltip(true);
-                setTimeout(() => setShowHistoryTooltip(false), 3000);
-              } else {
-                setShowHistory(!showHistory);
-              }
-              setDropdownOpen(false);
-            }}
-          >
-            {showHistory ? "Back to Room" : "History"}
-          </button>
-          <button
-            className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
-            style={{ outline: "none" }}
-            onClick={() => {
-              leaveInstance();
-              router.push("/");
-            }}
-          >
-            Leave Room
-          </button>
-          <button
-            className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
-            style={{ outline: "none" }}
-            onClick={async () => {
-              await signOut(auth);
-            }}
-          >
-            Sign Out
-          </button>
+          {/* User Header */}
+          <div className="flex items-center mb-6 pb-4 border-b border-[#23272b]">
+            <div className="w-12 h-12 bg-[#FFAA00] rounded-full flex items-center justify-center text-black font-bold">
+              {user.displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="ml-3">
+              <h3 className="font-semibold text-white font-mono">{user.displayName}</h3>
+              <p className="text-sm text-gray-400 font-mono">{auth.currentUser?.email || ""}</p>
+            </div>
+          </div>
+
+          {/* Sound Controls Section */}
+          <div className="mb-6 pb-4 border-b border-[#23272b]">
+            <h4 className="font-semibold text-gray-400 mb-3 font-mono">Sound</h4>
+            <div className="relative flex items-center w-full h-8">
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 z-10 text-gray-400 pointer-events-none">
+                {localVolume === 0 ? (
+                  // Muted speaker icon
+                  <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
+                    <g>
+                      <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
+                      <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                      <path
+                        d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M24 3.5c3.5 4 3.5 13 0 17"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <line x1="9" y1="6" x2="26" y2="21.5" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round" />
+                      <line x1="9" y1="6" x2="26" y2="21.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                    </g>
+                  </svg>
+                ) : (
+                  // Unmuted speaker icon
+                  <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
+                    <g>
+                      <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
+                      <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                      <path
+                        d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M24 3.5c3.5 4 3.5 13 0 17"
+                        stroke="#9ca3af"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  </svg>
+                )}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={localVolume}
+                onChange={(e) => setLocalVolume(Number(e.target.value))}
+                className="w-full h-6 rounded-full appearance-none outline-none ml-6 slider-thumb-custom"
+                style={{
+                  background: (() => {
+                    const offset = (24 / 320) * 100;
+                    const edge = localVolume * (100 - offset) + offset / 2;
+                    return `linear-gradient(to right, #fff 0%, #fff ${edge}%, #9ca3af ${edge}%, #9ca3af 100%)`;
+                  })(),
+                  borderRadius: "9999px",
+                  boxShadow: "0 0 0 1px #23272b",
+                  height: "1.5rem",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Menu Items */}
+          <div className="space-y-2">
+            {/* Invite Others Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              onClick={() => {
+                setShowInviteModal(true);
+                setDropdownOpen(false);
+              }}
+            >
+              <span className="text-gray-400 font-medium font-mono">+ Invite Others</span>
+            </button>
+
+            {/* Edit Display Name Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              onClick={() => {
+                setShowNameModal(true);
+                setDropdownOpen(false);
+              }}
+            >
+              <span className="text-gray-400 font-medium font-mono">Edit Display Name</span>
+            </button>
+
+            {/* Leaderboard Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              onClick={() => {
+                setShowLeaderboard(!showLeaderboard);
+                setDropdownOpen(false);
+              }}
+            >
+              <span className="text-gray-400 font-medium font-mono">Leaderboard</span>
+            </button>
+
+            {/* History Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              onClick={() => {
+                if (instanceType === "public") {
+                  setShowHistoryTooltip(true);
+                  setTimeout(() => setShowHistoryTooltip(false), 3000);
+                } else {
+                  setShowHistory(!showHistory);
+                }
+                setDropdownOpen(false);
+              }}
+            >
+              <span className="text-gray-400 font-medium font-mono">{showHistory ? "Back to Room" : "History"}</span>
+            </button>
+
+            {/* Leave Room Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              onClick={() => {
+                leaveInstance();
+                router.push("/");
+              }}
+            >
+              <span className="text-gray-400 font-medium font-mono">Leave Room</span>
+            </button>
+
+            {/* Sign Out Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              onClick={async () => {
+                await signOut(auth);
+              }}
+            >
+              <span className="text-gray-400 font-medium font-mono">Sign Out</span>
+            </button>
+          </div>
         </div>
       )}
       {/* History tooltip for public rooms */}
