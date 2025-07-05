@@ -496,7 +496,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {/* Invite Modal - rendered as separate overlay */}
         {showInviteModal && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
             onClick={() => setShowInviteModal(false)}
           >
             <div

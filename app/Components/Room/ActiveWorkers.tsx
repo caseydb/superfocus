@@ -23,7 +23,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   if (activeUsers.length === 0) return null;
 
   return (
-    <div className="fixed top-4 left-8 z-50 text-base font-mono opacity-70 select-none">
+    <div className="fixed top-5 sm:top-4 left-8 z-40 text-base font-mono opacity-70 select-none">
       {activeUsers.map((u) => (
         <div
           key={u.id}
@@ -32,7 +32,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           }`}
           style={{ height: "2rem" }}
         >
-          {u.displayName} is actively working
+          {u.displayName} is <span className="hidden sm:inline">actively </span>working
         </div>
       ))}
     </div>

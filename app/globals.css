@@ -13,6 +13,7 @@
 
   /* Custom breakpoints */
   --breakpoint-xs: 480px;
+  --breakpoint-mobile-lg: 600px;
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
@@ -173,4 +174,42 @@ body,
 
 .slider-thumb-custom:focus {
   outline: none;
+}
+
+/* Custom media query for 600px breakpoint */
+@media (max-width: 599px) {
+  .mobile-600-only {
+    display: block !important;
+  }
+  .desktop-600-up {
+    display: none !important;
+  }
+}
+
+@media (min-width: 600px) {
+  .mobile-600-only {
+    display: none !important;
+  }
+  .desktop-600-up {
+    display: block !important;
+  }
+}
+
+/* Side modal transition styles */
+.side-modal-enter {
+  transform: translateX(100%);
+}
+
+.side-modal-enter-active {
+  transform: translateX(0);
+  transition: transform 300ms ease-in-out;
+}
+
+.side-modal-exit {
+  transform: translateX(0);
+}
+
+.side-modal-exit-active {
+  transform: translateX(100%);
+  transition: transform 300ms ease-in-out;
 }
