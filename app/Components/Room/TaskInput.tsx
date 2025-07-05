@@ -49,12 +49,29 @@ export default function TaskInput({
     }
   }, [updateInputWidth]);
 
-  React.useEffect(() => {
+  // Helper to recalculate textarea height
+  const recalculateHeight = React.useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
     }
-  }, [task, inputWidth]);
+  }, []);
+
+  React.useEffect(() => {
+    recalculateHeight();
+  }, [task, inputWidth, recalculateHeight]);
+
+  // Add resize listener to handle responsive text size changes
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleResize = () => {
+        // Add a small delay to ensure CSS changes have been applied
+        setTimeout(recalculateHeight, 50);
+      };
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, [recalculateHeight]);
 
   React.useEffect(() => {
     if (chars >= maxLen) {
