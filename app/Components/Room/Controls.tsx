@@ -76,31 +76,9 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
 
   return (
     <div className={className + " select-none"}>
-      <div className="flex items-center gap-8">
-        {editingName ? (
-          <input
-            className="bg-black text-gray-200 border-b-2 text-lg font-bold outline-none px-2 py-1"
-            style={{ minWidth: 80, borderBottomColor: "#FFAA00", borderBottomWidth: 2 }}
-            value={editedName}
-            autoFocus
-            onChange={(e) => setEditedName(e.target.value)}
-            onBlur={handleNameChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleNameChange();
-              if (e.key === "Escape") setEditingName(false);
-            }}
-            maxLength={32}
-          />
-        ) : (
-          <span
-            className="text-lg font-bold text-gray-300 cursor-pointer select-none"
-            onClick={() => setEditingName(true)}
-          >
-            {user.displayName}
-          </span>
-        )}
-        {/* Speaker icon and menu (Sound) to the right of the name */}
-        <div className="relative ml-1">
+      <div className="flex items-center">
+        {/* Speaker icon and menu (Sound) to the left of the name */}
+        <div className="relative">
           <span
             ref={soundIconRef}
             className="cursor-pointer flex items-center"
@@ -115,61 +93,61 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
             title="Sound settings"
           >
             {localVolume === 0 ? (
-              // Muted macOS-style speaker icon (white for header)
+              // Muted macOS-style speaker icon (gray-400 for header)
               <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
                 <g>
-                  <rect x="2" y="8" width="5" height="8" rx="1" fill="#fff" />
-                  <polygon points="7,8 14,3 14,21 7,16" fill="#fff" />
+                  <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
+                  <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
                   <path
                     d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                    stroke="#fff"
+                    stroke="#9ca3af"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
                   />
                   <path
                     d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                    stroke="#fff"
+                    stroke="#9ca3af"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
                   />
                   <path
                     d="M24 3.5c3.5 4 3.5 13 0 17"
-                    stroke="#fff"
+                    stroke="#9ca3af"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
                   />
-                  {/* White border for mute line (underneath, slightly thicker and longer) */}
-                  <line x1="9" y1="6" x2="26" y2="21.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+                  {/* Gray-400 border for mute line (underneath, slightly thicker and longer) */}
+                  <line x1="9" y1="6" x2="26" y2="21.5" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round" />
                   {/* Red mute line (on top, slightly thicker and longer) */}
                   <line x1="9" y1="6" x2="26" y2="21.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
                 </g>
               </svg>
             ) : (
-              // Unmuted macOS-style speaker icon (white for header)
+              // Unmuted macOS-style speaker icon (gray-400 for header)
               <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
                 <g>
-                  <rect x="2" y="8" width="5" height="8" rx="1" fill="#fff" />
-                  <polygon points="7,8 14,3 14,21 7,16" fill="#fff" />
+                  <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
+                  <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
                   <path
                     d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                    stroke="#fff"
+                    stroke="#9ca3af"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
                   />
                   <path
                     d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                    stroke="#fff"
+                    stroke="#9ca3af"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
                   />
                   <path
                     d="M24 3.5c3.5 4 3.5 13 0 17"
-                    stroke="#fff"
+                    stroke="#9ca3af"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
@@ -181,7 +159,7 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
           {userMenuOpenSound && (
             <div
               ref={soundDropdownRef}
-              className="absolute right-0 mt-2 bg-black text-white rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
+              className="absolute right-0 mt-2 bg-black text-gray-400 rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
             >
               <div className="flex flex-col items-start justify-between py-1 px-2">
                 <span className="text-base mb-1">Sound</span>
@@ -282,27 +260,56 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
             </div>
           )}
         </div>
-        {/* Dropdown arrow */}
-        <span
-          ref={dropdownIconRef}
-          className="cursor-pointer text-white text-lg"
-          onClick={() => {
-            setDropdownOpen((v) => {
-              if (!v) setUserMenuOpenSound(false);
-              return !v;
-            });
-          }}
-        >
-          ▼
-        </span>
+        {/* Name and email stacked vertically */}
+        <div className="ml-3 flex flex-col">
+          {/* First name with dropdown arrow */}
+          <div className="flex items-center">
+            {editingName ? (
+              <input
+                className="bg-black text-gray-200 border-b-2 text-lg font-bold outline-none px-2 py-1"
+                style={{ minWidth: 80, borderBottomColor: "#FFAA00", borderBottomWidth: 2 }}
+                value={editedName}
+                autoFocus
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleNameChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleNameChange();
+                  if (e.key === "Escape") setEditingName(false);
+                }}
+                maxLength={32}
+              />
+            ) : (
+              <span
+                className="text-base font-mono text-gray-400 cursor-pointer select-none"
+                onClick={() => setEditingName(true)}
+              >
+                {user.displayName.split(" ")[0]}
+              </span>
+            )}
+            {/* Dropdown arrow - aligned to middle of name */}
+            <span
+              ref={dropdownIconRef}
+              className="cursor-pointer text-gray-400 text-2xl ml-2 leading-none"
+              style={{ transform: "translateY(-6px)" }}
+              onClick={() => {
+                setDropdownOpen((v) => {
+                  if (!v) setUserMenuOpenSound(false);
+                  return !v;
+                });
+              }}
+            >
+              ⌄
+            </span>
+          </div>
+        </div>
       </div>
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 bg-black text-white rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
+          className="absolute right-0 mt-2 bg-black text-gray-400 rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
         >
           <button
-            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
+            className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
             style={{ outline: "none" }}
             onClick={async () => {
               await signOut(auth);
@@ -311,7 +318,7 @@ export default function Controls({ className = "", localVolume, setLocalVolume }
             Sign Out
           </button>
           <button
-            className="w-full px-6 py-3 text-white bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
+            className="w-full px-6 py-3 text-gray-400 bg-black rounded font-bold text-base hover:bg-gray-900 transition text-left"
             style={{ outline: "none" }}
             onClick={() => {
               leaveInstance();

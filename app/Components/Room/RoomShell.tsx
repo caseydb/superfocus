@@ -125,11 +125,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const tabCountRef = ref(rtdb, `instances/${currentInstance.id}/tabCounts/${user.id}`);
 
     // Increment tab count when this tab opens/joins room
-    console.log(`🔌 User ${user.displayName} joining room ${currentInstance.id} - incrementing tab count`);
     runTransaction(tabCountRef, (currentData) => {
       const currentCount = currentData?.count || 0;
       const newCount = currentCount + 1;
-      console.log(`🔌 Atomic increment: ${currentCount} -> ${newCount}`);
       return {
         count: newCount,
         displayName: user.displayName,
@@ -143,26 +141,19 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const tabCount = data?.count || 0;
       userTabCountRef.current = tabCount;
 
-      console.log(`🔌 User ${user.displayName} has ${tabCount} tabs open in room ${currentInstance.id}`);
-
       // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
       // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
     });
 
     // Add beforeunload listener to track page navigation/refresh
     const handleBeforeUnload = () => {
-      console.log(`🔌 Page unloading for user ${user.displayName} (navigation/refresh/close)`);
-
       // Decrement tab count immediately on beforeunload for reliability
-      console.log(`🔌 beforeunload: Current tab count before decrement: ${userTabCountRef.current}`);
       runTransaction(tabCountRef, (currentData) => {
         const currentCount = currentData?.count || 0;
         const newCount = Math.max(0, currentCount - 1);
-        console.log(`🔌 beforeunload: Atomic decrement: ${currentCount} -> ${newCount}`);
 
         if (newCount === 0) {
           // Remove the tab count entry if this was the last tab
-          console.log("🔌 beforeunload: Last tab for user - removing from room entirely:", user.displayName);
           const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
           const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
           remove(activeRef);
@@ -170,20 +161,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           return null; // Remove the entire node
         } else {
           // Just decrement the count - user still has other tabs open
-          console.log(`🔌 beforeunload: User still has ${newCount} tabs open - keeping in room`);
           return {
             count: newCount,
             displayName: user.displayName,
             lastUpdated: Date.now(),
           };
         }
-      })
-        .then((result) => {
-          console.log(`🔌 beforeunload: Tab count decrement transaction completed:`, result);
-        })
-        .catch((error) => {
-          console.error(`🔌 beforeunload: Tab count decrement transaction failed:`, error);
-        });
+      });
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -195,38 +179,24 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Fallback cleanup when component unmounts - only decrement if tab count is still > 0
       // This handles edge cases where beforeunload didn't fire
       if (userTabCountRef.current > 0) {
-        console.log(`🔌 useEffect cleanup: Fallback decrement for user ${user.displayName}`);
-        console.log(`🔌 useEffect cleanup: Current tab count: ${userTabCountRef.current}`);
-
         runTransaction(tabCountRef, (currentData) => {
           const currentCount = currentData?.count || 0;
           const newCount = Math.max(0, currentCount - 1);
-          console.log(`🔌 useEffect cleanup: Fallback atomic decrement: ${currentCount} -> ${newCount}`);
 
           if (newCount === 0) {
-            console.log("🔌 useEffect cleanup: Last tab for user - removing from room entirely:", user.displayName);
             const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
             const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
             remove(activeRef);
             remove(usersRef);
             return null;
           } else {
-            console.log(`🔌 useEffect cleanup: User still has ${newCount} tabs open - keeping in room`);
             return {
               count: newCount,
               displayName: user.displayName,
               lastUpdated: Date.now(),
             };
           }
-        })
-          .then((result) => {
-            console.log(`🔌 useEffect cleanup: Fallback transaction completed:`, result);
-          })
-          .catch((error) => {
-            console.error(`🔌 useEffect cleanup: Fallback transaction failed:`, error);
-          });
-      } else {
-        console.log(`🔌 useEffect cleanup: No fallback needed - tab count already 0 for user ${user.displayName}`);
+        });
       }
 
       off(tabCountRef, "value", handle);
@@ -246,10 +216,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     } else {
       // Only remove from activeUsers if this is the last tab
       if (userTabCountRef.current === 1) {
-        console.log("🔌 Disconnecting now! Removing active user (last tab):", user.displayName);
         remove(activeRef);
-      } else {
-        console.log(`🔌 Keeping active user (${userTabCountRef.current} tabs still open):`, user.displayName);
       }
       setInputLocked(true); // keep locked until complete/clear/quit
     }
@@ -415,11 +382,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
           {/* User name in top left */}
           <Controls className="fixed top-4 right-8 z-50" localVolume={localVolume} setLocalVolume={setLocalVolume} />
-          {/* Room type indicator at top center */}
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono select-none">
+          {/* Room type indicator bottom center */}
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-base font-mono select-none">
             {currentInstance.type === "private" ? "Private Room" : "Public Room"} (
             {realTimeUserCount === 1 ? "Just you" : `${realTimeUserCount} ppl`})
           </div>
+          {/* Invite others - bottom right corner */}
+          <button
+            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            onClick={() => setShowInviteModal(true)}
+          >
+            + Invite Others
+          </button>
           <FlyingMessages
             flyingMessages={flyingMessages}
             flyingPlaceholders={[]}
@@ -457,7 +431,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             {task.trim() && (
               <div className="flex justify-center w-full">
                 <button
-                  className="mt-4 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+                  className="mt-4 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
                   onClick={handleClear}
                 >
                   Clear
@@ -465,9 +439,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             )}
           </div>
-          {/* Bottom bar controls */}
+          {/* Bottom bar controls - History above Leaderboard */}
           <button
-            className="fixed bottom-4 left-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            className="fixed bottom-10 left-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
             onClick={() => {
               if (currentInstance.type === "public") {
                 setShowHistoryTooltip(true);
@@ -481,25 +455,25 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </button>
           {/* History tooltip for public rooms */}
           {showHistoryTooltip && (
-            <div className="fixed bottom-16 left-8 z-50 bg-[#181A1B] text-white px-4 py-2 rounded-lg shadow-lg border border-[#23272b] text-sm font-mono">
+            <div className="fixed bottom-20 left-8 z-50 bg-[#181A1B] text-white px-4 py-2 rounded-lg shadow-lg border border-[#23272b] text-sm font-mono">
               History is only available in private rooms.
               <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#181A1B] border-r border-b border-[#23272b] transform rotate-45"></div>
             </div>
           )}
           <div
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-500 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors"
+            className="fixed bottom-4 left-8 z-40 text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors"
             onClick={() => setShowLeaderboard(true)}
           >
             Leaderboard
           </div>
-          <button
+          {/* <button
             className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
             onClick={() => {
               setShowInviteModal(true);
             }}
           >
             + Invite People
-          </button>
+          </button> */}
           {showQuitModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center">
               <div

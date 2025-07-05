@@ -164,7 +164,6 @@ export default function Timer({
 
       // If room becomes empty and timer is running, pause it immediately
       if (userCount === 0 && running) {
-        console.log(`⏸️ Auto-pausing timer - room became empty (accumulated ${seconds} seconds)`);
         setRunning(false);
         // Save paused state to Firebase
         saveTimerState(false, seconds, task);
