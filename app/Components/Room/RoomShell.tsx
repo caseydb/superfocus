@@ -403,8 +403,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               showHistory ? "hidden sm:block" : ""
             }`}
           >
-            {currentInstance.type === "private" ? "Private Room" : "Public Room"} (
-            {realTimeUserCount === 1 ? "Just you" : `${realTimeUserCount} ppl`})
+            {currentInstance.type === "private" ? "Private Room" : "Public Room"} |{" "}
+            {realTimeUserCount === 1 ? "Just You" : `+ ${realTimeUserCount} ppl`}
           </div>
           {/* Invite others - desktop only: bottom right corner */}
           <button
