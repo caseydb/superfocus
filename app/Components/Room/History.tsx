@@ -48,16 +48,30 @@ function formatDuration(duration: string): string {
 export default function History({ roomId, onClose }: { roomId: string; onClose?: () => void }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const PAGE_SIZE = 15;
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
-  const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [screenHeight, setScreenHeight] = useState(0);
 
-  // Detect mobile device (touch-primary device)
+  // Calculate PAGE_SIZE based on screen height
+  const getPageSize = () => {
+    if (screenHeight >= 1100) return 10;
+    if (screenHeight >= 1000) return 9;
+    if (screenHeight >= 910) return 8;
+    if (screenHeight >= 820) return 7;
+    if (screenHeight >= 730) return 6;
+    if (screenHeight >= 650) return 5;
+    if (screenHeight >= 550) return 4;
+    return 3; // Default for small heights
+  };
+
+  const PAGE_SIZE = getPageSize();
+  const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
+  const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Detect mobile device and screen height
   useEffect(() => {
-    const checkMobileDevice = () => {
+    const checkDeviceAndHeight = () => {
       const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const isSmallScreen = window.innerWidth < 640;
       const userAgent = navigator.userAgent.toLowerCase();
@@ -65,11 +79,14 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
 
       // Mobile device: has touch, small screen, and mobile user agent
       setIsMobileDevice(hasTouch && isSmallScreen && isMobile);
+
+      // Update screen height
+      setScreenHeight(window.innerHeight);
     };
 
-    checkMobileDevice();
-    window.addEventListener("resize", checkMobileDevice);
-    return () => window.removeEventListener("resize", checkMobileDevice);
+    checkDeviceAndHeight();
+    window.addEventListener("resize", checkDeviceAndHeight);
+    return () => window.removeEventListener("resize", checkDeviceAndHeight);
   }, []);
 
   // Use all history for mobile devices, paginated for computers
@@ -143,20 +160,18 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
           </button>
         </div>
       )}
-      {/* Content with padding for fixed pagination on small screens */}
-      <div className={`${history.length > PAGE_SIZE && !isMobileDevice ? "pb-20 sm:pb-0" : ""}`}>
+      {/* Content with padding for fixed pagination */}
+      <div className={`${history.length > PAGE_SIZE && !isMobileDevice ? "pb-20" : ""}`}>
         {/* Mobile Card Layout */}
-        <div className="block sm:hidden space-y-3 w-full">
+        <div className="block lg:hidden space-y-3 w-full">
           {displayEntries.map((entry, i) => (
             <div
               key={i}
-              className={`bg-[#181A1B] rounded-lg p-4 border border-[#23272b] w-full ${
-                entry.task.toLowerCase().includes("quit") ? "border-red-500/20" : ""
-              }`}
+              className="bg-[#181A1B] rounded-lg px-4 py-2 border border-[#23272b] w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px]"
             >
-              <div className="flex justify-between items-center mb-3 gap-3">
+              <div className="flex justify-between items-center mb-2 gap-3">
                 <div
-                  className={`font-mono text-base font-medium flex-1 whitespace-nowrap overflow-hidden text-ellipsis ${
+                  className={`font-mono text-base font-medium flex-1 ${
                     entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                   }`}
                   title={entry.displayName}
@@ -185,7 +200,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
         </div>
 
         {/* Desktop Table Layout */}
-        <div className="hidden sm:block overflow-x-auto">
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-separate border-spacing-y-0 min-w-[600px]">
             <thead>
               <tr className="text-gray-400 text-base">
@@ -213,7 +228,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
                     }`}
                     title={entry.task}
                   >
-                    {entry.task.length > 120 ? entry.task.slice(0, 120) + "..." : entry.task}
+                    {entry.task}
                   </td>
                   <td
                     className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-base w-32 ${
@@ -228,12 +243,12 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
           </table>
         </div>
       </div>
-      {/* Pagination controls - pinned to bottom on small screens */}
+      {/* Pagination controls - pinned to bottom for all screens (except mobile) */}
       {history.length > PAGE_SIZE && !isMobileDevice && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#0F0F0F] border-t border-[#23272b] p-4 sm:relative sm:bg-transparent sm:border-t-0 sm:p-0 sm:mt-6 sm:mb-0 z-50">
-          <div className="flex items-center justify-center gap-4 sm:gap-8">
+        <div className="fixed bottom-0 left-0 right-0 p-4 z-50">
+          <div className="flex items-center justify-center gap-4 lg:gap-8">
             <button
-              className={`px-2 sm:px-3 py-1.5 w-20 sm:w-28 rounded-md text-sm sm:text-base font-mono transition-colors ${
+              className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
                 page === 1
                   ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
                   : "bg-gray-800 text-gray-200 hover:bg-gray-700"
@@ -243,11 +258,11 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
             >
               Previous
             </button>
-            <span className="text-gray-300 text-base sm:text-xl font-mono">
+            <span className="text-gray-300 text-base lg:text-xl font-mono">
               Page {page} of {totalPages}
             </span>
             <button
-              className={`px-2 sm:px-3 py-1.5 w-20 sm:w-28 rounded-md text-sm sm:text-base font-mono transition-colors ${
+              className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
                 page === totalPages
                   ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
                   : "bg-gray-800 text-gray-200 hover:bg-gray-700"
