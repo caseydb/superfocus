@@ -45,33 +45,37 @@ function formatDuration(duration: string): string {
   return duration;
 }
 
+// Calculate PAGE_SIZE based on screen size
+const calculatePageSize = (width: number, height: number) => {
+  // If width >= 1024px (desktop table layout), use 15 items
+  if (width >= 1024) return 15;
+
+  // Otherwise use height-based logic for card layout
+  if (height >= 1100) return 10;
+  if (height >= 1000) return 9;
+  if (height >= 910) return 8;
+  if (height >= 820) return 7;
+  if (height >= 730) return 6;
+  if (height >= 650) return 5;
+  if (height >= 550) return 4;
+  return 3; // Default for small heights
+};
+
 export default function History({ roomId, onClose }: { roomId: string; onClose?: () => void }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [isMobileDevice, setIsMobileDevice] = useState(false);
-  const [screenHeight, setScreenHeight] = useState(0);
+  const [pageSize, setPageSize] = useState(3); // Default to 3
 
-  // Calculate PAGE_SIZE based on screen height
-  const getPageSize = () => {
-    if (screenHeight >= 1100) return 10;
-    if (screenHeight >= 1000) return 9;
-    if (screenHeight >= 910) return 8;
-    if (screenHeight >= 820) return 7;
-    if (screenHeight >= 730) return 6;
-    if (screenHeight >= 650) return 5;
-    if (screenHeight >= 550) return 4;
-    return 3; // Default for small heights
-  };
-
-  const PAGE_SIZE = getPageSize();
+  const PAGE_SIZE = pageSize;
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Detect mobile device and screen height
+  // Detect mobile device and screen dimensions
   useEffect(() => {
-    const checkDeviceAndHeight = () => {
+    const checkDeviceAndDimensions = () => {
       const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const isSmallScreen = window.innerWidth < 640;
       const userAgent = navigator.userAgent.toLowerCase();
@@ -80,13 +84,13 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
       // Mobile device: has touch, small screen, and mobile user agent
       setIsMobileDevice(hasTouch && isSmallScreen && isMobile);
 
-      // Update screen height
-      setScreenHeight(window.innerHeight);
+      // Update page size based on current dimensions
+      setPageSize(calculatePageSize(window.innerWidth, window.innerHeight));
     };
 
-    checkDeviceAndHeight();
-    window.addEventListener("resize", checkDeviceAndHeight);
-    return () => window.removeEventListener("resize", checkDeviceAndHeight);
+    checkDeviceAndDimensions();
+    window.addEventListener("resize", checkDeviceAndDimensions);
+    return () => window.removeEventListener("resize", checkDeviceAndDimensions);
   }, []);
 
   // Use all history for mobile devices, paginated for computers
