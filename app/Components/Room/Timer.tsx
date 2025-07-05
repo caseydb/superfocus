@@ -81,27 +81,6 @@ export default function Timer({
     }
   }
 
-  // Live update tab title with timer value when running
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    function updateTitle() {
-      if (running) {
-        document.title = formatTime(seconds);
-      } else {
-        document.title = "Locked In";
-      }
-    }
-    if (running) {
-      interval = setInterval(updateTitle, 1000);
-      updateTitle(); // Set immediately
-    } else {
-      document.title = "Locked In";
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [running, seconds]);
-
   // Listen for timer state changes from Firebase (for cross-tab sync)
   useEffect(() => {
     if (!currentInstance || !user?.id) {
@@ -222,41 +201,6 @@ export default function Timer({
   React.useEffect(() => {
     if (secondsRef) secondsRef.current = seconds;
   }, [seconds, secondsRef]);
-
-  // Listen for event notifications (🥊🏆💀)
-  useEffect(() => {
-    if (!currentInstance) return;
-    const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
-    let timeout: NodeJS.Timeout | null = null;
-    let firstRun = true;
-    const handle = onValue(lastEventRef, (snap) => {
-      if (firstRun) {
-        firstRun = false;
-        return;
-      }
-      const val = snap.val();
-      if (val && val.displayName && val.type) {
-        let emoji = "";
-        if (val.type === "start") emoji = "🥊";
-        if (val.type === "complete") emoji = "🏆";
-        if (val.type === "quit") emoji = "💀";
-        document.title = `${emoji} ${val.displayName}`;
-        if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          // Resume timer or default title immediately after notification
-          if (running) {
-            document.title = formatTime(seconds);
-          } else {
-            document.title = "Locked In";
-          }
-        }, 5000);
-      }
-    });
-    return () => {
-      off(lastEventRef, "value", handle);
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [currentInstance, running, seconds]);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 sm:px-0">

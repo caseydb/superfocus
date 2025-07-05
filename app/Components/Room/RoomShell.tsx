@@ -40,6 +40,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [realTimeUserCount, setRealTimeUserCount] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
@@ -207,6 +208,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
     const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+    setTimerRunning(isActive);
     if (isActive) {
       set(activeRef, { id: user.id, displayName: user.displayName });
       // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
@@ -222,11 +224,81 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   };
 
+  // Helper to format time as mm:ss or hh:mm:ss based on duration
+  function formatTime(s: number) {
+    const hours = Math.floor(s / 3600);
+    const minutes = Math.floor((s % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = (s % 60).toString().padStart(2, "0");
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, "0")}:${minutes}:${secs}`;
+    } else {
+      return `${minutes}:${secs}`;
+    }
+  }
+
+  // Tab title management - update every second when timer is running
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (timerRunning) {
+      const updateTitle = () => {
+        document.title = formatTime(timerSecondsRef.current);
+      };
+      interval = setInterval(updateTitle, 1000);
+      updateTitle(); // Set immediately
+    } else {
+      document.title = "Locked In";
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerRunning]);
+
+  // Listen for event notifications (🥊🏆💀)
+  useEffect(() => {
+    if (!currentInstance) return;
+    const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
+    let timeout: NodeJS.Timeout | null = null;
+    let firstRun = true;
+    const handle = onValue(lastEventRef, (snap) => {
+      if (firstRun) {
+        firstRun = false;
+        return;
+      }
+      const val = snap.val();
+      if (val && val.displayName && val.type) {
+        let emoji = "";
+        if (val.type === "start") emoji = "🥊";
+        if (val.type === "complete") emoji = "🏆";
+        if (val.type === "quit") emoji = "💀";
+        document.title = `${emoji} ${val.displayName}`;
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          // Resume timer or default title immediately after notification
+          if (timerRunning) {
+            document.title = formatTime(timerSecondsRef.current);
+          } else {
+            document.title = "Locked In";
+          }
+        }, 5000);
+      }
+    });
+    return () => {
+      off(lastEventRef, "value", handle);
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [currentInstance, timerRunning]);
+
   const handleClear = () => {
     if (timerSecondsRef.current > 0 && task.trim()) {
       setShowQuitModal(true);
       return;
     }
+    setTimerRunning(false);
     setTask("");
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
@@ -279,6 +351,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         setFlyingMessages((msgs) => msgs.filter((m) => m.id !== id));
       }, 7000);
     }
+    setTimerRunning(false);
     setTask("");
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
@@ -300,6 +373,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Complete handler: reset timer, clear input, set inactive
   const handleComplete = (duration: string) => {
+    setTimerRunning(false);
     setTask("");
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
