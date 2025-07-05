@@ -100,54 +100,65 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-10 py-8 w-[800px] max-w-full flex flex-col items-center gap-6 border-4 border-[#181f2a]"
+        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between w-full mb-2">
           <button
-            className="w-12 h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-2xl text-gray-400 cursor-not-allowed"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
             disabled
           >
             ←
           </button>
-          <div className="text-white text-xl font-bold select-none">Monday 30th June – Sunday 13th July</div>
+          <div className="text-white text-sm sm:text-lg md:text-xl font-bold select-none text-center px-2">
+            Monday 30th June – Sunday 13th July
+          </div>
           <button
-            className="w-12 h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-2xl text-gray-400 cursor-not-allowed"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
             disabled
           >
             →
           </button>
         </div>
-        <div className="text-4xl font-extrabold text-white mb-2 mt-2">Leaderboard</div>
-        <table className="w-full text-left mt-2">
-          <thead>
-            <tr className="text-gray-400 text-lg">
-              <th className="px-6 py-2">Name</th>
-              <th className="px-6 py-2">Tasks Completed</th>
-              <th className="px-6 py-2">Total Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry, i) => (
-              <React.Fragment key={entry.displayName}>
-                <tr className="text-white text-lg font-mono align-middle" style={{ height: 64 }}>
-                  <td className="px-6 py-4 bg-[#131722] rounded-l-xl font-mono">{entry.displayName}</td>
-                  <td className="px-6 py-4 bg-[#131722] text-center text-xl">{entry.tasksCompleted}</td>
-                  <td className="px-6 py-4 bg-[#131722] rounded-r-xl text-right font-mono">
-                    {formatTime(entry.totalSeconds)}
-                  </td>
-                </tr>
-                {i < entries.length - 1 && (
-                  <tr aria-hidden="true">
-                    <td colSpan={3} style={{ height: 16, background: "transparent" }}></td>
+        <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Leaderboard</div>
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left mt-2 min-w-[300px]">
+            <thead>
+              <tr className="text-gray-400 text-sm sm:text-base md:text-lg">
+                <th className="px-2 sm:px-4 md:px-6 py-2">Name</th>
+                <th className="px-2 sm:px-4 md:px-6 py-2 text-center">Tasks</th>
+                <th className="px-2 sm:px-4 md:px-6 py-2 text-right">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, i) => (
+                <React.Fragment key={entry.displayName}>
+                  <tr
+                    className="text-white text-sm sm:text-base md:text-lg font-mono align-middle"
+                    style={{ height: 48 }}
+                  >
+                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#131722] rounded-l-xl font-mono truncate max-w-[120px] sm:max-w-none">
+                      {entry.displayName}
+                    </td>
+                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#131722] text-center text-lg sm:text-xl">
+                      {entry.tasksCompleted}
+                    </td>
+                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#131722] rounded-r-xl text-right font-mono">
+                      {formatTime(entry.totalSeconds)}
+                    </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {i < entries.length - 1 && (
+                    <tr aria-hidden="true">
+                      <td colSpan={3} style={{ height: 12, background: "transparent" }}></td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <button
-          className="mt-6 bg-[#FFAA00] text-black font-extrabold text-xl px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
+          className="mt-4 sm:mt-6 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
           onClick={onClose}
         >
           Close

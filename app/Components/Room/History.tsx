@@ -17,6 +17,34 @@ interface User {
   displayName: string;
 }
 
+function formatDuration(duration: string): string {
+  // Parse the duration string (could be HH:MM:SS or MM:SS)
+  const parts = duration.split(":").map(Number);
+
+  if (parts.length === 3) {
+    // HH:MM:SS format
+    const [hours, minutes, seconds] = parts;
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    } else {
+      return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    }
+  } else if (parts.length === 2) {
+    // MM:SS format - check if minutes >= 60
+    const [minutes, seconds] = parts;
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return `${hours}:${remainingMinutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    } else {
+      return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    }
+  }
+
+  // Fallback - return as is
+  return duration;
+}
+
 export default function History({ roomId, onClose }: { roomId: string; onClose?: () => void }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +53,27 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const [users, setUsers] = useState<Record<string, User>>({});
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  // Detect mobile device (touch-primary device)
+  useEffect(() => {
+    const checkMobileDevice = () => {
+      const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth < 640;
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
+
+      // Mobile device: has touch, small screen, and mobile user agent
+      setIsMobileDevice(hasTouch && isSmallScreen && isMobile);
+    };
+
+    checkMobileDevice();
+    window.addEventListener("resize", checkMobileDevice);
+    return () => window.removeEventListener("resize", checkMobileDevice);
+  }, []);
+
+  // Use all history for mobile devices, paginated for computers
+  const displayEntries = isMobileDevice ? history : paginated;
 
   useEffect(() => {
     if (!roomId) return;
@@ -64,12 +113,12 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
 
   if (history.length === 0) {
     return (
-      <div className="w-[820px] mx-auto mt-10">
-        <h2 className="text-2xl font-extrabold text-center text-white mb-4">History</h2>
+      <div className="w-full max-w-none sm:w-[600px] sm:max-w-[600px] md:w-[700px] md:max-w-[700px] lg:w-[820px] lg:max-w-[820px] mx-auto mt-6 sm:mt-10 px-1 sm:px-0">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-center text-white mb-4">History</h2>
         {onClose && (
           <div className="flex justify-center mb-4">
             <button
-              className="text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
+              className="text-gray-400 text-sm sm:text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
               onClick={onClose}
             >
               Back to timer
@@ -82,85 +131,139 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   }
 
   return (
-    <div className="w-[820px] mx-auto mt-10">
-      <h2 className="text-2xl font-extrabold text-center text-white mb-4">History</h2>
+    <div className="w-full max-w-none sm:w-[600px] sm:max-w-[600px] md:w-[700px] md:max-w-[700px] lg:w-[820px] lg:max-w-[820px] mx-auto mt-6 sm:mt-10 px-1 sm:px-0">
+      <h2 className="text-xl sm:text-2xl font-extrabold text-center text-white mb-4">History</h2>
       {onClose && (
         <div className="flex justify-center mb-4">
           <button
-            className="text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
+            className="text-gray-400 text-sm sm:text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
             onClick={onClose}
           >
             Back to timer
           </button>
         </div>
       )}
-      <table className="w-full text-left border-separate border-spacing-y-0">
-        <thead>
-          <tr className="text-gray-400 text-base">
-            <th className="px-1">Name</th>
-            <th className="px-1">Task</th>
-            <th className="px-1">Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map((entry, i) => (
-            <tr key={i}>
-              <td
-                className={`px-1 py-0.5 font-mono whitespace-nowrap ${
-                  entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+      {/* Content with padding for fixed pagination on small screens */}
+      <div className={`${history.length > PAGE_SIZE && !isMobileDevice ? "pb-20 sm:pb-0" : ""}`}>
+        {/* Mobile Card Layout */}
+        <div className="block sm:hidden space-y-3 w-full">
+          {displayEntries.map((entry, i) => (
+            <div
+              key={i}
+              className={`bg-[#181A1B] rounded-lg p-4 border border-[#23272b] w-full ${
+                entry.task.toLowerCase().includes("quit") ? "border-red-500/20" : ""
+              }`}
+            >
+              <div className="flex justify-between items-center mb-3 gap-3">
+                <div
+                  className={`font-mono text-base font-medium flex-1 whitespace-nowrap overflow-hidden text-ellipsis ${
+                    entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                  }`}
+                  title={entry.displayName}
+                >
+                  {entry.userId && users[entry.userId]?.displayName
+                    ? users[entry.userId].displayName
+                    : entry.displayName}
+                </div>
+                <div
+                  className={`font-mono text-base font-medium flex-shrink-0 ${
+                    entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
+                  }`}
+                >
+                  {formatDuration(entry.duration)}
+                </div>
+              </div>
+              <div
+                className={`font-mono text-base leading-relaxed ${
+                  entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
                 }`}
-                title={entry.displayName}
               >
-                {entry.userId && users[entry.userId]?.displayName ? users[entry.userId].displayName : entry.displayName}
-              </td>
-              <td
-                className={`px-1 py-0.5 font-mono ${
-                  entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
-                }`}
-                title={entry.task}
-              >
-                {entry.task.length > 50 ? entry.task.slice(0, 50) + "..." : entry.task}
-              </td>
-              <td
-                className={`px-1 py-0.5 font-mono ${
-                  entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
-                }`}
-              >
-                {entry.duration}
-              </td>
-            </tr>
+                {entry.task}
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
-      {/* Pagination controls */}
-      {history.length > PAGE_SIZE && (
-        <div className="flex items-center justify-center gap-8 mt-8">
-          <button
-            className={`px-3 py-1.5 w-28 rounded-md text-base font-mono transition-colors ${
-              page === 1
-                ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
-                : "bg-gray-800 text-gray-200 hover:bg-gray-700"
-            }`}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Previous
-          </button>
-          <span className="text-gray-300 text-xl font-mono">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            className={`px-3 py-1.5 w-28 rounded-md text-base font-mono transition-colors ${
-              page === totalPages
-                ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
-                : "bg-gray-800 text-gray-200 hover:bg-gray-700"
-            }`}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Next
-          </button>
         </div>
+
+        {/* Desktop Table Layout */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-left border-separate border-spacing-y-0 min-w-[300px]">
+            <thead>
+              <tr className="text-gray-400 text-base">
+                <th className="px-2 py-1">Name</th>
+                <th className="px-2 py-1">Task</th>
+                <th className="px-2 py-1">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayEntries.map((entry, i) => (
+                <tr key={i}>
+                  <td
+                    className={`px-2 py-1 font-mono whitespace-nowrap text-base ${
+                      entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                    }`}
+                    title={entry.displayName}
+                  >
+                    {entry.userId && users[entry.userId]?.displayName
+                      ? users[entry.userId].displayName
+                      : entry.displayName}
+                  </td>
+                  <td
+                    className={`px-2 py-1 font-mono text-base ${
+                      entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                    }`}
+                    title={entry.task}
+                  >
+                    {entry.task.length > 50 ? entry.task.slice(0, 50) + "..." : entry.task}
+                  </td>
+                  <td
+                    className={`px-2 py-1 font-mono whitespace-nowrap text-base ${
+                      entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
+                    }`}
+                  >
+                    {formatDuration(entry.duration)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {/* Pagination controls - pinned to bottom on small screens */}
+      {history.length > PAGE_SIZE && !isMobileDevice && (
+        <div className="fixed bottom-0 left-0 right-0 bg-[#0F0F0F] border-t border-[#23272b] p-4 sm:relative sm:bg-transparent sm:border-t-0 sm:p-0 sm:mt-6 sm:mb-0 z-50">
+          <div className="flex items-center justify-center gap-4 sm:gap-8">
+            <button
+              className={`px-2 sm:px-3 py-1.5 w-20 sm:w-28 rounded-md text-sm sm:text-base font-mono transition-colors ${
+                page === 1
+                  ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
+                  : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+              }`}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <span className="text-gray-300 text-base sm:text-xl font-mono">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              className={`px-2 sm:px-3 py-1.5 w-20 sm:w-28 rounded-md text-sm sm:text-base font-mono transition-colors ${
+                page === totalPages
+                  ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
+                  : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+              }`}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile scroll indicator */}
+      {isMobileDevice && history.length > PAGE_SIZE && (
+        <div className="text-center mt-4 text-gray-400 text-sm font-mono">Showing all {history.length} entries</div>
       )}
     </div>
   );

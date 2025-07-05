@@ -397,8 +397,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             setShowLeaderboard={setShowLeaderboard}
             setShowInviteModal={setShowInviteModal}
           />
-          {/* Room type indicator - centered bottom */}
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap">
+          {/* Room type indicator - centered bottom, hidden on small screens when history is open */}
+          <div
+            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap ${
+              showHistory ? "hidden sm:block" : ""
+            }`}
+          >
             {currentInstance.type === "private" ? "Private Room" : "Public Room"} (
             {realTimeUserCount === 1 ? "Just you" : `${realTimeUserCount} ppl`})
           </div>
