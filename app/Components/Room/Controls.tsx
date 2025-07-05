@@ -421,40 +421,38 @@ export default function Controls({
           <div className="space-y-2">
             {/* Invite Others Button */}
             <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
                 setShowInviteModal(true);
                 setDropdownOpen(false);
               }}
             >
-              <span className="text-gray-400 font-medium font-mono">+ Invite Others</span>
-            </button>
-
-            {/* Edit Display Name Button */}
-            <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
-              onClick={() => {
-                setShowNameModal(true);
-                setDropdownOpen(false);
-              }}
-            >
-              <span className="text-gray-400 font-medium font-mono">Edit Display Name</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <path
+                  d="M12 5v14M5 12h14"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+              </svg>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
             </button>
 
             {/* Leaderboard Button */}
             <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
                 setShowLeaderboard(!showLeaderboard);
                 setDropdownOpen(false);
               }}
             >
-              <span className="text-gray-400 font-medium font-mono">Leaderboard</span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leaderboard</span>
             </button>
 
             {/* History Button */}
             <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
                 if (instanceType === "public") {
                   setShowHistoryTooltip(true);
@@ -465,28 +463,41 @@ export default function Controls({
                 setDropdownOpen(false);
               }}
             >
-              <span className="text-gray-400 font-medium font-mono">{showHistory ? "Back to Room" : "History"}</span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
+                {showHistory ? "Back to Room" : "History"}
+              </span>
+            </button>
+
+            {/* Edit Display Name Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
+              onClick={() => {
+                setShowNameModal(true);
+                setDropdownOpen(false);
+              }}
+            >
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Edit Display Name</span>
             </button>
 
             {/* Leave Room Button */}
             <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
                 leaveInstance();
                 router.push("/");
               }}
             >
-              <span className="text-gray-400 font-medium font-mono">Leave Room</span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leave Room</span>
             </button>
 
             {/* Sign Out Button */}
             <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={async () => {
                 await signOut(auth);
               }}
             >
-              <span className="text-gray-400 font-medium font-mono">Sign Out</span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
             </button>
           </div>
         </div>
@@ -694,24 +705,22 @@ export default function Controls({
 
               {/* Invite Others Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
                   setShowInviteModal(true);
                   setShowSideModal(false);
                 }}
               >
-                <span className="text-gray-400 font-medium font-mono">+ Invite Others</span>
-              </button>
-
-              {/* Edit Display Name Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
-                onClick={() => {
-                  setShowNameModal(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <span className="text-gray-400 font-medium font-mono">Edit Display Name</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M12 5v14M5 12h14"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
+                <span className="text-gray-400 hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
               </button>
 
               {/* Leaderboard Button */}
@@ -722,7 +731,7 @@ export default function Controls({
                   setShowSideModal(false);
                 }}
               >
-                <span className="text-gray-400 font-medium font-mono">Leaderboard</span>
+                <span className="text-gray-400 hover:text-[#FFAA00] font-medium font-mono">Leaderboard</span>
               </button>
 
               {/* History Button */}
@@ -738,7 +747,20 @@ export default function Controls({
                   setShowSideModal(false);
                 }}
               >
-                <span className="text-gray-400 font-medium font-mono">{showHistory ? "Back to Room" : "History"}</span>
+                <span className="text-gray-400 hover:text-[#FFAA00] font-medium font-mono">
+                  {showHistory ? "Back to Room" : "History"}
+                </span>
+              </button>
+
+              {/* Edit Display Name Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+                onClick={() => {
+                  setShowNameModal(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <span className="text-gray-400 hover:text-[#FFAA00] font-medium font-mono">Edit Display Name</span>
               </button>
 
               {/* Leave Room Button */}
@@ -749,7 +771,7 @@ export default function Controls({
                   router.push("/");
                 }}
               >
-                <span className="text-gray-400 font-medium font-mono">Leave Room</span>
+                <span className="text-gray-400 hover:text-[#FFAA00] font-medium font-mono">Leave Room</span>
               </button>
 
               {/* Sign Out Button */}
@@ -759,7 +781,7 @@ export default function Controls({
                   await signOut(auth);
                 }}
               >
-                <span className="text-gray-400 font-medium font-mono">Sign Out</span>
+                <span className="text-gray-400 hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
               </button>
             </div>
           </div>

@@ -408,10 +408,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Invite others - desktop only: bottom right corner */}
           <button
-            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:block"
+            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center"
             onClick={() => setShowInviteModal(true)}
           >
-            + Invite Others
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Invite Others
           </button>
           <FlyingMessages
             flyingMessages={flyingMessages}
