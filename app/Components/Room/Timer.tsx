@@ -259,12 +259,12 @@ export default function Timer({
   }, [currentInstance, running, seconds]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="text-4xl mb-2 font-mono">{formatTime(seconds)}</div>
-      <div className="flex gap-4">
+    <div className="flex flex-col items-center gap-4 px-4 sm:px-0">
+      <div className="text-3xl sm:text-4xl mb-2 font-mono">{formatTime(seconds)}</div>
+      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none">
         {!running ? (
           <button
-            className="bg-white text-black font-extrabold text-2xl px-12 py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40"
+            className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto"
             onClick={handleStart}
             disabled={disabled || !requiredTask}
           >
@@ -273,13 +273,13 @@ export default function Timer({
         ) : (
           <>
             <button
-              className="bg-white text-black font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
+              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48"
               onClick={handleStop}
             >
               Pause
             </button>
             <button
-              className="bg-green-500 text-white font-extrabold text-2xl px-12 py-4 w-48 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40"
+              className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48"
               onClick={() => {
                 clearTimerState(); // Clear Firebase state when completing
                 if (onComplete) {

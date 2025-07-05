@@ -15,20 +15,39 @@ export default function TaskInput({
   onStart?: () => void;
 }) {
   const chars = task.length;
-  const minWidth = 650;
-  const maxWidth = 800;
-  const [inputWidth, setInputWidth] = React.useState(minWidth);
+  const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = React.useState(false);
   const [showLimitPopup, setShowLimitPopup] = React.useState(false);
 
-  React.useEffect(() => {
-    if (spanRef.current) {
-      const width = Math.min(Math.max(spanRef.current.offsetWidth + 40, minWidth), maxWidth);
-      setInputWidth(width);
+  const updateInputWidth = React.useCallback(() => {
+    if (spanRef.current && typeof window !== "undefined") {
+      const screenWidth = window.innerWidth;
+      if (screenWidth >= 640) {
+        // Desktop: use calculated width
+        const minWidth = 650;
+        const maxWidth = 800;
+        const width = Math.min(Math.max(spanRef.current.offsetWidth + 40, minWidth), maxWidth);
+        setInputWidth(`${width}px`);
+      } else {
+        // Mobile: use wider responsive width to fit placeholder
+        setInputWidth("95%");
+      }
     }
-  }, [task]);
+  }, []);
+
+  React.useEffect(() => {
+    updateInputWidth();
+  }, [task, updateInputWidth]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleResize = () => updateInputWidth();
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, [updateInputWidth]);
 
   React.useEffect(() => {
     if (textareaRef.current) {
@@ -44,7 +63,7 @@ export default function TaskInput({
   }, [chars]);
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full">
+    <div className="flex flex-col items-center justify-center w-full h-full px-4 sm:px-0">
       <span
         ref={spanRef}
         className="invisible absolute whitespace-pre text-3xl md:text-4xl font-semibold px-4"
