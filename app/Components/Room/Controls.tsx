@@ -36,27 +36,22 @@ export default function Controls({
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editedName, setEditedName] = useState(user.displayName);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [userMenuOpenSound, setUserMenuOpenSound] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [showSideModal, setShowSideModal] = useState(false);
-  const soundDropdownRef = useRef<HTMLDivElement>(null);
+  const [previousVolume, setPreviousVolume] = useState(localVolume > 0 ? localVolume : 0.5);
   const soundIconRef = useRef<HTMLSpanElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
-  const sliderRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   // Close menus on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
-      const isInSoundMenu = soundDropdownRef.current && soundDropdownRef.current.contains(target);
-      const isInSoundIcon = soundIconRef.current && soundIconRef.current.contains(target);
       const isInDropdownMenu = dropdownRef.current && dropdownRef.current.contains(target);
       const isInDropdownIcon = dropdownIconRef.current && dropdownIconRef.current.contains(target);
-      // Only close if click is outside both menus and both icons
-      if (!isInSoundMenu && !isInSoundIcon && !isInDropdownMenu && !isInDropdownIcon) {
-        setUserMenuOpenSound(false);
+      // Only close if click is outside dropdown menu and icon
+      if (!isInDropdownMenu && !isInDropdownIcon) {
         setDropdownOpen(false);
       }
     }
@@ -68,8 +63,8 @@ export default function Controls({
   useEffect(() => {
     if (!currentInstance || !user?.id) return;
     const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-    set(userRef, { ...user, displayName: user.displayName, volume: localVolume });
-  }, [localVolume, currentInstance, user]);
+    set(userRef, { ...user, displayName: user.displayName, volume: localVolume, previousVolume });
+  }, [localVolume, previousVolume, currentInstance, user]);
 
   // On mount, load volume from RTDB if present
   useEffect(() => {
@@ -79,6 +74,13 @@ export default function Controls({
       const data = snap.val();
       if (data && typeof data.volume === "number") {
         setLocalVolume(data.volume);
+        // If no previousVolume saved and current volume > 0, use current as previous
+        if (typeof data.previousVolume !== "number" && data.volume > 0) {
+          setPreviousVolume(data.volume);
+        }
+      }
+      if (data && typeof data.previousVolume === "number") {
+        setPreviousVolume(data.previousVolume);
       }
     });
     return () => {
@@ -86,23 +88,33 @@ export default function Controls({
     };
   }, [currentInstance, user, setLocalVolume]);
 
+  // Helper function to update volume and track previous volume
+  const updateVolume = (newVolume: number) => {
+    if (newVolume > 0) {
+      setPreviousVolume(newVolume);
+    }
+    setLocalVolume(newVolume);
+  };
+
   return (
     <div className={className + " select-none"}>
       <div className="flex items-center">
-        {/* Speaker icon and menu (Sound) to the left of the name - hidden on mobile */}
+        {/* Speaker icon for mute/unmute toggle - hidden on mobile */}
         <div className="relative hidden sm:block">
           <span
             ref={soundIconRef}
             className="cursor-pointer flex items-center"
             onClick={() => {
-              if (userMenuOpenSound) {
-                setUserMenuOpenSound(false);
+              if (localVolume === 0) {
+                // Unmute: restore previous volume
+                setLocalVolume(previousVolume);
               } else {
-                setUserMenuOpenSound(true);
-                setDropdownOpen(false);
+                // Mute: set to 0 (don't update previousVolume)
+                setLocalVolume(0);
               }
+              setDropdownOpen(false);
             }}
-            title="Sound settings"
+            title={localVolume === 0 ? "Unmute" : "Mute"}
           >
             {localVolume === 0 ? (
               // Muted macOS-style speaker icon (gray-400 for header)
@@ -168,109 +180,6 @@ export default function Controls({
               </svg>
             )}
           </span>
-          {userMenuOpenSound && (
-            <div
-              ref={soundDropdownRef}
-              className="absolute right-0 mt-2 bg-black text-gray-400 rounded shadow-lg py-2 px-2 min-w-[180px] border border-gray-700 flex flex-col gap-2 z-50"
-            >
-              <div className="flex flex-col items-start justify-between py-1 px-2">
-                <span className="text-base mb-1">Sound</span>
-                <div className="relative flex items-center w-40 h-8">
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 z-10 text-gray-700 pointer-events-none ml-0">
-                    {localVolume === 0 ? (
-                      // Muted macOS-style speaker icon (black for slider)
-                      <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
-                        <g>
-                          <rect x="2" y="8" width="5" height="8" rx="1" fill="#111" />
-                          <polygon points="7,8 14,3 14,21 7,16" fill="#111" />
-                          <path
-                            d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                            stroke="#111"
-                            strokeWidth="1.5"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                            stroke="#111"
-                            strokeWidth="1.5"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M24 3.5c3.5 4 3.5 13 0 17"
-                            stroke="#111"
-                            strokeWidth="1.5"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          <line x1="9" y1="6" x2="26" y2="21.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-                          <line
-                            x1="9"
-                            y1="6"
-                            x2="26"
-                            y2="21.5"
-                            stroke="#ef4444"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                          />
-                        </g>
-                      </svg>
-                    ) : (
-                      // Unmuted macOS-style speaker icon (black for slider)
-                      <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
-                        <g>
-                          <rect x="2" y="8" width="5" height="8" rx="1" fill="#111" />
-                          <polygon points="7,8 14,3 14,21 7,16" fill="#111" />
-                          <path
-                            d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                            stroke="#111"
-                            strokeWidth="1.5"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                            stroke="#111"
-                            strokeWidth="1.5"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M24 3.5c3.5 4 3.5 13 0 17"
-                            stroke="#111"
-                            strokeWidth="1.5"
-                            fill="none"
-                            strokeLinecap="round"
-                          />
-                        </g>
-                      </svg>
-                    )}
-                  </span>
-                  <input
-                    ref={sliderRef}
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={localVolume}
-                    onChange={(e) => setLocalVolume(Number(e.target.value))}
-                    className="w-full h-6 rounded-full appearance-none outline-none slider-thumb-custom"
-                    style={{
-                      background: (() => {
-                        const offset = (24 / 320) * 100; // thumbWidth/sliderWidth
-                        const edge = localVolume * (100 - offset) + offset / 2;
-                        return `linear-gradient(to right, #fff 0%, #fff ${edge}%, #9ca3af ${edge}%, #9ca3af 100%)`;
-                      })(),
-                      borderRadius: "9999px",
-                      boxShadow: "0 0 0 1px #d1d5db",
-                      height: "1.5rem",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         {/* Name and dropdown arrow */}
         <div className="ml-3 sm:ml-3 flex flex-col">
@@ -279,10 +188,7 @@ export default function Controls({
             <span
               className="text-base font-mono text-gray-400 select-none cursor-pointer hidden sm:block"
               onClick={() => {
-                setDropdownOpen((v) => {
-                  if (!v) setUserMenuOpenSound(false);
-                  return !v;
-                });
+                setDropdownOpen((v) => !v);
               }}
             >
               {user.displayName.split(" ")[0]}
@@ -301,10 +207,7 @@ export default function Controls({
               className="cursor-pointer text-gray-400 text-2xl ml-2 leading-none hidden sm:block"
               style={{ transform: "translateY(-6px)" }}
               onClick={() => {
-                setDropdownOpen((v) => {
-                  if (!v) setUserMenuOpenSound(false);
-                  return !v;
-                });
+                setDropdownOpen((v) => !v);
               }}
             >
               ⌄
@@ -401,7 +304,7 @@ export default function Controls({
                 max={1}
                 step={0.01}
                 value={localVolume}
-                onChange={(e) => setLocalVolume(Number(e.target.value))}
+                onChange={(e) => updateVolume(Number(e.target.value))}
                 className="w-full h-6 rounded-full appearance-none outline-none ml-6 slider-thumb-custom"
                 style={{
                   background: (() => {
@@ -687,7 +590,7 @@ export default function Controls({
                     max={1}
                     step={0.01}
                     value={localVolume}
-                    onChange={(e) => setLocalVolume(Number(e.target.value))}
+                    onChange={(e) => updateVolume(Number(e.target.value))}
                     className="w-full h-6 rounded-full appearance-none outline-none ml-6 slider-thumb-custom"
                     style={{
                       background: (() => {
