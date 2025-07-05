@@ -15,6 +15,9 @@ interface ControlsProps {
   showHistoryTooltip: boolean;
   setShowHistoryTooltip: (show: boolean) => void;
   instanceType: "public" | "private";
+  showLeaderboard: boolean;
+  setShowLeaderboard: (show: boolean) => void;
+  setShowInviteModal: (show: boolean) => void;
 }
 
 export default function Controls({
@@ -26,6 +29,9 @@ export default function Controls({
   showHistoryTooltip,
   setShowHistoryTooltip,
   instanceType,
+  showLeaderboard,
+  setShowLeaderboard,
+  setShowInviteModal,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editingName, setEditingName] = useState(false);
@@ -569,7 +575,18 @@ export default function Controls({
                 </div>
               </div>
 
-              {/* Edit Name Button */}
+              {/* Invite Others Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+                onClick={() => {
+                  setShowInviteModal(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <span className="text-gray-400 font-medium font-mono">+ Invite Others</span>
+              </button>
+
+              {/* Edit Display Name Button */}
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
                 onClick={() => {
@@ -577,7 +594,18 @@ export default function Controls({
                   setShowSideModal(false);
                 }}
               >
-                <span className="text-gray-400 font-medium font-mono">Edit Name</span>
+                <span className="text-gray-400 font-medium font-mono">Edit Display Name</span>
+              </button>
+
+              {/* Leaderboard Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center"
+                onClick={() => {
+                  setShowLeaderboard(!showLeaderboard);
+                  setShowSideModal(false);
+                }}
+              >
+                <span className="text-gray-400 font-medium font-mono">Leaderboard</span>
               </button>
 
               {/* History Button */}

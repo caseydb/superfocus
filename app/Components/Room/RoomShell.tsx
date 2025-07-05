@@ -390,15 +390,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             showHistoryTooltip={showHistoryTooltip}
             setShowHistoryTooltip={setShowHistoryTooltip}
             instanceType={currentInstance.type}
+            showLeaderboard={showLeaderboard}
+            setShowLeaderboard={setShowLeaderboard}
+            setShowInviteModal={setShowInviteModal}
           />
-          {/* Room type indicator bottom center */}
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-base font-mono select-none">
+          {/* Room type indicator - centered bottom */}
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap">
             {currentInstance.type === "private" ? "Private Room" : "Public Room"} (
             {realTimeUserCount === 1 ? "Just you" : `${realTimeUserCount} ppl`})
           </div>
-          {/* Invite others - bottom right corner */}
+          {/* Invite others - desktop only: bottom right corner */}
           <button
-            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:block"
             onClick={() => setShowInviteModal(true)}
           >
             + Invite Others
@@ -450,7 +453,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
 
           <button
-            className="fixed bottom-4 left-8 z-40 text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none"
+            className="fixed bottom-4 left-8 z-40 text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none hidden sm:block"
             onClick={() => setShowLeaderboard(true)}
           >
             Leaderboard
