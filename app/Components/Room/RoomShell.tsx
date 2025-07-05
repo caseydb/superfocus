@@ -471,7 +471,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           />
           {/* Room type indicator - centered bottom, hidden when history is open */}
           <div
-            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap ${
+            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap ${
               showHistory ? "hidden" : ""
             }`}
           >
@@ -480,7 +480,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Invite others - desktop only: bottom right corner */}
           <button
-            className="fixed bottom-4 right-8 z-40 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center"
+            className="fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center"
             onClick={() => setShowInviteModal(true)}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
@@ -535,7 +535,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
 
           <button
-            className="fixed bottom-4 left-8 z-40 text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none hidden sm:block"
+            className="fixed bottom-4 left-8 z-[60] text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none hidden sm:block"
             onClick={() => setShowLeaderboard(true)}
           >
             Leaderboard
