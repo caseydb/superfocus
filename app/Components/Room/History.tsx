@@ -47,8 +47,13 @@ function formatDuration(duration: string): string {
 
 // Calculate PAGE_SIZE based on screen size
 const calculatePageSize = (width: number, height: number) => {
-  // If width >= 1024px (desktop table layout), use 15 items
-  if (width >= 1024) return 15;
+  // If width >= 1024px (desktop table layout), use height-based logic for large screens
+  if (width >= 1024) {
+    if (height >= 800) return 15;
+    if (height >= 600) return 10;
+    if (height >= 500) return 7;
+    return 5; // Default for large screens
+  }
 
   // Otherwise use height-based logic for card layout
   if (height >= 1100) return 10;
