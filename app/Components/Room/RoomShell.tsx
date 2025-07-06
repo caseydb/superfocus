@@ -12,6 +12,7 @@ import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
 import Leaderboard from "./Leaderboard";
 import Sounds from "./Sounds";
+import TaskList from "./TaskList";
 import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
@@ -41,6 +42,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [realTimeUserCount, setRealTimeUserCount] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [showTaskList, setShowTaskList] = useState(false);
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
@@ -475,9 +477,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             showHistoryTooltip={showHistoryTooltip}
             setShowHistoryTooltip={setShowHistoryTooltip}
             instanceType={currentInstance.type}
+            setShowInviteModal={setShowInviteModal}
+            setShowTaskList={setShowTaskList}
             showLeaderboard={showLeaderboard}
             setShowLeaderboard={setShowLeaderboard}
-            setShowInviteModal={setShowInviteModal}
           />
           {/* Room type indicator - centered bottom, hidden when history is open */}
           <div
@@ -488,15 +491,21 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             {currentInstance.type === "private" ? "Private Room" : "Public Room"} |{" "}
             {realTimeUserCount === 1 ? "Just You" : `+ ${realTimeUserCount} ppl`}
           </div>
-          {/* Invite others - desktop only: bottom right corner */}
+          {/* Tasks - desktop only: bottom right corner */}
           <button
             className="fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center"
-            onClick={() => setShowInviteModal(true)}
+            onClick={() => setShowTaskList(true)}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
-            Invite Others
+            Tasks
           </button>
           <FlyingMessages
             flyingMessages={flyingMessages}
@@ -644,6 +653,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             </div>
           </div>
         )}
+
+        {/* Task List Modal */}
+        <TaskList isOpen={showTaskList} onClose={() => setShowTaskList(false)} />
       </>
     );
   }

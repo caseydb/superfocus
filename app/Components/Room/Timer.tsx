@@ -184,7 +184,101 @@ export default function Timer({
     setRunning(true);
     saveTimerState(true, seconds); // Save start state to Firebase
     notifyEvent("start");
+
+    // Add task to task list at position #1 if it has content
+    if (task && task.trim() && currentInstance) {
+      addTaskToList(task.trim());
+    }
   }
+
+  // Helper to add task to task list at position #1 (only if it doesn't already exist)
+  const addTaskToList = React.useCallback(
+    async (taskText: string) => {
+      if (!currentInstance) return;
+
+      const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+
+      // Check if task already exists before adding
+      onValue(
+        tasksRef,
+        (snapshot) => {
+          const tasksData = snapshot.val();
+
+          // Check if a task with the same text already exists
+          const taskExists =
+            tasksData &&
+            Object.values(tasksData).some(
+              (existingTask) => (existingTask as { text: string; completed: boolean; order?: number }).text === taskText
+            );
+
+          // Only add if task doesn't already exist
+          if (!taskExists) {
+            const updates: Record<string, { text: string; completed: boolean; order: number }> = {};
+
+            // If there are existing tasks, increment their order by 1
+            if (tasksData) {
+              Object.keys(tasksData).forEach((taskId) => {
+                const existingTask = tasksData[taskId];
+                updates[taskId] = {
+                  text: existingTask.text,
+                  completed: existingTask.completed,
+                  order: (existingTask.order || 0) + 1,
+                };
+              });
+            }
+
+            // Add new task at position 0
+            const newTaskId = Date.now().toString();
+            updates[newTaskId] = {
+              text: taskText,
+              completed: false,
+              order: 0,
+            };
+
+            // Update all tasks at once
+            set(tasksRef, updates);
+          }
+        },
+        { onlyOnce: true }
+      );
+    },
+    [currentInstance]
+  );
+
+  // Helper to mark matching task as completed in task list
+  const completeTaskInList = React.useCallback(
+    async (taskText: string) => {
+      if (!currentInstance || !taskText.trim()) return;
+
+      const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+
+      // Find and complete the matching task
+      onValue(
+        tasksRef,
+        (snapshot) => {
+          const tasksData = snapshot.val();
+          if (tasksData) {
+            // Find the first incomplete task that matches the text
+            const matchingTaskId = Object.keys(tasksData).find((taskId) => {
+              const taskItem = tasksData[taskId];
+              return taskItem.text === taskText && !taskItem.completed;
+            });
+
+            if (matchingTaskId) {
+              const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${matchingTaskId}`);
+              const matchingTask = tasksData[matchingTaskId];
+              set(taskRef, {
+                ...matchingTask,
+                completed: true,
+              });
+            }
+          }
+        },
+        { onlyOnce: true }
+      );
+    },
+    [currentInstance]
+  );
 
   // Add event notification for start, complete, and quit
   function notifyEvent(type: "start" | "complete" | "quit") {
@@ -235,6 +329,12 @@ export default function Timer({
               className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48"
               onClick={() => {
                 const completionTime = formatTime(seconds);
+
+                // Mark matching task as completed in task list
+                if (task && task.trim()) {
+                  completeTaskInList(task.trim());
+                }
+
                 clearTimerState(); // Clear Firebase state when completing - this will trigger the listener to reset local state
                 notifyEvent("complete");
                 if (onComplete) {

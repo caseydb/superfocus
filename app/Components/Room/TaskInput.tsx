@@ -1,7 +1,17 @@
 "use client";
 import React from "react";
+import { useInstance } from "../Instances";
+import { rtdb } from "../../../lib/firebase";
+import { ref, onValue, off } from "firebase/database";
 
 const maxLen = 69;
+
+interface Task {
+  id: string;
+  text: string;
+  completed: boolean;
+  order?: number;
+}
 
 export default function TaskInput({
   task,
@@ -14,12 +24,44 @@ export default function TaskInput({
   disabled: boolean;
   onStart?: () => void;
 }) {
+  const { currentInstance } = useInstance();
   const chars = task.length;
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = React.useState(false);
   const [showLimitPopup, setShowLimitPopup] = React.useState(false);
+  const [availableTasks, setAvailableTasks] = React.useState<Task[]>([]);
+  const [showTaskSuggestions, setShowTaskSuggestions] = React.useState(false);
+
+  // Load tasks from Firebase
+  React.useEffect(() => {
+    if (!currentInstance) return;
+
+    const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+    const handle = onValue(tasksRef, (snapshot) => {
+      const tasksData = snapshot.val();
+      if (tasksData) {
+        // Convert Firebase object to array and sort by order
+        const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
+          id,
+          ...(task as Omit<Task, "id">),
+        }));
+        // Sort by order field, filter for incomplete tasks, and take top 5
+        const incompleteTasks = tasksArray
+          .filter((task) => !task.completed)
+          .sort((a, b) => (a.order || 0) - (b.order || 0))
+          .slice(0, 5);
+        setAvailableTasks(incompleteTasks);
+      } else {
+        setAvailableTasks([]);
+      }
+    });
+
+    return () => {
+      off(tasksRef, "value", handle);
+    };
+  }, [currentInstance]);
 
   const updateInputWidth = React.useCallback(() => {
     if (spanRef.current && typeof window !== "undefined") {
@@ -91,7 +133,13 @@ export default function TaskInput({
       <textarea
         ref={textareaRef}
         value={task}
-        onChange={(e) => setTask(e.target.value.slice(0, maxLen))}
+        onChange={(e) => {
+          setTask(e.target.value.slice(0, maxLen));
+          // Hide suggestions when user starts typing
+          if (e.target.value.trim()) {
+            setShowTaskSuggestions(false);
+          }
+        }}
         maxLength={maxLen}
         className={`text-center text-3xl md:text-5xl font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
           disabled ? "cursor-not-allowed" : "bg-transparent"
@@ -100,8 +148,17 @@ export default function TaskInput({
         autoFocus
         rows={1}
         style={{ width: inputWidth }}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={() => {
+          setIsFocused(true);
+          if (!task.trim() && availableTasks.length > 0) {
+            setShowTaskSuggestions(true);
+          }
+        }}
+        onBlur={() => {
+          setIsFocused(false);
+          // Delay hiding suggestions to allow clicking on them
+          setTimeout(() => setShowTaskSuggestions(false), 150);
+        }}
         disabled={disabled}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !disabled) {
@@ -121,6 +178,38 @@ export default function TaskInput({
           background: isFocused && !disabled ? "#FFAA00" : undefined,
         }}
       />
+
+      {/* Task Suggestions */}
+      {showTaskSuggestions && availableTasks.length > 0 && (
+        <div
+          className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          style={{
+            width: inputWidth,
+            maxWidth: "90vw",
+            top: "45%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            marginTop: "8px",
+          }}
+        >
+          <div className="text-xs text-gray-400 mb-2 px-2 font-mono">Choose from existing tasks:</div>
+          <div className="space-y-1">
+            {availableTasks.map((taskItem) => (
+              <button
+                key={taskItem.id}
+                onClick={() => {
+                  setTask(taskItem.text);
+                  setShowTaskSuggestions(false);
+                }}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors text-white text-sm truncate font-mono border border-transparent hover:border-[#FFAA00]/30"
+              >
+                {taskItem.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showLimitPopup && (
         <div className="fixed top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-red-600 text-white text-3xl font-extrabold px-12 py-8 rounded-2xl shadow-2xl flex flex-col items-center gap-6 border-4 border-red-600">
           <span>Be compendious!</span>
