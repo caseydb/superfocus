@@ -168,6 +168,8 @@ function SortableTask({
   );
 }
 
+type FilterType = "all" | "incomplete" | "completed";
+
 export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { currentInstance } = useInstance();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -175,6 +177,9 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [showClearMenu, setShowClearMenu] = useState(false);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -229,6 +234,18 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
       editInputRef.current.select();
     }
   }, [editingId]);
+
+  // Close clear menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showClearMenu && !(event.target as Element).closest(".clear-menu")) {
+        setShowClearMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showClearMenu]);
 
   const addTask = () => {
     if (newTaskText.trim() && currentInstance) {
@@ -308,23 +325,138 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
     setActiveId(null);
   };
 
+  const clearCompleted = () => {
+    if (currentInstance) {
+      const completedTasks = tasks.filter((task) => task.completed);
+      completedTasks.forEach((task) => {
+        const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${task.id}`);
+        remove(taskRef);
+      });
+    }
+    setShowClearMenu(false);
+  };
+
+  const clearAll = () => {
+    setShowClearMenu(false);
+    setShowClearAllConfirm(true);
+  };
+
+  const confirmClearAll = () => {
+    if (currentInstance) {
+      const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+      set(tasksRef, null);
+    }
+    setShowClearAllConfirm(false);
+  };
+
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === "completed") return task.completed;
+    if (filter === "incomplete") return !task.completed;
+    return true; // "all"
+  });
+
+  const getFilterCounts = () => {
+    const completed = tasks.filter((task) => task.completed).length;
+    const incomplete = tasks.filter((task) => !task.completed).length;
+    return { all: tasks.length, completed, incomplete };
+  };
+
+  const counts = getFilterCounts();
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden border border-gray-800 animate-in slide-in-from-bottom-4 duration-300">
+    <div
+      className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden border border-gray-800 animate-in slide-in-from-bottom-4 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-800">
-          <h2 className="text-xl font-semibold text-white">Task List</h2>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-400">
-              {tasks.length} task{tasks.length !== 1 ? "s" : ""}
-            </span>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
+        <div className="border-b border-gray-800">
+          <div className="flex items-center justify-between p-6 pb-4">
+            <h2 className="text-xl font-semibold text-white">Task List</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">
+                {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+              </span>
+              {/* Clear Menu */}
+              <div className="relative clear-menu">
+                <button
+                  onClick={() => setShowClearMenu(!showClearMenu)}
+                  className="text-gray-400 hover:text-white transition-colors p-1"
+                  title="Clear options"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 12H12.01M12 6H12.01M12 18H12.01"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+                {showClearMenu && (
+                  <div className="absolute right-0 top-8 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px]">
+                    <button
+                      onClick={clearCompleted}
+                      disabled={counts.completed === 0}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-t-lg"
+                    >
+                      Clear Completed ({counts.completed})
+                    </button>
+                    <button
+                      onClick={clearAll}
+                      disabled={counts.all === 0}
+                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg"
+                    >
+                      Clear All ({counts.all})
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex px-6 pb-4">
+            <div className="flex bg-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => setFilter("all")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  filter === "all" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                All ({counts.all})
+              </button>
+              <button
+                onClick={() => setFilter("incomplete")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  filter === "incomplete"
+                    ? "bg-[#FFAA00] text-black"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                Incomplete ({counts.incomplete})
+              </button>
+              <button
+                onClick={() => setFilter("completed")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  filter === "completed"
+                    ? "bg-[#FFAA00] text-black"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                Completed ({counts.completed})
+              </button>
+            </div>
           </div>
         </div>
 
@@ -355,8 +487,8 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
         </div>
 
         {/* Task List */}
-        <div className="max-h-96 overflow-y-auto">
-          {tasks.length === 0 ? (
+        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+          {filteredTasks.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3 opacity-50">
                 <path
@@ -367,8 +499,20 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
                   strokeLinejoin="round"
                 />
               </svg>
-              <p>No tasks yet</p>
-              <p className="text-sm mt-1">Add your first task above</p>
+              <p>
+                {filter === "all"
+                  ? "No tasks yet"
+                  : filter === "completed"
+                  ? "No completed tasks"
+                  : "No incomplete tasks"}
+              </p>
+              <p className="text-sm mt-1">
+                {filter === "all"
+                  ? "Add your first task above"
+                  : filter === "completed"
+                  ? "Complete some tasks to see them here"
+                  : "All tasks are completed!"}
+              </p>
             </div>
           ) : (
             <div className="p-2">
@@ -378,8 +522,8 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-                  {tasks.map((task) => (
+                <SortableContext items={filteredTasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
+                  {filteredTasks.map((task) => (
                     <SortableTask
                       key={task.id}
                       task={task}
@@ -422,6 +566,47 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
           )}
         </div>
       </div>
+
+      {/* Clear All Confirmation Dialog */}
+      {showClearAllConfirm && (
+        <div className="fixed inset-0 z-60 bg-black bg-opacity-70 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 max-w-sm w-full animate-in slide-in-from-bottom-4 duration-300">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-400">
+                    <path
+                      d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">Clear All Tasks</h3>
+              </div>
+              <p className="text-gray-300 mb-6">
+                Are you sure you want to delete all {tasks.length} tasks? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowClearAllConfirm(false)}
+                  className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmClearAll}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
