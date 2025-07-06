@@ -168,7 +168,7 @@ function SortableTask({
   );
 }
 
-type FilterType = "all" | "incomplete" | "completed";
+type FilterType = "todo" | "done";
 
 export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { user } = useInstance();
@@ -177,7 +177,7 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>("todo");
   const [showClearMenu, setShowClearMenu] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -350,9 +350,9 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   const filteredTasks = tasks.filter((task) => {
-    if (filter === "completed") return task.completed;
-    if (filter === "incomplete") return !task.completed;
-    return true; // "all"
+    if (filter === "done") return task.completed;
+    if (filter === "todo") return !task.completed;
+    return true;
   });
 
   const getFilterCounts = () => {
@@ -366,12 +366,12 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 pointer-events-none animate-in fade-in duration-300">
+      {/* Click-outside-to-close backdrop */}
+      <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
+
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden border border-gray-800 animate-in slide-in-from-bottom-4 duration-300"
+        className="absolute bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] sm:max-w-96 max-h-[calc(100vh-8rem)] bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -429,32 +429,20 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
           <div className="flex px-6 pb-4">
             <div className="flex bg-gray-800 rounded-lg p-1">
               <button
-                onClick={() => setFilter("all")}
+                onClick={() => setFilter("todo")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  filter === "all" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-white hover:bg-gray-700"
+                  filter === "todo" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-white hover:bg-gray-700"
                 }`}
               >
-                All ({counts.all})
+                To Do ({counts.incomplete})
               </button>
               <button
-                onClick={() => setFilter("incomplete")}
+                onClick={() => setFilter("done")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  filter === "incomplete"
-                    ? "bg-[#FFAA00] text-black"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                  filter === "done" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-white hover:bg-gray-700"
                 }`}
               >
-                Incomplete ({counts.incomplete})
-              </button>
-              <button
-                onClick={() => setFilter("completed")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  filter === "completed"
-                    ? "bg-[#FFAA00] text-black"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                Completed ({counts.completed})
+                Done ({counts.completed})
               </button>
             </div>
           </div>
@@ -487,7 +475,7 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
         </div>
 
         {/* Task List */}
-        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+        <div className="max-h-[40vh] overflow-y-auto custom-scrollbar">
           {filteredTasks.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3 opacity-50">
@@ -499,19 +487,9 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
                   strokeLinejoin="round"
                 />
               </svg>
-              <p>
-                {filter === "all"
-                  ? "No tasks yet"
-                  : filter === "completed"
-                  ? "No completed tasks"
-                  : "No incomplete tasks"}
-              </p>
+              <p>{filter === "todo" ? "No tasks to do" : "No completed tasks"}</p>
               <p className="text-sm mt-1">
-                {filter === "all"
-                  ? "Add your first task above"
-                  : filter === "completed"
-                  ? "Complete some tasks to see them here"
-                  : "All tasks are completed!"}
+                {filter === "todo" ? "Add your first task above" : "Complete some tasks to see them here"}
               </p>
             </div>
           ) : (
@@ -569,39 +547,51 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
 
       {/* Clear All Confirmation Dialog */}
       {showClearAllConfirm && (
-        <div className="fixed inset-0 z-60 bg-black bg-opacity-70 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 max-w-sm w-full animate-in slide-in-from-bottom-4 duration-300">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-400">
-                    <path
-                      d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+        <div className="fixed inset-0 z-60 pointer-events-none animate-in fade-in duration-300">
+          {/* Background overlay at 80% opacity */}
+          <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-auto" />
+
+          {/* Centered popup */}
+          <div
+            className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto"
+            onClick={() => setShowClearAllConfirm(false)}
+          >
+            <div
+              className="bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 max-w-sm w-full animate-in slide-in-from-bottom-4 duration-300"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-red-400">
+                      <path
+                        d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Clear All Tasks</h3>
                 </div>
-                <h3 className="text-lg font-semibold text-white">Clear All Tasks</h3>
-              </div>
-              <p className="text-gray-300 mb-6">
-                Are you sure you want to delete all {tasks.length} tasks? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowClearAllConfirm(false)}
-                  className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmClearAll}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Clear All
-                </button>
+                <p className="text-gray-300 mb-6">
+                  Are you sure you want to delete all {tasks.length} tasks? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowClearAllConfirm(false)}
+                    className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmClearAll}
+                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
               </div>
             </div>
           </div>

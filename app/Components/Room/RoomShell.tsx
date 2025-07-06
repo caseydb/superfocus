@@ -493,7 +493,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Tasks - desktop only: bottom right corner */}
           <button
-            className="fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center"
+            className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
+              showTaskList ? "!hidden" : ""
+            }`}
             onClick={() => setShowTaskList(true)}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
