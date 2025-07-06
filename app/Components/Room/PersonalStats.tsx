@@ -15,21 +15,17 @@ interface HistoryEntry {
 function formatTime(totalSeconds: number) {
   // Handle invalid input
   if (isNaN(totalSeconds) || totalSeconds < 0) {
-    return "00:00";
+    return "0m";
   }
 
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
 
   // Format based on duration length
   if (hours > 0) {
-    // Show single digit hours if 1-9 hours, double digit if 10+ hours
-    const hourStr = hours < 10 ? hours.toString() : hours.toString().padStart(2, "0");
-    return `${hourStr}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${hours}h ${minutes}m`;
   } else {
-    // No hours, just show MM:SS
-    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${minutes}m`;
   }
 }
 
@@ -233,7 +229,7 @@ export default function PersonalStats() {
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {
     return (
-      <div className="fixed top-[13px] right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="fixed top-[16px] right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
           <div className="flex items-center justify-center gap-2">
             <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center">
