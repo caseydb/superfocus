@@ -41,6 +41,7 @@ function SortableTask({
   onRemove,
   onEditTextChange,
   editInputRef,
+  onStartTask,
 }: {
   task: Task;
   isEditing: boolean;
@@ -52,6 +53,7 @@ function SortableTask({
   onRemove: (id: string) => void;
   onEditTextChange: (text: string) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
+  onStartTask?: (taskText: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
@@ -144,8 +146,30 @@ function SortableTask({
           )}
         </div>
 
-        {/* Delete Button */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Start Button - only show for incomplete tasks */}
+          {!task.completed && onStartTask && (
+            <button
+              onClick={() => onStartTask(task.text)}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-gray-400 hover:text-[#FFAA00] p-1 rounded transition-colors"
+              title="Start timer for this task"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M8 5V19L19 12L8 5Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+          )}
+
+          {/* Delete Button */}
           <button
             onClick={() => onRemove(task.id)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -170,7 +194,15 @@ function SortableTask({
 
 type FilterType = "todo" | "done";
 
-export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function TaskList({
+  isOpen,
+  onClose,
+  onStartTask,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onStartTask?: (taskText: string) => void;
+}) {
   const { user } = useInstance();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskText, setNewTaskText] = useState("");
@@ -514,6 +546,7 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
                       onRemove={removeTask}
                       onEditTextChange={setEditingText}
                       editInputRef={editInputRef}
+                      onStartTask={onStartTask}
                     />
                   ))}
                 </SortableContext>

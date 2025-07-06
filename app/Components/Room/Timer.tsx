@@ -335,6 +335,14 @@ export default function Timer({
                   completeTaskInList(task.trim());
                 }
 
+                // Mark today as completed for streak tracking
+                if (typeof window !== "undefined") {
+                  const windowWithStreak = window as Window & { markStreakComplete?: () => Promise<void> };
+                  if (windowWithStreak.markStreakComplete) {
+                    windowWithStreak.markStreakComplete();
+                  }
+                }
+
                 clearTimerState(); // Clear Firebase state when completing - this will trigger the listener to reset local state
                 notifyEvent("complete");
                 if (onComplete) {

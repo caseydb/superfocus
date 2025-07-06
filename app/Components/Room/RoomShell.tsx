@@ -13,6 +13,7 @@ import FlyingMessages from "./FlyingMessages";
 import Leaderboard from "./Leaderboard";
 import Sounds from "./Sounds";
 import TaskList from "./TaskList";
+import PersonalStats from "./PersonalStats";
 import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
@@ -467,6 +468,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {/* Active work border overlay */}
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
+          {/* Personal stats with streak */}
+          <PersonalStats />
           {/* User name in top left */}
           <Controls
             className="fixed top-4 right-8 z-50"
@@ -657,7 +660,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         )}
 
         {/* Task List Modal */}
-        <TaskList isOpen={showTaskList} onClose={() => setShowTaskList(false)} />
+        <TaskList
+          isOpen={showTaskList}
+          onClose={() => setShowTaskList(false)}
+          onStartTask={(taskText) => {
+            setTask(taskText);
+            setShowTaskList(false);
+            // Small delay to ensure task is set before starting timer
+            setTimeout(() => {
+              if (timerStartRef.current) {
+                timerStartRef.current();
+              }
+            }, 50);
+          }}
+        />
       </>
     );
   }
