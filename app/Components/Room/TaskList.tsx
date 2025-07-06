@@ -171,7 +171,7 @@ function SortableTask({
 type FilterType = "all" | "incomplete" | "completed";
 
 export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { currentInstance } = useInstance();
+  const { user } = useInstance();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskText, setNewTaskText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -194,11 +194,11 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
     })
   );
 
-  // Load tasks from Firebase
+  // Load tasks from Firebase (user-specific)
   useEffect(() => {
-    if (!currentInstance) return;
+    if (!user?.id) return;
 
-    const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
     const handle = onValue(tasksRef, (snapshot) => {
       const tasksData = snapshot.val();
       if (tasksData) {
@@ -218,7 +218,7 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
     return () => {
       off(tasksRef, "value", handle);
     };
-  }, [currentInstance]);
+  }, [user?.id]);
 
   // Focus input when opening
   useEffect(() => {
@@ -248,22 +248,22 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   }, [showClearMenu]);
 
   const addTask = () => {
-    if (newTaskText.trim() && currentInstance) {
+    if (newTaskText.trim() && user?.id) {
       const id = Date.now().toString();
       const newTask: Omit<Task, "id"> = {
         text: newTaskText.trim(),
         completed: false,
         order: tasks.length,
       };
-      const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${id}`);
+      const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
       set(taskRef, newTask);
       setNewTaskText("");
     }
   };
 
   const removeTask = (id: string) => {
-    if (currentInstance) {
-      const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${id}`);
+    if (user?.id) {
+      const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
       remove(taskRef);
     }
   };
@@ -274,8 +274,8 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   const saveEdit = () => {
-    if (editingText.trim() && editingId && currentInstance) {
-      const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${editingId}`);
+    if (editingText.trim() && editingId && user?.id) {
+      const taskRef = ref(rtdb, `users/${user.id}/tasks/${editingId}`);
       const task = tasks.find((t) => t.id === editingId);
       if (task) {
         set(taskRef, { ...task, text: editingText.trim() });
@@ -291,10 +291,10 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   const toggleComplete = (id: string) => {
-    if (currentInstance) {
+    if (user?.id) {
       const task = tasks.find((t) => t.id === id);
       if (task) {
-        const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${id}`);
+        const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
         set(taskRef, { ...task, completed: !task.completed });
       }
     }
@@ -307,7 +307,7 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id && currentInstance) {
+    if (active.id !== over?.id && user?.id) {
       const oldIndex = tasks.findIndex((item) => item.id === active.id);
       const newIndex = tasks.findIndex((item) => item.id === over?.id);
 
@@ -316,7 +316,7 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
 
         // Update order in Firebase for all tasks
         reorderedTasks.forEach((task, index) => {
-          const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${task.id}`);
+          const taskRef = ref(rtdb, `users/${user.id}/tasks/${task.id}`);
           set(taskRef, { ...task, order: index });
         });
       }
@@ -326,10 +326,10 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   const clearCompleted = () => {
-    if (currentInstance) {
+    if (user?.id) {
       const completedTasks = tasks.filter((task) => task.completed);
       completedTasks.forEach((task) => {
-        const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${task.id}`);
+        const taskRef = ref(rtdb, `users/${user.id}/tasks/${task.id}`);
         remove(taskRef);
       });
     }
@@ -342,8 +342,8 @@ export default function TaskList({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   const confirmClearAll = () => {
-    if (currentInstance) {
-      const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+    if (user?.id) {
+      const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
       set(tasksRef, null);
     }
     setShowClearAllConfirm(false);

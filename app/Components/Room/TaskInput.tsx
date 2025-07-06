@@ -24,7 +24,7 @@ export default function TaskInput({
   disabled: boolean;
   onStart?: () => void;
 }) {
-  const { currentInstance } = useInstance();
+  const { user } = useInstance();
   const chars = task.length;
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
@@ -34,11 +34,11 @@ export default function TaskInput({
   const [availableTasks, setAvailableTasks] = React.useState<Task[]>([]);
   const [showTaskSuggestions, setShowTaskSuggestions] = React.useState(false);
 
-  // Load tasks from Firebase
+  // Load tasks from Firebase (user-specific)
   React.useEffect(() => {
-    if (!currentInstance) return;
+    if (!user?.id) return;
 
-    const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
     const handle = onValue(tasksRef, (snapshot) => {
       const tasksData = snapshot.val();
       if (tasksData) {
@@ -61,7 +61,7 @@ export default function TaskInput({
     return () => {
       off(tasksRef, "value", handle);
     };
-  }, [currentInstance]);
+  }, [user?.id]);
 
   const updateInputWidth = React.useCallback(() => {
     if (spanRef.current && typeof window !== "undefined") {

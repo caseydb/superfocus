@@ -186,7 +186,7 @@ export default function Timer({
     notifyEvent("start");
 
     // Add task to task list at position #1 if it has content
-    if (task && task.trim() && currentInstance) {
+    if (task && task.trim() && user?.id) {
       addTaskToList(task.trim());
     }
   }
@@ -194,9 +194,9 @@ export default function Timer({
   // Helper to add task to task list at position #1 (only if it doesn't already exist)
   const addTaskToList = React.useCallback(
     async (taskText: string) => {
-      if (!currentInstance) return;
+      if (!user?.id) return;
 
-      const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+      const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
 
       // Check if task already exists before adding
       onValue(
@@ -242,15 +242,15 @@ export default function Timer({
         { onlyOnce: true }
       );
     },
-    [currentInstance]
+    [user?.id]
   );
 
   // Helper to mark matching task as completed in task list
   const completeTaskInList = React.useCallback(
     async (taskText: string) => {
-      if (!currentInstance || !taskText.trim()) return;
+      if (!user?.id || !taskText.trim()) return;
 
-      const tasksRef = ref(rtdb, `instances/${currentInstance.id}/tasks`);
+      const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
 
       // Find and complete the matching task
       onValue(
@@ -265,7 +265,7 @@ export default function Timer({
             });
 
             if (matchingTaskId) {
-              const taskRef = ref(rtdb, `instances/${currentInstance.id}/tasks/${matchingTaskId}`);
+              const taskRef = ref(rtdb, `users/${user.id}/tasks/${matchingTaskId}`);
               const matchingTask = tasksData[matchingTaskId];
               set(taskRef, {
                 ...matchingTask,
@@ -277,7 +277,7 @@ export default function Timer({
         { onlyOnce: true }
       );
     },
-    [currentInstance]
+    [user?.id]
   );
 
   // Add event notification for start, complete, and quit
