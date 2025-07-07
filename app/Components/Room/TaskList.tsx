@@ -37,11 +37,14 @@ function SortableTask({
   onStartEditing,
   onSaveEdit,
   onCancelEdit,
-
   onRemove,
   onEditTextChange,
   editInputRef,
   onStartTask,
+  currentTask,
+  isTimerRunning,
+  hasActiveTimer,
+  onPauseTimer,
 }: {
   task: Task;
   isEditing: boolean;
@@ -49,11 +52,14 @@ function SortableTask({
   onStartEditing: (task: Task) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
-
   onRemove: (id: string) => void;
   onEditTextChange: (text: string) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
   onStartTask?: (taskText: string) => void;
+  currentTask?: string;
+  isTimerRunning?: boolean;
+  hasActiveTimer?: boolean;
+  onPauseTimer?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
@@ -93,24 +99,80 @@ function SortableTask({
           </svg>
         </div>
 
-        {/* Start Button */}
-        <button
-          onClick={() => onStartTask && onStartTask(task.text)}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="text-gray-400 hover:text-[#FFAA00] p-1 rounded transition-colors flex items-center justify-center w-5 h-5"
-          title="Start timer for this task"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M8 5V19L19 12L8 5Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
+        {/* Start/Pause Button */}
+        {(() => {
+          // Check if this task is the currently active task
+          const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+
+          return isCurrentTask;
+        })() ? (
+          // Show pause/resume button for the current active task
+          <button
+            onClick={() => {
+              if (isTimerRunning) {
+                // Timer is running, pause it
+                if (onPauseTimer) onPauseTimer();
+              } else {
+                // Timer is paused, resume it (which is the same as starting)
+                if (onStartTask) onStartTask(task.text);
+              }
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`p-2 rounded transition-colors flex items-center justify-center w-8 h-8 ${
+              isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+            }`}
+            title={isTimerRunning ? "Pause timer" : "Resume timer"}
+          >
+            {isTimerRunning ? (
+              // Pause icon
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M6 4H10V20H6V4ZM14 4H18V20H14V4Z" fill="currentColor" />
+              </svg>
+            ) : (
+              // Resume/Play icon
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M8 5V19L19 12L8 5Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="currentColor"
+                />
+              </svg>
+            )}
+          </button>
+        ) : (
+          // Show start button for other tasks
+          <button
+            onClick={() => {
+              if (onStartTask) onStartTask(task.text);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            disabled={Boolean(hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim())}
+            className={`p-2 rounded transition-colors flex items-center justify-center w-8 h-8 ${
+              hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
+                ? "text-gray-600 cursor-not-allowed"
+                : "text-gray-400 hover:text-[#FFAA00]"
+            }`}
+            title={
+              hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
+                ? "Another task is active"
+                : "Start timer for this task"
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M8 5V19L19 12L8 5Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        )}
 
         {/* Task Text */}
         <div className="flex-1 min-w-0">
@@ -171,10 +233,18 @@ export default function TaskList({
   isOpen,
   onClose,
   onStartTask,
+  currentTask,
+  isTimerRunning,
+  hasActiveTimer,
+  onPauseTimer,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onStartTask?: (taskText: string) => void;
+  currentTask?: string;
+  isTimerRunning?: boolean;
+  hasActiveTimer?: boolean;
+  onPauseTimer?: () => void;
 }) {
   const { user } = useInstance();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -214,6 +284,7 @@ export default function TaskList({
         }));
         // Sort by order field, or fallback to creation order
         tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
+
         setTasks(tasksArray);
       } else {
         setTasks([]);
@@ -460,6 +531,10 @@ export default function TaskList({
                       onEditTextChange={setEditingText}
                       editInputRef={editInputRef}
                       onStartTask={onStartTask}
+                      currentTask={currentTask}
+                      isTimerRunning={isTimerRunning}
+                      hasActiveTimer={hasActiveTimer}
+                      onPauseTimer={onPauseTimer}
                     />
                   ))}
                 </SortableContext>

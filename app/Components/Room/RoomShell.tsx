@@ -27,6 +27,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [hasStarted, setHasStarted] = useState(false);
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
+  const timerPauseRef = React.useRef<() => void>(null!);
   const [showHistory, setShowHistory] = useState(false);
   const timerSecondsRef = React.useRef<number>(0);
   const [showQuitModal, setShowQuitModal] = useState(false);
@@ -578,6 +579,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               key={timerResetKey}
               onActiveChange={handleActiveChange}
               startRef={timerStartRef}
+              pauseRef={timerPauseRef}
               onComplete={handleComplete}
               secondsRef={timerSecondsRef}
               requiredTask={!!task.trim()}
@@ -713,6 +715,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 timerStartRef.current();
               }
             }, 50);
+          }}
+          currentTask={task}
+          isTimerRunning={timerRunning}
+          hasActiveTimer={hasActiveTimer}
+          onPauseTimer={() => {
+            if (timerPauseRef.current) {
+              timerPauseRef.current();
+            }
           }}
         />
       </>

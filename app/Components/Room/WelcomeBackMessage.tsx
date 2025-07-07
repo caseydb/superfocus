@@ -19,51 +19,52 @@ export default function WelcomeBackMessage({ roomId, onVisibilityChange }: Welco
   // Epic welcome messages based on user's streak and return status
   const getWelcomeMessage = (streak: number, lastVisit: number) => {
     const daysSinceLastVisit = Math.floor((Date.now() - lastVisit) / (1000 * 60 * 60 * 24));
+    const firstName = user.displayName.split(" ")[0];
 
     const epicMessages = [
       // Recent return (same day)
       ...(daysSinceLastVisit === 0
         ? [
-            `🔥 THE GRIND NEVER STOPS! Welcome back, ${user.displayName}!`,
-            `⚡ BACK FOR MORE? ${user.displayName} is UNSTOPPABLE!`,
-            `🚀 LOCKED AND LOADED! ${user.displayName} returns to the battlefield!`,
-            `💎 DIAMOND HANDS! ${user.displayName} never quits!`,
-            `🎯 LASER FOCUSED! ${user.displayName} is back in the zone!`,
+            `🔥 THE GRIND NEVER STOPS! Welcome back, ${firstName}!`,
+            `⚡ BACK FOR MORE? ${firstName} is UNSTOPPABLE!`,
+            `🚀 LOCKED AND LOADED! ${firstName} returns to the battlefield!`,
+            `💎 DIAMOND HANDS! ${firstName} never quits!`,
+            `🎯 LASER FOCUSED! ${firstName} is back in the zone!`,
           ]
         : []),
 
       // 1-3 days
       ...(daysSinceLastVisit >= 1 && daysSinceLastVisit <= 3
         ? [
-            `🌟 THE LEGEND RETURNS! ${user.displayName} is back after ${daysSinceLastVisit} day${
+            `🌟 THE LEGEND RETURNS! ${firstName} is back after ${daysSinceLastVisit} day${
               daysSinceLastVisit > 1 ? "s" : ""
             }!`,
-            `⚔️ WARRIOR'S RETURN! ${user.displayName} emerges from the shadows!`,
-            `🏆 CHAMPION COMEBACK! ${user.displayName} never stays down!`,
-            `🔥 PHOENIX RISING! ${user.displayName} returns stronger than ever!`,
-            `💪 BEAST MODE ACTIVATED! ${user.displayName} is BACK!`,
+            `⚔️ WARRIOR'S RETURN! ${firstName} emerges from the shadows!`,
+            `🏆 CHAMPION COMEBACK! ${firstName} never stays down!`,
+            `🔥 PHOENIX RISING! ${firstName} returns stronger than ever!`,
+            `💪 BEAST MODE ACTIVATED! ${firstName} is BACK!`,
           ]
         : []),
 
       // 4-7 days
       ...(daysSinceLastVisit >= 4 && daysSinceLastVisit <= 7
         ? [
-            `🎭 THE PRODIGAL WARRIOR! ${user.displayName} returns after ${daysSinceLastVisit} days!`,
-            `🌪️ STORM'S RETURN! ${user.displayName} brings the thunder!`,
-            `🗡️ BLADE REFORGED! ${user.displayName} emerges from the forge!`,
-            `🎪 THE SHOW MUST GO ON! ${user.displayName} takes center stage!`,
-            `🚁 TACTICAL INSERTION! ${user.displayName} drops back into action!`,
+            `🎭 THE PRODIGAL WARRIOR! ${firstName} returns after ${daysSinceLastVisit} days!`,
+            `🌪️ STORM'S RETURN! ${firstName} brings the thunder!`,
+            `🗡️ BLADE REFORGED! ${firstName} emerges from the forge!`,
+            `🎪 THE SHOW MUST GO ON! ${firstName} takes center stage!`,
+            `🚁 TACTICAL INSERTION! ${firstName} drops back into action!`,
           ]
         : []),
 
       // 1+ weeks
       ...(daysSinceLastVisit >= 8
         ? [
-            `🌋 VOLCANIC ERUPTION! ${user.displayName} returns after ${daysSinceLastVisit} days of silence!`,
-            `🎆 GRAND FINALE! ${user.displayName} makes a SPECTACULAR return!`,
-            `🏰 KINGDOM RECLAIMED! ${user.displayName} has returned to rule!`,
-            `🌌 COSMIC COMEBACK! ${user.displayName} descends from the stars!`,
-            `🎭 EPIC RESURRECTION! ${user.displayName} rises from the ashes!`,
+            `🌋 VOLCANIC ERUPTION! ${firstName} returns after ${daysSinceLastVisit} days of silence!`,
+            `🎆 GRAND FINALE! ${firstName} makes a SPECTACULAR return!`,
+            `🏰 KINGDOM RECLAIMED! ${firstName} has returned to rule!`,
+            `🌌 COSMIC COMEBACK! ${firstName} descends from the stars!`,
+            `🎭 EPIC RESURRECTION! ${firstName} rises from the ashes!`,
           ]
         : []),
     ];
@@ -71,17 +72,17 @@ export default function WelcomeBackMessage({ roomId, onVisibilityChange }: Welco
     // Add streak-based messages
     if (streak >= 10) {
       epicMessages.push(
-        `🔥💎 STREAK DEMON! ${user.displayName} returns with a ${streak}-day streak!`,
-        `⚡🏆 LEGENDARY STREAK! ${user.displayName} (${streak} days) is UNSTOPPABLE!`
+        `🔥💎 STREAK DEMON! ${firstName} returns with a ${streak}-day streak!`,
+        `⚡🏆 LEGENDARY STREAK! ${firstName} (${streak} days) is UNSTOPPABLE!`
       );
     } else if (streak >= 5) {
       epicMessages.push(
-        `🚀💪 STREAK MASTER! ${user.displayName} maintains their ${streak}-day streak!`,
-        `🎯🔥 HOT STREAK! ${user.displayName} (${streak} days) is ON FIRE!`
+        `🚀💪 STREAK MASTER! ${firstName} maintains their ${streak}-day streak!`,
+        `🎯🔥 HOT STREAK! ${firstName} (${streak} days) is ON FIRE!`
       );
     }
 
-    return epicMessages[Math.floor(Math.random() * epicMessages.length)] || `🎉 Welcome back, ${user.displayName}!`;
+    return epicMessages[Math.floor(Math.random() * epicMessages.length)] || `🎉 Welcome back, ${firstName}!`;
   };
 
   // Separate countdown effect that runs when showWelcome becomes true
