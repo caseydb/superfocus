@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
+import { rtdb, auth } from "../../../lib/firebase";
 import { ref, onValue, off, set, get } from "firebase/database";
 
 interface HistoryEntry {
@@ -10,6 +10,17 @@ interface HistoryEntry {
   duration: string;
   timestamp: number;
   userId?: string;
+}
+
+interface User {
+  id: string;
+  displayName: string;
+  isPremium: boolean;
+}
+
+interface InstanceData {
+  history?: Record<string, HistoryEntry>;
+  users?: Record<string, User>;
 }
 
 function formatTime(totalSeconds: number) {
@@ -179,58 +190,119 @@ export default function PersonalStats() {
       return;
     }
 
-    const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
-    const handle = onValue(userHistoryRef, (snapshot) => {
-      const data = snapshot.val();
+    // Listen to all instances to find user's completions across all rooms
+    const instancesRef = ref(rtdb, "instances");
+    const handle = onValue(instancesRef, (snapshot) => {
+      const instancesData = snapshot.val();
       let userTasksCompleted = 0;
       let userTotalSeconds = 0;
+      const completedTasks: Array<{
+        task: string;
+        duration: string;
+        timestamp: number;
+        seconds: number;
+        roomId: string;
+      }> = [];
+      const roomsWithUserData: string[] = [];
 
-      if (data) {
+      if (instancesData) {
         const currentStreakDate = getStreakDate(); // Get today's streak date (4am-4am window)
 
-        Object.values(data as Record<string, HistoryEntry>).forEach((entry) => {
-          if (entry.task.toLowerCase().includes("quit early")) return;
+        // Go through each instance/room
+        Object.entries(instancesData).forEach(([instanceId, instanceData]) => {
+          const typedInstanceData = instanceData as InstanceData;
+          // Check if there's history data for this instance
+          if (typedInstanceData.history) {
+            let foundUserInRoom = false;
 
-          if (entry.timestamp) {
-            // Check if this entry is within today's 4am-4am window
-            const entryStreakDate = getStreakDate(entry.timestamp);
+            // Go through each history entry in this room
+            Object.entries(typedInstanceData.history).forEach(([, entry]) => {
+              const typedEntry = entry as HistoryEntry;
+              // Check if this entry belongs to our user
+              if (typedEntry.userId === user.id && !typedEntry.task.toLowerCase().includes("quit early")) {
+                foundUserInRoom = true;
 
-            if (entryStreakDate === currentStreakDate) {
-              // Parse duration more robustly
-              let seconds = 0;
-              if (entry.duration && typeof entry.duration === "string") {
-                const parts = entry.duration.split(":").map(Number);
-                if (parts.length === 3) {
-                  // hh:mm:ss format
-                  const [h, m, s] = parts;
-                  if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
-                    seconds = h * 3600 + m * 60 + s;
-                  }
-                } else if (parts.length === 2) {
-                  // mm:ss format
-                  const [m, s] = parts;
-                  if (!isNaN(m) && !isNaN(s)) {
-                    seconds = m * 60 + s;
+                // Check if it's within today's 4am-4am window
+                if (typedEntry.timestamp) {
+                  const entryStreakDate = getStreakDate(typedEntry.timestamp);
+
+                  if (entryStreakDate === currentStreakDate) {
+                    // Parse duration more robustly
+                    let seconds = 0;
+                    if (typedEntry.duration && typeof typedEntry.duration === "string") {
+                      const parts = typedEntry.duration.split(":").map(Number);
+                      if (parts.length === 3) {
+                        // hh:mm:ss format
+                        const [h, m, s] = parts;
+                        if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+                          seconds = h * 3600 + m * 60 + s;
+                        }
+                      } else if (parts.length === 2) {
+                        // mm:ss format
+                        const [m, s] = parts;
+                        if (!isNaN(m) && !isNaN(s)) {
+                          seconds = m * 60 + s;
+                        }
+                      }
+                    }
+
+                    // Only process if we got valid seconds
+                    if (seconds > 0) {
+                      userTasksCompleted += 1;
+                      userTotalSeconds += seconds;
+
+                      // Add to completed tasks array for logging
+                      completedTasks.push({
+                        task: typedEntry.task,
+                        duration: typedEntry.duration,
+                        timestamp: typedEntry.timestamp,
+                        seconds: seconds,
+                        roomId: instanceId,
+                      });
+                    }
                   }
                 }
               }
+            });
 
-              // Only process if we got valid seconds
-              if (seconds > 0) {
-                userTasksCompleted += 1;
-                userTotalSeconds += seconds;
-              }
+            if (foundUserInRoom) {
+              roomsWithUserData.push(instanceId);
             }
           }
         });
       }
+
+      // Console log all tasks completed in today's 4am-4am window
+      console.log(`=== ${user.displayName || user.id} - Tasks Completed Today (4am-4am, Cross-Room) ===`);
+      console.log(`User ID: ${user.id}`);
+      console.log(`Display Name: ${user.displayName}`);
+      console.log(
+        `Is Firebase Auth User: ${user.id.startsWith("user-") ? "NO (session-based)" : "YES (Firebase UID)"}`
+      );
+      console.log(`Current Firebase Auth User:`, auth.currentUser?.uid || "Not signed in");
+      console.log(`Data Source: Scanning all instances/rooms for user completions`);
+      console.log(`Rooms with user data: ${roomsWithUserData.length} rooms`);
+      console.log(`Room IDs: ${roomsWithUserData.join(", ")}`);
+      console.log(`Total Tasks: ${userTasksCompleted}`);
+      console.log(`Total Time: ${formatTime(userTotalSeconds)} (${userTotalSeconds} seconds)`);
+      console.log(
+        `Individual Tasks:`,
+        completedTasks.map((task) => ({
+          task: task.task,
+          duration: task.duration,
+          timestamp: new Date(task.timestamp).toLocaleString(),
+          seconds: task.seconds,
+          roomId: task.roomId,
+        }))
+      );
+      console.log(`=== End of ${user.displayName || user.id} Cross-Room Task Summary ===`);
 
       setTasksCompleted(userTasksCompleted);
       setTotalSeconds(userTotalSeconds);
       setLoading(false);
     });
 
-    return () => off(userHistoryRef, "value", handle);
+    return () => off(instancesRef, "value", handle);
   }, [user?.id]);
 
   if (loading || !user) return null;
