@@ -14,6 +14,7 @@ import Leaderboard from "./Leaderboard";
 import Sounds from "./Sounds";
 import TaskList from "./TaskList";
 import PersonalStats from "./PersonalStats";
+import WelcomeBackMessage from "./WelcomeBackMessage";
 import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
@@ -555,6 +556,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             flyingPlaceholders={[]}
             activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
           />
+          <WelcomeBackMessage roomId={currentInstance.id} />
           <Sounds roomId={currentInstance.id} localVolume={localVolume} />
           <ActiveWorkers roomId={currentInstance.id} />
           {/* Main content: TaskInput or Timer/room UI */}
