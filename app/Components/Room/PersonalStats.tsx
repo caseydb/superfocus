@@ -181,36 +181,43 @@ export default function PersonalStats() {
       let userTotalSeconds = 0;
 
       if (data) {
+        const currentStreakDate = getStreakDate(); // Get today's streak date (4am-4am window)
+
         Object.values(data as Record<string, HistoryEntry>).forEach((entry) => {
           if (entry.task.toLowerCase().includes("quit early")) return;
 
           // Check if this entry belongs to the current user
           const isCurrentUser = entry.userId === user.id || (!entry.userId && entry.displayName === user.displayName);
 
-          if (isCurrentUser) {
-            // Parse duration more robustly
-            let seconds = 0;
-            if (entry.duration && typeof entry.duration === "string") {
-              const parts = entry.duration.split(":").map(Number);
-              if (parts.length === 3) {
-                // hh:mm:ss format
-                const [h, m, s] = parts;
-                if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
-                  seconds = h * 3600 + m * 60 + s;
-                }
-              } else if (parts.length === 2) {
-                // mm:ss format
-                const [m, s] = parts;
-                if (!isNaN(m) && !isNaN(s)) {
-                  seconds = m * 60 + s;
+          if (isCurrentUser && entry.timestamp) {
+            // Check if this entry is within today's 4am-4am window
+            const entryStreakDate = getStreakDate(entry.timestamp);
+
+            if (entryStreakDate === currentStreakDate) {
+              // Parse duration more robustly
+              let seconds = 0;
+              if (entry.duration && typeof entry.duration === "string") {
+                const parts = entry.duration.split(":").map(Number);
+                if (parts.length === 3) {
+                  // hh:mm:ss format
+                  const [h, m, s] = parts;
+                  if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+                    seconds = h * 3600 + m * 60 + s;
+                  }
+                } else if (parts.length === 2) {
+                  // mm:ss format
+                  const [m, s] = parts;
+                  if (!isNaN(m) && !isNaN(s)) {
+                    seconds = m * 60 + s;
+                  }
                 }
               }
-            }
 
-            // Only process if we got valid seconds
-            if (seconds > 0) {
-              userTasksCompleted += 1;
-              userTotalSeconds += seconds;
+              // Only process if we got valid seconds
+              if (seconds > 0) {
+                userTasksCompleted += 1;
+                userTotalSeconds += seconds;
+              }
             }
           }
         });
@@ -226,16 +233,22 @@ export default function PersonalStats() {
 
   if (loading || !user) return null;
 
+  // Simple consistent styling
+  const streakStyle = {
+    bg: "bg-gradient-to-br from-[#ffaa00] to-[#e69500]",
+  };
+
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {
     return (
       <div className="fixed top-[16px] right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
           <div className="flex items-center justify-center gap-2">
-            <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center">
-              <span className="text-gray-200 text-xs font-medium">{streak}</span>
+            <div className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center animate-pulse`}>
+              <span className="text-black text-xs font-bold">{streak}</span>
             </div>
             <span className="text-gray-400 text-xs font-mono">
+              <span className="text-gray-400">day streak</span> |{" "}
               <span className="text-gray-300 font-medium">{timeRemaining}</span> to{" "}
               {streak === 0 ? "start streak!" : "maintain streak!"}
             </span>
@@ -250,12 +263,15 @@ export default function PersonalStats() {
     <div className="fixed top-[16px] right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
         <div className="flex items-center justify-center gap-2">
-          <div className="w-5 h-5 bg-gray-600 rounded-full flex items-center justify-center">
-            <span className="text-gray-200 text-xs font-medium">{streak}</span>
+          <div
+            className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110`}
+          >
+            <span className="text-black text-xs font-bold">{streak}</span>
           </div>
           <span className="text-gray-400 text-xs font-mono">
+            <span className="text-gray-400">day streak</span> |{" "}
             <span className="text-gray-300 font-medium">{tasksCompleted}</span> tasks |{" "}
-            <span className="text-gray-300 font-medium">{formatTime(totalSeconds)}</span> total
+            <span className="text-gray-300 font-medium">{formatTime(totalSeconds)}</span> today
           </span>
         </div>
       </div>

@@ -5,6 +5,42 @@ import { ref, onValue, off } from "firebase/database";
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
+  const [userStreaks, setUserStreaks] = useState<Record<string, number>>({});
+
+  // Simple streak calculation (same as PersonalStats)
+  const calculateStreak = (dailyCompletions: Record<string, boolean>) => {
+    if (!dailyCompletions) return 0;
+
+    const getStreakDate = (timestamp: number = Date.now()) => {
+      const date = new Date(timestamp);
+      const hour = date.getHours();
+      if (hour < 4) {
+        date.setDate(date.getDate() - 1);
+      }
+      return date.toISOString().split("T")[0];
+    };
+
+    let currentStreak = 0;
+    const currentStreakDate = getStreakDate();
+
+    for (let i = 0; i < 365; i++) {
+      const checkDate = new Date();
+      checkDate.setDate(checkDate.getDate() - i);
+      if (new Date().getHours() < 4) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      const streakDateStr = checkDate.toISOString().split("T")[0];
+
+      if (dailyCompletions[streakDateStr]) {
+        currentStreak++;
+      } else {
+        if (streakDateStr !== currentStreakDate) {
+          break;
+        }
+      }
+    }
+    return currentStreak;
+  };
 
   useEffect(() => {
     if (!roomId) return;
@@ -20,6 +56,33 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return () => off(activeRef, "value", handle);
   }, [roomId]);
 
+  // Load streaks for active users
+  useEffect(() => {
+    if (activeUsers.length === 0) {
+      setUserStreaks({});
+      return;
+    }
+
+    const streakHandles: Array<() => void> = [];
+    const streaks: Record<string, number> = {};
+
+    activeUsers.forEach((user) => {
+      const dailyCompletionsRef = ref(rtdb, `users/${user.id}/dailyCompletions`);
+      const handle = onValue(dailyCompletionsRef, (snapshot) => {
+        const dailyCompletions = snapshot.val() || {};
+        const currentStreak = calculateStreak(dailyCompletions);
+        streaks[user.id] = currentStreak;
+        setUserStreaks({ ...streaks });
+      });
+
+      streakHandles.push(() => off(dailyCompletionsRef, "value", handle));
+    });
+
+    return () => {
+      streakHandles.forEach((cleanup) => cleanup());
+    };
+  }, [activeUsers]);
+
   if (activeUsers.length === 0) return null;
 
   return (
@@ -27,12 +90,19 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       {activeUsers.map((u) => (
         <div
           key={u.id}
-          className={`text-gray-400 transition-opacity duration-300 ${
+          className={`text-gray-400 transition-opacity duration-300 flex items-center ${
             flyingUserIds.includes(u.id) ? "opacity-0" : "opacity-100"
           }`}
           style={{ height: "2rem" }}
         >
-          {u.displayName} is <span className="hidden sm:inline">actively </span>working
+          {(userStreaks[u.id] || 0) > 0 && (
+            <div className="w-5 h-5 rounded-full flex items-center justify-center mr-2 border border-gray-400">
+              <span className="text-[#9CA3AF] text-xs font-bold font-sans">{userStreaks[u.id]}</span>
+            </div>
+          )}
+          <span>
+            {u.displayName} is <span className="hidden sm:inline">actively </span>working
+          </span>
         </div>
       ))}
     </div>
