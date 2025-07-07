@@ -13,7 +13,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [isReturningUser, setIsReturningUser] = useState(false);
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(4);
 
   // Epic welcome messages based on user's streak and return status
   const getWelcomeMessage = (streak: number, lastVisit: number) => {
@@ -158,7 +158,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
           // Returning user - show epic return message
           setIsReturningUser(true);
           setWelcomeMessage(getWelcomeMessage(currentStreak, lastVisit));
-          setCountdown(3);
+          setCountdown(4);
           setShowWelcome(true);
         } else {
           // First time in this room
@@ -170,7 +170,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
           } else {
             setWelcomeMessage(`🎉 WELCOME TO THE GRIND! ${user.displayName} has entered the battlefield!`);
           }
-          setCountdown(3);
+          setCountdown(4);
           setShowWelcome(true);
         }
 
