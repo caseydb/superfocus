@@ -51,6 +51,30 @@ const truncateText = (text: string, maxLength: number = 50) => {
   return text.substring(0, maxLength) + "...";
 };
 
+// Calculate dynamic width based on history content
+const calculateDynamicWidth = (history: HistoryEntry[]) => {
+  if (history.length === 0) return "w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]";
+
+  const maxTaskLength = Math.max(...history.map((entry) => entry.task.length));
+
+  // Base percentages for different screen sizes
+  const basePercentage = 95; // < 600px
+  const mediumPercentage = 90; // 600px - 1028px
+  const largePercentage = 60; // >= 1028px
+
+  // Calculate multiplier based on max task length - grow more aggressively
+  let multiplier = 1;
+  if (maxTaskLength > 20) {
+    multiplier = Math.min(1 + (maxTaskLength - 20) / 100, 1.4); // More conservative growth for percentages
+  }
+
+  const smallWidth = Math.min(Math.round(basePercentage * multiplier), 95); // Cap at 95%
+  const mediumWidth = Math.min(Math.round(mediumPercentage * multiplier), 90); // Cap at 90%
+  const largeWidth = Math.min(Math.round(largePercentage * multiplier), 85); // Cap at 85%
+
+  return `w-[${smallWidth}%] min-[600px]:w-[${mediumWidth}%] min-[1028px]:w-[${largeWidth}%]`;
+};
+
 // Calculate PAGE_SIZE based on screen size
 const calculatePageSize = (width: number, height: number) => {
   // If width >= 1024px (desktop table layout), use height-based logic for large screens
@@ -81,6 +105,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   const [page, setPage] = useState(1);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [pageSize, setPageSize] = useState(3); // Default to 3
+  const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
 
   const PAGE_SIZE = pageSize;
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
@@ -99,6 +124,11 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
 
   // Use paginated results for all devices
   const displayEntries = paginated;
+
+  // Update dynamic width when history changes
+  useEffect(() => {
+    setDynamicWidthClasses(calculateDynamicWidth(history));
+  }, [history]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -140,7 +170,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
         <div
-          className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[820px] md:w-[1010px] lg:w-[1175px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
+          className={`bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
@@ -159,7 +189,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[820px] md:w-[1010px] lg:w-[1175px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
+        className={`bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
