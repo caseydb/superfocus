@@ -13,6 +13,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [isReturningUser, setIsReturningUser] = useState(false);
+  const [countdown, setCountdown] = useState(3);
 
   // Epic welcome messages based on user's streak and return status
   const getWelcomeMessage = (streak: number, lastVisit: number) => {
@@ -82,6 +83,23 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
     return epicMessages[Math.floor(Math.random() * epicMessages.length)] || `🎉 Welcome back, ${user.displayName}!`;
   };
 
+  // Separate countdown effect that runs when showWelcome becomes true
+  useEffect(() => {
+    if (!showWelcome) return;
+
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setShowWelcome(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [showWelcome]);
+
   useEffect(() => {
     if (!user?.id || !roomId) return;
 
@@ -140,12 +158,8 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
           // Returning user - show epic return message
           setIsReturningUser(true);
           setWelcomeMessage(getWelcomeMessage(currentStreak, lastVisit));
+          setCountdown(3);
           setShowWelcome(true);
-
-          // Auto-hide after 8 seconds
-          setTimeout(() => {
-            setShowWelcome(false);
-          }, 8000);
         } else {
           // First time in this room
           setIsReturningUser(false);
@@ -156,12 +170,8 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
           } else {
             setWelcomeMessage(`🎉 WELCOME TO THE GRIND! ${user.displayName} has entered the battlefield!`);
           }
+          setCountdown(3);
           setShowWelcome(true);
-
-          // Auto-hide after 8 seconds
-          setTimeout(() => {
-            setShowWelcome(false);
-          }, 8000);
         }
 
         // Update last visit timestamp
@@ -171,9 +181,8 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
       }
     };
 
-    // Small delay to ensure user is fully loaded into room
-    const timer = setTimeout(checkWelcomeBack, 1000);
-    return () => clearTimeout(timer);
+    // Check immediately - no delay needed
+    checkWelcomeBack();
   }, [user?.id, roomId]);
 
   if (!showWelcome) return null;
@@ -203,7 +212,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
           {/* Subtitle */}
           <div className="text-lg sm:text-xl text-gray-300 font-mono opacity-90 animate-in slide-in-from-bottom duration-1000 delay-500">
-            {isReturningUser ? "The grind continues..." : "Ready to dominate this room?"}
+            {isReturningUser ? `The grind continues in ${countdown}...` : "Ready to dominate this room?"}
           </div>
 
           {/* Sparkle effects */}
