@@ -37,7 +37,7 @@ function SortableTask({
   onStartEditing,
   onSaveEdit,
   onCancelEdit,
-  onToggleComplete,
+
   onRemove,
   onEditTextChange,
   editInputRef,
@@ -49,7 +49,7 @@ function SortableTask({
   onStartEditing: (task: Task) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
-  onToggleComplete: (id: string) => void;
+
   onRemove: (id: string) => void;
   onEditTextChange: (text: string) => void;
   editInputRef: React.RefObject<HTMLInputElement | null>;
@@ -73,11 +73,7 @@ function SortableTask({
       className={`group p-4 mx-2 my-1 rounded-xl border cursor-move ${
         isDragging
           ? "opacity-50 bg-gray-800 border-gray-600"
-          : `transition-all duration-200 hover:shadow-lg hover:scale-[1.01] ${
-              task.completed
-                ? "bg-gray-800 border-gray-700 opacity-75"
-                : "bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800"
-            }`
+          : "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800"
       }`}
     >
       <div className="flex items-center gap-3">
@@ -97,21 +93,23 @@ function SortableTask({
           </svg>
         </div>
 
-        {/* Checkbox */}
+        {/* Start Button */}
         <button
-          onClick={() => onToggleComplete(task.id)}
+          onClick={() => onStartTask && onStartTask(task.text)}
           onPointerDown={(e) => e.stopPropagation()}
-          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
-            task.completed
-              ? "bg-[#FFAA00] border-[#FFAA00] shadow-lg shadow-[#FFAA00]/25"
-              : "border-gray-500 hover:border-gray-400 hover:shadow-md"
-          }`}
+          className="text-gray-400 hover:text-[#FFAA00] p-1 rounded transition-colors flex items-center justify-center w-5 h-5"
+          title="Start timer for this task"
         >
-          {task.completed && (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="animate-in zoom-in duration-200">
-              <path d="M5 12L9 16L19 6" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M8 5V19L19 12L8 5Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="currentColor"
+            />
+          </svg>
         </button>
 
         {/* Task Text */}
@@ -137,9 +135,7 @@ function SortableTask({
             <p
               onClick={() => onStartEditing(task)}
               onPointerDown={(e) => e.stopPropagation()}
-              className={`cursor-pointer hover:text-[#FFAA00] transition-colors truncate ${
-                task.completed ? "text-gray-400 line-through" : "text-white"
-              }`}
+              className="cursor-pointer hover:text-[#FFAA00] transition-colors truncate text-white"
             >
               {task.text}
             </p>
@@ -148,27 +144,6 @@ function SortableTask({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Start Button - only show for incomplete tasks */}
-          {!task.completed && onStartTask && (
-            <button
-              onClick={() => onStartTask(task.text)}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="text-gray-400 hover:text-[#FFAA00] p-1 rounded transition-colors"
-              title="Start timer for this task"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M8 5V19L19 12L8 5Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="currentColor"
-                />
-              </svg>
-            </button>
-          )}
-
           {/* Delete Button */}
           <button
             onClick={() => onRemove(task.id)}
@@ -192,8 +167,6 @@ function SortableTask({
   );
 }
 
-type FilterType = "todo" | "done";
-
 export default function TaskList({
   isOpen,
   onClose,
@@ -209,7 +182,7 @@ export default function TaskList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterType>("todo");
+
   const [showClearMenu, setShowClearMenu] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -282,10 +255,12 @@ export default function TaskList({
   const addTask = () => {
     if (newTaskText.trim() && user?.id) {
       const id = Date.now().toString();
+      // Find the highest order number and add 1 to ensure it goes to the end
+      const maxOrder = tasks.length > 0 ? Math.max(...tasks.map((task) => task.order || 0)) : -1;
       const newTask: Omit<Task, "id"> = {
         text: newTaskText.trim(),
         completed: false,
-        order: tasks.length,
+        order: maxOrder + 1,
       };
       const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
       set(taskRef, newTask);
@@ -322,16 +297,6 @@ export default function TaskList({
     setEditingText("");
   };
 
-  const toggleComplete = (id: string) => {
-    if (user?.id) {
-      const task = tasks.find((t) => t.id === id);
-      if (task) {
-        const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
-        set(taskRef, { ...task, completed: !task.completed });
-      }
-    }
-  };
-
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
   };
@@ -357,17 +322,6 @@ export default function TaskList({
     setActiveId(null);
   };
 
-  const clearCompleted = () => {
-    if (user?.id) {
-      const completedTasks = tasks.filter((task) => task.completed);
-      completedTasks.forEach((task) => {
-        const taskRef = ref(rtdb, `users/${user.id}/tasks/${task.id}`);
-        remove(taskRef);
-      });
-    }
-    setShowClearMenu(false);
-  };
-
   const clearAll = () => {
     setShowClearMenu(false);
     setShowClearAllConfirm(true);
@@ -381,19 +335,10 @@ export default function TaskList({
     setShowClearAllConfirm(false);
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === "done") return task.completed;
-    if (filter === "todo") return !task.completed;
-    return true;
-  });
+  // Only show incomplete tasks
+  const filteredTasks = tasks.filter((task) => !task.completed);
 
-  const getFilterCounts = () => {
-    const completed = tasks.filter((task) => task.completed).length;
-    const incomplete = tasks.filter((task) => !task.completed).length;
-    return { all: tasks.length, completed, incomplete };
-  };
-
-  const counts = getFilterCounts();
+  const incompleteTasks = tasks.filter((task) => !task.completed).length;
 
   if (!isOpen) return null;
 
@@ -412,7 +357,7 @@ export default function TaskList({
             <h2 className="text-xl font-semibold text-white">Task List</h2>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">
-                {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+                {incompleteTasks} task{incompleteTasks !== 1 ? "s" : ""}
               </span>
               {/* Clear Menu */}
               <div className="relative clear-menu">
@@ -433,18 +378,11 @@ export default function TaskList({
                 {showClearMenu && (
                   <div className="absolute right-0 top-8 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px]">
                     <button
-                      onClick={clearCompleted}
-                      disabled={counts.completed === 0}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-t-lg"
-                    >
-                      Clear Completed ({counts.completed})
-                    </button>
-                    <button
                       onClick={clearAll}
-                      disabled={counts.all === 0}
-                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-b-lg"
+                      disabled={incompleteTasks === 0}
+                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
                     >
-                      Clear All ({counts.all})
+                      Clear All ({incompleteTasks})
                     </button>
                   </div>
                 )}
@@ -453,28 +391,6 @@ export default function TaskList({
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex px-6 pb-4">
-            <div className="flex bg-gray-800 rounded-lg p-1">
-              <button
-                onClick={() => setFilter("todo")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  filter === "todo" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                To Do ({counts.incomplete})
-              </button>
-              <button
-                onClick={() => setFilter("done")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  filter === "done" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                Done ({counts.completed})
               </button>
             </div>
           </div>
@@ -519,10 +435,8 @@ export default function TaskList({
                   strokeLinejoin="round"
                 />
               </svg>
-              <p>{filter === "todo" ? "No tasks to do" : "No completed tasks"}</p>
-              <p className="text-sm mt-1">
-                {filter === "todo" ? "Add your first task above" : "Complete some tasks to see them here"}
-              </p>
+              <p>No tasks to do</p>
+              <p className="text-sm mt-1">Add your first task above</p>
             </div>
           ) : (
             <div className="p-2">
@@ -542,7 +456,6 @@ export default function TaskList({
                       onStartEditing={startEditing}
                       onSaveEdit={saveEdit}
                       onCancelEdit={cancelEdit}
-                      onToggleComplete={toggleComplete}
                       onRemove={removeTask}
                       onEditTextChange={setEditingText}
                       editInputRef={editInputRef}
