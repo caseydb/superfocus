@@ -66,6 +66,24 @@ function SortableTask({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const [isHovered, setIsHovered] = useState(false);
 
+  // Handle textarea height adjustment when editing text changes
+  useEffect(() => {
+    if (isEditing && editInputRef.current instanceof HTMLTextAreaElement) {
+      const textarea = editInputRef.current;
+      textarea.style.height = "auto";
+      const scrollHeight = textarea.scrollHeight;
+
+      const singleLineHeight = 40;
+      const multiLineMinHeight = 60;
+
+      if (scrollHeight > singleLineHeight) {
+        textarea.style.height = Math.max(scrollHeight, multiLineMinHeight) + "px";
+      } else {
+        textarea.style.height = Math.max(scrollHeight, singleLineHeight) + "px";
+      }
+    }
+  }, [isEditing, editingText, editInputRef]);
+
   // Helper to format time as mm:ss or hh:mm:ss based on duration
   function formatTime(s: number) {
     const hours = Math.floor(s / 3600);
@@ -218,9 +236,20 @@ function SortableTask({
                     onSaveEdit();
                   } else if (e.key === "Escape") {
                     onCancelEdit();
+                  } else if (e.key === " ") {
+                    // Prevent space bar from causing any focus issues
+                    e.stopPropagation();
                   }
                 }}
-                onBlur={onSaveEdit}
+                onBlur={(e) => {
+                  // Use a small delay to check if focus is really lost
+                  setTimeout(() => {
+                    // Only save if the textarea is no longer the active element
+                    if (document.activeElement !== e.target) {
+                      onSaveEdit();
+                    }
+                  }, 100);
+                }}
                 onPointerDown={(e) => e.stopPropagation()}
                 className="w-full bg-gray-800 text-white px-4 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm resize-none leading-loose"
                 maxLength={69}
@@ -230,33 +259,37 @@ function SortableTask({
                   minHeight: "60px",
                   lineHeight: "1.6",
                 }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = "auto";
-                  const scrollHeight = target.scrollHeight;
-
-                  // If content requires more than single line height, use 60px minimum
-                  // Otherwise use 40px minimum
-                  const singleLineHeight = 40;
-                  const multiLineMinHeight = 60;
-
-                  if (scrollHeight > singleLineHeight) {
-                    target.style.height = Math.max(scrollHeight, multiLineMinHeight) + "px";
-                  } else {
-                    target.style.height = Math.max(scrollHeight, singleLineHeight) + "px";
-                  }
-                }}
               />
               <div className="absolute right-4 top-1 text-xs text-gray-400">{editingText.length}/69</div>
             </div>
           ) : (
             <p
-              onClick={() => onStartEditing(task)}
+              onClick={() => {
+                // Don't allow editing if this task is currently active (started)
+                const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                if (!isCurrentTask) {
+                  onStartEditing(task);
+                }
+              }}
               onPointerDown={(e) => e.stopPropagation()}
-              className={`cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
-                isHovered ? "whitespace-normal break-words" : "truncate"
-              }`}
-              title={task.text.length > 40 && !isHovered ? task.text : undefined}
+              className={`${(() => {
+                const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                if (isCurrentTask) {
+                  return "cursor-not-allowed text-gray-400 text-sm";
+                } else {
+                  return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
+                    isHovered ? "whitespace-normal break-words" : "truncate"
+                  }`;
+                }
+              })()}`}
+              title={(() => {
+                const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                if (isCurrentTask) {
+                  return "Cannot edit active task";
+                } else {
+                  return task.text.length > 40 && !isHovered ? task.text : undefined;
+                }
+              })()}
             >
               {task.text}
             </p>
@@ -354,6 +387,29 @@ export default function TaskList({
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
+  // Function to manually refresh tasks from Firebase
+  const refreshTasks = () => {
+    if (!user?.id) return;
+    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+    onValue(
+      tasksRef,
+      (snapshot) => {
+        const tasksData = snapshot.val();
+        if (tasksData) {
+          const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
+            id,
+            ...(task as Omit<Task, "id">),
+          }));
+          tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
+          setTasks(tasksArray);
+        } else {
+          setTasks([]);
+        }
+      },
+      { onlyOnce: true }
+    );
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -381,7 +437,11 @@ export default function TaskList({
         // Sort by order field, or fallback to creation order
         tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        setTasks(tasksArray);
+        // Only update tasks if no task is currently being edited
+        // This prevents Firebase updates from interfering with local editing state
+        if (!editingId) {
+          setTasks(tasksArray);
+        }
       } else {
         setTasks([]);
       }
@@ -390,7 +450,7 @@ export default function TaskList({
     return () => {
       off(tasksRef, "value", handle);
     };
-  }, [user?.id]);
+  }, [user?.id, editingId]);
 
   // Focus input when opening
   useEffect(() => {
@@ -461,11 +521,15 @@ export default function TaskList({
     }
     setEditingId(null);
     setEditingText("");
+    // Force refresh tasks from Firebase after editing
+    refreshTasks();
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditingText("");
+    // Force refresh tasks from Firebase after cancelling edit
+    refreshTasks();
   };
 
   const handleDragStart = (event: DragStartEvent) => {
