@@ -74,35 +74,25 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [users, setUsers] = useState<Record<string, User>>({});
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [pageSize, setPageSize] = useState(3); // Default to 3
 
   const PAGE_SIZE = pageSize;
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Detect mobile device and screen dimensions
+  // Update page size based on screen dimensions
   useEffect(() => {
-    const checkDeviceAndDimensions = () => {
-      const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-      const isSmallScreen = window.innerWidth < 640;
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
-
-      // Mobile device: has touch, small screen, and mobile user agent
-      setIsMobileDevice(hasTouch && isSmallScreen && isMobile);
-
-      // Update page size based on current dimensions
+    const updatePageSize = () => {
       setPageSize(calculatePageSize(window.innerWidth, window.innerHeight));
     };
 
-    checkDeviceAndDimensions();
-    window.addEventListener("resize", checkDeviceAndDimensions);
-    return () => window.removeEventListener("resize", checkDeviceAndDimensions);
+    updatePageSize();
+    window.addEventListener("resize", updatePageSize);
+    return () => window.removeEventListener("resize", updatePageSize);
   }, []);
 
-  // Use all history for mobile devices, paginated for computers
-  const displayEntries = isMobileDevice ? history : paginated;
+  // Use paginated results for all devices
+  const displayEntries = paginated;
 
   useEffect(() => {
     if (!roomId) return;
@@ -251,7 +241,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
           </div>
         </div>
         {/* Pagination controls - integrated into modal */}
-        {history.length > PAGE_SIZE && !isMobileDevice && (
+        {history.length > PAGE_SIZE && (
           <div className="mt-3 flex items-center justify-center gap-4 lg:gap-8">
             <button
               className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
@@ -279,11 +269,6 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
               Next
             </button>
           </div>
-        )}
-
-        {/* Mobile scroll indicator */}
-        {isMobileDevice && history.length > PAGE_SIZE && (
-          <div className="text-center mt-2 text-gray-400 text-sm font-mono">Showing all {history.length} entries</div>
         )}
 
         {/* Close button */}
