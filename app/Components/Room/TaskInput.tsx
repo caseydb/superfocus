@@ -33,6 +33,7 @@ export default function TaskInput({
   const [showLimitPopup, setShowLimitPopup] = React.useState(false);
   const [availableTasks, setAvailableTasks] = React.useState<Task[]>([]);
   const [showTaskSuggestions, setShowTaskSuggestions] = React.useState(false);
+  const [selectedTaskIndex, setSelectedTaskIndex] = React.useState(-1); // -1 means input is focused
 
   // Load tasks from Firebase (user-specific)
   React.useEffect(() => {
@@ -137,6 +138,7 @@ export default function TaskInput({
           // Hide suggestions when user starts typing
           if (e.target.value.trim()) {
             setShowTaskSuggestions(false);
+            setSelectedTaskIndex(-1);
           }
         }}
         maxLength={maxLen}
@@ -156,13 +158,33 @@ export default function TaskInput({
         onBlur={() => {
           setIsFocused(false);
           // Delay hiding suggestions to allow clicking on them
-          setTimeout(() => setShowTaskSuggestions(false), 150);
+          setTimeout(() => {
+            setShowTaskSuggestions(false);
+            setSelectedTaskIndex(-1);
+          }, 150);
         }}
         disabled={disabled}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !disabled) {
             e.preventDefault();
-            if (onStart) onStart();
+            // If a task is selected from suggestions, use that task
+            if (showTaskSuggestions && selectedTaskIndex >= 0 && selectedTaskIndex < availableTasks.length) {
+              setTask(availableTasks[selectedTaskIndex].text);
+              setShowTaskSuggestions(false);
+              setSelectedTaskIndex(-1);
+            } else if (onStart) {
+              onStart();
+            }
+          } else if (e.key === "ArrowDown" && showTaskSuggestions) {
+            e.preventDefault();
+            setSelectedTaskIndex((prev) => (prev < availableTasks.length - 1 ? prev + 1 : prev));
+          } else if (e.key === "ArrowUp" && showTaskSuggestions) {
+            e.preventDefault();
+            setSelectedTaskIndex((prev) => (prev > -1 ? prev - 1 : -1));
+          } else if (e.key === "Escape" && showTaskSuggestions) {
+            e.preventDefault();
+            setShowTaskSuggestions(false);
+            setSelectedTaskIndex(-1);
           }
         }}
       />
@@ -195,14 +217,19 @@ export default function TaskInput({
         >
           <div className="text-xs text-gray-400 mb-2 px-2 font-mono">Choose from existing tasks:</div>
           <div className="space-y-1">
-            {availableTasks.map((taskItem) => (
+            {availableTasks.map((taskItem, index) => (
               <button
                 key={taskItem.id}
                 onClick={() => {
                   setTask(taskItem.text);
                   setShowTaskSuggestions(false);
+                  setSelectedTaskIndex(-1);
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors text-white text-sm truncate font-mono border border-transparent hover:border-[#FFAA00]/30"
+                className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-white text-sm truncate font-mono border ${
+                  selectedTaskIndex === index
+                    ? "bg-gray-800 border-[#FFAA00]/50"
+                    : "border-transparent hover:bg-gray-800 hover:border-[#FFAA00]/30"
+                }`}
               >
                 {taskItem.text}
               </button>
