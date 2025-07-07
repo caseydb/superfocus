@@ -76,20 +76,26 @@ function SortableTask({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group p-4 mx-2 my-1 rounded-xl border cursor-move ${
+      className={`group p-2 mx-2 my-1 rounded-lg border cursor-move ${
         isDragging
           ? "opacity-50 bg-gray-800 border-gray-600"
-          : "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800"
+          : (() => {
+              const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+              if (isCurrentTask) {
+                return "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-[#FFAA00] shadow-md shadow-[#FFAA00]/20";
+              }
+              return "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800";
+            })()
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Drag Handle - Always visible */}
         <div
           className={`text-gray-500 transition-all duration-200 hover:text-[#FFAA00] ${
             isDragging ? "text-[#FFAA00]" : ""
           }`}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
             <path
               d="M8 6H8.01M8 12H8.01M8 18H8.01M16 6H16.01M16 12H16.01M16 18H16.01"
               stroke="currentColor"
@@ -118,19 +124,19 @@ function SortableTask({
               }
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className={`p-2 rounded transition-colors flex items-center justify-center w-8 h-8 ${
+            className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
               isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
             }`}
             title={isTimerRunning ? "Pause timer" : "Resume timer"}
           >
             {isTimerRunning ? (
               // Pause icon
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path d="M6 4H10V20H6V4ZM14 4H18V20H14V4Z" fill="currentColor" />
               </svg>
             ) : (
               // Resume/Play icon
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M8 5V19L19 12L8 5Z"
                   stroke="currentColor"
@@ -150,7 +156,7 @@ function SortableTask({
             }}
             onPointerDown={(e) => e.stopPropagation()}
             disabled={Boolean(hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim())}
-            className={`p-2 rounded transition-colors flex items-center justify-center w-8 h-8 ${
+            className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
               hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
                 ? "text-gray-600 cursor-not-allowed"
                 : "text-gray-400 hover:text-[#FFAA00]"
@@ -161,7 +167,7 @@ function SortableTask({
                 : "Start timer for this task"
             }
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path
                 d="M8 5V19L19 12L8 5Z"
                 stroke="currentColor"
@@ -191,13 +197,13 @@ function SortableTask({
               }}
               onBlur={onSaveEdit}
               onPointerDown={(e) => e.stopPropagation()}
-              className="w-full bg-gray-800 text-white px-3 py-1 rounded border border-[#FFAA00] focus:outline-none"
+              className="w-full bg-gray-800 text-white px-2 py-1 rounded border border-[#FFAA00] focus:outline-none text-sm"
             />
           ) : (
             <p
               onClick={() => onStartEditing(task)}
               onPointerDown={(e) => e.stopPropagation()}
-              className="cursor-pointer hover:text-[#FFAA00] transition-colors truncate text-white"
+              className="cursor-pointer hover:text-[#FFAA00] transition-colors truncate text-white text-sm"
             >
               {task.text}
             </p>
@@ -205,7 +211,7 @@ function SortableTask({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
           {/* Delete Button */}
           <button
             onClick={() => onRemove(task.id)}
@@ -213,7 +219,7 @@ function SortableTask({
             className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
             title="Delete task"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path
                 d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
                 stroke="currentColor"
@@ -419,7 +425,7 @@ export default function TaskList({
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
 
       <div
-        className="absolute bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] sm:max-w-96 max-h-[calc(100vh-8rem)] bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
+        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] max-h-[calc(100vh-8rem)] bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -510,7 +516,7 @@ export default function TaskList({
               <p className="text-sm mt-1">Add your first task above</p>
             </div>
           ) : (
-            <div className="p-2">
+            <div className="p-1">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -540,10 +546,10 @@ export default function TaskList({
                 </SortableContext>
                 <DragOverlay>
                   {activeId ? (
-                    <div className="p-4 mx-2 my-1 rounded-xl border bg-gray-850 border-[#FFAA00] shadow-2xl shadow-[#FFAA00]/40 scale-105 transform-gpu">
-                      <div className="flex items-center gap-3">
+                    <div className="p-2 mx-2 my-1 rounded-lg border bg-gray-850 border-[#FFAA00] shadow-2xl shadow-[#FFAA00]/40 scale-105 transform-gpu">
+                      <div className="flex items-center gap-2">
                         <div className="text-[#FFAA00]">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                             <path
                               d="M8 6H8.01M8 12H8.01M8 18H8.01M16 6H16.01M16 12H16.01M16 18H16.01"
                               stroke="currentColor"
@@ -552,9 +558,11 @@ export default function TaskList({
                             />
                           </svg>
                         </div>
-                        <div className="w-5 h-5 rounded border-2 border-gray-500 flex items-center justify-center"></div>
+                        <div className="w-6 h-6 rounded border-2 border-gray-500 flex items-center justify-center"></div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white truncate">{tasks.find((task) => task.id === activeId)?.text}</p>
+                          <p className="text-white truncate text-sm">
+                            {tasks.find((task) => task.id === activeId)?.text}
+                          </p>
                         </div>
                       </div>
                     </div>
