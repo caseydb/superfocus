@@ -163,13 +163,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
         } else {
           // First time in this room
           setIsReturningUser(false);
-          if (currentStreak > 0) {
-            setWelcomeMessage(
-              `🌟 STREAK WARRIOR ENTERS! ${user.displayName} brings their ${currentStreak}-day streak to this room!`
-            );
-          } else {
-            setWelcomeMessage(`🎉 WELCOME TO THE GRIND! ${user.displayName} has entered the battlefield!`);
-          }
+          setWelcomeMessage(`🔥 Warning: Side effects may include crushing your to-do list`);
           setCountdown(4);
           setShowWelcome(true);
         }
