@@ -34,6 +34,7 @@ export default function TaskInput({
   const [availableTasks, setAvailableTasks] = React.useState<Task[]>([]);
   const [showTaskSuggestions, setShowTaskSuggestions] = React.useState(false);
   const [selectedTaskIndex, setSelectedTaskIndex] = React.useState(-1); // -1 means input is focused
+  const suggestionsContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Load tasks from Firebase (user-specific)
   React.useEffect(() => {
@@ -121,6 +122,29 @@ export default function TaskInput({
     }
   }, [chars]);
 
+  // Function to scroll to selected item in suggestions
+  const scrollToSelectedItem = React.useCallback((index: number) => {
+    if (suggestionsContainerRef.current && index >= 0) {
+      const container = suggestionsContainerRef.current;
+      const items = container.querySelectorAll("button");
+      const selectedItem = items[index];
+
+      if (selectedItem) {
+        const containerRect = container.getBoundingClientRect();
+        const itemRect = selectedItem.getBoundingClientRect();
+
+        // Check if item is below visible area
+        if (itemRect.bottom > containerRect.bottom) {
+          selectedItem.scrollIntoView({ block: "end", behavior: "smooth" });
+        }
+        // Check if item is above visible area
+        else if (itemRect.top < containerRect.top) {
+          selectedItem.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+      }
+    }
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center w-full h-full px-4 sm:px-0">
       <span
@@ -155,6 +179,12 @@ export default function TaskInput({
             setShowTaskSuggestions(true);
           }
         }}
+        onClick={() => {
+          // Show suggestions when clicking, even if already focused
+          if (!task.trim() && availableTasks.length > 0) {
+            setShowTaskSuggestions(true);
+          }
+        }}
         onBlur={() => {
           setIsFocused(false);
           // Delay hiding suggestions to allow clicking on them
@@ -177,10 +207,24 @@ export default function TaskInput({
             }
           } else if (e.key === "ArrowDown" && showTaskSuggestions) {
             e.preventDefault();
-            setSelectedTaskIndex((prev) => (prev < availableTasks.length - 1 ? prev + 1 : prev));
+            setSelectedTaskIndex((prev) => {
+              const newIndex = prev < availableTasks.length - 1 ? prev + 1 : prev;
+              // Scroll to keep selected item in view
+              if (newIndex !== prev) {
+                setTimeout(() => scrollToSelectedItem(newIndex), 0);
+              }
+              return newIndex;
+            });
           } else if (e.key === "ArrowUp" && showTaskSuggestions) {
             e.preventDefault();
-            setSelectedTaskIndex((prev) => (prev > -1 ? prev - 1 : -1));
+            setSelectedTaskIndex((prev) => {
+              const newIndex = prev > -1 ? prev - 1 : -1;
+              // Scroll to keep selected item in view
+              if (newIndex !== prev && newIndex >= 0) {
+                setTimeout(() => scrollToSelectedItem(newIndex), 0);
+              }
+              return newIndex;
+            });
           } else if (e.key === "Escape" && showTaskSuggestions) {
             e.preventDefault();
             setShowTaskSuggestions(false);
@@ -203,6 +247,7 @@ export default function TaskInput({
       {/* Task Suggestions */}
       {showTaskSuggestions && availableTasks.length > 0 && (
         <div
+          ref={suggestionsContainerRef}
           className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
           style={{
             width: inputWidth,
