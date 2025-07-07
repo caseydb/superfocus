@@ -104,7 +104,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
   if (!showWelcome) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none">
+    <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none">
       {/* Compact message container */}
       <div className="bg-gradient-to-r from-gray-900/90 via-black/90 to-gray-900/90 rounded-xl shadow-lg border-2 border-[#FFAA00] px-6 py-3 animate-in slide-in-from-top duration-500">
         {/* Subtle glowing border effect */}
