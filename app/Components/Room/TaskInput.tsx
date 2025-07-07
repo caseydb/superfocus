@@ -47,11 +47,10 @@ export default function TaskInput({
           id,
           ...(task as Omit<Task, "id">),
         }));
-        // Sort by order field, filter for incomplete tasks, and take top 5
+        // Sort by order field, filter for incomplete tasks
         const incompleteTasks = tasksArray
           .filter((task) => !task.completed)
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .slice(0, 5);
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
         setAvailableTasks(incompleteTasks);
       } else {
         setAvailableTasks([]);
@@ -182,7 +181,7 @@ export default function TaskInput({
       {/* Task Suggestions */}
       {showTaskSuggestions && availableTasks.length > 0 && (
         <div
-          className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
           style={{
             width: inputWidth,
             maxWidth: "90vw",
@@ -190,6 +189,8 @@ export default function TaskInput({
             left: "50%",
             transform: "translateX(-50%)",
             marginTop: "8px",
+            maxHeight: "240px",
+            overflowY: "auto",
           }}
         >
           <div className="text-xs text-gray-400 mb-2 px-2 font-mono">Choose from existing tasks:</div>
