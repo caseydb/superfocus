@@ -35,6 +35,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       text: string;
       color: string;
       userId?: string;
+      timestamp: number;
     }[]
   >([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -304,6 +305,39 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, [currentInstance, timerRunning]);
 
+  // Listen for flying messages from Firebase
+  useEffect(() => {
+    if (!currentInstance) return;
+
+    const flyingMessagesRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages`);
+    const handle = onValue(flyingMessagesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Convert Firebase object to array and sort by timestamp
+        const messages = Object.entries(data).map(([id, msg]) => {
+          const typedMsg = msg as { text: string; color: string; userId: string; timestamp: number };
+          return {
+            id,
+            text: typedMsg.text,
+            color: typedMsg.color,
+            userId: typedMsg.userId,
+            timestamp: typedMsg.timestamp,
+          };
+        });
+
+        // Filter out messages older than 7 seconds
+        const now = Date.now();
+        const recentMessages = messages.filter((msg) => now - msg.timestamp < 7000);
+
+        setFlyingMessages(recentMessages);
+      } else {
+        setFlyingMessages([]);
+      }
+    });
+
+    return () => off(flyingMessagesRef, "value", handle);
+  }, [currentInstance]);
+
   const handleClear = () => {
     if (timerSecondsRef.current > 0 && task.trim()) {
       setShowQuitModal(true);
@@ -352,19 +386,19 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
       push(userHistoryRef, quitData);
       notifyEvent("quit");
-      // Add flying message for quit
-      const id = `${user.id}-quit-${Date.now()}`;
-      setFlyingMessages((msgs) => [
-        ...msgs,
-        {
-          id,
-          text: `💀 ${user.displayName} folded faster than a lawn chair.`,
-          color: "text-red-500",
-          userId: user.id,
-        },
-      ]);
+      // Add flying message for quit to Firebase
+      const flyingMessageId = `${user.id}-quit-${Date.now()}`;
+      const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+      set(flyingMessageRef, {
+        text: `💀 ${user.displayName} folded faster than a lawn chair.`,
+        color: "text-red-500",
+        userId: user.id,
+        timestamp: Date.now(),
+      });
+
+      // Auto-remove the message after 7 seconds
       setTimeout(() => {
-        setFlyingMessages((msgs) => msgs.filter((m) => m.id !== id));
+        remove(flyingMessageRef);
       }, 7000);
     }
     setTimerRunning(false);
@@ -417,19 +451,19 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
       push(userHistoryRef, completionData);
       notifyEvent("complete");
-      // Add flying message
-      const id = `${user.id}-${Date.now()}`;
-      setFlyingMessages((msgs) => [
-        ...msgs,
-        {
-          id,
-          text: `🏆 ${user.displayName} has successfully completed a task!`,
-          color: "text-green-400",
-          userId: user.id,
-        },
-      ]);
+      // Add flying message to Firebase
+      const flyingMessageId = `${user.id}-complete-${Date.now()}`;
+      const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+      set(flyingMessageRef, {
+        text: `🏆 ${user.displayName} has successfully completed a task!`,
+        color: "text-green-400",
+        userId: user.id,
+        timestamp: Date.now(),
+      });
+
+      // Auto-remove the message after 7 seconds
       setTimeout(() => {
-        setFlyingMessages((msgs) => msgs.filter((m) => m.id !== id));
+        remove(flyingMessageRef);
       }, 7000);
     }
   };
