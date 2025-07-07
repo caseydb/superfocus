@@ -30,7 +30,7 @@ function formatTime(totalSeconds: number) {
 }
 
 export default function PersonalStats() {
-  const { currentInstance, user } = useInstance();
+  const { user } = useInstance();
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -48,7 +48,12 @@ export default function PersonalStats() {
       date.setDate(date.getDate() - 1);
     }
 
-    return date.toISOString().split("T")[0]; // YYYY-MM-DD format
+    // Use local date instead of UTC date to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   };
 
   // Calculate streak from daily completions using 4am-4am windows
@@ -57,6 +62,7 @@ export default function PersonalStats() {
 
     let currentStreak = 0;
     const currentStreakDate = getStreakDate(); // Today's streak date
+    const streakDates: string[] = [];
 
     // Start from current streak date and count backwards
     for (let i = 0; i < 365; i++) {
@@ -72,6 +78,7 @@ export default function PersonalStats() {
 
       if (dailyCompletions[streakDateStr]) {
         currentStreak++;
+        streakDates.push(streakDateStr);
       } else {
         // If we haven't reached today yet and there's no completion, break
         // But if it's today and no completion yet, that's ok for the streak
@@ -80,6 +87,16 @@ export default function PersonalStats() {
         }
       }
     }
+
+    // Debug: log the streak dates
+    console.log("Streak calculation:", {
+      currentStreak,
+      currentStreakDate,
+      streakDates,
+      dailyCompletions,
+      currentTime: new Date().toISOString(),
+      currentHour: new Date().getHours(),
+    });
 
     return currentStreak;
   };
@@ -169,13 +186,13 @@ export default function PersonalStats() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!currentInstance || !user?.id) {
+    if (!user?.id) {
       setLoading(false);
       return;
     }
 
-    const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
-    const handle = onValue(historyRef, (snapshot) => {
+    const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
+    const handle = onValue(userHistoryRef, (snapshot) => {
       const data = snapshot.val();
       let userTasksCompleted = 0;
       let userTotalSeconds = 0;
@@ -186,10 +203,7 @@ export default function PersonalStats() {
         Object.values(data as Record<string, HistoryEntry>).forEach((entry) => {
           if (entry.task.toLowerCase().includes("quit early")) return;
 
-          // Check if this entry belongs to the current user
-          const isCurrentUser = entry.userId === user.id || (!entry.userId && entry.displayName === user.displayName);
-
-          if (isCurrentUser && entry.timestamp) {
+          if (entry.timestamp) {
             // Check if this entry is within today's 4am-4am window
             const entryStreakDate = getStreakDate(entry.timestamp);
 
@@ -228,8 +242,8 @@ export default function PersonalStats() {
       setLoading(false);
     });
 
-    return () => off(historyRef, "value", handle);
-  }, [currentInstance, user?.id, user?.displayName]);
+    return () => off(userHistoryRef, "value", handle);
+  }, [user?.id]);
 
   if (loading || !user) return null;
 

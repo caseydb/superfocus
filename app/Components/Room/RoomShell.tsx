@@ -229,10 +229,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       setInputLocked(true);
       setHasStarted(true);
     } else {
-      // Only remove from activeUsers if this is the last tab
-      if (userTabCountRef.current === 1) {
-        remove(activeRef);
-      }
+      // Always remove from activeUsers when timer is paused/stopped
+      remove(activeRef);
       setInputLocked(true); // keep locked until complete/clear/quit
     }
   };
@@ -341,13 +339,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         .padStart(2, "0");
       const secs = (timerSecondsRef.current % 60).toString().padStart(2, "0");
       const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
-      push(historyRef, {
+      const quitData = {
         userId: user.id,
         displayName: user.displayName,
         task: task + " (Quit Early)",
         duration: `${hours}:${minutes}:${secs}`,
         timestamp: Date.now(),
-      });
+      };
+      push(historyRef, quitData);
+
+      // Also save to user's personal completion history for cross-room stats
+      const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
+      push(userHistoryRef, quitData);
       notifyEvent("quit");
       // Add flying message for quit
       const id = `${user.id}-quit-${Date.now()}`;
@@ -401,13 +404,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       remove(activeRef);
       // Save to history
       const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
-      push(historyRef, {
+      const completionData = {
         userId: user.id,
         displayName: user.displayName,
         task,
         duration,
         timestamp: Date.now(),
-      });
+      };
+      push(historyRef, completionData);
+
+      // Also save to user's personal completion history for cross-room stats
+      const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
+      push(userHistoryRef, completionData);
       notifyEvent("complete");
       // Add flying message
       const id = `${user.id}-${Date.now()}`;
