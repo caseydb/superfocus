@@ -58,11 +58,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Track if there's an active timer state from Firebase
   const [hasActiveTimer, setHasActiveTimer] = useState(false);
+  const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
 
-  // Listen for timer state to determine if input should be locked
+  // Listen for timer state to determine if input should be locked and track current seconds
   useEffect(() => {
     if (!currentInstance || !user?.id) {
       setHasActiveTimer(false);
+      setCurrentTimerSeconds(0);
       return;
     }
 
@@ -83,6 +85,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
         // Timer is considered active if it has accumulated time (running or paused)
         setHasActiveTimer(currentSeconds > 0);
+        setCurrentTimerSeconds(currentSeconds);
 
         // Restore task if timer has accumulated time and current task is empty
         if (currentSeconds > 0 && timerState.task && !task.trim()) {
@@ -90,11 +93,39 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
       } else {
         setHasActiveTimer(false);
+        setCurrentTimerSeconds(0);
       }
     });
 
     return () => off(timerStateRef, "value", handle);
   }, [currentInstance, user?.id, task]);
+
+  // Update timer seconds in real-time when timer is running
+  useEffect(() => {
+    if (!currentInstance || !user?.id || !timerRunning) return;
+
+    const interval = setInterval(() => {
+      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      // Get current timer state to calculate live seconds
+      const unsubscribe = onValue(
+        timerStateRef,
+        (snapshot) => {
+          const timerState = snapshot.val();
+          if (timerState && timerState.running && timerState.startTime) {
+            const elapsedMs = Date.now() - timerState.startTime;
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+            const currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+            setCurrentTimerSeconds(currentSeconds);
+          }
+        },
+        { onlyOnce: true }
+      );
+
+      return () => unsubscribe();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentInstance, user?.id, timerRunning]);
 
   // Persist volume to localStorage whenever it changes
   useEffect(() => {
@@ -724,6 +755,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               timerPauseRef.current();
             }
           }}
+          timerSeconds={currentTimerSeconds}
         />
       </>
     );

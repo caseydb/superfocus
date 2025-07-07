@@ -45,6 +45,7 @@ function SortableTask({
   isTimerRunning,
   hasActiveTimer,
   onPauseTimer,
+  timerSeconds,
 }: {
   task: Task;
   isEditing: boolean;
@@ -60,8 +61,24 @@ function SortableTask({
   isTimerRunning?: boolean;
   hasActiveTimer?: boolean;
   onPauseTimer?: () => void;
+  timerSeconds?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+
+  // Helper to format time as mm:ss or hh:mm:ss based on duration
+  function formatTime(s: number) {
+    const hours = Math.floor(s / 3600);
+    const minutes = Math.floor((s % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = (s % 60).toString().padStart(2, "0");
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, "0")}:${minutes}:${secs}`;
+    } else {
+      return `${minutes}:${secs}`;
+    }
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -210,26 +227,60 @@ function SortableTask({
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Delete Button */}
-          <button
-            onClick={() => onRemove(task.id)}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-            title="Delete task"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
+        {/* Action Buttons / Timer Display */}
+        {(() => {
+          const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+
+          if (isCurrentTask) {
+            return (
+              <div className="flex items-center">
+                {/* Timer Display - visible by default, hidden on hover */}
+                <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
+                  {formatTime(timerSeconds || 0)}
+                </div>
+                {/* Delete Button - hidden by default, visible on hover */}
+                <button
+                  onClick={() => onRemove(task.id)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors opacity-0 group-hover:opacity-100 absolute"
+                  title="Delete task"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            );
+          } else {
+            return (
+              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Delete Button for non-active tasks */}
+                <button
+                  onClick={() => onRemove(task.id)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+                  title="Delete task"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            );
+          }
+        })()}
       </div>
     </div>
   );
@@ -243,6 +294,7 @@ export default function TaskList({
   isTimerRunning,
   hasActiveTimer,
   onPauseTimer,
+  timerSeconds,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -251,6 +303,7 @@ export default function TaskList({
   isTimerRunning?: boolean;
   hasActiveTimer?: boolean;
   onPauseTimer?: () => void;
+  timerSeconds?: number;
 }) {
   const { user } = useInstance();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -541,6 +594,7 @@ export default function TaskList({
                       isTimerRunning={isTimerRunning}
                       hasActiveTimer={hasActiveTimer}
                       onPauseTimer={onPauseTimer}
+                      timerSeconds={timerSeconds}
                     />
                   ))}
                 </SortableContext>
