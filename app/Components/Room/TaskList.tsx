@@ -55,7 +55,7 @@ function SortableTask({
   onCancelEdit: () => void;
   onRemove: (id: string) => void;
   onEditTextChange: (text: string) => void;
-  editInputRef: React.RefObject<HTMLInputElement | null>;
+  editInputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   onStartTask?: (taskText: string) => void;
   currentTask?: string;
   isTimerRunning?: boolean;
@@ -64,6 +64,7 @@ function SortableTask({
   timerSeconds?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const [isHovered, setIsHovered] = useState(false);
 
   // Helper to format time as mm:ss or hh:mm:ss based on duration
   function formatTime(s: number) {
@@ -93,6 +94,8 @@ function SortableTask({
       style={style}
       {...attributes}
       {...listeners}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`group p-2 mx-2 my-1 rounded-lg border cursor-move ${
         isDragging
           ? "opacity-50 bg-gray-800 border-gray-600"
@@ -105,7 +108,7 @@ function SortableTask({
             })()
       }`}
     >
-      <div className="flex items-center gap-2">
+      <div className={`flex gap-2 ${isEditing ? "items-start" : "items-center"}`}>
         {/* Drag Handle - Always visible */}
         <div
           className={`text-gray-500 transition-all duration-200 hover:text-[#FFAA00] ${
@@ -200,87 +203,121 @@ function SortableTask({
         {/* Task Text */}
         <div className="flex-1 min-w-0">
           {isEditing ? (
-            <input
-              ref={editInputRef}
-              type="text"
-              value={editingText}
-              onChange={(e) => onEditTextChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onSaveEdit();
-                } else if (e.key === "Escape") {
-                  onCancelEdit();
-                }
-              }}
-              onBlur={onSaveEdit}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="w-full bg-gray-800 text-white px-2 py-1 rounded border border-[#FFAA00] focus:outline-none text-sm"
-            />
+            <div className="relative w-full">
+              <textarea
+                ref={editInputRef as React.RefObject<HTMLTextAreaElement>}
+                value={editingText}
+                onChange={(e) => {
+                  if (e.target.value.length <= 69) {
+                    onEditTextChange(e.target.value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onSaveEdit();
+                  } else if (e.key === "Escape") {
+                    onCancelEdit();
+                  }
+                }}
+                onBlur={onSaveEdit}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="w-full bg-gray-800 text-white px-4 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm resize-none leading-loose"
+                maxLength={69}
+                rows={1}
+                style={{
+                  height: "auto",
+                  minHeight: "60px",
+                  lineHeight: "1.6",
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = "auto";
+                  const scrollHeight = target.scrollHeight;
+
+                  // If content requires more than single line height, use 60px minimum
+                  // Otherwise use 40px minimum
+                  const singleLineHeight = 40;
+                  const multiLineMinHeight = 60;
+
+                  if (scrollHeight > singleLineHeight) {
+                    target.style.height = Math.max(scrollHeight, multiLineMinHeight) + "px";
+                  } else {
+                    target.style.height = Math.max(scrollHeight, singleLineHeight) + "px";
+                  }
+                }}
+              />
+              <div className="absolute right-4 top-1 text-xs text-gray-400">{editingText.length}/69</div>
+            </div>
           ) : (
             <p
               onClick={() => onStartEditing(task)}
               onPointerDown={(e) => e.stopPropagation()}
-              className="cursor-pointer hover:text-[#FFAA00] transition-colors truncate text-white text-sm"
+              className={`cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
+                isHovered ? "whitespace-normal break-words" : "truncate"
+              }`}
+              title={task.text.length > 40 && !isHovered ? task.text : undefined}
             >
               {task.text}
             </p>
           )}
         </div>
 
-        {/* Action Buttons / Timer Display */}
-        {(() => {
-          const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+        {/* Action Buttons / Timer Display - Hidden when editing */}
+        {!isEditing &&
+          (() => {
+            const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
 
-          if (isCurrentTask) {
-            return (
-              <div className="flex items-center">
-                {/* Timer Display - visible by default, hidden on hover */}
-                <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
-                  {formatTime(timerSeconds || 0)}
+            if (isCurrentTask) {
+              return (
+                <div className="flex items-center">
+                  {/* Timer Display - visible by default, hidden on hover */}
+                  <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
+                    {formatTime(timerSeconds || 0)}
+                  </div>
+                  {/* Delete Button - hidden by default, visible on hover */}
+                  <button
+                    onClick={() => onRemove(task.id)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors opacity-0 group-hover:opacity-100 absolute"
+                    title="Delete task"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
                 </div>
-                {/* Delete Button - hidden by default, visible on hover */}
-                <button
-                  onClick={() => onRemove(task.id)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors opacity-0 group-hover:opacity-100 absolute"
-                  title="Delete task"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-            );
-          } else {
-            return (
-              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* Delete Button for non-active tasks */}
-                <button
-                  onClick={() => onRemove(task.id)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-                  title="Delete task"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-            );
-          }
-        })()}
+              );
+            } else {
+              return (
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Delete Button for non-active tasks */}
+                  <button
+                    onClick={() => onRemove(task.id)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+                    title="Delete task"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              );
+            }
+          })()}
       </div>
     </div>
   );
@@ -315,7 +352,7 @@ export default function TaskList({
   const [showClearMenu, setShowClearMenu] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const editInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -366,7 +403,11 @@ export default function TaskList({
   useEffect(() => {
     if (editingId && editInputRef.current) {
       editInputRef.current.focus();
-      editInputRef.current.select();
+      if (editInputRef.current instanceof HTMLInputElement) {
+        editInputRef.current.select();
+      } else if (editInputRef.current instanceof HTMLTextAreaElement) {
+        editInputRef.current.select();
+      }
     }
   }, [editingId]);
 
@@ -529,19 +570,31 @@ export default function TaskList({
         {/* Add Task Input */}
         <div className="p-6 border-b border-gray-800">
           <div className="flex gap-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={newTaskText}
-              onChange={(e) => setNewTaskText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  addTask();
-                }
-              }}
-              placeholder="Add a new task..."
-              className="flex-1 bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors"
-            />
+            <div className="flex-1 relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={newTaskText}
+                onChange={(e) => {
+                  if (e.target.value.length <= 69) {
+                    setNewTaskText(e.target.value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    addTask();
+                  }
+                }}
+                placeholder="Add a new task..."
+                className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors"
+                maxLength={69}
+              />
+              {newTaskText.length > 0 && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
+                  {newTaskText.length}/69
+                </div>
+              )}
+            </div>
             <button
               onClick={addTask}
               disabled={!newTaskText.trim()}
