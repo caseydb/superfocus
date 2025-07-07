@@ -45,6 +45,12 @@ function formatDuration(duration: string): string {
   return duration;
 }
 
+// Truncate text to specified length
+const truncateText = (text: string, maxLength: number = 50) => {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
+};
+
 // Calculate PAGE_SIZE based on screen size
 const calculatePageSize = (width: number, height: number) => {
   // If width >= 1024px (desktop table layout), use height-based logic for large screens
@@ -134,7 +140,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
         <div
-          className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto"
+          className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[820px] md:w-[1010px] lg:w-[1175px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
@@ -153,7 +159,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto"
+        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[820px] md:w-[1010px] lg:w-[1175px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
@@ -164,7 +170,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
             {displayEntries.map((entry, i) => (
               <div
                 key={i}
-                className="bg-[#181A1B] rounded-lg px-4 py-1 border border-[#23272b] w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px]"
+                className="bg-[#181A1B] rounded-lg px-4 py-1 border border-[#23272b] w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
               >
                 <div className="flex justify-between items-center mb-0.5 gap-3">
                   <div
@@ -190,7 +196,9 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
                     entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
                   }`}
                 >
-                  {entry.task}
+                  <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
+                  <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
+                  <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
                 </div>
               </div>
             ))}
@@ -208,7 +216,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
               </thead>
               <tbody>
                 {displayEntries.map((entry, i) => (
-                  <tr key={i}>
+                  <tr key={i} className="group">
                     <td
                       className={`px-2 py-1 font-mono whitespace-nowrap text-base w-48 ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
@@ -225,7 +233,9 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
                       }`}
                       title={entry.task}
                     >
-                      {entry.task}
+                      <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
+                      <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
+                      <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
                     </td>
                     <td
                       className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-base w-32 ${
