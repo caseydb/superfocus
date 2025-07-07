@@ -62,7 +62,6 @@ export default function PersonalStats() {
 
     let currentStreak = 0;
     const currentStreakDate = getStreakDate(); // Today's streak date
-    const streakDates: string[] = [];
 
     // Start from current streak date and count backwards
     for (let i = 0; i < 365; i++) {
@@ -78,7 +77,6 @@ export default function PersonalStats() {
 
       if (dailyCompletions[streakDateStr]) {
         currentStreak++;
-        streakDates.push(streakDateStr);
       } else {
         // If we haven't reached today yet and there's no completion, break
         // But if it's today and no completion yet, that's ok for the streak
@@ -87,16 +85,6 @@ export default function PersonalStats() {
         }
       }
     }
-
-    // Debug: log the streak dates
-    console.log("Streak calculation:", {
-      currentStreak,
-      currentStreakDate,
-      streakDates,
-      dailyCompletions,
-      currentTime: new Date().toISOString(),
-      currentHour: new Date().getHours(),
-    });
 
     return currentStreak;
   };

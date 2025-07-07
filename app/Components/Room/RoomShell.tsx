@@ -493,12 +493,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             showLeaderboard={showLeaderboard}
             setShowLeaderboard={setShowLeaderboard}
           />
-          {/* Room type indicator - centered bottom, hidden when history is open */}
-          <div
-            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap ${
-              showHistory ? "hidden" : ""
-            }`}
-          >
+          {/* Room type indicator - centered bottom */}
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap">
             {currentInstance.type === "private" ? "Private Room" : "Public Room"} |{" "}
             {realTimeUserCount === 1 ? "Just You" : `+ ${realTimeUserCount} ppl`}
           </div>
@@ -540,10 +536,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
           </div>
           {/* Timer is always mounted, just hidden when history is open */}
-          <div
-            style={{ display: showHistory ? "none" : "block" }}
-            className="flex flex-col items-center justify-center"
-          >
+          <div className="flex flex-col items-center justify-center">
             <Timer
               key={timerResetKey}
               onActiveChange={handleActiveChange}
@@ -607,6 +600,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           )}
           {showLeaderboard && currentInstance && (
             <Leaderboard roomId={currentInstance.id} onClose={() => setShowLeaderboard(false)} />
+          )}
+          {showHistory && currentInstance && (
+            <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
           )}
         </div>
         {/* Invite Modal - rendered as separate overlay */}

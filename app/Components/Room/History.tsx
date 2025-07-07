@@ -49,9 +49,12 @@ function formatDuration(duration: string): string {
 const calculatePageSize = (width: number, height: number) => {
   // If width >= 1024px (desktop table layout), use height-based logic for large screens
   if (width >= 1024) {
-    if (height >= 800) return 15;
-    if (height >= 600) return 10;
-    if (height >= 500) return 7;
+    if (height >= 850) return 15;
+    if (height >= 800) return 13;
+    if (height >= 750) return 10;
+    if (height >= 700) return 7;
+    if (height >= 650) return 5;
+    if (height <= 650) return 3;
     return 5; // Default for large screens
   }
 
@@ -139,90 +142,43 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
 
   if (history.length === 0) {
     return (
-      <div className="w-full max-w-none sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto mt-6 sm:mt-10 px-4 sm:px-8">
-        <h2 className="text-xl sm:text-2xl font-extrabold text-center text-white mb-4">History</h2>
-        {onClose && (
-          <div className="flex justify-center mb-4">
-            <button
-              className="text-gray-400 text-sm sm:text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
-              onClick={onClose}
-            >
-              Back to timer
-            </button>
-          </div>
-        )}
-        <div className="text-center text-white">No History Yet</div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+        <div
+          className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
+          <div className="text-center text-white">No History Yet</div>
+          <button
+            className="mt-2 sm:mt-3 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-none sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto mt-6 sm:mt-10 px-4 sm:px-8">
-      <h2 className="text-xl sm:text-2xl font-extrabold text-center text-white mb-4">History</h2>
-      {onClose && (
-        <div className="flex justify-center mb-4">
-          <button
-            className="text-gray-400 text-sm sm:text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors bg-transparent border-none cursor-pointer"
-            onClick={onClose}
-          >
-            Back to timer
-          </button>
-        </div>
-      )}
-      {/* Content with padding for fixed pagination */}
-      <div className={`${history.length > PAGE_SIZE && !isMobileDevice ? "pb-20" : ""}`}>
-        {/* Mobile Card Layout */}
-        <div className="block lg:hidden space-y-3 w-full">
-          {displayEntries.map((entry, i) => (
-            <div
-              key={i}
-              className="bg-[#181A1B] rounded-lg px-4 py-2 border border-[#23272b] w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px]"
-            >
-              <div className="flex justify-between items-center mb-2 gap-3">
-                <div
-                  className={`font-mono text-base font-medium flex-1 ${
-                    entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
-                  }`}
-                  title={entry.displayName}
-                >
-                  {entry.userId && users[entry.userId]?.displayName
-                    ? users[entry.userId].displayName
-                    : entry.displayName}
-                </div>
-                <div
-                  className={`font-mono text-base font-medium flex-shrink-0 ${
-                    entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
-                  }`}
-                >
-                  {formatDuration(entry.duration)}
-                </div>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+      <div
+        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
+        {/* Content */}
+        <div className="w-full">
+          {/* Mobile Card Layout */}
+          <div className="block lg:hidden space-y-3 w-full">
+            {displayEntries.map((entry, i) => (
               <div
-                className={`font-mono text-base leading-relaxed ${
-                  entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
-                }`}
+                key={i}
+                className="bg-[#181A1B] rounded-lg px-4 py-1 border border-[#23272b] w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px]"
               >
-                {entry.task}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Desktop Table Layout */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-y-0 min-w-[600px]">
-            <thead>
-              <tr className="text-gray-400 text-base">
-                <th className="px-2 py-1 w-48">Name</th>
-                <th className="px-2 py-1">Task</th>
-                <th className="pl-8 pr-2 py-1 w-32">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayEntries.map((entry, i) => (
-                <tr key={i}>
-                  <td
-                    className={`px-2 py-1 font-mono whitespace-nowrap text-base w-48 ${
+                <div className="flex justify-between items-center mb-0.5 gap-3">
+                  <div
+                    className={`font-mono text-base font-medium flex-1 ${
                       entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                     }`}
                     title={entry.displayName}
@@ -230,32 +186,73 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
                     {entry.userId && users[entry.userId]?.displayName
                       ? users[entry.userId].displayName
                       : entry.displayName}
-                  </td>
-                  <td
-                    className={`px-2 py-1 font-mono text-base ${
-                      entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
-                    }`}
-                    title={entry.task}
-                  >
-                    {entry.task}
-                  </td>
-                  <td
-                    className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-base w-32 ${
+                  </div>
+                  <div
+                    className={`font-mono text-base font-medium flex-shrink-0 ${
                       entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
                     }`}
                   >
                     {formatDuration(entry.duration)}
-                  </td>
+                  </div>
+                </div>
+                <div
+                  className={`font-mono text-base leading-snug ${
+                    entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
+                  }`}
+                >
+                  {entry.task}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table Layout */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-left border-separate border-spacing-y-0 min-w-[600px]">
+              <thead>
+                <tr className="text-gray-400 text-base">
+                  <th className="px-2 py-1 w-48">Name</th>
+                  <th className="px-2 py-1">Task</th>
+                  <th className="pl-8 pr-2 py-1 w-32">Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {displayEntries.map((entry, i) => (
+                  <tr key={i}>
+                    <td
+                      className={`px-2 py-1 font-mono whitespace-nowrap text-base w-48 ${
+                        entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                      }`}
+                      title={entry.displayName}
+                    >
+                      {entry.userId && users[entry.userId]?.displayName
+                        ? users[entry.userId].displayName
+                        : entry.displayName}
+                    </td>
+                    <td
+                      className={`px-2 py-1 font-mono text-base ${
+                        entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                      }`}
+                      title={entry.task}
+                    >
+                      {entry.task}
+                    </td>
+                    <td
+                      className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-base w-32 ${
+                        entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
+                      }`}
+                    >
+                      {formatDuration(entry.duration)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-      {/* Pagination controls - pinned to bottom for all screens (except mobile) */}
-      {history.length > PAGE_SIZE && !isMobileDevice && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 z-50">
-          <div className="flex items-center justify-center gap-4 lg:gap-8">
+        {/* Pagination controls - integrated into modal */}
+        {history.length > PAGE_SIZE && !isMobileDevice && (
+          <div className="mt-3 flex items-center justify-center gap-4 lg:gap-8">
             <button
               className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
                 page === 1
@@ -282,13 +279,21 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
               Next
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Mobile scroll indicator */}
-      {isMobileDevice && history.length > PAGE_SIZE && (
-        <div className="text-center mt-4 text-gray-400 text-sm font-mono">Showing all {history.length} entries</div>
-      )}
+        {/* Mobile scroll indicator */}
+        {isMobileDevice && history.length > PAGE_SIZE && (
+          <div className="text-center mt-2 text-gray-400 text-sm font-mono">Showing all {history.length} entries</div>
+        )}
+
+        {/* Close button */}
+        <button
+          className="mt-2 sm:mt-3 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
     </div>
   );
 }
