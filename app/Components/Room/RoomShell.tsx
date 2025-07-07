@@ -15,6 +15,7 @@ import Sounds from "./Sounds";
 import TaskList from "./TaskList";
 import PersonalStats from "./PersonalStats";
 import WelcomeBackMessage from "./WelcomeBackMessage";
+import RoomsModal from "./RoomsModal";
 import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
@@ -47,6 +48,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [realTimeUserCount, setRealTimeUserCount] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
+  const [showRoomsModal, setShowRoomsModal] = useState(false);
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -484,6 +486,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Also save to user's personal completion history for cross-room stats
       const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
       push(userHistoryRef, completionData);
+
       notifyEvent("complete");
       // Add flying message to Firebase
       const flyingMessageId = `${user.id}-complete-${Date.now()}`;
@@ -560,6 +563,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             setShowTaskList={setShowTaskList}
             showLeaderboard={showLeaderboard}
             setShowLeaderboard={setShowLeaderboard}
+            setShowRoomsModal={setShowRoomsModal}
           />
           {/* Room type indicator - centered bottom */}
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap">
@@ -757,6 +761,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           }}
           timerSeconds={currentTimerSeconds}
         />
+
+        {/* Rooms Modal */}
+        <RoomsModal isOpen={showRoomsModal} onClose={() => setShowRoomsModal(false)} />
       </>
     );
   }

@@ -22,12 +22,9 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
       "Progress over perfection",
       "Small steps, big results",
       "Your future self will thank you",
-      "Discipline creates freedom",
-      "Excellence is a daily practice",
       "Success is built one task at a time",
       "Focus on what matters most",
       "Make today count",
-      "Your effort shapes your outcome",
     ];
 
     return quotes[Math.floor(Math.random() * quotes.length)];

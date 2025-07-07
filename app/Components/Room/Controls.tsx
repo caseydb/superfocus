@@ -19,6 +19,7 @@ interface ControlsProps {
   setShowTaskList: (show: boolean) => void;
   showLeaderboard: boolean;
   setShowLeaderboard: (show: boolean) => void;
+  setShowRoomsModal: (show: boolean) => void;
 }
 
 export default function Controls({
@@ -34,6 +35,7 @@ export default function Controls({
   setShowTaskList,
   showLeaderboard,
   setShowLeaderboard,
+  setShowRoomsModal,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editedName, setEditedName] = useState(user.displayName);
@@ -324,6 +326,17 @@ export default function Controls({
 
           {/* Menu Items */}
           <div className="space-y-2">
+            {/* View Rooms Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
+              onClick={() => {
+                setShowRoomsModal(true);
+                setDropdownOpen(false);
+              }}
+            >
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
+            </button>
+
             {/* Invite Others Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
@@ -596,6 +609,17 @@ export default function Controls({
                   />
                 </div>
               </div>
+
+              {/* View Rooms Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
+                onClick={() => {
+                  setShowRoomsModal(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
+              </button>
 
               {/* Tasks Button */}
               <button
