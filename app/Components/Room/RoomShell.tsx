@@ -567,8 +567,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           />
           {/* Room type indicator - centered bottom */}
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap">
-            {currentInstance.type === "private" ? "Private Room" : "Public Room"} |{" "}
-            {realTimeUserCount === 1 ? "Just You" : `+ ${realTimeUserCount} ppl`}
+            {currentInstance.type === "private" ? (
+              "Private Room"
+            ) : (
+              <>Public Room | {realTimeUserCount === 1 ? "Just You" : `+ ${realTimeUserCount} ppl`}</>
+            )}
           </div>
           {/* Tasks - desktop only: bottom right corner */}
           <button

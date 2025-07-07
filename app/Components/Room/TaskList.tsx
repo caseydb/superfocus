@@ -578,7 +578,7 @@ export default function TaskList({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[70] pointer-events-none animate-in fade-in duration-300">
       {/* Click-outside-to-close backdrop */}
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
 
@@ -747,7 +747,7 @@ export default function TaskList({
 
       {/* Clear All Confirmation Dialog */}
       {showClearAllConfirm && (
-        <div className="fixed inset-0 z-60 pointer-events-none animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[80] pointer-events-none animate-in fade-in duration-300">
           {/* Background overlay at 80% opacity */}
           <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-auto" />
 
