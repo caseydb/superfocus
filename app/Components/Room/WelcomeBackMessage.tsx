@@ -6,14 +6,15 @@ import { ref, set, get } from "firebase/database";
 
 interface WelcomeBackMessageProps {
   roomId: string;
+  onVisibilityChange?: (isVisible: boolean) => void;
 }
 
-export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) {
+export default function WelcomeBackMessage({ roomId, onVisibilityChange }: WelcomeBackMessageProps) {
   const { user } = useInstance();
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [isReturningUser, setIsReturningUser] = useState(false);
-  const [countdown, setCountdown] = useState(4);
+  const [countdown, setCountdown] = useState(5);
 
   // Epic welcome messages based on user's streak and return status
   const getWelcomeMessage = (streak: number, lastVisit: number) => {
@@ -100,6 +101,25 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
     return () => clearInterval(countdownInterval);
   }, [showWelcome]);
 
+  // Notify parent component when visibility changes
+  useEffect(() => {
+    onVisibilityChange?.(showWelcome);
+  }, [showWelcome, onVisibilityChange]);
+
+  // Handle Enter key to dismiss welcome message immediately
+  useEffect(() => {
+    if (!showWelcome) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        setShowWelcome(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showWelcome]);
+
   useEffect(() => {
     if (!user?.id || !roomId) return;
 
@@ -158,13 +178,13 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
           // Returning user - show epic return message
           setIsReturningUser(true);
           setWelcomeMessage(getWelcomeMessage(currentStreak, lastVisit));
-          setCountdown(4);
+          setCountdown(5);
           setShowWelcome(true);
         } else {
           // First time in this room
           setIsReturningUser(false);
           setWelcomeMessage(`🔥 Warning: Side effects may include crushing your to-do list`);
-          setCountdown(4);
+          setCountdown(5);
           setShowWelcome(true);
         }
 
@@ -187,10 +207,25 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
       <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 via-blue-900/20 to-purple-900/20 animate-pulse" />
       <div className="absolute inset-0 bg-black/30" />
 
-      {/* Animated rings */}
-      <div className="absolute w-96 h-96 border-4 border-[#FFAA00]/30 rounded-full animate-ping" />
-      <div className="absolute w-80 h-80 border-4 border-[#FFAA00]/50 rounded-full animate-ping animation-delay-200" />
-      <div className="absolute w-64 h-64 border-4 border-[#FFAA00]/70 rounded-full animate-ping animation-delay-400" />
+      {/* Animated rings - smooth pulsing */}
+      <div
+        className="absolute w-96 h-96 border-4 border-[#FFAA00]/30 rounded-full animate-pulse"
+        style={{
+          animation: "smooth-pulse 3s ease-in-out infinite",
+        }}
+      />
+      <div
+        className="absolute w-80 h-80 border-4 border-[#FFAA00]/50 rounded-full animate-pulse"
+        style={{
+          animation: "smooth-pulse 3s ease-in-out infinite 0.5s",
+        }}
+      />
+      <div
+        className="absolute w-64 h-64 border-4 border-[#FFAA00]/70 rounded-full animate-pulse"
+        style={{
+          animation: "smooth-pulse 3s ease-in-out infinite 1s",
+        }}
+      />
 
       {/* Main message container */}
       <div className="relative z-10 bg-gradient-to-r from-gray-900/95 via-black/95 to-gray-900/95 rounded-3xl shadow-2xl border-4 border-[#FFAA00] p-8 max-w-4xl mx-4 animate-in zoom-in duration-700">
@@ -206,7 +241,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
           {/* Subtitle */}
           <div className="text-lg sm:text-xl text-gray-300 font-mono opacity-90 animate-in slide-in-from-bottom duration-1000 delay-500">
-            {isReturningUser ? `The grind continues in ${countdown}...` : "Ready to dominate this room?"}
+            {isReturningUser ? `The grind continues in ${countdown}...` : `The grind starts in ${countdown}...`}
           </div>
 
           {/* Sparkle effects */}
@@ -216,6 +251,11 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
             <span className="animate-pulse animation-delay-400">🔥</span>
             <span className="animate-pulse animation-delay-600">💎</span>
             <span className="animate-pulse animation-delay-800">🚀</span>
+          </div>
+
+          {/* Subtle continue hint */}
+          <div className="text-sm text-gray-500 font-mono opacity-60 animate-in fade-in duration-1000 delay-1000">
+            Press Enter to continue
           </div>
         </div>
       </div>

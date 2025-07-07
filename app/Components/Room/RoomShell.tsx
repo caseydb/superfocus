@@ -46,6 +46,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [realTimeUserCount, setRealTimeUserCount] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
@@ -556,11 +557,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             flyingPlaceholders={[]}
             activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
           />
-          <WelcomeBackMessage roomId={currentInstance.id} />
+          <WelcomeBackMessage roomId={currentInstance.id} onVisibilityChange={setShowWelcomeMessage} />
           <Sounds roomId={currentInstance.id} localVolume={localVolume} />
           <ActiveWorkers roomId={currentInstance.id} />
-          {/* Main content: TaskInput or Timer/room UI */}
-          <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
+          {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}
+          <div className={showHistory || showWelcomeMessage ? "hidden" : "flex flex-col items-center justify-center"}>
             <TaskInput
               task={task}
               setTask={setTask}
@@ -571,8 +572,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <div className={showHistory ? "" : "hidden"}>
             <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
           </div>
-          {/* Timer is always mounted, just hidden when history is open */}
-          <div className="flex flex-col items-center justify-center">
+          {/* Timer is always mounted, just hidden when history is open or welcome message is showing */}
+          <div className={showWelcomeMessage ? "hidden" : "flex flex-col items-center justify-center"}>
             <Timer
               key={timerResetKey}
               onActiveChange={handleActiveChange}
