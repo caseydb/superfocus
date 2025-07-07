@@ -216,9 +216,7 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
                         </h3>
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-mono ${
-                            room.type === "private"
-                              ? "bg-purple-500/20 text-purple-400"
-                              : "bg-blue-500/20 text-blue-400"
+                            room.type === "private" ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"
                           }`}
                         >
                           {room.type}
