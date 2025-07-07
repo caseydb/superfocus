@@ -14,75 +14,25 @@ export default function WelcomeBackMessage({ roomId, onVisibilityChange }: Welco
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [isReturningUser, setIsReturningUser] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(3);
+  const [inspirationalQuote, setInspirationalQuote] = useState("");
 
-  // Epic welcome messages based on user's streak and return status
-  const getWelcomeMessage = (streak: number, lastVisit: number) => {
-    const daysSinceLastVisit = Math.floor((Date.now() - lastVisit) / (1000 * 60 * 60 * 24));
-    const firstName = user.displayName.split(" ")[0];
-
-    const epicMessages = [
-      // Recent return (same day)
-      ...(daysSinceLastVisit === 0
-        ? [
-            `🔥 THE GRIND NEVER STOPS! Welcome back, ${firstName}!`,
-            `⚡ BACK FOR MORE? ${firstName} is UNSTOPPABLE!`,
-            `🚀 LOCKED AND LOADED! ${firstName} returns to the battlefield!`,
-            `💎 DIAMOND HANDS! ${firstName} never quits!`,
-            `🎯 LASER FOCUSED! ${firstName} is back in the zone!`,
-          ]
-        : []),
-
-      // 1-3 days
-      ...(daysSinceLastVisit >= 1 && daysSinceLastVisit <= 3
-        ? [
-            `🌟 THE LEGEND RETURNS! ${firstName} is back after ${daysSinceLastVisit} day${
-              daysSinceLastVisit > 1 ? "s" : ""
-            }!`,
-            `⚔️ WARRIOR'S RETURN! ${firstName} emerges from the shadows!`,
-            `🏆 CHAMPION COMEBACK! ${firstName} never stays down!`,
-            `🔥 PHOENIX RISING! ${firstName} returns stronger than ever!`,
-            `💪 BEAST MODE ACTIVATED! ${firstName} is BACK!`,
-          ]
-        : []),
-
-      // 4-7 days
-      ...(daysSinceLastVisit >= 4 && daysSinceLastVisit <= 7
-        ? [
-            `🎭 THE PRODIGAL WARRIOR! ${firstName} returns after ${daysSinceLastVisit} days!`,
-            `🌪️ STORM'S RETURN! ${firstName} brings the thunder!`,
-            `🗡️ BLADE REFORGED! ${firstName} emerges from the forge!`,
-            `🎪 THE SHOW MUST GO ON! ${firstName} takes center stage!`,
-            `🚁 TACTICAL INSERTION! ${firstName} drops back into action!`,
-          ]
-        : []),
-
-      // 1+ weeks
-      ...(daysSinceLastVisit >= 8
-        ? [
-            `🌋 VOLCANIC ERUPTION! ${firstName} returns after ${daysSinceLastVisit} days of silence!`,
-            `🎆 GRAND FINALE! ${firstName} makes a SPECTACULAR return!`,
-            `🏰 KINGDOM RECLAIMED! ${firstName} has returned to rule!`,
-            `🌌 COSMIC COMEBACK! ${firstName} descends from the stars!`,
-            `🎭 EPIC RESURRECTION! ${firstName} rises from the ashes!`,
-          ]
-        : []),
+  // Inspirational quotes for focus and productivity
+  const getInspirationalQuote = () => {
+    const quotes = [
+      "Focus is your superpower",
+      "Progress over perfection",
+      "Small steps, big results",
+      "Your future self will thank you",
+      "Discipline creates freedom",
+      "Excellence is a daily practice",
+      "Success is built one task at a time",
+      "Focus on what matters most",
+      "Make today count",
+      "Your effort shapes your outcome",
     ];
 
-    // Add streak-based messages
-    if (streak >= 10) {
-      epicMessages.push(
-        `🔥💎 STREAK DEMON! ${firstName} returns with a ${streak}-day streak!`,
-        `⚡🏆 LEGENDARY STREAK! ${firstName} (${streak} days) is UNSTOPPABLE!`
-      );
-    } else if (streak >= 5) {
-      epicMessages.push(
-        `🚀💪 STREAK MASTER! ${firstName} maintains their ${streak}-day streak!`,
-        `🎯🔥 HOT STREAK! ${firstName} (${streak} days) is ON FIRE!`
-      );
-    }
-
-    return epicMessages[Math.floor(Math.random() * epicMessages.length)] || `🎉 Welcome back, ${firstName}!`;
+    return quotes[Math.floor(Math.random() * quotes.length)];
   };
 
   // Separate countdown effect that runs when showWelcome becomes true
@@ -131,63 +81,26 @@ export default function WelcomeBackMessage({ roomId, onVisibilityChange }: Welco
         const lastVisitSnapshot = await get(lastVisitRef);
         const lastVisit = lastVisitSnapshot.val();
 
-        // Get user's streak
-        const streakRef = ref(rtdb, `users/${user.id}/dailyCompletions`);
-        const streakSnapshot = await get(streakRef);
-        const dailyCompletions = streakSnapshot.val() || {};
-
-        // Calculate streak (same logic as PersonalStats)
-        const calculateStreak = (dailyCompletions: Record<string, boolean>) => {
-          if (!dailyCompletions) return 0;
-
-          const getStreakDate = (timestamp: number = Date.now()) => {
-            const date = new Date(timestamp);
-            const hour = date.getHours();
-            if (hour < 4) {
-              date.setDate(date.getDate() - 1);
-            }
-            return date.toISOString().split("T")[0];
-          };
-
-          let currentStreak = 0;
-          const currentStreakDate = getStreakDate();
-
-          for (let i = 0; i < 365; i++) {
-            const checkDate = new Date();
-            checkDate.setDate(checkDate.getDate() - i);
-            if (new Date().getHours() < 4) {
-              checkDate.setDate(checkDate.getDate() - 1);
-            }
-            const streakDateStr = checkDate.toISOString().split("T")[0];
-
-            if (dailyCompletions[streakDateStr]) {
-              currentStreak++;
-            } else {
-              if (streakDateStr !== currentStreakDate) {
-                break;
-              }
-            }
-          }
-          return currentStreak;
-        };
-
-        const currentStreak = calculateStreak(dailyCompletions);
         const now = Date.now();
+        const firstName = user.displayName.split(" ")[0];
 
         // Show welcome message EVERY time user enters the room!
         if (lastVisit) {
-          // Returning user - show epic return message
+          // Returning user - show simple welcome back message
           setIsReturningUser(true);
-          setWelcomeMessage(getWelcomeMessage(currentStreak, lastVisit));
-          setCountdown(5);
+          setWelcomeMessage(`Welcome back, ${firstName}!`);
+          setCountdown(3);
           setShowWelcome(true);
         } else {
           // First time in this room
           setIsReturningUser(false);
-          setWelcomeMessage(`🔥 Warning: Side effects may include crushing your to-do list`);
-          setCountdown(5);
+          setWelcomeMessage(`Welcome, ${firstName}!`);
+          setCountdown(3);
           setShowWelcome(true);
         }
+
+        // Set inspirational quote
+        setInspirationalQuote(getInspirationalQuote());
 
         // Update last visit timestamp
         set(lastVisitRef, now);
@@ -234,24 +147,20 @@ export default function WelcomeBackMessage({ roomId, onVisibilityChange }: Welco
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-[#FFAA00]/20 via-[#FFAA00]/40 to-[#FFAA00]/20 blur-xl -z-10" />
 
         {/* Content */}
-        <div className="text-center space-y-4">
-          {/* Epic message */}
+        <div className="text-center space-y-6">
+          {/* Welcome message */}
           <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-yellow-300 to-[#FFAA00] animate-pulse leading-tight">
             {welcomeMessage}
           </div>
 
-          {/* Subtitle */}
-          <div className="text-lg sm:text-xl text-gray-300 font-mono opacity-90 animate-in slide-in-from-bottom duration-1000 delay-500">
-            {isReturningUser ? `The grind continues in ${countdown}...` : `The grind starts in ${countdown}...`}
+          {/* Inspirational quote */}
+          <div className="text-lg sm:text-xl text-gray-300 font-light italic opacity-80 animate-in slide-in-from-bottom duration-1000 delay-300">
+            {inspirationalQuote}
           </div>
 
-          {/* Sparkle effects */}
-          <div className="flex justify-center space-x-2 text-2xl animate-bounce">
-            <span className="animate-pulse">✨</span>
-            <span className="animate-pulse animation-delay-200">⚡</span>
-            <span className="animate-pulse animation-delay-400">🔥</span>
-            <span className="animate-pulse animation-delay-600">💎</span>
-            <span className="animate-pulse animation-delay-800">🚀</span>
+          {/* Countdown */}
+          <div className="text-base text-gray-400 font-mono opacity-70 animate-in slide-in-from-bottom duration-1000 delay-500">
+            {isReturningUser ? `The grind continues in ${countdown}` : `The grind starts in ${countdown}`}
           </div>
 
           {/* Subtle continue hint */}
@@ -259,22 +168,6 @@ export default function WelcomeBackMessage({ roomId, onVisibilityChange }: Welco
             Press Enter to continue
           </div>
         </div>
-      </div>
-
-      {/* Floating particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-[#FFAA00] rounded-full animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${3 + Math.random() * 2}s`,
-            }}
-          />
-        ))}
       </div>
     </div>
   );
