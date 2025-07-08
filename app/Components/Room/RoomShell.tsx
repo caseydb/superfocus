@@ -16,6 +16,7 @@ import TaskList from "./TaskList";
 import PersonalStats from "./PersonalStats";
 import WelcomeBackMessage from "./WelcomeBackMessage";
 import RoomsModal from "./RoomsModal";
+import Notes from "./Notes";
 import SignIn from "../SignIn";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
@@ -49,6 +50,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
   const [showRoomsModal, setShowRoomsModal] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -61,6 +64,30 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Track if there's an active timer state from Firebase
   const [hasActiveTimer, setHasActiveTimer] = useState(false);
   const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
+
+  // Find taskId for current task
+  useEffect(() => {
+    if (!user?.id || !task.trim()) {
+      setCurrentTaskId(null);
+      return;
+    }
+
+    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+    const handle = onValue(tasksRef, (snapshot) => {
+      const tasksData = snapshot.val();
+      if (tasksData) {
+        const taskId = Object.keys(tasksData).find((id) => {
+          const taskItem = tasksData[id];
+          return taskItem.text === task.trim() && !taskItem.completed;
+        });
+        setCurrentTaskId(taskId || null);
+      } else {
+        setCurrentTaskId(null);
+      }
+    });
+
+    return () => off(tasksRef, "value", handle);
+  }, [user?.id, task]);
 
   // Listen for timer state to determine if input should be locked and track current seconds
   useEffect(() => {
@@ -505,6 +532,21 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   };
 
+  // Add keyboard shortcut for toggling Notes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      if ((isMac && e.metaKey && e.key.toLowerCase() === "k") || (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")) {
+        if (task.trim()) {
+          e.preventDefault();
+          setShowNotes((prev) => !prev);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [task]);
+
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn
     return (
@@ -613,6 +655,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Timer is always mounted, just hidden when history is open */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
+            {/* Notes - inline above timer, only show when task exists */}
+            {task.trim() && <Notes isOpen={showNotes} task={task} taskId={currentTaskId} />}
+
             <Timer
               key={timerResetKey}
               onActiveChange={handleActiveChange}
@@ -624,12 +669,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               task={task}
             />
             {task.trim() && (
-              <div className="flex justify-center w-full">
+              <div className="flex justify-center w-full gap-6">
                 <button
                   className="mt-4 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
                   onClick={handleClear}
                 >
                   Clear
+                </button>
+                <button
+                  className="mt-4 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
+                  onClick={() => setShowNotes(!showNotes)}
+                >
+                  Notes
                 </button>
               </div>
             )}
