@@ -12,7 +12,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
   const { user } = useInstance();
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
-  const [countdown, setCountdown] = useState(5);
+
   const [inspirationalQuote, setInspirationalQuote] = useState("");
 
   // Inspirational quotes for focus and productivity
@@ -30,21 +30,15 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
     return quotes[Math.floor(Math.random() * quotes.length)];
   };
 
-  // Countdown timer - starts at 5 seconds and counts down
+  // Auto-hide timer - hides welcome message after 5 seconds
   useEffect(() => {
     if (!showWelcome) return;
 
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          setShowWelcome(false);
-          return 5; // Reset for next time
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const timeout = setTimeout(() => {
+      setShowWelcome(false);
+    }, 5000);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [showWelcome]);
 
   // Handle Enter key to dismiss welcome message immediately
@@ -78,12 +72,10 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
         if (lastVisit) {
           // Returning user - show simple welcome back message
           setWelcomeMessage(`Welcome back, ${firstName}!`);
-          setCountdown(5); // Reset countdown
           setShowWelcome(true);
         } else {
           // First time in this room
           setWelcomeMessage(`Welcome, ${firstName}!`);
-          setCountdown(5); // Reset countdown
           setShowWelcome(true);
         }
 
@@ -119,9 +111,6 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
           {/* Inspirational quote */}
           <div className="text-sm text-gray-300 font-light italic opacity-80">{inspirationalQuote}</div>
-
-          {/* Subtle countdown timer */}
-          <div className="text-xs text-gray-500 font-mono opacity-60">{countdown}</div>
         </div>
       </div>
     </div>

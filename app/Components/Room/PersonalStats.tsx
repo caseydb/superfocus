@@ -315,13 +315,13 @@ export default function PersonalStats() {
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {
     return (
-      <div className="fixed top-4 right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
-        <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
+      <div className="fixed bottom-4 left-0 right-0 sm:top-4 sm:right-36 sm:bottom-auto sm:left-auto z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm mx-auto sm:mx-0 w-fit">
           <div className="flex items-center justify-center gap-2">
             <div className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center animate-pulse`}>
               <span className="text-black text-xs font-bold">{streak}</span>
             </div>
-            <span className="text-gray-400 text-base font-mono">
+            <span className="text-gray-400 text-xs sm:text-base font-mono">
               <span className="text-gray-400">day streak</span> |{" "}
               <span className="text-gray-300 font-medium">{timeRemaining}</span> to{" "}
               {streak === 0 ? "start streak!" : "maintain streak!"}
@@ -334,15 +334,15 @@ export default function PersonalStats() {
 
   // Show normal stats if they've completed today's task
   return (
-    <div className="fixed top-4 right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
-      <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
+    <div className="fixed bottom-4 left-0 right-0 sm:top-4 sm:right-36 sm:bottom-auto sm:left-auto z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm mx-auto sm:mx-0 w-fit">
         <div className="flex items-center justify-center gap-2">
           <div
             className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110`}
           >
             <span className="text-black text-xs font-bold">{streak}</span>
           </div>
-          <span className="text-gray-400 text-base font-mono">
+          <span className="text-gray-400 text-xs sm:text-base font-mono">
             <span className="text-gray-400">day streak</span> |{" "}
             <span className="text-gray-300 font-medium">{tasksCompleted}</span> tasks |{" "}
             <span className="text-gray-300 font-medium">{formatTime(totalSeconds)}</span> today
