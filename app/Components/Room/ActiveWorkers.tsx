@@ -7,15 +7,15 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [userStreaks, setUserStreaks] = useState<Record<string, number>>({});
 
-  // Simple streak calculation (same as PersonalStats)
+  // Simple streak calculation (same as PersonalStats) - using UTC time
   const calculateStreak = (dailyCompletions: Record<string, boolean>) => {
     if (!dailyCompletions) return 0;
 
     const getStreakDate = (timestamp: number = Date.now()) => {
       const date = new Date(timestamp);
-      const hour = date.getHours();
-      if (hour < 4) {
-        date.setDate(date.getDate() - 1);
+      const utcHour = date.getUTCHours();
+      if (utcHour < 4) {
+        date.setUTCDate(date.getUTCDate() - 1);
       }
       return date.toISOString().split("T")[0];
     };
@@ -25,9 +25,9 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
 
     for (let i = 0; i < 365; i++) {
       const checkDate = new Date();
-      checkDate.setDate(checkDate.getDate() - i);
-      if (new Date().getHours() < 4) {
-        checkDate.setDate(checkDate.getDate() - 1);
+      checkDate.setUTCDate(checkDate.getUTCDate() - i);
+      if (new Date().getUTCHours() < 4) {
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
       }
       const streakDateStr = checkDate.toISOString().split("T")[0];
 
@@ -86,7 +86,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   if (activeUsers.length === 0) return null;
 
   return (
-    <div className="fixed top-5 sm:top-4 left-8 z-40 text-base font-mono opacity-70 select-none">
+    <div className="fixed top-4 left-8 z-40 text-base font-mono opacity-70 select-none">
       {activeUsers.map((u) => (
         <div
           key={u.id}

@@ -49,39 +49,39 @@ export default function PersonalStats() {
   const [hasCompletedToday, setHasCompletedToday] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
 
-  // Get the "streak date" - which day a timestamp belongs to in the 4am-4am system
+  // Get the "streak date" - which day a timestamp belongs to in the 4am UTC system
   const getStreakDate = (timestamp: number = Date.now()) => {
     const date = new Date(timestamp);
-    const hour = date.getHours();
+    const utcHour = date.getUTCHours();
 
-    // If it's before 4am, this counts as the previous day
-    if (hour < 4) {
-      date.setDate(date.getDate() - 1);
+    // If it's before 4am UTC, this counts as the previous day
+    if (utcHour < 4) {
+      date.setUTCDate(date.getUTCDate() - 1);
     }
 
-    // Use local date instead of UTC date to avoid timezone issues
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+    // Use UTC date for consistency across all users
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
   };
 
-  // Calculate streak from daily completions using 4am-4am windows
+  // Calculate streak from daily completions using 4am UTC windows
   const calculateStreak = (dailyCompletions: Record<string, boolean>) => {
     if (!dailyCompletions) return 0;
 
     let currentStreak = 0;
-    const currentStreakDate = getStreakDate(); // Today's streak date
+    const currentStreakDate = getStreakDate(); // Today's streak date in UTC
 
     // Start from current streak date and count backwards
     for (let i = 0; i < 365; i++) {
       const checkDate = new Date();
-      checkDate.setDate(checkDate.getDate() - i);
+      checkDate.setUTCDate(checkDate.getUTCDate() - i);
 
-      // Adjust for 4am boundary - if we're before 4am, we're still in yesterday's streak day
-      if (new Date().getHours() < 4) {
-        checkDate.setDate(checkDate.getDate() - 1);
+      // Adjust for 4am UTC boundary
+      if (new Date().getUTCHours() < 4) {
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
       }
 
       const streakDateStr = checkDate.toISOString().split("T")[0];
@@ -104,7 +104,7 @@ export default function PersonalStats() {
   const markTodayComplete = async () => {
     if (!user?.id) return;
 
-    const currentStreakDate = getStreakDate(); // Use 4am-4am window
+    const currentStreakDate = getStreakDate(); // Use 4am UTC window
     const dailyCompletionRef = ref(rtdb, `users/${user.id}/dailyCompletions/${currentStreakDate}`);
 
     // Check if already marked for this streak day
@@ -114,20 +114,20 @@ export default function PersonalStats() {
     }
   };
 
-  // Calculate time remaining until 4am tomorrow
+  // Calculate time remaining until 4am UTC tomorrow
   const calculateTimeRemaining = () => {
     const now = new Date();
-    const tomorrow4am = new Date();
+    const tomorrow4amUTC = new Date();
 
-    // Set to 4am tomorrow
-    if (now.getHours() >= 4) {
-      // After 4am today, so 4am tomorrow
-      tomorrow4am.setDate(tomorrow4am.getDate() + 1);
+    // Set to 4am UTC tomorrow
+    if (now.getUTCHours() >= 4) {
+      // After 4am UTC today, so 4am UTC tomorrow
+      tomorrow4amUTC.setUTCDate(tomorrow4amUTC.getUTCDate() + 1);
     }
-    // Before 4am today, so 4am today
-    tomorrow4am.setHours(4, 0, 0, 0);
+    // Before 4am UTC today, so 4am UTC today
+    tomorrow4amUTC.setUTCHours(4, 0, 0, 0);
 
-    const msRemaining = tomorrow4am.getTime() - now.getTime();
+    const msRemaining = tomorrow4amUTC.getTime() - now.getTime();
     const hours = Math.floor(msRemaining / (1000 * 60 * 60));
     const minutes = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((msRemaining % (1000 * 60)) / 1000);
@@ -206,7 +206,7 @@ export default function PersonalStats() {
       const roomsWithUserData: string[] = [];
 
       if (instancesData) {
-        const currentStreakDate = getStreakDate(); // Get today's streak date (4am-4am window)
+        const currentStreakDate = getStreakDate(); // Get today's streak date (4am UTC window)
 
         // Go through each instance/room
         Object.entries(instancesData).forEach(([instanceId, instanceData]) => {
@@ -222,7 +222,7 @@ export default function PersonalStats() {
               if (typedEntry.userId === user.id && !typedEntry.task.toLowerCase().includes("quit early")) {
                 foundUserInRoom = true;
 
-                // Check if it's within today's 4am-4am window
+                // Check if it's within today's 4am UTC window
                 if (typedEntry.timestamp) {
                   const entryStreakDate = getStreakDate(typedEntry.timestamp);
 
@@ -272,8 +272,8 @@ export default function PersonalStats() {
         });
       }
 
-      // Console log all tasks completed in today's 4am-4am window
-      console.log(`=== ${user.displayName || user.id} - Tasks Completed Today (4am-4am, Cross-Room) ===`);
+      // Console log all tasks completed in today's 4am UTC window
+      console.log(`=== ${user.displayName || user.id} - Tasks Completed Today (4am UTC, Cross-Room) ===`);
       console.log(`User ID: ${user.id}`);
       console.log(`Display Name: ${user.displayName}`);
       console.log(
@@ -315,7 +315,7 @@ export default function PersonalStats() {
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {
     return (
-      <div className="fixed top-[16px] right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="fixed top-4 right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
           <div className="flex items-center justify-center gap-2">
             <div className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center animate-pulse`}>
@@ -334,7 +334,7 @@ export default function PersonalStats() {
 
   // Show normal stats if they've completed today's task
   return (
-    <div className="fixed top-[16px] right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="fixed top-4 right-36 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm">
         <div className="flex items-center justify-center gap-2">
           <div
