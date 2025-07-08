@@ -551,7 +551,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <PersonalStats />
           {/* User name in top left */}
           <Controls
-            className="fixed top-4 right-8 z-50"
+            className="fixed top-4.5 right-8 z-50"
             localVolume={localVolume}
             setLocalVolume={setLocalVolume}
             showHistory={showHistory}

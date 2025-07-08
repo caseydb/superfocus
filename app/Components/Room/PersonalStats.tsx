@@ -321,7 +321,7 @@ export default function PersonalStats() {
             <div className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center animate-pulse`}>
               <span className="text-black text-xs font-bold">{streak}</span>
             </div>
-            <span className="text-gray-400 text-xs font-mono">
+            <span className="text-gray-400 text-base font-mono">
               <span className="text-gray-400">day streak</span> |{" "}
               <span className="text-gray-300 font-medium">{timeRemaining}</span> to{" "}
               {streak === 0 ? "start streak!" : "maintain streak!"}
@@ -342,7 +342,7 @@ export default function PersonalStats() {
           >
             <span className="text-black text-xs font-bold">{streak}</span>
           </div>
-          <span className="text-gray-400 text-xs font-mono">
+          <span className="text-gray-400 text-base font-mono">
             <span className="text-gray-400">day streak</span> |{" "}
             <span className="text-gray-300 font-medium">{tasksCompleted}</span> tasks |{" "}
             <span className="text-gray-300 font-medium">{formatTime(totalSeconds)}</span> today
