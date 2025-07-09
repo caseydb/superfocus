@@ -516,7 +516,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
                 <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">-</span>
                 <span>Bullet</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <span className="px-4 py-1 bg-gray-800 rounded text-gray-300">1.</span>
                 <span>Number</span>
               </div>
