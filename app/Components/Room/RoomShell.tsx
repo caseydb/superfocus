@@ -18,6 +18,7 @@ import WelcomeBackMessage from "./WelcomeBackMessage";
 import RoomsModal from "./RoomsModal";
 import Notes from "./Notes";
 import SignIn from "../SignIn";
+import Preferences from "./Preferences";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady } = useInstance();
@@ -52,6 +53,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showRoomsModal, setShowRoomsModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [showPreferences, setShowPreferences] = useState(false);
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -659,6 +661,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             showLeaderboard={showLeaderboard}
             setShowLeaderboard={setShowLeaderboard}
             setShowRoomsModal={setShowRoomsModal}
+            showPreferences={showPreferences}
+            setShowPreferences={setShowPreferences}
           />
           {/* Room type indicator - centered bottom - hidden on mobile */}
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap hidden sm:block">
@@ -810,6 +814,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           )}
           {showHistory && currentInstance && (
             <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
+          )}
+          {showPreferences && (
+            <Preferences onClose={() => setShowPreferences(false)} />
           )}
         </div>
         {/* Invite Modal - rendered as separate overlay */}

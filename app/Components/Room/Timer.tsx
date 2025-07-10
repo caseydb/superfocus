@@ -32,8 +32,10 @@ export default function Timer({
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
-  const [modalCountdown, setModalCountdown] = useState(60);
+  const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
   const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
+  const [inactivityTimeout, setInactivityTimeout] = useState(3600); // Default 1 hour
+  const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
 
   // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
@@ -163,6 +165,32 @@ export default function Timer({
     if (onActiveChange) onActiveChange(running);
   }, [running, onActiveChange]);
 
+  // Load user's inactivity timeout preference
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
+    const handle = onValue(prefsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.inactivityTimeout !== undefined) {
+        const timeoutValue = data.inactivityTimeout;
+        if (timeoutValue === "never") {
+          setInactivityTimeout(Infinity);
+        } else {
+          // Value is already in seconds
+          setInactivityTimeout(parseInt(timeoutValue));
+        }
+      }
+    });
+    
+    return () => off(prefsRef, "value", handle);
+  }, [user?.id]);
+
+  // Keep localVolumeRef in sync with localVolume prop
+  useEffect(() => {
+    localVolumeRef.current = localVolume;
+  }, [localVolume]);
+
   // Update display every second when running (local only, no Firebase writes)
   useEffect(() => {
     if (running) {
@@ -175,8 +203,8 @@ export default function Timer({
 
   // Inactivity detection
   useEffect(() => {
-    if (!running) {
-      // Clear any existing timeout when not running
+    if (!running || showStillWorkingModal) {
+      // Clear any existing timeout when not running or modal already showing
       if (inactivityTimeoutRef.current) {
         clearTimeout(inactivityTimeoutRef.current);
         inactivityTimeoutRef.current = null;
@@ -184,8 +212,8 @@ export default function Timer({
       return;
     }
 
-    // Only start inactivity detection after 2 hours (7200 seconds)
-    if (seconds < 7200) {
+    // Don't start if set to "never"
+    if (inactivityTimeout === Infinity) {
       return;
     }
 
@@ -197,18 +225,28 @@ export default function Timer({
         clearTimeout(inactivityTimeoutRef.current);
       }
       
-      // Set new timeout for 10 seconds
+      // Set timeout based on user preference
       inactivityTimeoutRef.current = setTimeout(() => {
-        if (running && seconds >= 7200) {
+        if (running) {
           setShowStillWorkingModal(true);
-          setModalCountdown(60); // Reset countdown
+          setModalCountdown(300); // Reset countdown to 5 minutes
+          
+          // Play inactive sound locally only if not muted (check current volume from ref)
+          if (localVolumeRef.current > 0) {
+            const inactiveAudio = new Audio("/inactive.mp3");
+            inactiveAudio.volume = localVolumeRef.current;
+            inactiveAudio.play();
+          }
         }
-      }, 10000);
+      }, inactivityTimeout * 1000); // Convert seconds to milliseconds
     };
 
     // Track user activity
     const handleActivity = () => {
-      resetInactivityTimer();
+      // Don't reset timer if modal is already showing
+      if (!showStillWorkingModal) {
+        resetInactivityTimer();
+      }
     };
 
     // Set initial timeout
@@ -229,7 +267,7 @@ export default function Timer({
       window.removeEventListener('click', handleActivity);
       window.removeEventListener('scroll', handleActivity);
     };
-  }, [running, seconds]);
+  }, [running, inactivityTimeout, showStillWorkingModal]);
 
   // Modal countdown effect
   useEffect(() => {
@@ -411,18 +449,27 @@ export default function Timer({
   // Handle "Yes, still working" response
   const handleStillWorking = () => {
     setShowStillWorkingModal(false);
-    setModalCountdown(60); // Reset countdown for next time
+    setModalCountdown(300); // Reset countdown to 5 minutes for next time
     // Reset the inactivity timer
     if (inactivityTimeoutRef.current) {
       clearTimeout(inactivityTimeoutRef.current);
     }
-    // Start a new inactivity timer
-    inactivityTimeoutRef.current = setTimeout(() => {
-      if (running) {
-        setShowStillWorkingModal(true);
-        setModalCountdown(60);
-      }
-    }, 10000);
+    // Start a new inactivity timer based on user preference
+    if (inactivityTimeout !== Infinity) {
+      inactivityTimeoutRef.current = setTimeout(() => {
+        if (running) {
+          setShowStillWorkingModal(true);
+          setModalCountdown(300); // 5 minutes
+          
+          // Play inactive sound locally only if not muted (check current volume from ref)
+          if (localVolumeRef.current > 0) {
+            const inactiveAudio = new Audio("/inactive.mp3");
+            inactiveAudio.volume = localVolumeRef.current;
+            inactiveAudio.play();
+          }
+        }
+      }, inactivityTimeout * 1000);
+    }
   };
 
   // Handle "No, pause it" response
@@ -528,35 +575,43 @@ export default function Timer({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
           <div className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative">
             {/* Elegant countdown circle */}
-            <div className="absolute top-4 right-4 w-12 h-12">
-              <svg className="w-12 h-12 transform -rotate-90">
+            <div className="absolute top-4 right-4 w-14 h-14">
+              <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 64 64">
                 <circle
-                  cx="24"
-                  cy="24"
-                  r="20"
+                  cx="32"
+                  cy="32"
+                  r="26"
                   stroke="#374151"
                   strokeWidth="4"
                   fill="none"
                 />
                 <circle
-                  cx="24"
-                  cy="24"
-                  r="20"
+                  cx="32"
+                  cy="32"
+                  r="26"
                   stroke="#FFAA00"
                   strokeWidth="4"
                   fill="none"
-                  strokeDasharray={`${(modalCountdown / 60) * 125.6} 125.6`}
+                  strokeDasharray={`${(modalCountdown / 300) * 163.36} 163.36`}
                   className="transition-all duration-1000 ease-linear"
                 />
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-white font-mono text-lg">
-                {modalCountdown}
+              <span className="absolute inset-0 flex items-center justify-center text-white font-mono text-sm">
+                {(() => {
+                  const minutes = Math.floor(modalCountdown / 60);
+                  const seconds = modalCountdown % 60;
+                  if (minutes > 0) {
+                    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                  } else {
+                    return seconds.toString();
+                  }
+                })()}
               </span>
             </div>
             
             <h2 className="text-2xl font-bold text-white mb-4 text-center">Are you still working?</h2>
             <p className="text-gray-300 mb-6 text-center">
-              You've been inactive for 10 seconds. Are you still working on "{task}"?
+              Your timer has been going for {inactivityTimeout < 60 ? `${inactivityTimeout} second${inactivityTimeout !== 1 ? 's' : ''}` : inactivityTimeout < 3600 ? `${Math.floor(inactivityTimeout / 60)} minute${Math.floor(inactivityTimeout / 60) !== 1 ? 's' : ''}` : `${Math.floor(inactivityTimeout / 3600)} hour${Math.floor(inactivityTimeout / 3600) !== 1 ? 's' : ''}`}. Are you still working on "{task}"?
             </p>
             <div className="flex gap-4">
               <button
