@@ -12,14 +12,15 @@ interface NoteItem {
   level: number; // for indentation
 }
 
-interface NoteData {
-  id: string;
-  items: NoteItem[];
-  taskId?: string | null;
-  taskText?: string | null;
-  lastUpdated: number;
-  userId: string;
-}
+// Note: This interface is no longer used since we're storing notes directly
+// interface NoteData {
+//   id: string;
+//   items: NoteItem[];
+//   taskId?: string | null;
+//   taskText?: string | null;
+//   lastUpdated: number;
+//   userId: string;
+// }
 
 export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task: string; taskId?: string | null }) {
   const { user } = useInstance();
@@ -30,7 +31,6 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [nextId, setNextId] = useState<number>(2);
   const [isMac, setIsMac] = useState(false);
-  const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -55,56 +55,21 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   // Load notes from Firebase when component mounts or task changes
   useEffect(() => {
-    if (!mounted || !user?.id) return;
+    if (!mounted || !user?.id || !taskId) return;
 
-    // Determine which notes to load based on task state
-    let notesRef;
-    if (taskId) {
-      // If we have a task ID, load notes associated with this task
-      notesRef = ref(rtdb, `users/${user.id}/notes`);
-    } else if (task.trim()) {
-      // If we have task text but no ID yet, look for notes with matching task text
-      notesRef = ref(rtdb, `users/${user.id}/notes`);
-    } else {
-      // If no task, load general notes (no task association)
-      notesRef = ref(rtdb, `users/${user.id}/notes`);
-    }
-
+    // Use the same path as TaskList: users/${user.id}/taskNotes/${taskId}
+    const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${taskId}`);
+    
     const handle = onValue(notesRef, (snapshot) => {
-      const notesData = snapshot.val();
-
-      if (notesData) {
-        // Find the appropriate note based on task association
-        let targetNote: NoteData | null = null;
-        const notesArray = Object.values(notesData) as NoteData[];
-
-        if (taskId) {
-          // Look for note with matching taskId
-          targetNote = notesArray.find((note) => note.taskId === taskId) || null;
-        } else if (task.trim()) {
-          // Look for note with matching task text
-          targetNote = notesArray.find((note) => note.taskText === task.trim()) || null;
-        } else {
-          // Look for general note (no task association)
-          targetNote = notesArray.find((note) => !note.taskId && !note.taskText) || null;
-        }
-
-        if (targetNote) {
-          setItems(targetNote.items);
-          setCurrentNoteId(targetNote.id);
-          // Find the highest ID to set nextId correctly
-          const maxId = Math.max(...targetNote.items.map((item) => parseInt(item.id)), 0);
-          setNextId(maxId + 1);
-        } else {
-          // No existing note found, start with empty note
-          setItems([{ id: "1", type: "text", content: "", level: 0 }]);
-          setCurrentNoteId(null);
-          setNextId(2);
-        }
+      const data = snapshot.val();
+      if (data && data.items) {
+        setItems(data.items);
+        // Find the highest ID to set nextId correctly
+        const maxId = Math.max(...data.items.map((item: NoteItem) => parseInt(item.id)), 0);
+        setNextId(maxId + 1);
       } else {
-        // No notes exist, start with empty note
+        // No existing notes, start with empty note
         setItems([{ id: "1", type: "text", content: "", level: 0 }]);
-        setCurrentNoteId(null);
         setNextId(2);
       }
     });
@@ -112,11 +77,11 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
     return () => {
       off(notesRef, "value", handle);
     };
-  }, [mounted, user?.id, task, taskId]);
+  }, [mounted, user?.id, taskId]);
 
   // Save notes to Firebase with debouncing
   const saveNotes = (newItems: NoteItem[]) => {
-    if (!user?.id || !mounted) return;
+    if (!user?.id || !mounted || !taskId) return;
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -125,34 +90,15 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
     // Set new timeout for debounced save
     saveTimeoutRef.current = setTimeout(() => {
-      const notesRef = ref(rtdb, `users/${user.id}/notes`);
-
-      if (currentNoteId) {
-        // Update existing note
-        const noteRef = ref(rtdb, `users/${user.id}/notes/${currentNoteId}`);
-        set(noteRef, {
-          id: currentNoteId,
-          items: newItems,
-          taskId: taskId || null,
-          taskText: task.trim() || null,
-          lastUpdated: Date.now(),
-          userId: user.id,
-        });
-      } else {
-        // Create new note
-        const newNoteRef = push(notesRef);
-        const newNoteId = newNoteRef.key!;
-        setCurrentNoteId(newNoteId);
-
-        set(newNoteRef, {
-          id: newNoteId,
-          items: newItems,
-          taskId: taskId || null,
-          taskText: task.trim() || null,
-          lastUpdated: Date.now(),
-          userId: user.id,
-        });
-      }
+      // Use the same path as TaskList: users/${user.id}/taskNotes/${taskId}
+      const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${taskId}`);
+      set(notesRef, {
+        items: newItems,
+        taskId: taskId,
+        taskText: task.trim(),
+        lastUpdated: Date.now(),
+        userId: user.id,
+      });
     }, 500); // 500ms debounce
   };
 
@@ -409,6 +355,18 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   if (!isOpen || !mounted) return null;
 
+  // If no taskId is available, show a message
+  if (!taskId) {
+    return (
+      <div className="w-full min-w-[650px] bg-[#0A0E1A] rounded-2xl shadow-xl border border-gray-800/50 overflow-hidden mb-6">
+        <div className="p-6 text-center text-gray-400">
+          <p>Save this task to your task list to enable notes.</p>
+          <p className="text-sm mt-2">Notes will sync between here and your task list.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-w-[650px] bg-[#0A0E1A] rounded-2xl shadow-xl border border-gray-800/50 overflow-hidden mb-6">
       {/* Notes Content */}
@@ -521,7 +479,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
                 <span>Number</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">{isMac ? "⌘K" : "Ctrl+K"}</span>
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">{isMac ? "⌘J" : "Ctrl+J"}</span>
                 <span>Toggle Notes</span>
               </div>
             </div>

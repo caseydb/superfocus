@@ -60,6 +60,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
     return 0.2;
   });
+  
+  // Track previous volume for mute/unmute functionality
+  const [previousVolume, setPreviousVolume] = useState(0.2);
 
   // Track if there's an active timer state from Firebase
   const [hasActiveTimer, setHasActiveTimer] = useState(false);
@@ -160,6 +163,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("lockedin_volume", String(localVolume));
+      // Update previousVolume when volume changes (but not when muting to 0)
+      if (localVolume > 0) {
+        setPreviousVolume(localVolume);
+      }
     }
   }, [localVolume]);
 
@@ -532,20 +539,44 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   };
 
-  // Add keyboard shortcut for toggling Notes
+  // Add keyboard shortcuts for toggling TaskList and Notes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-      if ((isMac && e.metaKey && e.key.toLowerCase() === "k") || (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")) {
+      const isModifierPressed = isMac ? e.metaKey : e.ctrlKey;
+      
+      if (!isModifierPressed) return;
+      
+      const key = e.key.toLowerCase();
+      
+      // Cmd/Ctrl+K: Toggle TaskList
+      if (key === "k") {
+        e.preventDefault();
+        setShowTaskList((prev) => !prev);
+      }
+      // Cmd/Ctrl+J: Toggle Notes (only if task exists)
+      else if (key === "j") {
         if (task.trim()) {
           e.preventDefault();
           setShowNotes((prev) => !prev);
         }
       }
+      // Cmd/Ctrl+M: Toggle Mute
+      else if (key === "m") {
+        e.preventDefault();
+        if (localVolume === 0) {
+          // Unmute: restore previous volume
+          setLocalVolume(previousVolume);
+        } else {
+          // Mute: save current volume and set to 0
+          setPreviousVolume(localVolume);
+          setLocalVolume(0);
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [task]);
+  }, [task, localVolume, previousVolume]);
 
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn

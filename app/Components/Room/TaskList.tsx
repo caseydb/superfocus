@@ -30,6 +30,14 @@ interface Task {
   order?: number;
 }
 
+interface NoteItem {
+  id: string;
+  type: "text" | "checkbox" | "bullet" | "number";
+  content: string;
+  completed?: boolean;
+  level: number;
+}
+
 function SortableTask({
   task,
   isEditing,
@@ -46,6 +54,8 @@ function SortableTask({
   hasActiveTimer,
   onPauseTimer,
   timerSeconds,
+  isExpanded,
+  onToggleExpanded,
 }: {
   task: Task;
   isEditing: boolean;
@@ -62,9 +72,74 @@ function SortableTask({
   hasActiveTimer?: boolean;
   onPauseTimer?: () => void;
   timerSeconds?: number;
+  isExpanded?: boolean;
+  onToggleExpanded?: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const { user } = useInstance();
   const [isHovered, setIsHovered] = useState(false);
+  const [items, setItems] = useState<NoteItem[]>([{ id: "1", type: "text", content: "", level: 0 }]);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [nextId, setNextId] = useState<number>(2);
+  const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load notes from Firebase when task is expanded
+  useEffect(() => {
+    if (!user?.id || !task.id || !isExpanded) return;
+
+    const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${task.id}`);
+    const handle = onValue(notesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.items) {
+        setItems(data.items);
+        // Find the highest ID to set nextId correctly
+        const maxId = Math.max(...data.items.map((item: NoteItem) => parseInt(item.id)), 0);
+        setNextId(maxId + 1);
+      }
+    });
+
+    return () => {
+      off(notesRef, "value", handle);
+    };
+  }, [user?.id, task.id, isExpanded]);
+
+  // Focus when expanded
+  useEffect(() => {
+    if (isExpanded && items[0]?.id) {
+      setFocusedId(items[0].id);
+    }
+  }, [isExpanded, items]);
+
+  // Save notes to Firebase with debouncing
+  const saveNotes = (newItems: NoteItem[]) => {
+    if (!user?.id || !task.id) return;
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced save
+    saveTimeoutRef.current = setTimeout(() => {
+      const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${task.id}`);
+      set(notesRef, {
+        items: newItems,
+        taskId: task.id,
+        taskText: task.text,
+        lastUpdated: Date.now(),
+        userId: user.id,
+      });
+    }, 500); // 500ms debounce
+  };
+
+  // Auto-resize textarea
+  const autoResize = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.max(28, textarea.scrollHeight)}px`;
+  };
 
   // Handle textarea height adjustment when editing text changes
   useEffect(() => {
@@ -99,6 +174,243 @@ function SortableTask({
     }
   }
 
+  // Handle content changes in notes
+  const handleContentChange = (id: string, value: string) => {
+    const newItems = items.map((item) => (item.id === id ? { ...item, content: value } : item));
+    setItems(newItems);
+    saveNotes(newItems);
+
+    // Auto-resize
+    const textarea = inputRefs.current[id];
+    if (textarea) {
+      autoResize(textarea);
+    }
+  };
+
+  // Toggle checkbox
+  const toggleCheckbox = (id: string) => {
+    const newItems = items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item));
+    setItems(newItems);
+    saveNotes(newItems);
+  };
+
+  // Get numbered list number
+  const getNumberedIndex = (currentIndex: number): number => {
+    let count = 1;
+    for (let i = 0; i < currentIndex; i++) {
+      if (items[i].type === "number" && items[i].level === items[currentIndex].level) {
+        count++;
+      }
+    }
+    return count;
+  };
+
+  // Handle key down events in notes
+  const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
+    // Always stop space and enter from propagating to parent
+    if (e.key === " " || e.key === "Enter") {
+      e.stopPropagation();
+    }
+    
+    const currentIndex = items.findIndex((item) => item.id === id);
+    const currentItem = items[currentIndex];
+
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+
+      // Create new item
+      const newId = nextId.toString();
+      setNextId(nextId + 1);
+      let newType: NoteItem["type"] = "text";
+      const newLevel = currentItem.level;
+      // If current line is formatted and has text, continue the format
+      // If current line is empty (0 length), always create normal text
+      if (["checkbox", "bullet", "number"].includes(currentItem.type) && currentItem.content.length > 0) {
+        newType = currentItem.type;
+      }
+      // If current item is empty and formatted, convert it to text first
+      if (["checkbox", "bullet", "number"].includes(currentItem.type) && currentItem.content.length === 0) {
+        const updatedItems = items.map((item) => (item.id === id ? { ...item, type: "text" as const, completed: false } : item));
+        setItems(updatedItems);
+        saveNotes(updatedItems);
+        return;
+      }
+      const newItem: NoteItem = {
+        id: newId,
+        type: newType,
+        content: "",
+        level: newLevel,
+      };
+
+      const newItems = [...items];
+      newItems.splice(currentIndex + 1, 0, newItem);
+      setItems(newItems);
+      saveNotes(newItems);
+      setFocusedId(newId);
+
+      // Focus new item after render
+      setTimeout(() => {
+        const newTextarea = inputRefs.current[newId];
+        if (newTextarea) {
+          newTextarea.focus();
+        }
+      }, 0);
+    }
+
+    if (e.key === "Backspace" && currentItem.content === "" && items.length > 1) {
+      e.preventDefault();
+
+      const newItems = items.filter((item) => item.id !== id);
+      setItems(newItems);
+      saveNotes(newItems);
+
+      if (currentIndex > 0) {
+        const prevId = newItems[currentIndex - 1].id;
+        setFocusedId(prevId);
+        setTimeout(() => {
+          const prevTextarea = inputRefs.current[prevId];
+          if (prevTextarea) {
+            prevTextarea.focus();
+            prevTextarea.setSelectionRange(prevTextarea.value.length, prevTextarea.value.length);
+          }
+        }, 0);
+      }
+    }
+
+    if (e.key === "Backspace" && currentItem.content === "" && items.length === 1 && currentItem.type !== "text") {
+      e.preventDefault();
+      const newItems: NoteItem[] = [{ ...currentItem, type: "text" as const, completed: false }];
+      setItems(newItems);
+      saveNotes(newItems);
+    }
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const newLevel = e.shiftKey ? Math.max(0, currentItem.level - 1) : Math.min(3, currentItem.level + 1);
+      const newItems = items.map((item) => (item.id === id ? { ...item, level: newLevel } : item));
+      setItems(newItems);
+      saveNotes(newItems);
+    }
+
+    if (e.key === "ArrowUp" && currentIndex > 0) {
+      e.preventDefault();
+      const prevId = items[currentIndex - 1].id;
+      inputRefs.current[prevId]?.focus();
+      setFocusedId(prevId);
+    }
+
+    if (e.key === "ArrowDown" && currentIndex < items.length - 1) {
+      e.preventDefault();
+      const nextId = items[currentIndex + 1].id;
+      inputRefs.current[nextId]?.focus();
+      setFocusedId(nextId);
+    }
+  };
+
+  // Handle input for auto-formatting
+  const handleInput = (id: string, value: string) => {
+    const item = items.find((item) => item.id === id);
+    if (!item) return;
+
+    let newType = item.type;
+    let newContent = value;
+
+    // Only process formatting at the beginning of the line
+    if (item.type === "text" && value.length <= 4) {
+      if (value === "[]" || value === "[] ") {
+        newType = "checkbox";
+        newContent = value.replace(/^\[\]\s*/, "");
+      } else if (value === "[x] " || value === "[X] ") {
+        newType = "checkbox";
+        newContent = "";
+        const newItems = items.map((item) =>
+          item.id === id ? { ...item, type: newType, content: newContent, completed: true } : item
+        );
+        setItems(newItems);
+        saveNotes(newItems);
+        return;
+      } else if (value === "- ") {
+        newType = "bullet";
+        newContent = "";
+      } else if (/^(\d+)\.\s$/.test(value)) {
+        newType = "number";
+        newContent = "";
+      }
+    }
+
+    if (newType !== item.type || newContent !== value) {
+      const newItems = items.map((item) => (item.id === id ? { ...item, type: newType, content: newContent } : item));
+      setItems(newItems);
+      saveNotes(newItems);
+    }
+  };
+
+  // Drag handlers for notes
+  const handleNoteDragStart = (e: React.DragEvent, id: string) => {
+    const item = items.find((item) => item.id === id);
+    if (item?.type !== "checkbox") {
+      e.preventDefault();
+      return;
+    }
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const handleNoteDragOver = (e: React.DragEvent, id: string) => {
+    const item = items.find((item) => item.id === id);
+    if (item?.type !== "checkbox") {
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverId(id);
+  };
+
+  const handleNoteDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverId(null);
+  };
+
+  const handleNoteDrop = (e: React.DragEvent, targetId: string) => {
+    const targetItem = items.find((item) => item.id === targetId);
+    if (targetItem?.type !== "checkbox") {
+      return;
+    }
+
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData("text/plain");
+
+    if (draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const draggedIndex = items.findIndex((item) => item.id === draggedId);
+    const targetIndex = items.findIndex((item) => item.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const newItems = [...items];
+    const [draggedItem] = newItems.splice(draggedIndex, 1);
+    newItems.splice(targetIndex, 0, draggedItem);
+
+    setItems(newItems);
+    saveNotes(newItems);
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleNoteDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? "none" : transition,
@@ -106,42 +418,42 @@ function SortableTask({
     willChange: isDragging ? "transform" : "auto",
   };
 
+  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      data-task-id={task.id}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`group p-2 mx-2 my-1 rounded-lg border cursor-move ${
+      className={`group p-2 mx-2 my-1 rounded-lg border ${
         isDragging
           ? "opacity-50 bg-gray-800 border-gray-600"
-          : (() => {
-              const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-              if (isCurrentTask) {
-                return "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-[#FFAA00] shadow-md shadow-[#FFAA00]/20";
-              }
-              return "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800";
-            })()
+          : isCurrentTask
+          ? "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-[#FFAA00] shadow-md shadow-[#FFAA00]/20"
+          : "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800"
       }`}
     >
-      <div className={`flex gap-2 ${isEditing ? "items-start" : "items-center"}`}>
-        {/* Drag Handle - Always visible */}
-        <div
-          className={`text-gray-500 transition-all duration-200 hover:text-[#FFAA00] ${
-            isDragging ? "text-[#FFAA00]" : ""
-          }`}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M8 6H8.01M8 12H8.01M8 18H8.01M16 6H16.01M16 12H16.01M16 18H16.01"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
+      <div className={`${isExpanded ? "space-y-3" : ""}`}>
+        <div className={`flex gap-2 ${isEditing ? "items-start" : "items-center"}`}>
+          {/* Drag Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className={`text-gray-500 transition-all duration-200 hover:text-[#FFAA00] cursor-move ${
+              isDragging ? "text-[#FFAA00]" : ""
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M8 6H8.01M8 12H8.01M8 18H8.01M16 6H16.01M16 12H16.01M16 18H16.01"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
 
         {/* Start/Pause Button */}
         {(() => {
@@ -222,8 +534,9 @@ function SortableTask({
         <div className="flex-1 min-w-0">
           {isEditing ? (
             <div className="relative w-full">
-              <textarea
-                ref={editInputRef as React.RefObject<HTMLTextAreaElement>}
+              <input
+                ref={editInputRef as React.RefObject<HTMLInputElement>}
+                type="text"
                 value={editingText}
                 onChange={(e) => {
                   if (e.target.value.length <= 69) {
@@ -231,7 +544,7 @@ function SortableTask({
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     onSaveEdit();
                   } else if (e.key === "Escape") {
@@ -251,56 +564,108 @@ function SortableTask({
                   }, 100);
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="w-full bg-gray-800 text-white px-4 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm resize-none leading-loose"
+                className="w-full bg-gray-800 text-white px-2 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm"
                 maxLength={69}
-                rows={1}
-                style={{
-                  height: "auto",
-                  minHeight: "60px",
-                  lineHeight: "1.6",
-                }}
+                autoFocus
               />
-              <div className="absolute right-4 top-1 text-xs text-gray-400">{editingText.length}/69</div>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">{editingText.length}/69</div>
             </div>
           ) : (
-            <p
-              onClick={() => {
-                // Don't allow editing if this task is currently active (started)
-                const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                if (!isCurrentTask) {
-                  onStartEditing(task);
-                }
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className={`${(() => {
-                const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                if (isCurrentTask) {
-                  return "cursor-not-allowed text-gray-400 text-sm";
-                } else {
-                  return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
-                    isHovered ? "whitespace-normal break-words" : "truncate"
-                  }`;
-                }
-              })()}`}
-              title={(() => {
-                const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                if (isCurrentTask) {
-                  return "Cannot edit active task";
-                } else {
-                  return task.text.length > 40 && !isHovered ? task.text : undefined;
-                }
-              })()}
-            >
-              {task.text}
-            </p>
+            <div className="flex items-center gap-2 flex-1">
+              <p
+                onClick={() => {
+                  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                  if (!isCurrentTask) {
+                    // For non-active tasks: edit and expand
+                    onStartEditing(task);
+                    if (!isExpanded && onToggleExpanded) {
+                      onToggleExpanded(task.id);
+                    }
+                  } else {
+                    // For active tasks: only expand (no edit)
+                    if (!isExpanded && onToggleExpanded) {
+                      onToggleExpanded(task.id);
+                    }
+                  }
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`flex-1 ${(() => {
+                  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                  if (isCurrentTask) {
+                    return "cursor-pointer text-gray-400 text-sm hover:text-gray-300";
+                  } else {
+                    return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
+                      isHovered ? "whitespace-normal break-words" : "truncate"
+                    }`;
+                  }
+                })()}`}
+                title={(() => {
+                  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                  if (isCurrentTask) {
+                    return "Click to expand and view notes";
+                  } else {
+                    return "Click to edit and expand";
+                  }
+                })()}
+              >
+                {task.text}
+              </p>
+              {/* Expand/Collapse button */}
+              <button
+                  onClick={() => {
+                    if (onToggleExpanded) {
+                      onToggleExpanded(task.id);
+                    }
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className={`p-1 rounded transition-all duration-200 flex items-center justify-center w-5 h-5 ${
+                    isExpanded 
+                      ? "text-[#FFAA00] hover:text-[#FF9900] bg-[#FFAA00]/10" 
+                      : "text-gray-500 hover:text-[#FFAA00] hover:bg-gray-800"
+                  }`}
+                  title={isExpanded ? "Collapse notes" : "Expand to add notes"}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d={isExpanded ? "M6 9l6 6 6-6" : "M9 6l6 6-6 6"}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+            </div>
           )}
         </div>
 
-        {/* Action Buttons / Timer Display - Hidden when editing */}
-        {!isEditing &&
+        {/* Collapse/Remove Button */}
+        {isExpanded ? (
+          // Collapse button when expanded
+          <button
+            onClick={() => {
+              if (onToggleExpanded) {
+                onToggleExpanded(task.id);
+              }
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-white"
+            title="Collapse"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M18 6L6 18M6 6L18 18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        ) : (
+          // Timer display and remove button when collapsed
+          !isEditing &&
           (() => {
-            const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-
             if (isCurrentTask) {
               return (
                 <div className="flex items-center">
@@ -308,12 +673,13 @@ function SortableTask({
                   <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
                     {formatTime(timerSeconds || 0)}
                   </div>
-                  {/* Delete Button - hidden by default, visible on hover */}
+                  {/* Delete Button - disabled for active tasks */}
                   <button
                     onClick={() => onRemove(task.id)}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors opacity-0 group-hover:opacity-100 absolute"
-                    title="Delete task"
+                    disabled={true}
+                    className="text-gray-600 cursor-not-allowed p-1 rounded opacity-0 group-hover:opacity-100 absolute"
+                    title="Cannot delete active task"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                       <path
@@ -350,8 +716,137 @@ function SortableTask({
                 </div>
               );
             }
-          })()}
+          })()
+        )}
       </div>
+
+      {/* Notes Section - Only visible when expanded */}
+      {isExpanded && (
+        <div className="animate-in slide-in-from-top-2 duration-200">
+          <div className="bg-[#0A0E1A] rounded-xl border border-gray-800/50 overflow-hidden">
+            {/* Notes Content */}
+            <div className="p-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
+              <div className="space-y-2">
+                {items.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`flex items-start gap-3 group transition-all duration-200 ${
+                      draggedId === item.id ? "opacity-50 scale-95" : ""
+                    } ${dragOverId === item.id ? "bg-gray-700/30 rounded-lg" : ""}`}
+                    style={{ paddingLeft: `${item.level * 24}px` }}
+                    draggable={item.type === "checkbox"}
+                    onDragStart={(e) => handleNoteDragStart(e, item.id)}
+                    onDragOver={(e) => handleNoteDragOver(e, item.id)}
+                    onDragLeave={handleNoteDragLeave}
+                    onDrop={(e) => handleNoteDrop(e, item.id)}
+                    onDragEnd={handleNoteDragEnd}
+                  >
+                    {/* Drag Handle - Only for checklist items */}
+                    {item.type === "checkbox" && (
+                      <div className="flex items-center justify-center w-6 h-7 flex-shrink-0 cursor-grab active:cursor-grabbing">
+                        <div className="w-4 h-4 text-gray-500 hover:text-gray-300 transition-colors">
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="8" cy="6" r="1.5" />
+                            <circle cx="16" cy="6" r="1.5" />
+                            <circle cx="8" cy="12" r="1.5" />
+                            <circle cx="16" cy="12" r="1.5" />
+                            <circle cx="8" cy="18" r="1.5" />
+                            <circle cx="16" cy="18" r="1.5" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* List Marker */}
+                    <div className="flex items-center justify-center w-6 h-7 flex-shrink-0">
+                      {item.type === "checkbox" && (
+                        <button
+                          onClick={() => toggleCheckbox(item.id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                            item.completed
+                              ? "bg-[#FFAA00] border-[#FFAA00] shadow-lg shadow-[#FFAA00]/25"
+                              : "border-gray-500 hover:border-[#FFAA00] bg-transparent"
+                          }`}
+                        >
+                          {item.completed && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-black">
+                              <path
+                                d="M20 6L9 17l-5-5"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                      {item.type === "bullet" && <div className="w-2 h-2 rounded-full bg-gray-400"></div>}
+                      {item.type === "number" && (
+                        <div className="text-gray-400 font-mono text-sm w-6 text-right">{getNumberedIndex(index)}.</div>
+                      )}
+                    </div>
+
+                    {/* Content Input */}
+                    <div className="flex-1 min-w-0">
+                      <textarea
+                        ref={(el) => {
+                          if (el) inputRefs.current[item.id] = el;
+                        }}
+                        value={item.content}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleContentChange(item.id, value);
+                          // Only check for formatting on text items
+                          if (item.type === "text") {
+                            handleInput(item.id, value);
+                          }
+                        }}
+                        onKeyDown={(e) => handleKeyDown(e, item.id)}
+                        onFocus={() => setFocusedId(item.id)}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        placeholder={index === 0 ? "Start writing..." : ""}
+                        className={`w-full bg-transparent text-white placeholder-gray-500 border-none outline-none resize-none font-medium leading-relaxed ${
+                          item.completed ? "line-through text-gray-400" : ""
+                        }`}
+                        style={{
+                          minHeight: "28px",
+                          lineHeight: "1.75",
+                          fontSize: "16px",
+                        }}
+                        rows={1}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer with shortcuts - only show when no content */}
+            {items.length === 1 && items[0].content === "" && (
+              <div className="px-6 py-4 border-t border-gray-800/50 bg-gray-900/30">
+                <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">[]</span>
+                      <span>Checkbox</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">-</span>
+                      <span>Bullet</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">1.</span>
+                      <span>Number</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 }
@@ -381,6 +876,7 @@ export default function TaskList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   const [showClearMenu, setShowClearMenu] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
@@ -518,12 +1014,32 @@ export default function TaskList({
       if (task) {
         set(taskRef, { ...task, text: editingText.trim() });
       }
+      setEditingId(null);
+      setEditingText("");
+      // Force refresh tasks from Firebase after editing
+      refreshTasks();
+    } else if (!editingText.trim() && editingId) {
+      // If the text is empty, cancel the edit without saving
+      setEditingId(null);
+      setEditingText("");
     }
-    setEditingId(null);
-    setEditingText("");
-    // Force refresh tasks from Firebase after editing
-    refreshTasks();
   };
+
+  const handleToggleExpanded = (taskId: string) => {
+    setExpandedTaskId(expandedTaskId === taskId ? null : taskId);
+  };
+
+  // Auto-scroll when task is expanded
+  useEffect(() => {
+    if (expandedTaskId) {
+      setTimeout(() => {
+        const element = document.querySelector(`[data-task-id="${expandedTaskId}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
+    }
+  }, [expandedTaskId]);
 
   const cancelEdit = () => {
     setEditingId(null);
@@ -589,7 +1105,10 @@ export default function TaskList({
         {/* Header */}
         <div className="border-b border-gray-800">
           <div className="flex items-center justify-between p-6 pb-4">
-            <h2 className="text-xl font-semibold text-white">Task List</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-white">Task List</h2>
+              <span className="text-xs text-gray-500">⌘K</span>
+            </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">
                 {incompleteTasks} task{incompleteTasks !== 1 ? "s" : ""}
@@ -712,6 +1231,8 @@ export default function TaskList({
                       hasActiveTimer={hasActiveTimer}
                       onPauseTimer={onPauseTimer}
                       timerSeconds={timerSeconds}
+                      isExpanded={expandedTaskId === task.id}
+                      onToggleExpanded={handleToggleExpanded}
                     />
                   ))}
                 </SortableContext>
