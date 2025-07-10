@@ -64,16 +64,9 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
           audioContext.resume();
         }
         
-        // Play each audio element silently to initialize them
+        // Set volume for audio elements without playing them
         [completeRef.current, startedRef.current, quitRef.current].forEach(audio => {
-          audio.volume = 0;
-          audio.play().then(() => {
-            audio.pause();
-            audio.currentTime = 0;
-            audio.volume = localVolume;
-          }).catch(() => {
-            // Ignore errors, browser might still block
-          });
+          audio.volume = localVolume;
         });
         
         setAudioInitialized(true);
