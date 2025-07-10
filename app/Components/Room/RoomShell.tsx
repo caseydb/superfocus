@@ -677,7 +677,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               showLeaderboard={showLeaderboard}
               setShowLeaderboard={setShowLeaderboard}
               setShowRoomsModal={setShowRoomsModal}
-              showPreferences={showPreferences}
               setShowPreferences={setShowPreferences}
             />
           </div>

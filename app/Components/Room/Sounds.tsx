@@ -52,8 +52,11 @@ export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; 
       // Play a silent sound to unlock audio context
       if (completeRef.current && startedRef.current && quitRef.current) {
         // Create a silent audio context to initialize
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioContext.resume();
+        const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextClass) {
+          const audioContext = new AudioContextClass();
+          audioContext.resume();
+        }
         
         // Play each audio element silently to initialize them
         [completeRef.current, startedRef.current, quitRef.current].forEach(audio => {

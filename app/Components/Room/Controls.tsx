@@ -20,7 +20,6 @@ interface ControlsProps {
   showLeaderboard: boolean;
   setShowLeaderboard: (show: boolean) => void;
   setShowRoomsModal: (show: boolean) => void;
-  showPreferences: boolean;
   setShowPreferences: (show: boolean) => void;
 }
 
@@ -38,7 +37,6 @@ export default function Controls({
   showLeaderboard,
   setShowLeaderboard,
   setShowRoomsModal,
-  showPreferences,
   setShowPreferences,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();

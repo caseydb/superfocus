@@ -611,7 +611,7 @@ export default function Timer({
             
             <h2 className="text-2xl font-bold text-white mb-4 text-center">Are you still working?</h2>
             <p className="text-gray-300 mb-6 text-center">
-              Your timer has been going for {inactivityTimeout < 60 ? `${inactivityTimeout} second${inactivityTimeout !== 1 ? 's' : ''}` : inactivityTimeout < 3600 ? `${Math.floor(inactivityTimeout / 60)} minute${Math.floor(inactivityTimeout / 60) !== 1 ? 's' : ''}` : `${Math.floor(inactivityTimeout / 3600)} hour${Math.floor(inactivityTimeout / 3600) !== 1 ? 's' : ''}`}. Are you still working on "{task}"?
+              Your timer has been going for {inactivityTimeout < 60 ? `${inactivityTimeout} second${inactivityTimeout !== 1 ? 's' : ''}` : inactivityTimeout < 3600 ? `${Math.floor(inactivityTimeout / 60)} minute${Math.floor(inactivityTimeout / 60) !== 1 ? 's' : ''}` : `${Math.floor(inactivityTimeout / 3600)} hour${Math.floor(inactivityTimeout / 3600) !== 1 ? 's' : ''}`}. Are you still working on &quot;{task}&quot;?
             </p>
             <div className="flex gap-4">
               <button

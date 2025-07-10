@@ -13,7 +13,6 @@ export default function Preferences({ onClose }: PreferencesProps) {
   
   // Preference states
   const [inactivityTimeout, setInactivityTimeout] = useState("3600"); // Default 1 hour in seconds
-  const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [isEditingName, setIsEditingName] = useState(false);
   const [taskSelectionMode, setTaskSelectionMode] = useState("dropdown"); // "dropdown" or "sidebar"
@@ -29,14 +28,13 @@ export default function Preferences({ onClose }: PreferencesProps) {
         setInactivityTimeout(data.inactivityTimeout ?? "3600");
         setTaskSelectionMode(data.taskSelectionMode ?? "dropdown");
       }
-      setLoading(false);
     });
     
     return () => off(prefsRef, "value", handle);
   }, [user?.id]);
   
   // Save preferences to Firebase
-  const savePreferences = (updates: Record<string, any>) => {
+  const savePreferences = (updates: Record<string, string | number | boolean>) => {
     if (!user?.id) return;
     
     const prefsRef = ref(rtdb, `users/${user.id}/preferences`);

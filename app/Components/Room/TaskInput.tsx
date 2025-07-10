@@ -27,7 +27,6 @@ export default function TaskInput({
   setShowTaskList?: (show: boolean) => void;
 }) {
   const { user } = useInstance();
-  const chars = task.length;
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -345,7 +344,7 @@ export default function TaskInput({
                   <h3 className="text-lg font-semibold text-white text-center">Character Limit</h3>
                 </div>
                 <p className="text-gray-300 mb-6 text-center">
-                  Be compendious! You've reached the 69 character limit.
+                  Be compendious! You&apos;ve reached the 69 character limit.
                 </p>
                 <button
                   onClick={() => setShowLimitPopup(false)}
