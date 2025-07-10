@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
-export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; localVolume?: number }) {
+export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { roomId: string; localVolume?: number; currentUserId?: string }) {
   const completeRef = useRef<HTMLAudioElement>(null);
   const startedRef = useRef<HTMLAudioElement>(null);
   const quitRef = useRef<HTMLAudioElement>(null);
@@ -23,6 +23,12 @@ export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; 
       const val = snap.val();
       if (val && val.timestamp !== lastEventTimestamp.current) {
         lastEventTimestamp.current = val.timestamp;
+        
+        // Skip playing sound if this event is from the current user
+        if (val.userId && val.userId === currentUserId) {
+          return;
+        }
+        
         if (val.type === "complete" && completeRef.current) {
           completeRef.current.currentTime = 0;
           completeRef.current.play();
@@ -36,7 +42,7 @@ export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; 
       }
     });
     return () => off(lastEventRef, "value", handle);
-  }, [roomId]);
+  }, [roomId, currentUserId]);
 
   useEffect(() => {
     if (completeRef.current) completeRef.current.volume = localVolume;

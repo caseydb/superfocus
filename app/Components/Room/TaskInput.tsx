@@ -203,6 +203,10 @@ export default function TaskInput({
               setShowTaskSuggestions(true);
             } else if (taskSelectionMode === "sidebar" && setShowTaskList) {
               setShowTaskList(true);
+              // Keep focus on this input when opening sidebar
+              setTimeout(() => {
+                textareaRef.current?.focus();
+              }, 50);
             }
           }
         }}
@@ -213,6 +217,10 @@ export default function TaskInput({
               setShowTaskSuggestions(true);
             } else if (taskSelectionMode === "sidebar" && setShowTaskList) {
               setShowTaskList(true);
+              // Keep focus on this input when opening sidebar
+              setTimeout(() => {
+                textareaRef.current?.focus();
+              }, 50);
             }
           }
         }}

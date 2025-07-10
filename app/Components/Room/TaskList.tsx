@@ -941,10 +941,16 @@ export default function TaskList({
     };
   }, [user?.id, editingId]);
 
-  // Focus input when opening
+  // Focus input when opening - but not if it was opened via sidebar mode
+  // This prevents stealing focus from the main task input
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+      // Only focus if the TaskList was opened via Cmd+K or the button
+      // Not when opened automatically from TaskInput in sidebar mode
+      const isManualOpen = !document.querySelector('textarea[placeholder="What are you focusing on?"]:focus');
+      if (isManualOpen) {
+        inputRef.current.focus();
+      }
     }
   }, [isOpen]);
 

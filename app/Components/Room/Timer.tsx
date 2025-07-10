@@ -435,9 +435,9 @@ export default function Timer({
 
   // Add event notification for start, complete, and quit
   function notifyEvent(type: "start" | "complete" | "quit") {
-    if (currentInstance) {
+    if (currentInstance && user?.id) {
       const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
-      set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
+      set(lastEventRef, { displayName: user.displayName, userId: user.id, type, timestamp: Date.now() });
     }
   }
 

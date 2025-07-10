@@ -716,7 +716,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
           />
           <WelcomeBackMessage roomId={currentInstance.id} />
-          <Sounds roomId={currentInstance.id} localVolume={localVolume} />
+          <Sounds roomId={currentInstance.id} localVolume={localVolume} currentUserId={user?.id} />
           <ActiveWorkers roomId={currentInstance.id} />
           {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
