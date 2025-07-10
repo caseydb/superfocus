@@ -28,13 +28,14 @@ export default function Timer({
   const { currentInstance, user } = useInstance();
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const isInitializedRef = useRef(false);
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastActivityRef = useRef<number>(Date.now());
   const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
   const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const [inactivityTimeout, setInactivityTimeout] = useState(3600); // Default 1 hour
+  const inactivityDurationRef = useRef(3600); // Track timeout duration in ref to avoid effect re-runs
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
 
   // Helper to save timer state to Firebase (only on state changes, not every second)
@@ -119,10 +120,12 @@ export default function Timer({
         // Normal restoration - don't check user count here
         setSeconds(currentSeconds);
         setRunning(isRunning);
+        setIsStarting(false); // Clear starting state when loading from Firebase
       } else if (isInitializedRef.current) {
         // Only reset if we were already initialized (not on first load)
         setSeconds(0);
         setRunning(false);
+        setIsStarting(false);
       }
 
       isInitializedRef.current = true;
@@ -176,9 +179,12 @@ export default function Timer({
         const timeoutValue = data.inactivityTimeout;
         if (timeoutValue === "never") {
           setInactivityTimeout(Infinity);
+          inactivityDurationRef.current = Infinity;
         } else {
           // Value is already in seconds
-          setInactivityTimeout(parseInt(timeoutValue));
+          const timeoutSeconds = parseInt(timeoutValue);
+          setInactivityTimeout(timeoutSeconds);
+          inactivityDurationRef.current = timeoutSeconds;
         }
       }
     });
@@ -190,6 +196,11 @@ export default function Timer({
   useEffect(() => {
     localVolumeRef.current = localVolume;
   }, [localVolume]);
+  
+  // Keep inactivityDurationRef in sync with inactivityTimeout state
+  useEffect(() => {
+    inactivityDurationRef.current = inactivityTimeout;
+  }, [inactivityTimeout]);
 
   // Update display every second when running (local only, no Firebase writes)
   useEffect(() => {
@@ -201,7 +212,7 @@ export default function Timer({
     }
   }, [running]);
 
-  // Inactivity detection
+  // Inactivity detection based on timer duration
   useEffect(() => {
     if (!running || showStillWorkingModal) {
       // Clear any existing timeout when not running or modal already showing
@@ -213,61 +224,31 @@ export default function Timer({
     }
 
     // Don't start if set to "never"
-    if (inactivityTimeout === Infinity) {
+    if (inactivityDurationRef.current === Infinity) {
       return;
     }
 
-    const resetInactivityTimer = () => {
-      lastActivityRef.current = Date.now();
-      
-      // Clear existing timeout
-      if (inactivityTimeoutRef.current) {
-        clearTimeout(inactivityTimeoutRef.current);
-      }
-      
-      // Set timeout based on user preference
-      inactivityTimeoutRef.current = setTimeout(() => {
-        if (running) {
-          setShowStillWorkingModal(true);
-          setModalCountdown(300); // Reset countdown to 5 minutes
-          
-          // Play inactive sound locally only if not muted (check current volume from ref)
-          if (localVolumeRef.current > 0) {
-            const inactiveAudio = new Audio("/inactive.mp3");
-            inactiveAudio.volume = localVolumeRef.current;
-            inactiveAudio.play();
-          }
+    // Set timeout based on user preference when timer starts running
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (running) {
+        setShowStillWorkingModal(true);
+        setModalCountdown(300); // Reset countdown to 5 minutes
+        
+        // Play inactive sound locally only if not muted (check current volume from ref)
+        if (localVolumeRef.current > 0) {
+          const inactiveAudio = new Audio("/inactive.mp3");
+          inactiveAudio.volume = localVolumeRef.current;
+          inactiveAudio.play();
         }
-      }, inactivityTimeout * 1000); // Convert seconds to milliseconds
-    };
-
-    // Track user activity
-    const handleActivity = () => {
-      // Don't reset timer if modal is already showing
-      if (!showStillWorkingModal) {
-        resetInactivityTimer();
       }
-    };
-
-    // Set initial timeout
-    resetInactivityTimer();
-
-    // Listen for various activity events
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('scroll', handleActivity);
+    }, inactivityDurationRef.current * 1000); // Convert seconds to milliseconds
 
     return () => {
       if (inactivityTimeoutRef.current) {
         clearTimeout(inactivityTimeoutRef.current);
       }
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
     };
-  }, [running, inactivityTimeout, showStillWorkingModal]);
+  }, [running, showStillWorkingModal]);
 
   // Modal countdown effect
   useEffect(() => {
@@ -305,6 +286,8 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState]);
 
   async function handleStart() {
+    setIsStarting(true);
+    
     // Move task to position #1 in task list BEFORE starting timer
     if (task && task.trim() && user?.id) {
       await moveTaskToTop(task.trim());
@@ -313,6 +296,7 @@ export default function Timer({
     }
 
     setRunning(true);
+    setIsStarting(false);
     saveTimerState(true, seconds); // Save start state to Firebase
     
     // Only play start sound if this is an initial start (not a resume)
@@ -443,6 +427,7 @@ export default function Timer({
 
   function handleStop() {
     setRunning(false);
+    setIsStarting(false);
     saveTimerState(false, seconds); // Save paused state to Firebase
   }
 
@@ -455,7 +440,7 @@ export default function Timer({
       clearTimeout(inactivityTimeoutRef.current);
     }
     // Start a new inactivity timer based on user preference
-    if (inactivityTimeout !== Infinity) {
+    if (inactivityDurationRef.current !== Infinity) {
       inactivityTimeoutRef.current = setTimeout(() => {
         if (running) {
           setShowStillWorkingModal(true);
@@ -468,7 +453,7 @@ export default function Timer({
             inactiveAudio.play();
           }
         }
-      }, inactivityTimeout * 1000);
+      }, inactivityDurationRef.current * 1000);
     }
   };
 
@@ -501,7 +486,7 @@ export default function Timer({
     <div className="flex flex-col items-center gap-4 px-4 sm:px-0">
       <div className="text-3xl sm:text-4xl mb-2 font-mono">{formatTime(seconds)}</div>
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none">
-        {!running ? (
+        {!running && !isStarting ? (
           <button
             className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
             onClick={handleStart}

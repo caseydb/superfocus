@@ -10,17 +10,17 @@ interface PreferencesProps {
 
 export default function Preferences({ onClose }: PreferencesProps) {
   const { user, currentInstance } = useInstance();
-  
+
   // Preference states
   const [inactivityTimeout, setInactivityTimeout] = useState("3600"); // Default 1 hour in seconds
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [isEditingName, setIsEditingName] = useState(false);
   const [taskSelectionMode, setTaskSelectionMode] = useState("dropdown"); // "dropdown" or "sidebar"
-  
+
   // Load preferences from Firebase on mount
   useEffect(() => {
     if (!user?.id) return;
-    
+
     const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
     const handle = onValue(prefsRef, (snapshot) => {
       const data = snapshot.val();
@@ -29,23 +29,23 @@ export default function Preferences({ onClose }: PreferencesProps) {
         setTaskSelectionMode(data.taskSelectionMode ?? "dropdown");
       }
     });
-    
+
     return () => off(prefsRef, "value", handle);
   }, [user?.id]);
-  
+
   // Save preferences to Firebase
   const savePreferences = (updates: Record<string, string | number | boolean>) => {
     if (!user?.id) return;
-    
+
     const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
     set(prefsRef, {
       inactivityTimeout,
       taskSelectionMode,
       ...updates,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     });
   };
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
@@ -62,7 +62,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
             ×
           </button>
         </div>
-        
+
         {/* Shortcuts Tips Banner */}
         <div className="w-full px-6 py-4 bg-gray-900/30 rounded-xl mb-6">
           <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
@@ -91,17 +91,19 @@ export default function Preferences({ onClose }: PreferencesProps) {
             </div>
           </div>
         </div>
-        
+
         <div className="w-full space-y-6">
           {/* Account Section */}
           <div className="bg-[#131722] rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Account</h3>
-            
+
             {/* Edit Display Name */}
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-white font-medium">Display Name</label>
-                <p className="text-sm text-gray-400 mt-1">{isEditingName ? "Enter your new display name" : displayName}</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {isEditingName ? "Enter your new display name" : displayName}
+                </p>
               </div>
               {!isEditingName ? (
                 <button
@@ -154,11 +156,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
               )}
             </div>
           </div>
-          
+
           {/* Timer and Task Settings Section */}
           <div className="bg-[#131722] rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Timer and Task Settings</h3>
-            
+
             {/* Task Selection Mode */}
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -178,11 +180,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <option value="sidebar">Task Sidebar</option>
               </select>
             </div>
-            
+
             {/* Inactivity Timeout */}
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-white font-medium">Inactivity Check</label>
+                <label className="text-white font-medium">Focus Check</label>
                 <p className="text-sm text-gray-400 mt-1">Check if still working after this duration</p>
               </div>
               <select
@@ -205,7 +207,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
             </div>
           </div>
         </div>
-        
+
         <button
           className="mt-4 sm:mt-6 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
           onClick={onClose}

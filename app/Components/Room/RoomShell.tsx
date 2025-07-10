@@ -724,7 +724,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               task={task}
               setTask={setTask}
               disabled={(hasStarted && inputLocked) || hasActiveTimer}
-              onStart={() => timerStartRef.current && timerStartRef.current()}
+              onStart={() => {
+                if (timerStartRef.current) {
+                  timerStartRef.current();
+                  // Close task list when starting a task
+                  setShowTaskList(false);
+                }
+              }}
               setShowTaskList={setShowTaskList}
             />
           </div>
