@@ -597,10 +597,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           setLocalVolume(0);
         }
       }
+      // Cmd/Ctrl+H: Toggle History (only in private rooms)
+      else if (key === "h") {
+        e.preventDefault();
+        if (currentInstance?.type === "private") {
+          setShowHistory((prev) => !prev);
+        }
+      }
+      // Cmd/Ctrl+L: Toggle Leaderboard
+      else if (key === "l") {
+        e.preventDefault();
+        setShowLeaderboard((prev) => !prev);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [task, localVolume, previousVolume]);
+  }, [task, localVolume, previousVolume, currentInstance?.type]);
 
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn

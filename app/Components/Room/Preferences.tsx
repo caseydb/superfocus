@@ -65,6 +65,35 @@ export default function Preferences({ onClose }: PreferencesProps) {
           </button>
         </div>
         
+        {/* Shortcuts Tips Banner */}
+        <div className="w-full px-6 py-4 bg-gray-900/30 rounded-xl mb-6">
+          <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
+            <div className="text-gray-400 font-semibold mb-1">Shortcuts</div>
+            <div className="flex items-center gap-4 flex-wrap justify-center">
+              <div className="flex items-center gap-1">
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘K</span>
+                <span>Tasks</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘J</span>
+                <span>Notes</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘M</span>
+                <span>Mute</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘H</span>
+                <span>History</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘L</span>
+                <span>Leaderboard</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div className="w-full space-y-6">
           {/* Account Section */}
           <div className="bg-[#131722] rounded-xl p-6">
