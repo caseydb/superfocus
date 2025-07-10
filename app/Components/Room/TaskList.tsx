@@ -79,7 +79,6 @@ function SortableTask({
   const { user } = useInstance();
   const [isHovered, setIsHovered] = useState(false);
   const [items, setItems] = useState<NoteItem[]>([{ id: "1", type: "text", content: "", level: 0 }]);
-  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [nextId, setNextId] = useState<number>(2);
@@ -106,12 +105,6 @@ function SortableTask({
     };
   }, [user?.id, task.id, isExpanded]);
 
-  // Focus when expanded
-  useEffect(() => {
-    if (isExpanded && items[0]?.id) {
-      setFocusedId(items[0].id);
-    }
-  }, [isExpanded, items]);
 
   // Save notes to Firebase with debouncing
   const saveNotes = (newItems: NoteItem[]) => {
@@ -246,7 +239,7 @@ function SortableTask({
       newItems.splice(currentIndex + 1, 0, newItem);
       setItems(newItems);
       saveNotes(newItems);
-      setFocusedId(newId);
+      
 
       // Focus new item after render
       setTimeout(() => {
@@ -266,7 +259,7 @@ function SortableTask({
 
       if (currentIndex > 0) {
         const prevId = newItems[currentIndex - 1].id;
-        setFocusedId(prevId);
+        
         setTimeout(() => {
           const prevTextarea = inputRefs.current[prevId];
           if (prevTextarea) {
@@ -296,14 +289,14 @@ function SortableTask({
       e.preventDefault();
       const prevId = items[currentIndex - 1].id;
       inputRefs.current[prevId]?.focus();
-      setFocusedId(prevId);
+      
     }
 
     if (e.key === "ArrowDown" && currentIndex < items.length - 1) {
       e.preventDefault();
       const nextId = items[currentIndex + 1].id;
       inputRefs.current[nextId]?.focus();
-      setFocusedId(nextId);
+      
     }
   };
 
@@ -803,7 +796,7 @@ function SortableTask({
                           }
                         }}
                         onKeyDown={(e) => handleKeyDown(e, item.id)}
-                        onFocus={() => setFocusedId(item.id)}
+                        onFocus={() => {}}
                         onPointerDown={(e) => e.stopPropagation()}
                         placeholder={index === 0 ? "Start writing..." : ""}
                         className={`w-full bg-transparent text-white placeholder-gray-500 border-none outline-none resize-none font-medium leading-relaxed ${

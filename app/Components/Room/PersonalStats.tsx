@@ -271,30 +271,6 @@ export default function PersonalStats() {
         });
       }
 
-      // Console log all tasks completed in today's 4am UTC window
-      console.log(`=== ${user.displayName || user.id} - Tasks Completed Today (4am UTC, Cross-Room) ===`);
-      console.log(`User ID: ${user.id}`);
-      console.log(`Display Name: ${user.displayName}`);
-      console.log(
-        `Is Firebase Auth User: ${user.id.startsWith("user-") ? "NO (session-based)" : "YES (Firebase UID)"}`
-      );
-      console.log(`Current Firebase Auth User:`, auth.currentUser?.uid || "Not signed in");
-      console.log(`Data Source: Scanning all instances/rooms for user completions`);
-      console.log(`Rooms with user data: ${roomsWithUserData.length} rooms`);
-      console.log(`Room IDs: ${roomsWithUserData.join(", ")}`);
-      console.log(`Total Tasks: ${userTasksCompleted}`);
-      console.log(`Total Time: ${formatTime(userTotalSeconds)} (${userTotalSeconds} seconds)`);
-      console.log(
-        `Individual Tasks:`,
-        completedTasks.map((task) => ({
-          task: task.task,
-          duration: task.duration,
-          timestamp: new Date(task.timestamp).toLocaleString(),
-          seconds: task.seconds,
-          roomId: task.roomId,
-        }))
-      );
-      console.log(`=== End of ${user.displayName || user.id} Cross-Room Task Summary ===`);
 
       setTasksCompleted(userTasksCompleted);
       setTotalSeconds(userTotalSeconds);

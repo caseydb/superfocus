@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off, push } from "firebase/database";
+import { ref, set, onValue, off } from "firebase/database";
 
 interface NoteItem {
   id: string;
