@@ -29,6 +29,11 @@ export default function Timer({
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
   const isInitializedRef = useRef(false);
+  const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
+  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActivityRef = useRef<number>(Date.now());
+  const [modalCountdown, setModalCountdown] = useState(60);
+  const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
@@ -167,6 +172,83 @@ export default function Timer({
       return () => clearInterval(interval);
     }
   }, [running]);
+
+  // Inactivity detection
+  useEffect(() => {
+    if (!running) {
+      // Clear any existing timeout when not running
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+        inactivityTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    // Only start inactivity detection after 2 hours (7200 seconds)
+    if (seconds < 7200) {
+      return;
+    }
+
+    const resetInactivityTimer = () => {
+      lastActivityRef.current = Date.now();
+      
+      // Clear existing timeout
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+      }
+      
+      // Set new timeout for 10 seconds
+      inactivityTimeoutRef.current = setTimeout(() => {
+        if (running && seconds >= 7200) {
+          setShowStillWorkingModal(true);
+          setModalCountdown(60); // Reset countdown
+        }
+      }, 10000);
+    };
+
+    // Track user activity
+    const handleActivity = () => {
+      resetInactivityTimer();
+    };
+
+    // Set initial timeout
+    resetInactivityTimer();
+
+    // Listen for various activity events
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    return () => {
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+      }
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+    };
+  }, [running, seconds]);
+
+  // Modal countdown effect
+  useEffect(() => {
+    if (showStillWorkingModal && modalCountdown > 0) {
+      modalCountdownRef.current = setTimeout(() => {
+        setModalCountdown(prev => prev - 1);
+      }, 1000);
+      
+      return () => {
+        if (modalCountdownRef.current) {
+          clearTimeout(modalCountdownRef.current);
+        }
+      };
+    } else if (showStillWorkingModal && modalCountdown === 0) {
+      // Auto-pause when countdown reaches 0
+      setShowStillWorkingModal(false);
+      handleStop();
+    }
+  }, [showStillWorkingModal, modalCountdown]);
 
   // Pause timer when user leaves the page (closes tab, refreshes, or navigates away)
   useEffect(() => {
@@ -326,6 +408,29 @@ export default function Timer({
     saveTimerState(false, seconds); // Save paused state to Firebase
   }
 
+  // Handle "Yes, still working" response
+  const handleStillWorking = () => {
+    setShowStillWorkingModal(false);
+    setModalCountdown(60); // Reset countdown for next time
+    // Reset the inactivity timer
+    if (inactivityTimeoutRef.current) {
+      clearTimeout(inactivityTimeoutRef.current);
+    }
+    // Start a new inactivity timer
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (running) {
+        setShowStillWorkingModal(true);
+        setModalCountdown(60);
+      }
+    }, 10000);
+  };
+
+  // Handle "No, pause it" response
+  const handlePauseFromInactivity = () => {
+    setShowStillWorkingModal(false);
+    handleStop();
+  };
+
   // Expose handleStart to parent via ref
   React.useEffect(() => {
     if (startRef) {
@@ -417,6 +522,59 @@ export default function Timer({
           </>
         )}
       </div>
+      
+      {/* Still Working Modal */}
+      {showStillWorkingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative">
+            {/* Elegant countdown circle */}
+            <div className="absolute top-4 right-4 w-12 h-12">
+              <svg className="w-12 h-12 transform -rotate-90">
+                <circle
+                  cx="24"
+                  cy="24"
+                  r="20"
+                  stroke="#374151"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <circle
+                  cx="24"
+                  cy="24"
+                  r="20"
+                  stroke="#FFAA00"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeDasharray={`${(modalCountdown / 60) * 125.6} 125.6`}
+                  className="transition-all duration-1000 ease-linear"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-white font-mono text-lg">
+                {modalCountdown}
+              </span>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-4 text-center">Are you still working?</h2>
+            <p className="text-gray-300 mb-6 text-center">
+              You've been inactive for 10 seconds. Are you still working on "{task}"?
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleStillWorking}
+                className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold cursor-pointer"
+              >
+                Yes
+              </button>
+              <button
+                onClick={handlePauseFromInactivity}
+                className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-semibold cursor-pointer"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
