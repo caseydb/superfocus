@@ -330,17 +330,6 @@ export default function Controls({
 
           {/* Menu Items */}
           <div className="space-y-2">
-            {/* View Rooms Button */}
-            <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
-              onClick={() => {
-                setShowRoomsModal(true);
-                setDropdownOpen(false);
-              }}
-            >
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
-            </button>
-
             {/* Invite Others Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
@@ -351,32 +340,32 @@ export default function Controls({
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
                 <path
-                  d="M12 5v14M5 12h14"
+                  d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M8.5 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6"
                   stroke="#9ca3af"
                   strokeWidth="2"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                   className="group-hover:stroke-[#FFAA00]"
                 />
               </svg>
               <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
             </button>
 
-            {/* History Button */}
+            {/* View Rooms Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
-                if (instanceType === "public") {
-                  setShowHistoryTooltip(true);
-                  setTimeout(() => setShowHistoryTooltip(false), 3000);
-                } else {
-                  setShowHistory(!showHistory);
-                }
+                setShowRoomsModal(true);
                 setDropdownOpen(false);
               }}
             >
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                {showHistory ? "Timer" : "History"}
-              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <rect x="3" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect x="14" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect x="3" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect x="14" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+              </svg>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
             </button>
 
             {/* Preferences Button */}
@@ -408,15 +397,32 @@ export default function Controls({
               <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Preferences</span>
             </button>
 
-            {/* Edit Display Name Button */}
+            {/* History Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
-                setShowNameModal(true);
+                if (instanceType === "public") {
+                  setShowHistoryTooltip(true);
+                  setTimeout(() => setShowHistoryTooltip(false), 3000);
+                } else {
+                  setShowHistory(!showHistory);
+                }
                 setDropdownOpen(false);
               }}
             >
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Edit Display Name</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <path
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+              </svg>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
+                {showHistory ? "Timer" : "History"}
+              </span>
             </button>
 
             {/* Leave Room Button */}
@@ -427,6 +433,16 @@ export default function Controls({
                 router.push("/");
               }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <path
+                  d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+              </svg>
               <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leave Room</span>
             </button>
 
@@ -437,6 +453,16 @@ export default function Controls({
                 await signOut(auth);
               }}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <path
+                  d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+              </svg>
               <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
             </button>
           </div>
@@ -643,49 +669,6 @@ export default function Controls({
                 </div>
               </div>
 
-              {/* View Rooms Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
-                onClick={() => {
-                  setShowRoomsModal(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
-              </button>
-
-              {/* Tasks Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
-                onClick={() => {
-                  setShowTaskList(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path
-                    d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="group-hover:stroke-[#FFAA00]"
-                  />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Tasks</span>
-              </button>
-
-              {/* Leaderboard Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
-                onClick={() => {
-                  setShowLeaderboard(!showLeaderboard);
-                  setShowSideModal(false);
-                }}
-              >
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leaderboard</span>
-              </button>
-
               {/* Invite Others Button */}
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
@@ -696,32 +679,32 @@ export default function Controls({
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
                   <path
-                    d="M12 5v14M5 12h14"
+                    d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M8.5 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6"
                     stroke="#9ca3af"
                     strokeWidth="2"
                     strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="group-hover:stroke-[#FFAA00]"
                   />
                 </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
               </button>
 
-              {/* History Button */}
+              {/* View Rooms Button */}
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
-                  if (instanceType === "public") {
-                    setShowHistoryTooltip(true);
-                    setTimeout(() => setShowHistoryTooltip(false), 3000);
-                  } else {
-                    setShowHistory(!showHistory);
-                  }
+                  setShowRoomsModal(true);
                   setShowSideModal(false);
                 }}
               >
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                  {showHistory ? "Timer" : "History"}
-                </span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
               </button>
 
               {/* Preferences Button */}
@@ -753,17 +736,64 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Preferences</span>
               </button>
 
-              {/* Edit Display Name Button */}
+              {/* Leaderboard Button */}
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
-                  setShowNameModal(true);
+                  setShowLeaderboard(!showLeaderboard);
                   setShowSideModal(false);
                 }}
               >
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leaderboard</span>
+              </button>
+
+              {/* History Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
+                onClick={() => {
+                  if (instanceType === "public") {
+                    setShowHistoryTooltip(true);
+                    setTimeout(() => setShowHistoryTooltip(false), 3000);
+                  } else {
+                    setShowHistory(!showHistory);
+                  }
+                  setShowSideModal(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                  Edit Display Name
+                  {showHistory ? "Timer" : "History"}
                 </span>
+              </button>
+
+              {/* Tasks Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
+                onClick={() => {
+                  setShowTaskList(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Tasks</span>
               </button>
 
               {/* Leave Room Button */}
@@ -774,6 +804,16 @@ export default function Controls({
                   router.push("/");
                 }}
               >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leave Room</span>
               </button>
 
@@ -784,6 +824,16 @@ export default function Controls({
                   await signOut(auth);
                 }}
               >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
               </button>
             </div>

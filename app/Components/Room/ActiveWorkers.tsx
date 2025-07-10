@@ -96,8 +96,12 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           style={{ height: "2rem" }}
         >
           {(userStreaks[u.id] || 0) > 0 && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center mr-2 border border-gray-400">
-              <span className="text-[#9CA3AF] text-xs font-bold font-sans">{userStreaks[u.id]}</span>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 border ${
+              userStreaks[u.id] >= 5 ? "border-[#FFAA00]" : "border-gray-400"
+            }`}>
+              <span className={`text-xs font-bold font-sans ${
+                userStreaks[u.id] >= 10 ? "text-[#FFAA00]" : "text-[#9CA3AF]"
+              }`}>{userStreaks[u.id]}</span>
             </div>
           )}
           <span>

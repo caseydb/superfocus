@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
+import { rtdb, auth } from "../../../lib/firebase";
 import { ref, set, onValue, off } from "firebase/database";
+import { updateProfile } from "firebase/auth";
 
 interface PreferencesProps {
   onClose: () => void;
 }
 
 export default function Preferences({ onClose }: PreferencesProps) {
-  const { user } = useInstance();
+  const { user, currentInstance } = useInstance();
   
   // Preference states
   const [autoStartTimer, setAutoStartTimer] = useState(false);
@@ -17,6 +18,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
   const [soundEffects, setSoundEffects] = useState(true);
   const [inactivityTimeout, setInactivityTimeout] = useState("3600"); // Default 1 hour in seconds
   const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState(user?.displayName || "");
+  const [isEditingName, setIsEditingName] = useState(false);
   
   // Load preferences from Firebase on mount
   useEffect(() => {
@@ -72,6 +75,68 @@ export default function Preferences({ onClose }: PreferencesProps) {
         </div>
         
         <div className="w-full space-y-6">
+          {/* Account Section */}
+          <div className="bg-[#131722] rounded-xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Account</h3>
+            
+            {/* Edit Display Name */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-white font-medium">Display Name</label>
+                <p className="text-sm text-gray-400 mt-1">{isEditingName ? "Enter your new display name" : displayName}</p>
+              </div>
+              {!isEditingName ? (
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="px-4 py-2 bg-[#232b3a] text-white rounded-lg hover:bg-[#2a3444] transition-colors"
+                >
+                  Edit
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="px-3 py-1 bg-[#232b3a] text-white rounded-lg border border-gray-700 focus:border-[#FFAA00] outline-none"
+                    maxLength={32}
+                    autoFocus
+                  />
+                  <button
+                    onClick={async () => {
+                      if (displayName.trim() && displayName !== user?.displayName) {
+                        if (auth.currentUser) {
+                          await updateProfile(auth.currentUser, { displayName: displayName.trim() });
+                        }
+                        // Update the local user state
+                        if (user) {
+                          user.displayName = displayName.trim();
+                          if (currentInstance) {
+                            const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+                            set(userRef, { ...user, displayName: displayName.trim() });
+                          }
+                        }
+                      }
+                      setIsEditingName(false);
+                    }}
+                    className="px-3 py-1 bg-[#FFAA00] text-black rounded-lg hover:bg-[#FFB833] transition-colors font-semibold"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDisplayName(user?.displayName || "");
+                      setIsEditingName(false);
+                    }}
+                    className="px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          
           {/* Timer Settings Section */}
           <div className="bg-[#131722] rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Timer Settings</h3>
