@@ -18,11 +18,13 @@ export default function TaskInput({
   setTask,
   disabled,
   onStart,
+  setShowTaskList,
 }: {
   task: string;
   setTask: (t: string) => void;
   disabled: boolean;
   onStart?: () => void;
+  setShowTaskList?: (show: boolean) => void;
 }) {
   const { user } = useInstance();
   const chars = task.length;
@@ -35,6 +37,7 @@ export default function TaskInput({
   const [showTaskSuggestions, setShowTaskSuggestions] = React.useState(false);
   const [selectedTaskIndex, setSelectedTaskIndex] = React.useState(-1); // -1 means input is focused
   const suggestionsContainerRef = React.useRef<HTMLDivElement>(null);
+  const [taskSelectionMode, setTaskSelectionMode] = React.useState("dropdown"); // default to dropdown
 
   // Load tasks from Firebase (user-specific)
   React.useEffect(() => {
@@ -62,6 +65,21 @@ export default function TaskInput({
     return () => {
       off(tasksRef, "value", handle);
     };
+  }, [user?.id]);
+
+  // Load user's task selection mode preference
+  React.useEffect(() => {
+    if (!user?.id) return;
+    
+    const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
+    const handle = onValue(prefsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.taskSelectionMode) {
+        setTaskSelectionMode(data.taskSelectionMode);
+      }
+    });
+    
+    return () => off(prefsRef, "value", handle);
   }, [user?.id]);
 
   const updateInputWidth = React.useCallback(() => {
@@ -182,13 +200,21 @@ export default function TaskInput({
         onFocus={() => {
           setIsFocused(true);
           if (!task.trim() && availableTasks.length > 0) {
-            setShowTaskSuggestions(true);
+            if (taskSelectionMode === "dropdown") {
+              setShowTaskSuggestions(true);
+            } else if (taskSelectionMode === "sidebar" && setShowTaskList) {
+              setShowTaskList(true);
+            }
           }
         }}
         onClick={() => {
           // Show suggestions when clicking, even if already focused
           if (!task.trim() && availableTasks.length > 0) {
-            setShowTaskSuggestions(true);
+            if (taskSelectionMode === "dropdown") {
+              setShowTaskSuggestions(true);
+            } else if (taskSelectionMode === "sidebar" && setShowTaskList) {
+              setShowTaskList(true);
+            }
           }
         }}
         onBlur={() => {

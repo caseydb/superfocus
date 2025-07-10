@@ -644,26 +644,35 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {/* Active work border overlay */}
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
-          {/* Personal stats with streak */}
-          <PersonalStats />
-          {/* User name in top left */}
-          <Controls
-            className="fixed top-[16px] right-8 z-50"
-            localVolume={localVolume}
-            setLocalVolume={setLocalVolume}
-            showHistory={showHistory}
-            setShowHistory={setShowHistory}
-            showHistoryTooltip={showHistoryTooltip}
-            setShowHistoryTooltip={setShowHistoryTooltip}
-            instanceType={currentInstance.type}
-            setShowInviteModal={setShowInviteModal}
-            setShowTaskList={setShowTaskList}
-            showLeaderboard={showLeaderboard}
-            setShowLeaderboard={setShowLeaderboard}
-            setShowRoomsModal={setShowRoomsModal}
-            showPreferences={showPreferences}
-            setShowPreferences={setShowPreferences}
-          />
+          {/* Top right container for stats and controls */}
+          <div className="fixed top-[13px] right-8 z-50 flex items-center gap-4 max-w-[calc(100vw-6rem)]">
+            {/* Personal stats - remove its own positioning */}
+            <div className="hidden sm:block">
+              <PersonalStats />
+            </div>
+            {/* Controls - remove fixed positioning */}
+            <Controls
+              className=""
+              localVolume={localVolume}
+              setLocalVolume={setLocalVolume}
+              showHistory={showHistory}
+              setShowHistory={setShowHistory}
+              showHistoryTooltip={showHistoryTooltip}
+              setShowHistoryTooltip={setShowHistoryTooltip}
+              instanceType={currentInstance.type}
+              setShowInviteModal={setShowInviteModal}
+              setShowTaskList={setShowTaskList}
+              showLeaderboard={showLeaderboard}
+              setShowLeaderboard={setShowLeaderboard}
+              setShowRoomsModal={setShowRoomsModal}
+              showPreferences={showPreferences}
+              setShowPreferences={setShowPreferences}
+            />
+          </div>
+          {/* Mobile personal stats stays at bottom */}
+          <div className="sm:hidden">
+            <PersonalStats />
+          </div>
           {/* Room type indicator - centered bottom - hidden on mobile */}
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap hidden sm:block">
             {currentInstance.type === "private" ? (
@@ -705,6 +714,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setTask={setTask}
               disabled={(hasStarted && inputLocked) || hasActiveTimer}
               onStart={() => timerStartRef.current && timerStartRef.current()}
+              setShowTaskList={setShowTaskList}
             />
           </div>
           <div className={showHistory ? "" : "hidden"}>

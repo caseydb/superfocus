@@ -12,14 +12,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
   const { user, currentInstance } = useInstance();
   
   // Preference states
-  const [autoStartTimer, setAutoStartTimer] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
-  const [soundEffects, setSoundEffects] = useState(true);
   const [inactivityTimeout, setInactivityTimeout] = useState("3600"); // Default 1 hour in seconds
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [isEditingName, setIsEditingName] = useState(false);
+  const [taskSelectionMode, setTaskSelectionMode] = useState("dropdown"); // "dropdown" or "sidebar"
   
   // Load preferences from Firebase on mount
   useEffect(() => {
@@ -29,11 +26,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
     const handle = onValue(prefsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        setAutoStartTimer(data.autoStartTimer ?? false);
-        setShowNotifications(data.showNotifications ?? true);
-        setDarkMode(data.darkMode ?? true);
-        setSoundEffects(data.soundEffects ?? true);
         setInactivityTimeout(data.inactivityTimeout ?? "3600");
+        setTaskSelectionMode(data.taskSelectionMode ?? "dropdown");
       }
       setLoading(false);
     });
@@ -47,11 +41,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
     
     const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
     set(prefsRef, {
-      autoStartTimer,
-      showNotifications,
-      darkMode,
-      soundEffects,
       inactivityTimeout,
+      taskSelectionMode,
       ...updates,
       lastUpdated: Date.now()
     });
@@ -137,32 +128,28 @@ export default function Preferences({ onClose }: PreferencesProps) {
             </div>
           </div>
           
-          {/* Timer Settings Section */}
+          {/* Timer and Task Settings Section */}
           <div className="bg-[#131722] rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Timer Settings</h3>
+            <h3 className="text-xl font-bold text-white mb-4">Timer and Task Settings</h3>
             
-            {/* Auto-start Timer */}
+            {/* Task Selection Mode */}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <label className="text-white font-medium">Auto-start Timer</label>
-                <p className="text-sm text-gray-400 mt-1">Automatically start timer when selecting a task</p>
+                <label className="text-white font-medium">Task Selection Mode</label>
+                <p className="text-sm text-gray-400 mt-1">Choose how to select tasks when clicking the input field</p>
               </div>
-              <button
-                onClick={() => {
-                  const newValue = !autoStartTimer;
-                  setAutoStartTimer(newValue);
-                  savePreferences({ autoStartTimer: newValue });
+              <select
+                value={taskSelectionMode}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setTaskSelectionMode(newValue);
+                  savePreferences({ taskSelectionMode: newValue });
                 }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoStartTimer ? "bg-[#FFAA00]" : "bg-gray-600"
-                }`}
+                className="bg-[#232b3a] text-white px-4 py-2 rounded-lg border border-gray-700 focus:border-[#FFAA00] outline-none"
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoStartTimer ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
+                <option value="dropdown">Dropdown List</option>
+                <option value="sidebar">Task Sidebar</option>
+              </select>
             </div>
             
             {/* Inactivity Timeout */}
@@ -188,88 +175,6 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <option value="14400">4 hours</option>
                 <option value="never">Never</option>
               </select>
-            </div>
-          </div>
-          
-          {/* Notifications Section */}
-          <div className="bg-[#131722] rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Notifications</h3>
-            
-            {/* Show Notifications */}
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <label className="text-white font-medium">Desktop Notifications</label>
-                <p className="text-sm text-gray-400 mt-1">Get notified when others complete tasks</p>
-              </div>
-              <button
-                onClick={() => {
-                  const newValue = !showNotifications;
-                  setShowNotifications(newValue);
-                  savePreferences({ showNotifications: newValue });
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  showNotifications ? "bg-[#FFAA00]" : "bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    showNotifications ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-            
-            {/* Sound Effects */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-white font-medium">Sound Effects</label>
-                <p className="text-sm text-gray-400 mt-1">Play sounds for timer events</p>
-              </div>
-              <button
-                onClick={() => {
-                  const newValue = !soundEffects;
-                  setSoundEffects(newValue);
-                  savePreferences({ soundEffects: newValue });
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  soundEffects ? "bg-[#FFAA00]" : "bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    soundEffects ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-          
-          {/* Appearance Section */}
-          <div className="bg-[#131722] rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Appearance</h3>
-            
-            {/* Dark Mode */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-white font-medium">Dark Mode</label>
-                <p className="text-sm text-gray-400 mt-1">Use dark theme throughout the app</p>
-              </div>
-              <button
-                onClick={() => {
-                  const newValue = !darkMode;
-                  setDarkMode(newValue);
-                  savePreferences({ darkMode: newValue });
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  darkMode ? "bg-[#FFAA00]" : "bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    darkMode ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
             </div>
           </div>
         </div>

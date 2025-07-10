@@ -309,7 +309,7 @@ export default function PersonalStats() {
 
   // Show normal stats if they've completed today's task
   return (
-    <div className="fixed bottom-4 left-0 right-0 sm:top-[13px] sm:right-36 sm:bottom-auto sm:left-auto z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="fixed bottom-4 left-0 right-0 sm:relative sm:top-auto sm:right-auto sm:bottom-auto sm:left-auto z-40 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="relative">
         <div
           className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm mx-auto sm:mx-0 w-fit cursor-pointer"

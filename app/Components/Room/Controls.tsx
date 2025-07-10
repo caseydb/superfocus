@@ -105,7 +105,7 @@ export default function Controls({
   };
 
   return (
-    <div className={className + " select-none"}>
+    <div className={className + " select-none relative"}>
       <div className="flex items-center">
         {/* Speaker icon for mute/unmute toggle - hidden on mobile */}
         <div className="relative hidden sm:block">
@@ -194,10 +194,11 @@ export default function Controls({
           {/* First name with dropdown arrow */}
           <div className="flex items-center">
             <span
-              className="text-base font-mono text-gray-400 select-none cursor-pointer hidden sm:block"
+              className="text-base font-mono text-gray-400 select-none cursor-pointer hidden sm:block max-w-[200px] truncate"
               onClick={() => {
                 setDropdownOpen((v) => !v);
               }}
+              title={user.displayName}
             >
               {user.displayName.split(" ")[0]}
             </span>
