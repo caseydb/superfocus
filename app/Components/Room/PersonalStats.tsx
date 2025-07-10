@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
-import { rtdb, auth } from "../../../lib/firebase";
+import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, set, get } from "firebase/database";
 
 interface HistoryEntry {
