@@ -455,7 +455,29 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Also save to user's personal completion history for cross-room stats
       const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
       push(userHistoryRef, quitData);
-      notifyEvent("quit");
+      
+      // Always play quit sound locally
+      const quitAudio = new Audio("/quit.mp3");
+      quitAudio.volume = localVolume;
+      quitAudio.play();
+      
+      // Only notify others if timer was > 5 seconds AND cooldown has passed
+      if (timerSecondsRef.current > 5 && user?.id && currentInstance) {
+        const now = Date.now();
+        const lastQuitRef = ref(rtdb, `instances/${currentInstance.id}/lastQuitSound/${user.id}`);
+        
+        // Check last quit sound timestamp
+        onValue(lastQuitRef, (snapshot) => {
+          const lastQuitTime = snapshot.val() || 0;
+          const timeSinceLastQuit = now - lastQuitTime;
+          
+          if (timeSinceLastQuit > 300000) { // 5 minutes cooldown
+            notifyEvent("quit");
+            set(lastQuitRef, now);
+          }
+        }, { onlyOnce: true });
+      }
+      
       // Add flying message for quit to Firebase
       const flyingMessageId = `${user.id}-quit-${Date.now()}`;
       const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
@@ -521,7 +543,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
       push(userHistoryRef, completionData);
 
-      notifyEvent("complete");
+      // notifyEvent is now handled by Timer component conditionally based on duration
       // Add flying message to Firebase
       const flyingMessageId = `${user.id}-complete-${Date.now()}`;
       const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
@@ -698,6 +720,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               secondsRef={timerSecondsRef}
               requiredTask={!!task.trim()}
               task={task}
+              localVolume={localVolume}
             />
             {task.trim() && (
               <div className="flex justify-center w-full gap-6">

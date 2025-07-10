@@ -26,20 +26,17 @@ interface User {
 function formatTime(totalSeconds: number) {
   // Handle invalid input
   if (isNaN(totalSeconds) || totalSeconds < 0) {
-    return "00:00:00";
+    return "0m";
   }
 
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
 
-  // Format based on duration length (same as Timer component)
+  // Format based on duration length (same as PersonalStats)
   if (hours > 0) {
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${hours}h ${minutes}m`;
   } else {
-    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${minutes}m`;
   }
 }
 
@@ -131,7 +128,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto"
+        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between w-full mb-2">

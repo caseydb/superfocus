@@ -13,6 +13,7 @@ export default function Timer({
   secondsRef,
   requiredTask = true,
   task,
+  localVolume = 0.2,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
@@ -22,6 +23,7 @@ export default function Timer({
   secondsRef?: React.RefObject<number>;
   requiredTask?: boolean;
   task?: string;
+  localVolume?: number;
 }) {
   const { currentInstance, user } = useInstance();
   const [seconds, setSeconds] = useState(0);
@@ -192,7 +194,31 @@ export default function Timer({
 
     setRunning(true);
     saveTimerState(true, seconds); // Save start state to Firebase
-    notifyEvent("start");
+    
+    // Only play start sound if this is an initial start (not a resume)
+    if (seconds === 0) {
+      // Always play start sound locally
+      const startAudio = new Audio("/started.mp3");
+      startAudio.volume = localVolume;
+      startAudio.play();
+      
+      // Check if we should notify others (with cooldown)
+      if (user?.id && currentInstance) {
+        const now = Date.now();
+        const lastStartRef = ref(rtdb, `instances/${currentInstance.id}/lastStartSound/${user.id}`);
+        
+        // Check last start sound timestamp
+        onValue(lastStartRef, (snapshot) => {
+          const lastStartTime = snapshot.val() || 0;
+          const timeSinceLastStart = now - lastStartTime;
+          
+          if (timeSinceLastStart > 600000) { // 10 minutes cooldown for others
+            notifyEvent("start");
+            set(lastStartRef, now);
+          }
+        }, { onlyOnce: true });
+      }
+    }
   }
 
   // Helper to move task to position #1 in task list (add if doesn't exist, move if exists)
@@ -358,7 +384,29 @@ export default function Timer({
                 }
 
                 clearTimerState(); // Clear Firebase state when completing - this will trigger the listener to reset local state
-                notifyEvent("complete");
+                
+                // Always play completion sound locally
+                const completeAudio = new Audio("/complete.mp3");
+                completeAudio.volume = localVolume;
+                completeAudio.play();
+                
+                // Only notify others if task took more than 15 seconds AND cooldown has passed
+                if (seconds > 15 && user?.id && currentInstance) {
+                  const now = Date.now();
+                  const lastCompleteRef = ref(rtdb, `instances/${currentInstance.id}/lastCompleteSound/${user.id}`);
+                  
+                  // Check last complete sound timestamp
+                  onValue(lastCompleteRef, (snapshot) => {
+                    const lastCompleteTime = snapshot.val() || 0;
+                    const timeSinceLastComplete = now - lastCompleteTime;
+                    
+                    if (timeSinceLastComplete > 300000) { // 5 minutes cooldown
+                      notifyEvent("complete");
+                      set(lastCompleteRef, now);
+                    }
+                  }, { onlyOnce: true });
+                }
+                
                 if (onComplete) {
                   onComplete(completionTime);
                 }

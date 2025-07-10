@@ -1,6 +1,6 @@
 //Sounds
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 
@@ -9,6 +9,7 @@ export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; 
   const startedRef = useRef<HTMLAudioElement>(null);
   const quitRef = useRef<HTMLAudioElement>(null);
   const lastEventTimestamp = useRef<number>(0);
+  const [audioInitialized, setAudioInitialized] = useState(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -43,11 +44,72 @@ export default function Sounds({ roomId, localVolume = 0.2 }: { roomId: string; 
     if (quitRef.current) quitRef.current.volume = localVolume;
   }, [localVolume]);
 
+  // Initialize audio on first user interaction to comply with browser autoplay policies
+  useEffect(() => {
+    if (audioInitialized) return;
+
+    const initializeAudio = () => {
+      // Play a silent sound to unlock audio context
+      if (completeRef.current && startedRef.current && quitRef.current) {
+        // Create a silent audio context to initialize
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContext.resume();
+        
+        // Play each audio element silently to initialize them
+        [completeRef.current, startedRef.current, quitRef.current].forEach(audio => {
+          audio.volume = 0;
+          audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = localVolume;
+          }).catch(() => {
+            // Ignore errors, browser might still block
+          });
+        });
+        
+        setAudioInitialized(true);
+        // Remove the listener after initialization
+        document.removeEventListener('click', initializeAudio);
+        document.removeEventListener('keydown', initializeAudio);
+      }
+    };
+
+    // Add listeners for first user interaction
+    document.addEventListener('click', initializeAudio);
+    document.addEventListener('keydown', initializeAudio);
+
+    return () => {
+      document.removeEventListener('click', initializeAudio);
+      document.removeEventListener('keydown', initializeAudio);
+    };
+  }, [audioInitialized, localVolume]);
+
   return (
     <>
-      <audio ref={completeRef} src="/complete.mp3" preload="auto" />
-      <audio ref={startedRef} src="/started.mp3" preload="auto" />
-      <audio ref={quitRef} src="/quit.mp3" preload="auto" />
+      <audio 
+        ref={(el) => {
+          completeRef.current = el;
+          if (el) el.volume = localVolume;
+        }} 
+        src="/complete.mp3" 
+        preload="auto" 
+      />
+      <audio 
+        ref={(el) => {
+          startedRef.current = el;
+          if (el) el.volume = localVolume;
+        }} 
+        src="/started.mp3" 
+        preload="auto" 
+      />
+      <audio 
+        ref={(el) => {
+          quitRef.current = el;
+          if (el) el.volume = localVolume;
+        }} 
+        src="/quit.mp3" 
+        preload="auto" 
+      />
     </>
   );
 }
