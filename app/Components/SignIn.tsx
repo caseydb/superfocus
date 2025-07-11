@@ -115,7 +115,7 @@ export default function SignIn() {
         <>
           <h2 className="text-white text-xl font-bold mb-2">Reset Password</h2>
           <p className="text-gray-400 text-sm font-mono text-center mb-4">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
           <input
             type="email"

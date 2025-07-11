@@ -12,25 +12,20 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
   const [runningTimerData, setRunningTimerData] = useState<Record<string, { startTime: number; baseSeconds: number }>>({});
   const [runningTimers, setRunningTimers] = useState<Record<string, boolean>>({});
-  const [currentTime, setCurrentTime] = useState(Date.now());
   const [hoveredUserSnapshot, setHoveredUserSnapshot] = useState<{ dailyTime: number; dailyTasks: number } | null>(null);
 
 
   // Format time display
-  const formatTime = (totalSeconds: number, showSeconds: boolean = false) => {
+  const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
     
     if (hours > 0) {
-      if (showSeconds) {
-        return `${hours}h ${minutes}m ${seconds}s`;
-      }
       return `${hours}h ${minutes}m`;
     } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
+      return `${minutes}m`;
     } else {
-      return `${seconds}s`;
+      return `0m`;
     }
   };
 
@@ -270,27 +265,14 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return () => off(userTimersRef, "value", handle);
   }, [roomId]);
 
-  // Calculate the current elapsed time for a running timer
+  // Calculate the current elapsed time for a running timer (only for sorting)
   const getRunningTimerElapsed = (userId: string) => {
     const timerData = runningTimerData[userId];
     if (!timerData) return 0;
     
-    const elapsedSinceStart = Math.floor((currentTime - timerData.startTime) / 1000);
+    const elapsedSinceStart = Math.floor((Date.now() - timerData.startTime) / 1000);
     return timerData.baseSeconds + elapsedSinceStart;
   };
-
-  // Update current time every second when hovering over a running timer
-  useEffect(() => {
-    if (!hoveredUserId || !runningTimers[hoveredUserId]) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [hoveredUserId, runningTimers]);
 
   if (activeUsers.length === 0) return null;
 
@@ -338,20 +320,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <Image src="/axe.png" alt="axe" width={16} height={16} className="inline-block" />
             )}
             <span>
-              {(() => {
-                const totalSeconds = (userDailyTimes[u.id] || 0) + 
-                                   (runningTimers[u.id] ? getRunningTimerElapsed(u.id) : 0);
-                const totalMinutes = Math.floor(totalSeconds / 60);
-                const totalHours = Math.floor(totalSeconds / 3600);
-                
-                if (totalMinutes >= 30 && totalMinutes < 60) {
-                  return " (0.5h)";
-                } else if (totalHours >= 1) {
-                  return ` (${totalHours}h)`;
-                }
-                return "";
-              })()}{" "}
-              is <span className="hidden sm:inline">actively </span>working
+              {" "}is <span className="hidden sm:inline">actively </span>working
             </span>
           </span>
           
@@ -364,11 +333,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                   <span className="text-gray-100 font-medium">{hoveredUserSnapshot?.dailyTasks || 0}</span>{" "}
                   <span className="text-gray-400">tasks</span> |{" "}
                   <span className="text-gray-100 font-medium">
-                    {formatTime(
-                      (hoveredUserSnapshot?.dailyTime || 0) + 
-                      (runningTimers[u.id] ? getRunningTimerElapsed(u.id) : 0), 
-                      true
-                    )}
+                    {formatTime(hoveredUserSnapshot?.dailyTime || 0)}
                   </span>
                 </div>
                 {/* Arrow */}

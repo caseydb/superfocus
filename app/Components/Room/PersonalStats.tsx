@@ -41,7 +41,7 @@ function formatTime(totalSeconds: number) {
 }
 
 export default function PersonalStats() {
-  const { user, currentInstance } = useInstance();
+  const { user } = useInstance();
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -49,7 +49,6 @@ export default function PersonalStats() {
   const [hasCompletedToday, setHasCompletedToday] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
-  const [runningTimerSeconds, setRunningTimerSeconds] = useState(0);
 
   // Get the "streak date" - which day a timestamp belongs to in the 4am UTC system
   const getStreakDate = (timestamp: number = Date.now()) => {
@@ -163,7 +162,7 @@ export default function PersonalStats() {
     return () => {
       off(dailyCompletionsRef, "value", handle);
     };
-  }, [user?.id]);
+  }, [user?.id, calculateStreak]);
 
   // Update countdown timer every second
   useEffect(() => {
@@ -182,7 +181,7 @@ export default function PersonalStats() {
     if (typeof window !== "undefined") {
       (window as Window & { markStreakComplete?: () => Promise<void> }).markStreakComplete = markTodayComplete;
     }
-  }, [user?.id]);
+  }, [user?.id, markTodayComplete]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -281,52 +280,6 @@ export default function PersonalStats() {
     return () => off(instancesRef, "value", handle);
   }, [user?.id]);
 
-  // Listen to current user's timer
-  useEffect(() => {
-    if (!user?.id || !currentInstance?.id) {
-      setRunningTimerSeconds(0);
-      return;
-    }
-
-    const timerRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const handle = onValue(timerRef, (snapshot) => {
-      const timerData = snapshot.val();
-      
-      // Clear any existing interval
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-
-      if (timerData && timerData.running && timerData.startTime) {
-        // Calculate and update running timer seconds
-        const updateRunningSeconds = () => {
-          const now = Date.now();
-          const elapsedSinceStart = Math.floor((now - timerData.startTime) / 1000);
-          const totalRunning = (timerData.baseSeconds || 0) + elapsedSinceStart;
-          setRunningTimerSeconds(totalRunning);
-        };
-
-        // Update immediately
-        updateRunningSeconds();
-
-        // Then update every second
-        intervalId = setInterval(updateRunningSeconds, 1000);
-      } else {
-        // No running timer
-        setRunningTimerSeconds(0);
-      }
-    });
-
-    return () => {
-      off(timerRef, "value", handle);
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [user?.id, currentInstance?.id]);
 
   if (loading || !user) return null;
 
@@ -373,7 +326,7 @@ export default function PersonalStats() {
             <span className="text-gray-400 text-xs sm:text-base font-mono">
               <span className="text-gray-400">day streak</span> |{" "}
               <span className="text-gray-300 font-medium">{tasksCompleted}</span> tasks |{" "}
-              <span className="text-gray-300 font-medium">{formatTime(totalSeconds + runningTimerSeconds)}</span> today
+              <span className="text-gray-300 font-medium">{formatTime(totalSeconds)}</span> today
             </span>
           </div>
         </div>
