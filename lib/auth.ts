@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "./firebase"; // uses your initialized auth instance
 
@@ -19,3 +20,5 @@ export const signUpWithEmail = (email: string, password: string) =>
 export const signInWithEmail = (email: string, password: string) => signInWithEmailAndPassword(auth, email, password); // Email login
 
 export const signOutUser = () => signOut(auth); // Logout
+
+export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email); // Password reset

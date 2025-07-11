@@ -19,6 +19,8 @@ import RoomsModal from "./RoomsModal";
 import Notes from "./Notes";
 import SignIn from "../SignIn";
 import Preferences from "./Preferences";
+import { signInWithGoogle } from "@/lib/auth";
+import Image from "next/image";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady } = useInstance();
@@ -54,6 +56,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showNotes, setShowNotes] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -76,6 +79,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowNotes(false);
     setShowPreferences(false);
     setShowQuitModal(false);
+    setShowSignInModal(false);
   }, []);
 
   // Track if there's an active timer state from Firebase
@@ -649,13 +653,62 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         <div className="flex flex-col items-center justify-center w-full h-full">
           <div className="w-full flex flex-col items-center mb-10 mt-2">
             <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
-              Drop In. Lock In. Get Sh*t Done.
+              Drop In. Lock In. Get Sh<span style={{ color: "#FFAA00" }}>*</span>t Done.
             </h1>
             <p className="text-lg md:text-2xl text-gray-300 text-center max-w-2xl mx-auto opacity-90 font-medium">
               Level up your work with others in the zone.
             </p>
           </div>
-          <SignIn />
+          
+          {/* Room access message */}
+          <div className="bg-gray-900/50 rounded-xl px-6 py-4 mb-8 border border-gray-800 max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#FFAA00]">
+                  <path
+                    d="M16 12V8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8V12M19 21H5C4.44772 21 4 20.5523 4 20V13C4 12.4477 4.44772 12 5 12H19C19.5523 12 20 12.4477 20 13V20C20 20.5523 19.5523 21 19 21Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div className="text-gray-300">
+                <p className="font-semibold text-white">Sign in required</p>
+                <p className="text-sm">You need to be signed in to access this room</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => signInWithGoogle()}
+              className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#FFAA00] transition"
+            >
+              <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
+              Continue with Google
+            </button>
+            <div className="mt-4 text-gray-300 text-base">
+              Don&apos;t have an account?{" "}
+              <button
+                className="font-bold underline underline-offset-2 hover:text-[#FFAA00] transition"
+                onClick={() => setShowSignInModal(true)}
+              >
+                Sign up
+              </button>
+            </div>
+          </div>
+          {showSignInModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+              onClick={() => setShowSignInModal(false)}
+            >
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <SignIn />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
