@@ -566,6 +566,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Add keyboard shortcuts for toggling TaskList and Notes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle Escape key to close all modals
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowLeaderboard(false);
+        setShowHistory(false);
+        setShowInviteModal(false);
+        setShowTaskList(false);
+        setShowRoomsModal(false);
+        setShowNotes(false);
+        setShowPreferences(false);
+        setShowQuitModal(false);
+        return;
+      }
+
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const isModifierPressed = isMac ? e.metaKey : e.ctrlKey;
       
