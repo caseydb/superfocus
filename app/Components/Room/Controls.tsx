@@ -21,6 +21,7 @@ interface ControlsProps {
   setShowLeaderboard: (show: boolean) => void;
   setShowRoomsModal: (show: boolean) => void;
   setShowPreferences: (show: boolean) => void;
+  closeAllModals: () => void;
 }
 
 export default function Controls({
@@ -38,6 +39,7 @@ export default function Controls({
   setShowLeaderboard,
   setShowRoomsModal,
   setShowPreferences,
+  closeAllModals,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editedName, setEditedName] = useState(user.displayName);
@@ -333,6 +335,7 @@ export default function Controls({
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
+                closeAllModals();
                 setShowInviteModal(true);
                 setDropdownOpen(false);
               }}
@@ -354,6 +357,7 @@ export default function Controls({
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
+                closeAllModals();
                 setShowRoomsModal(true);
                 setDropdownOpen(false);
               }}
@@ -371,6 +375,7 @@ export default function Controls({
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
               onClick={() => {
+                closeAllModals();
                 setShowPreferences(true);
                 setDropdownOpen(false);
               }}
@@ -404,6 +409,7 @@ export default function Controls({
                   setShowHistoryTooltip(true);
                   setTimeout(() => setShowHistoryTooltip(false), 3000);
                 } else {
+                  closeAllModals();
                   setShowHistory(!showHistory);
                 }
                 setDropdownOpen(false);
@@ -672,7 +678,8 @@ export default function Controls({
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
-                  setShowInviteModal(true);
+                  closeAllModals();
+                setShowInviteModal(true);
                   setShowSideModal(false);
                 }}
               >
@@ -693,7 +700,8 @@ export default function Controls({
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
-                  setShowRoomsModal(true);
+                  closeAllModals();
+                setShowRoomsModal(true);
                   setShowSideModal(false);
                 }}
               >
@@ -710,7 +718,8 @@ export default function Controls({
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
-                  setShowPreferences(true);
+                  closeAllModals();
+                setShowPreferences(true);
                   setShowSideModal(false);
                 }}
               >
@@ -739,6 +748,7 @@ export default function Controls({
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
+                  closeAllModals();
                   setShowLeaderboard(!showLeaderboard);
                   setShowSideModal(false);
                 }}
@@ -754,7 +764,8 @@ export default function Controls({
                     setShowHistoryTooltip(true);
                     setTimeout(() => setShowHistoryTooltip(false), 3000);
                   } else {
-                    setShowHistory(!showHistory);
+                    closeAllModals();
+                  setShowHistory(!showHistory);
                   }
                   setShowSideModal(false);
                 }}
@@ -778,6 +789,7 @@ export default function Controls({
               <button
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#23272b] transition-colors flex items-center group"
                 onClick={() => {
+                  closeAllModals();
                   setShowTaskList(true);
                   setShowSideModal(false);
                 }}

@@ -66,6 +66,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Track previous volume for mute/unmute functionality
   const [previousVolume, setPreviousVolume] = useState(0.2);
 
+  // Helper function to close all modals
+  const closeAllModals = React.useCallback(() => {
+    setShowLeaderboard(false);
+    setShowHistory(false);
+    setShowInviteModal(false);
+    setShowTaskList(false);
+    setShowRoomsModal(false);
+    setShowNotes(false);
+    setShowPreferences(false);
+    setShowQuitModal(false);
+  }, []);
+
   // Track if there's an active timer state from Firebase
   const [hasActiveTimer, setHasActiveTimer] = useState(false);
   const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
@@ -412,6 +424,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   const handleClear = () => {
     if (timerSecondsRef.current > 0 && task.trim()) {
+      closeAllModals();
       setShowQuitModal(true);
       return;
     }
@@ -569,14 +582,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Handle Escape key to close all modals
       if (e.key === "Escape") {
         e.preventDefault();
-        setShowLeaderboard(false);
-        setShowHistory(false);
-        setShowInviteModal(false);
-        setShowTaskList(false);
-        setShowRoomsModal(false);
-        setShowNotes(false);
-        setShowPreferences(false);
-        setShowQuitModal(false);
+        closeAllModals();
         return;
       }
 
@@ -590,13 +596,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Cmd/Ctrl+K: Toggle TaskList
       if (key === "k") {
         e.preventDefault();
-        setShowTaskList((prev) => !prev);
+        const wasOpen = showTaskList;
+        closeAllModals();
+        setShowTaskList(!wasOpen);
       }
       // Cmd/Ctrl+J: Toggle Notes (only if task exists)
       else if (key === "j") {
         if (task.trim()) {
           e.preventDefault();
-          setShowNotes((prev) => !prev);
+          const wasOpen = showNotes;
+          closeAllModals();
+          setShowNotes(!wasOpen);
         }
       }
       // Cmd/Ctrl+M: Toggle Mute
@@ -615,18 +625,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       else if (key === "h") {
         e.preventDefault();
         if (currentInstance?.type === "private") {
-          setShowHistory((prev) => !prev);
+          const wasOpen = showHistory;
+          closeAllModals();
+          setShowHistory(!wasOpen);
         }
       }
       // Cmd/Ctrl+L: Toggle Leaderboard
       else if (key === "l") {
         e.preventDefault();
-        setShowLeaderboard((prev) => !prev);
+        const wasOpen = showLeaderboard;
+        closeAllModals();
+        setShowLeaderboard(!wasOpen);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [task, localVolume, previousVolume, currentInstance?.type]);
+  }, [task, localVolume, previousVolume, currentInstance?.type, showTaskList, showNotes, showHistory, showLeaderboard, closeAllModals]);
 
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn
@@ -692,6 +706,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setShowLeaderboard={setShowLeaderboard}
               setShowRoomsModal={setShowRoomsModal}
               setShowPreferences={setShowPreferences}
+              closeAllModals={closeAllModals}
             />
           </div>
           {/* Mobile personal stats stays at bottom */}
@@ -711,7 +726,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
               showTaskList ? "!hidden" : ""
             }`}
-            onClick={() => setShowTaskList(true)}
+            onClick={() => {
+              closeAllModals();
+              setShowTaskList(true);
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
               <path
@@ -787,13 +805,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
           <button
             className="fixed bottom-4 left-8 z-[60] text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none hidden sm:block"
-            onClick={() => setShowLeaderboard(true)}
+            onClick={() => {
+              closeAllModals();
+              setShowLeaderboard(true);
+            }}
           >
             Leaderboard
           </button>
           {/* <button
             className="fixed bottom-4 right-8 z-40 text-gray-500 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
             onClick={() => {
+              closeAllModals();
               setShowInviteModal(true);
             }}
           >
