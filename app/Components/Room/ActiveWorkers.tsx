@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, DataSnapshot } from "firebase/database";
+import Image from "next/image";
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
@@ -331,22 +332,27 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               }`}>{userStreaks[u.id]}</span>
             </div>
           )}
-          <span className="cursor-pointer">
-            {u.displayName}
-            {(() => {
-              const totalSeconds = (userDailyTimes[u.id] || 0) + 
-                                 (runningTimers[u.id] ? getRunningTimerElapsed(u.id) : 0);
-              const totalMinutes = Math.floor(totalSeconds / 60);
-              const totalHours = Math.floor(totalSeconds / 3600);
-              
-              if (totalMinutes >= 30 && totalMinutes < 60) {
-                return " (0.5h)";
-              } else if (totalHours >= 1) {
-                return ` (${totalHours}h)`;
-              }
-              return "";
-            })()}{" "}
-            is <span className="hidden sm:inline">actively </span>working
+          <span className="cursor-pointer flex items-center gap-1">
+            <span>{u.displayName}</span>
+            {u.id === "BeAohINmeMfhjrgrhPZlmzVFvzn1" && (
+              <Image src="/axe.png" alt="axe" width={16} height={16} className="inline-block" />
+            )}
+            <span>
+              {(() => {
+                const totalSeconds = (userDailyTimes[u.id] || 0) + 
+                                   (runningTimers[u.id] ? getRunningTimerElapsed(u.id) : 0);
+                const totalMinutes = Math.floor(totalSeconds / 60);
+                const totalHours = Math.floor(totalSeconds / 3600);
+                
+                if (totalMinutes >= 30 && totalMinutes < 60) {
+                  return " (0.5h)";
+                } else if (totalHours >= 1) {
+                  return ` (${totalHours}h)`;
+                }
+                return "";
+              })()}{" "}
+              is <span className="hidden sm:inline">actively </span>working
+            </span>
           </span>
           
           {/* Tooltip */}
