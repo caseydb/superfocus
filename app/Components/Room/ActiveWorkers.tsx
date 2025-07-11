@@ -12,6 +12,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   const [runningTimerData, setRunningTimerData] = useState<Record<string, { startTime: number; baseSeconds: number }>>({});
   const [runningTimers, setRunningTimers] = useState<Record<string, boolean>>({});
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [hoveredUserSnapshot, setHoveredUserSnapshot] = useState<{ dailyTime: number; dailyTasks: number } | null>(null);
 
 
   // Format time display
@@ -292,10 +293,10 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
 
   if (activeUsers.length === 0) return null;
 
-  // Sort users by daily time only (highest first)
+  // Sort users by daily time only (highest first), including running timers
   const sortedUsers = [...activeUsers].sort((a, b) => {
-    const timeA = userDailyTimes[a.id] || 0;
-    const timeB = userDailyTimes[b.id] || 0;
+    const timeA = (userDailyTimes[a.id] || 0) + (runningTimers[a.id] ? getRunningTimerElapsed(a.id) : 0);
+    const timeB = (userDailyTimes[b.id] || 0) + (runningTimers[b.id] ? getRunningTimerElapsed(b.id) : 0);
     return timeB - timeA;
   });
 
@@ -308,8 +309,18 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             flyingUserIds.includes(u.id) ? "opacity-0" : "opacity-100"
           }`}
           style={{ height: "2rem", zIndex: hoveredUserId === u.id ? 50 : 40 - index }}
-          onMouseEnter={() => setHoveredUserId(u.id)}
-          onMouseLeave={() => setHoveredUserId(null)}
+          onMouseEnter={() => {
+            setHoveredUserId(u.id);
+            // Take a snapshot of the current data
+            setHoveredUserSnapshot({
+              dailyTime: userDailyTimes[u.id] || 0,
+              dailyTasks: userDailyTasks[u.id] || 0
+            });
+          }}
+          onMouseLeave={() => {
+            setHoveredUserId(null);
+            setHoveredUserSnapshot(null);
+          }}
         >
           {(userStreaks[u.id] || 0) > 0 && (
             <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 border ${
@@ -323,14 +334,15 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           <span className="cursor-pointer">
             {u.displayName}
             {(() => {
-              const dailySeconds = userDailyTimes[u.id] || 0;
-              const dailyMinutes = Math.floor(dailySeconds / 60);
-              const dailyHours = Math.floor(dailySeconds / 3600);
+              const totalSeconds = (userDailyTimes[u.id] || 0) + 
+                                 (runningTimers[u.id] ? getRunningTimerElapsed(u.id) : 0);
+              const totalMinutes = Math.floor(totalSeconds / 60);
+              const totalHours = Math.floor(totalSeconds / 3600);
               
-              if (dailyMinutes >= 30 && dailyMinutes < 60) {
+              if (totalMinutes >= 30 && totalMinutes < 60) {
                 return " (0.5h)";
-              } else if (dailyHours >= 1) {
-                return ` (${dailyHours}h)`;
+              } else if (totalHours >= 1) {
+                return ` (${totalHours}h)`;
               }
               return "";
             })()}{" "}
@@ -343,11 +355,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
                 <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
                   <span className="text-gray-400">Today:</span>{" "}
-                  <span className="text-gray-100 font-medium">{userDailyTasks[u.id] || 0}</span>{" "}
+                  <span className="text-gray-100 font-medium">{hoveredUserSnapshot?.dailyTasks || 0}</span>{" "}
                   <span className="text-gray-400">tasks</span> |{" "}
                   <span className="text-gray-100 font-medium">
                     {formatTime(
-                      (userDailyTimes[u.id] || 0) + 
+                      (hoveredUserSnapshot?.dailyTime || 0) + 
                       (runningTimers[u.id] ? getRunningTimerElapsed(u.id) : 0), 
                       true
                     )}
