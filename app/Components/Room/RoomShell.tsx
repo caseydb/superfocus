@@ -889,7 +889,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             onClick={() => setShowInviteModal(false)}
           >
             <div
-              className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative"
+              className="bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-800 relative"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close button */}
@@ -907,7 +907,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   type="text"
                   value={window.location.href}
                   readOnly
-                  className="flex-1 px-4 py-3 rounded-lg bg-[#23272b] text-gray-300 border border-[#23272b] focus:border-[#FFAA00] outline-none font-mono text-sm"
+                  className="flex-1 px-4 py-3 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 focus:border-[#FFAA00] outline-none font-mono text-sm"
                 />
                 <button
                   onClick={() => {

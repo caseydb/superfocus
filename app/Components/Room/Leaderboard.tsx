@@ -126,14 +126,14 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between w-full mb-2">
           <button
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
             disabled
           >
             ←
@@ -142,7 +142,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
             Monday 30th June – Sunday 13th July
           </div>
           <button
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
             disabled
           >
             →
@@ -165,13 +165,13 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
                     className="text-white text-sm sm:text-base md:text-lg font-mono align-middle"
                     style={{ height: 48 }}
                   >
-                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#131722] rounded-l-xl font-mono truncate max-w-[120px] sm:max-w-none">
+                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-l-xl font-mono truncate max-w-[120px] sm:max-w-none">
                       {entry.displayName}
                     </td>
-                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#131722] text-center text-lg sm:text-xl">
+                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 text-center text-lg sm:text-xl">
                       {entry.tasksCompleted}
                     </td>
-                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#131722] rounded-r-xl text-right font-mono">
+                    <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-r-xl text-right font-mono">
                       {formatTime(entry.totalSeconds)}
                     </td>
                   </tr>

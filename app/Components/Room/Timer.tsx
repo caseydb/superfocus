@@ -558,7 +558,7 @@ export default function Timer({
       {/* Still Working Modal */}
       {showStillWorkingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative">
+          <div className="bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-800 relative">
             {/* Elegant countdown circle */}
             <div className="absolute top-4 right-4 w-14 h-14">
               <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 64 64">

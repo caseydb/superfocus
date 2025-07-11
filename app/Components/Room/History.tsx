@@ -187,9 +187,9 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div
-        className={`bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar`}
+        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border border-gray-800 max-h-[90vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
@@ -200,7 +200,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
             {displayEntries.map((entry, i) => (
               <div
                 key={i}
-                className="bg-[#181A1B] rounded-lg px-4 py-1 border border-[#23272b] w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
+                className="bg-gray-800 rounded-lg px-4 py-1 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
               >
                 <div className="flex justify-between items-center mb-0.5 gap-3">
                   <div

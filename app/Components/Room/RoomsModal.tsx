@@ -162,11 +162,11 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div
-        className="bg-[#181A1B] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] border border-[#23272b] relative overflow-hidden"
+        className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] border border-gray-800 relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-[#23272b] bg-gradient-to-r from-[#181A1B] to-[#1f2122]">
+        <div className="p-6 border-b border-gray-800">
           <button
             className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
             onClick={onClose}
@@ -200,7 +200,7 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
                   className={`p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02] cursor-pointer ${
                     room.id === currentInstance?.id
                       ? "border-[#FFAA00] bg-[#FFAA00]/10"
-                      : "border-[#23272b] bg-[#1a1c1d] hover:border-[#2a2f33] hover:bg-[#1f2122]"
+                      : "border-gray-700 bg-gray-800 hover:border-gray-600 hover:bg-gray-700"
                   }`}
                   onClick={() => handleJoinRoom(room.url)}
                 >

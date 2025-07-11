@@ -47,16 +47,16 @@ export default function Preferences({ onClose }: PreferencesProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div
-        className="bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between w-full mb-2">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-transparent"></div>
           <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white">Preferences</div>
           <button
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#232b3a] flex items-center justify-center text-lg sm:text-2xl text-gray-400 hover:text-white transition-colors cursor-pointer"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl text-gray-400 hover:text-white transition-colors cursor-pointer"
             onClick={onClose}
           >
             ×
@@ -94,7 +94,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
 
         <div className="w-full space-y-6">
           {/* Account Section */}
-          <div className="bg-[#131722] rounded-xl p-6">
+          <div className="bg-gray-800 rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Account</h3>
 
             {/* Edit Display Name */}
@@ -108,7 +108,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
               {!isEditingName ? (
                 <button
                   onClick={() => setIsEditingName(true)}
-                  className="px-4 py-2 bg-[#232b3a] text-white rounded-lg hover:bg-[#2a3444] transition-colors"
+                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Edit
                 </button>
@@ -118,7 +118,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="px-3 py-1 bg-[#232b3a] text-white rounded-lg border border-gray-700 focus:border-[#FFAA00] outline-none"
+                    className="px-3 py-1 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
                     maxLength={32}
                     autoFocus
                   />
@@ -158,7 +158,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
           </div>
 
           {/* Timer and Task Settings Section */}
-          <div className="bg-[#131722] rounded-xl p-6">
+          <div className="bg-gray-800 rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Timer and Task Settings</h3>
 
             {/* Task Selection Mode */}
@@ -174,7 +174,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   setTaskSelectionMode(newValue);
                   savePreferences({ taskSelectionMode: newValue });
                 }}
-                className="bg-[#232b3a] text-white px-4 py-2 rounded-lg border border-gray-700 focus:border-[#FFAA00] outline-none"
+                className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
               >
                 <option value="dropdown">Dropdown List</option>
                 <option value="sidebar">Task Sidebar</option>
@@ -194,7 +194,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   setInactivityTimeout(newValue);
                   savePreferences({ inactivityTimeout: newValue });
                 }}
-                className="bg-[#232b3a] text-white px-4 py-2 rounded-lg border border-gray-700 focus:border-[#FFAA00] outline-none"
+                className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
               >
                 <option value="900">15 minutes</option>
                 <option value="1800">30 minutes</option>

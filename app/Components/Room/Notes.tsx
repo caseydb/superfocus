@@ -358,7 +358,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   // If no taskId is available, show a message
   if (!taskId) {
     return (
-      <div className="w-full min-w-[650px] bg-[#0A0E1A] rounded-2xl shadow-xl border border-gray-800/50 overflow-hidden mb-6">
+      <div className="w-full min-w-[650px] bg-gray-900 rounded-2xl shadow-xl border border-gray-800 overflow-hidden mb-6">
         <div className="p-6 text-center text-gray-400">
           <p>Save this task to your task list to enable notes.</p>
           <p className="text-sm mt-2">Notes will sync between here and your task list.</p>
@@ -368,7 +368,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   }
 
   return (
-    <div className="w-full min-w-[650px] bg-[#0A0E1A] rounded-2xl shadow-xl border border-gray-800/50 overflow-hidden mb-6">
+    <div className="w-full min-w-[650px] bg-gray-900 rounded-2xl shadow-xl border border-gray-800 overflow-hidden mb-6">
       {/* Notes Content */}
       <div className="p-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
         <div className="space-y-2">
@@ -463,7 +463,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
       {/* Footer with shortcuts - only show when no content */}
       {items.length === 1 && items[0].content === "" && (
-        <div className="px-6 py-4 border-t border-gray-800/50 bg-gray-900/30">
+        <div className="px-6 py-4 border-t border-gray-700 bg-gray-800/30">
           <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-1">
