@@ -68,48 +68,51 @@ export default function PersonalStats() {
     return `${year}-${month}-${day}`;
   };
 
-  // Calculate streak from actual task history
-  const calculateStreakFromHistory = (completedDates: string[]) => {
-    if (!completedDates || completedDates.length === 0) return 0;
+  // Calculate streak from actual task history (matching Analytics exactly)
+  const calculateStreakFromHistory = (taskDates: Date[]) => {
+    if (!taskDates || taskDates.length === 0) return 0;
 
-    // Get unique dates and sort them
-    const uniqueDates = Array.from(new Set(completedDates));
-    const sortedDates = uniqueDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    // Get unique date strings and sort them
+    const dates = taskDates.map(d => d.toDateString());
+    const uniqueDateStrings = Array.from(new Set(dates));
+    const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
     
-    // Calculate current streak (working backwards from today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toDateString();
+    let currentStreak = 0;
     
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toDateString();
-    
-    const lastTaskDate = new Date(sortedDates[sortedDates.length - 1]).toDateString();
-    
-    // Check if the streak is current (task completed today or yesterday)
-    if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
-      let currentStreak = 1;
-      let checkDate = new Date(lastTaskDate);
+    if (sortedDateStrings.length > 0) {
+      // Calculate current streak (working backwards from today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toDateString();
       
-      // Work backwards to count consecutive days
-      for (let i = sortedDates.length - 2; i >= 0; i--) {
-        const prevDate = new Date(sortedDates[i]);
-        const expectedDate = new Date(checkDate);
-        expectedDate.setDate(expectedDate.getDate() - 1);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toDateString();
+      
+      const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
+      
+      // Check if the streak is current (task completed today or yesterday)
+      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
+        currentStreak = 1;
+        let checkDate = new Date(lastTaskDate);
         
-        if (prevDate.toDateString() === expectedDate.toDateString()) {
-          currentStreak++;
-          checkDate = expectedDate;
-        } else {
-          break;
+        // Work backwards to count consecutive days
+        for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
+          const prevDate = new Date(sortedDateStrings[i]);
+          const expectedDate = new Date(checkDate);
+          expectedDate.setDate(expectedDate.getDate() - 1);
+          
+          if (prevDate.toDateString() === expectedDate.toDateString()) {
+            currentStreak++;
+            checkDate = expectedDate;
+          } else {
+            break;
+          }
         }
       }
-      
-      return currentStreak;
     }
     
-    return 0;
+    return currentStreak;
   };
 
 
@@ -194,7 +197,7 @@ export default function PersonalStats() {
         roomId: string;
       }> = [];
       const roomsWithUserData: string[] = [];
-      const allCompletedDates: string[] = []; // Collect all dates for streak calculation
+      const allCompletedDates: Date[] = []; // Collect all dates for streak calculation
 
       if (instancesData) {
         const currentStreakDate = getStreakDate(); // Get today's streak date (4am UTC window)
@@ -214,13 +217,9 @@ export default function PersonalStats() {
                 foundUserInRoom = true;
 
                 if (typedEntry.timestamp) {
-                  // Collect date for streak calculation (use local date)
+                  // Collect date for streak calculation
                   const taskDate = new Date(typedEntry.timestamp);
-                  const year = taskDate.getFullYear();
-                  const month = (taskDate.getMonth() + 1).toString().padStart(2, '0');
-                  const day = taskDate.getDate().toString().padStart(2, '0');
-                  const dateStr = `${year}-${month}-${day}`;
-                  allCompletedDates.push(dateStr);
+                  allCompletedDates.push(taskDate);
 
                   // Check if it's within today's 4am UTC window for today's stats
                   const entryStreakDate = getStreakDate(typedEntry.timestamp);
@@ -276,8 +275,9 @@ export default function PersonalStats() {
       
       // Check if completed today
       const today = new Date();
-      const todayStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-      setHasCompletedToday(allCompletedDates.includes(todayStr));
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toDateString();
+      setHasCompletedToday(allCompletedDates.some(date => date.toDateString() === todayStr));
 
       setTasksCompleted(userTasksCompleted);
       setTotalSeconds(userTotalSeconds);

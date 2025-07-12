@@ -298,12 +298,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-gray-900 rounded-3xl shadow-2xl px-5 py-4 w-[95%] max-w-[1300px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 py-3 w-[95%] max-w-[1200px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
-        <div className="mb-3 text-center relative">
-          <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
+        <div className="mb-2 text-center relative">
+          <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
             Analytics Dashboard
           </h2>
         </div>
@@ -315,9 +315,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
         ) : (
           <>
             {/* GitHub-style Activity Chart */}
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-white mb-3">2025 Activity Overview</h3>
-              <div className="bg-gray-800/50 rounded-2xl p-4 pr-6 backdrop-blur border border-gray-700 overflow-x-auto flex flex-col items-center">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-white mb-2">2025 Activity Overview</h3>
+              <div className="bg-gray-800/50 rounded-xl p-3 pr-5 backdrop-blur border border-gray-700 overflow-x-auto flex flex-col items-center">
                 <div>
                   {/* Month labels */}
                   <div className="flex gap-1 mb-2 ml-11">
@@ -363,7 +363,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
                       return months.map((item, index) => {
                         const monthName = new Date(2024, item.month).toLocaleDateString("en-US", { month: "short" });
                         return (
-                          <div key={index} style={{ width: `${item.weeks * 19}px` }} className="text-xs text-gray-500">
+                          <div key={index} style={{ width: `${item.weeks * 17}px` }} className="text-xs text-gray-500">
                             {monthName}
                           </div>
                         );
@@ -375,13 +375,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
                   <div className="flex gap-1">
                     {/* Day labels */}
                     <div className="flex flex-col gap-1 text-xs text-gray-500 pr-2">
-                      <div className="h-[15px] flex items-center text-[11px]">Mon</div>
-                      <div className="h-[15px]"></div>
-                      <div className="h-[15px] flex items-center text-[11px]">Wed</div>
-                      <div className="h-[15px]"></div>
-                      <div className="h-[15px] flex items-center text-[11px]">Fri</div>
-                      <div className="h-[15px]"></div>
-                      <div className="h-[15px] flex items-center text-[11px]">Sun</div>
+                      <div className="h-[13px] flex items-center text-[10px]">Mon</div>
+                      <div className="h-[13px]"></div>
+                      <div className="h-[13px] flex items-center text-[10px]">Wed</div>
+                      <div className="h-[13px]"></div>
+                      <div className="h-[13px] flex items-center text-[10px]">Fri</div>
+                      <div className="h-[13px]"></div>
+                      <div className="h-[13px] flex items-center text-[10px]">Sun</div>
                     </div>
 
                     {/* Activity squares organized by week */}
@@ -418,14 +418,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
                           <div key={weekIndex} className="flex flex-col gap-1">
                             {week.map((day, dayIndex) => {
                               if (!day) {
-                                return <div key={`empty-${dayIndex}`} className="w-[15px] h-[15px]"></div>;
+                                return <div key={`empty-${dayIndex}`} className="w-[13px] h-[13px]"></div>;
                               }
 
                               const date = new Date(day.date);
                               return (
                                 <div key={dayIndex} className="relative group">
                                   <div
-                                    className={`w-[15px] h-[15px] rounded-sm ${getActivityColor(
+                                    className={`w-[13px] h-[13px] rounded-sm ${getActivityColor(
                                       day.count
                                     )} hover:ring-2 hover:ring-white transition-all cursor-pointer`}
                                     title={`${day.date}: ${day.count} tasks`}
@@ -452,11 +452,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
                   <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
                     <span>Less</span>
                     <div className="flex gap-1">
-                      <div className="w-[15px] h-[15px] rounded-sm bg-gray-800"></div>
-                      <div className="w-[15px] h-[15px] rounded-sm bg-green-900"></div>
-                      <div className="w-[15px] h-[15px] rounded-sm bg-green-700"></div>
-                      <div className="w-[15px] h-[15px] rounded-sm bg-green-500"></div>
-                      <div className="w-[15px] h-[15px] rounded-sm bg-green-400"></div>
+                      <div className="w-[13px] h-[13px] rounded-sm bg-gray-800"></div>
+                      <div className="w-[13px] h-[13px] rounded-sm bg-green-900"></div>
+                      <div className="w-[13px] h-[13px] rounded-sm bg-green-700"></div>
+                      <div className="w-[13px] h-[13px] rounded-sm bg-green-500"></div>
+                      <div className="w-[13px] h-[13px] rounded-sm bg-green-400"></div>
                     </div>
                     <span>More</span>
                   </div>
@@ -465,50 +465,50 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {/* Average Tasks per Day */}
-              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-4 border border-blue-700/50 backdrop-blur transform hover:scale-105 transition-transform">
-                <div className="text-blue-400 text-xs font-semibold mb-1">Avg Tasks/Day</div>
-                <div className="text-3xl font-black text-white">{metrics.avgTasksPerDay.toFixed(1)}</div>
+              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-lg p-3 border border-blue-700/50 backdrop-blur transform hover:scale-105 transition-transform">
+                <div className="text-blue-400 text-xs font-semibold">Avg Tasks/Day</div>
+                <div className="text-2xl font-black text-white">{metrics.avgTasksPerDay.toFixed(1)}</div>
                 <div className="text-gray-400 text-xs">Daily average</div>
               </div>
 
               {/* Average Time per Day */}
-              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-4 border border-purple-700/50 backdrop-blur transform hover:scale-105 transition-transform">
-                <div className="text-purple-400 text-xs font-semibold mb-1">Avg Time/Day</div>
-                <div className="text-3xl font-black text-white">{formatTime(metrics.avgTimePerDay)}</div>
+              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur transform hover:scale-105 transition-transform">
+                <div className="text-purple-400 text-xs font-semibold">Avg Time/Day</div>
+                <div className="text-2xl font-black text-white">{formatTime(metrics.avgTimePerDay)}</div>
                 <div className="text-gray-400 text-xs">Daily focus time</div>
               </div>
 
               {/* Average Time per Task */}
-              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-4 border border-green-700/50 backdrop-blur transform hover:scale-105 transition-transform">
-                <div className="text-green-400 text-xs font-semibold mb-1">Avg Time/Task</div>
-                <div className="text-3xl font-black text-white">{formatTime(metrics.avgTimePerTask)}</div>
+              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-lg p-3 border border-green-700/50 backdrop-blur transform hover:scale-105 transition-transform">
+                <div className="text-green-400 text-xs font-semibold">Avg Time/Task</div>
+                <div className="text-2xl font-black text-white">{formatTime(metrics.avgTimePerTask)}</div>
                 <div className="text-gray-400 text-xs">Per task average</div>
               </div>
             </div>
 
             {/* Additional Insights */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               {/* Current Streak */}
-              <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 backdrop-blur">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">🔥</span>
+              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🔥</span>
                   <h4 className="text-sm font-bold text-white">Current Streak</h4>
                 </div>
-                <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-600">
+                <div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-600">
                   {metrics.currentStreak} days
                 </div>
                 <div className="text-gray-400 text-xs">Keep it going!</div>
               </div>
 
               {/* Longest Streak */}
-              <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 backdrop-blur">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">🏆</span>
+              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🏆</span>
                   <h4 className="text-sm font-bold text-white">Best Streak</h4>
                 </div>
-                <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-green-600">
+                <div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-green-600">
                   {metrics.longestStreak} days
                 </div>
                 <div className="text-gray-400 text-xs">Personal record</div>
@@ -516,23 +516,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
             </div>
 
             {/* Total Stats */}
-            <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-4 border border-purple-700/50 backdrop-blur mb-5">
+            <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-3xl font-black text-white mb-1">
+                  <div className="text-2xl font-black text-white">
                     {taskHistory.filter((t) => t.completed !== false).length}
                   </div>
-                  <div className="text-gray-300 text-sm font-semibold">Total Tasks</div>
+                  <div className="text-gray-300 text-xs font-semibold">Total Tasks</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-white mb-1">{formatTime(metrics.totalTime)}</div>
-                  <div className="text-gray-300 text-sm font-semibold">Total Time</div>
+                  <div className="text-2xl font-black text-white">{formatTime(metrics.totalTime)}</div>
+                  <div className="text-gray-300 text-xs font-semibold">Total Time</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-white mb-1">
+                  <div className="text-2xl font-black text-white">
                     {activityData.filter((d) => d.count > 0).length}
                   </div>
-                  <div className="text-gray-300 text-sm font-semibold">Active Days</div>
+                  <div className="text-gray-300 text-xs font-semibold">Active Days</div>
                 </div>
               </div>
             </div>
@@ -543,7 +543,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
         <div className="flex justify-center">
           <button
             onClick={onClose}
-            className="mt-2 sm:mt-3 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
+            className="mt-1 bg-[#FFAA00] text-black font-extrabold text-base px-6 py-2 rounded-lg shadow hover:scale-105 transition-transform"
           >
             Close
           </button>
