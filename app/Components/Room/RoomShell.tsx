@@ -51,7 +51,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [realTimeUserCount, setRealTimeUserCount] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
   const [showRoomsModal, setShowRoomsModal] = useState(false);
@@ -191,20 +190,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   }, [localVolume]);
 
-  // Listen to real-time user count from RTDB
-  useEffect(() => {
-    if (!currentInstance) return;
-    const usersRef = ref(rtdb, `instances/${currentInstance.id}/users`);
-    const handle = onValue(usersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setRealTimeUserCount(Object.keys(data).length);
-      } else {
-        setRealTimeUserCount(0);
-      }
-    });
-    return () => off(usersRef, "value", handle);
-  }, [currentInstance]);
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -766,7 +751,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setShowHistoryTooltip={setShowHistoryTooltip}
               instanceType={currentInstance.type}
               setShowInviteModal={setShowInviteModal}
-              setShowTaskList={setShowTaskList}
               showLeaderboard={showLeaderboard}
               setShowLeaderboard={setShowLeaderboard}
               setShowRoomsModal={setShowRoomsModal}
@@ -780,14 +764,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <div className="sm:hidden">
             <PersonalStats />
           </div>
-          {/* Room type indicator - centered bottom - hidden on mobile */}
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono select-none px-2 text-center whitespace-nowrap hidden sm:block">
-            {currentInstance.type === "private" ? (
-              "Private Room"
-            ) : (
-              <>Public Room | {realTimeUserCount === 1 ? "Just You" : `+ ${realTimeUserCount} ppl`}</>
-            )}
-          </div>
+          {/* Analytics button - centered bottom - hidden on mobile */}
+          <button
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:block"
+            onClick={() => {
+              closeAllModals();
+              setShowAnalytics(true);
+            }}
+          >
+            Analytics
+          </button>
           {/* Tasks - desktop only: bottom right corner */}
           <button
             className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${

@@ -308,15 +308,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-gray-900 rounded-3xl shadow-2xl px-6 py-5 w-[95%] max-w-[1300px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
+        className="bg-gray-900 rounded-3xl shadow-2xl px-5 py-4 w-[95%] max-w-[1300px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
-        <div className="mb-4 text-center relative">
+        <div className="mb-3 text-center relative">
           <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-[#FFAA00] to-orange-500 animate-goldPulse">
             Analytics Dashboard
           </h2>
-          <p className="text-gray-400 text-sm">Your productivity insights</p>
         </div>
 
         {isLoading ? (
@@ -330,7 +329,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
               <h3 className="text-xl font-bold text-white mb-3">
                 2025 Activity Overview
               </h3>
-              <div className="bg-gray-800/50 rounded-2xl p-5 backdrop-blur border border-gray-700 overflow-x-auto">
+              <div className="bg-gray-800/50 rounded-2xl p-4 backdrop-blur border border-gray-700 overflow-x-auto">
                 {/* Month labels */}
                 <div className="flex gap-1 mb-2 ml-11">
                   {(() => {
@@ -530,7 +529,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
             </div>
 
             {/* Total Stats */}
-            <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-5 border border-purple-700/50 backdrop-blur mb-6">
+            <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-4 border border-purple-700/50 backdrop-blur mb-5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-3xl font-black text-white mb-1">
@@ -557,9 +556,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
         <div className="flex justify-center">
           <button
             onClick={onClose}
-            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
+            className="mt-2 sm:mt-3 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
           >
-            Close Analytics
+            Close
           </button>
         </div>
       </div>

@@ -16,7 +16,6 @@ interface ControlsProps {
   setShowHistoryTooltip: (show: boolean) => void;
   instanceType: "public" | "private";
   setShowInviteModal: (show: boolean) => void;
-  setShowTaskList: (show: boolean) => void;
   showLeaderboard: boolean;
   setShowLeaderboard: (show: boolean) => void;
   setShowRoomsModal: (show: boolean) => void;
@@ -36,7 +35,6 @@ export default function Controls({
   setShowHistoryTooltip,
   instanceType,
   setShowInviteModal,
-  setShowTaskList,
   showLeaderboard,
   setShowLeaderboard,
   setShowRoomsModal,
@@ -335,18 +333,18 @@ export default function Controls({
 
           {/* Menu Items */}
           <div className="space-y-2">
-            {/* Invite Others Button */}
+            {/* Analytics Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
               onClick={() => {
                 closeAllModals();
-                setShowInviteModal(true);
+                setShowAnalytics(!showAnalytics);
                 setDropdownOpen(false);
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
                 <path
-                  d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M8.5 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6"
+                  d="M9 11v6M12 5v12M15 8v9M3 21h18"
                   stroke="#9ca3af"
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -354,25 +352,60 @@ export default function Controls({
                   className="group-hover:stroke-[#FFAA00]"
                 />
               </svg>
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
+                Analytics
+              </span>
             </button>
 
-            {/* View Rooms Button */}
+            {/* Leaderboard Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
               onClick={() => {
                 closeAllModals();
-                setShowRoomsModal(true);
+                setShowLeaderboard(!showLeaderboard);
                 setDropdownOpen(false);
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                <rect x="3" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                <rect x="14" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                <rect x="3" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                <rect x="14" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <path
+                  d="M7 12L12 7L17 12M8 21H16M12 21V17M6 8V3H18V8M6 8C6 9.10457 5.10457 10 4 10S2 9.10457 2 8C2 6.89543 2.89543 6 4 6C4.53043 6 5.03914 6.21071 5.41421 6.58579C5.78929 6.96086 6 7.46957 6 8ZM18 8C18 9.10457 18.8954 10 20 10S22 9.10457 22 8C22 6.89543 21.1046 6 20 6C19.4696 6 18.9609 6.21071 18.5858 6.58579C18.2107 6.96086 18 7.46957 18 8Z"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
               </svg>
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leaderboard</span>
+            </button>
+
+            {/* History Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+              onClick={() => {
+                if (instanceType === "public") {
+                  setShowHistoryTooltip(true);
+                  setTimeout(() => setShowHistoryTooltip(false), 3000);
+                } else {
+                  closeAllModals();
+                  setShowHistory(!showHistory);
+                }
+                setDropdownOpen(false);
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <path
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+              </svg>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
+                {showHistory ? "Timer" : "History"}
+              </span>
             </button>
 
             {/* Preferences Button */}
@@ -405,58 +438,47 @@ export default function Controls({
               <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Preferences</span>
             </button>
 
-            {/* History Button */}
-            <button
-              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
-              onClick={() => {
-                if (instanceType === "public") {
-                  setShowHistoryTooltip(true);
-                  setTimeout(() => setShowHistoryTooltip(false), 3000);
-                } else {
-                  closeAllModals();
-                  setShowHistory(!showHistory);
-                }
-                setDropdownOpen(false);
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                <path
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  stroke="#9ca3af"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="group-hover:stroke-[#FFAA00]"
-                />
-              </svg>
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                {showHistory ? "Timer" : "History"}
-              </span>
-            </button>
-
-            {/* Analytics Button */}
+            {/* View Rooms Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
               onClick={() => {
                 closeAllModals();
-                setShowAnalytics(!showAnalytics);
+                setShowRoomsModal(true);
                 setDropdownOpen(false);
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                <path
-                  d="M9 11v6M12 5v12M15 8v9M3 21h18"
-                  stroke="#9ca3af"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="group-hover:stroke-[#FFAA00]"
-                />
+                <rect x="3" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect x="14" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect x="3" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect x="14" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
               </svg>
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                Analytics
-              </span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
             </button>
+
+            {/* Invite Others Button - Conditional for private rooms */}
+            {instanceType === "private" && (
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                onClick={() => {
+                  closeAllModals();
+                  setShowInviteModal(true);
+                  setDropdownOpen(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M8.5 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
+              </button>
+            )}
 
             {/* Leave Room Button */}
             <button
@@ -835,28 +857,6 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
                   Analytics
                 </span>
-              </button>
-
-              {/* Tasks Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
-                onClick={() => {
-                  closeAllModals();
-                  setShowTaskList(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path
-                    d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="group-hover:stroke-[#FFAA00]"
-                  />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Tasks</span>
               </button>
 
               {/* Leave Room Button */}
