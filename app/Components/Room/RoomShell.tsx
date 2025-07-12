@@ -820,7 +820,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             />
           </div>
           <div className={showHistory ? "" : "hidden"}>
-            <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
+            <History roomId={currentInstance.id} userId={user?.id} onClose={() => setShowHistory(false)} />
           </div>
           {/* Timer is always mounted, just hidden when history is open */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
@@ -929,7 +929,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <Leaderboard roomId={currentInstance.id} onClose={() => setShowLeaderboard(false)} />
           )}
           {showHistory && currentInstance && (
-            <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
+            <History roomId={currentInstance.id} userId={user?.id} onClose={() => setShowHistory(false)} />
           )}
           {showAnalytics && currentInstance && user && (
             <Analytics roomId={currentInstance.id} userId={user.id} displayName={user.displayName} onClose={() => setShowAnalytics(false)} />

@@ -25,6 +25,7 @@ interface DayActivity {
   totalSeconds: number;
 }
 
+
 const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onClose }) => {
   const [taskHistory, setTaskHistory] = useState<TaskData[]>([]);
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
@@ -42,9 +43,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     const timeByDate = new Map<string, number>();
 
     tasks.forEach((task) => {
-      // Count task if completed is true OR undefined (legacy tasks didn't have this field)
-      // Only skip if explicitly false (quit tasks)
-      if (task.completed !== false) {
+      // Skip quit tasks
+      if (!task.task.toLowerCase().includes("quit early")) {
         const date = new Date(task.timestamp);
         // Use local date string instead of ISO (UTC) date
         const year = date.getFullYear();
@@ -52,7 +52,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
         const day = date.getDate().toString().padStart(2, "0");
         const dateStr = `${year}-${month}-${day}`;
         tasksByDate.set(dateStr, (tasksByDate.get(dateStr) || 0) + 1);
-        
+
         // Add time for this task
         const seconds = parseDuration(task.duration);
         timeByDate.set(dateStr, (timeByDate.get(dateStr) || 0) + seconds);
@@ -63,37 +63,60 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     const startDate = new Date(currentYear, 0, 1);
     const endDate = new Date(currentYear, 11, 31);
 
-    // Start from January 1st regardless of what day it is
-    const currentDate = new Date(startDate);
-    while (currentDate.getFullYear() <= currentYear || currentDate.getDay() !== 1) {
+    // Find the Sunday of the week containing January 1st
+    // But make sure we don't go back to a previous week that ends before Jan 1
+    const jan1DayOfWeek = startDate.getDay();
+    const firstSunday = new Date(startDate);
+
+    // If Jan 1 is a Sunday (0), start from Jan 1
+    // Otherwise, go back to the previous Sunday
+    if (jan1DayOfWeek !== 0) {
+      firstSunday.setDate(startDate.getDate() - jan1DayOfWeek);
+    }
+
+
+    // Find the Saturday of the week containing December 31st
+    const dec31DayOfWeek = endDate.getDay();
+    const lastSaturday = new Date(endDate);
+    // If Dec 31 is not Saturday (6), advance to the next Saturday
+    if (dec31DayOfWeek !== 6) {
+      lastSaturday.setDate(endDate.getDate() + (6 - dec31DayOfWeek));
+    }
+
+
+    // Start from the Sunday of the first week
+    const currentDate = new Date(firstSunday);
+    currentDate.setHours(0, 0, 0, 0);
+    lastSaturday.setHours(23, 59, 59, 999);
+    let daysGenerated = 0;
+
+    // Continue until we've covered the last Saturday
+    while (currentDate <= lastSaturday) {
       // Create date string in local timezone
       const year = currentDate.getFullYear();
       const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
       const day = currentDate.getDate().toString().padStart(2, "0");
       const dateStr = `${year}-${month}-${day}`;
 
-      // Only count tasks for dates within the current year and not in the future
-      const isCurrentYear = currentDate.getFullYear() === currentYear;
+      // Check if this date is in the past (not future)
       const isPastDate = currentDate <= today;
       const taskCount = tasksByDate.get(dateStr) || 0;
 
       // If there are tasks but no time recorded, default to 1 minute per task
       const timeSeconds = timeByDate.get(dateStr) || 0;
-      const adjustedTimeSeconds = (taskCount > 0 && timeSeconds === 0) ? taskCount * 60 : timeSeconds;
-      
+      const adjustedTimeSeconds = taskCount > 0 && timeSeconds === 0 ? taskCount * 60 : timeSeconds;
+
       data.push({
         date: dateStr,
-        count: isCurrentYear && isPastDate ? taskCount : 0,
-        totalSeconds: isCurrentYear && isPastDate ? adjustedTimeSeconds : 0,
+        count: isPastDate ? taskCount : 0,
+        totalSeconds: isPastDate ? adjustedTimeSeconds : 0,
       });
 
-      currentDate.setDate(currentDate.getDate() + 1);
 
-      // Stop if we've completed the last week that contains Dec 31
-      if (currentDate.getDay() === 1 && currentDate > endDate) {
-        break;
-      }
+      currentDate.setDate(currentDate.getDate() + 1);
+      daysGenerated++;
     }
+
 
     return data;
   };
@@ -121,12 +144,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       const seconds = durationSeconds % 60;
 
       sampleTasks.push({
-        task: `Task ${i + 1}`,
+        task: Math.random() > 0.9 ? `Task ${i + 1} - quit early` : `Task ${i + 1}`,
         timestamp: date.getTime(),
         duration: `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds
           .toString()
           .padStart(2, "0")}`,
-        completed: Math.random() > 0.1, // 90% completion rate
         userId: userId,
       });
     }
@@ -157,9 +179,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     });
 
     return () => off(historyRef, "value", unsubscribe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, userId]);
 
-  // Parse duration string "HH:MM:SS" to seconds
+
+  // Parse duration string "HH:MM:SS" or "MM:SS" to seconds
   const parseDuration = (duration: string | number | undefined): number => {
     if (typeof duration === "number") return duration;
     if (!duration || typeof duration !== "string") return 0;
@@ -170,13 +194,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       const minutes = parseInt(parts[1]) || 0;
       const seconds = parseInt(parts[2]) || 0;
       return hours * 3600 + minutes * 60 + seconds;
+    } else if (parts.length === 2) {
+      const minutes = parseInt(parts[0]) || 0;
+      const seconds = parseInt(parts[1]) || 0;
+      return minutes * 60 + seconds;
     }
     return 0;
   };
 
   // Calculate analytics metrics
   const calculateMetrics = () => {
-    const completedTasks = taskHistory.filter((t) => t.completed !== false);
+    const completedTasks = taskHistory.filter((t) => !t.task.toLowerCase().includes("quit early"));
     const totalTasks = completedTasks.length;
 
     if (totalTasks === 0) {
@@ -278,6 +306,47 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   };
 
   const metrics = calculateMetrics();
+  
+  // Calculate all-time metrics (using current room data only, matching History component)
+  const calculateAllTimeMetrics = () => {
+    // Use taskHistory (current room) instead of allTimeTaskHistory (all rooms)
+    
+    // Filter out quit tasks using the same logic as History
+    const completedTasks = taskHistory.filter((t) => !t.task.toLowerCase().includes("quit early"));
+    const totalTasks = completedTasks.length;
+    
+    // Calculate total time using the same method as History component
+    let totalSeconds = 0;
+    completedTasks.forEach(task => {
+      if (typeof task.duration === 'string') {
+        const parts = task.duration.split(":").map(Number);
+        if (parts.length === 3) {
+          // HH:MM:SS format
+          const [hours, minutes, seconds] = parts;
+          if (!isNaN(hours) && !isNaN(minutes) && !isNaN(seconds)) {
+            totalSeconds += hours * 3600 + minutes * 60 + seconds;
+          }
+        } else if (parts.length === 2) {
+          // MM:SS format
+          const [minutes, seconds] = parts;
+          if (!isNaN(minutes) && !isNaN(seconds)) {
+            totalSeconds += minutes * 60 + seconds;
+          }
+        }
+      } else if (typeof task.duration === 'number') {
+        totalSeconds += task.duration;
+      }
+    });
+    
+    
+    return {
+      totalTasks,
+      totalTime: totalSeconds,
+      activeDays: new Set(completedTasks.map((t) => new Date(t.timestamp).toDateString())).size
+    };
+  };
+  
+  const allTimeMetrics = calculateAllTimeMetrics();
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -295,17 +364,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       // Color based on time (in minutes)
       const minutes = totalSeconds / 60;
       if (minutes === 0) return "bg-gray-800";
-      if (minutes <= 30) return "bg-green-900";
-      if (minutes <= 60) return "bg-green-700";
-      if (minutes <= 120) return "bg-green-500";
-      return "bg-green-400";
+      if (minutes <= 30) return "bg-[#FFAA00]/20";
+      if (minutes <= 60) return "bg-[#FFAA00]/40";
+      if (minutes <= 120) return "bg-[#FFAA00]/70";
+      return "bg-[#FFAA00]";
     } else {
       // Color based on task count
       if (count === 0) return "bg-gray-800";
-      if (count <= 2) return "bg-green-900";
-      if (count <= 5) return "bg-green-700";
-      if (count <= 10) return "bg-green-500";
-      return "bg-green-400";
+      if (count <= 2) return "bg-[#FFAA00]/20";
+      if (count <= 5) return "bg-[#FFAA00]/40";
+      if (count <= 10) return "bg-[#FFAA00]/70";
+      return "bg-[#FFAA00]";
     }
   };
 
@@ -322,14 +391,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 py-3 w-[95%] max-w-[1200px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
         <div className="mb-2 text-center relative">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
-            {displayName ? `${displayName.split(' ')[0]}'s Analytics` : 'Analytics Dashboard'}
+            {displayName ? `${displayName.split(" ")[0]}'s Analytics` : "Analytics Dashboard"}
           </h2>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+          >
+            <svg
+              className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {isLoading ? (
@@ -337,11 +420,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500"></div>
           </div>
         ) : (
-          <>
+          <div>
             {/* GitHub-style Activity Chart */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-bold text-white">2025 Activity Overview</h3>
+                <h3 className="text-lg font-bold text-white">2025 Overview</h3>
                 {/* Toggle switch */}
                 <button
                   onClick={() => setColorByTime(!colorByTime)}
@@ -358,120 +441,191 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                   <span className={colorByTime ? "text-white font-medium" : "text-gray-500"}>Time</span>
                 </button>
               </div>
-              <div className="bg-gray-800/50 rounded-xl p-3 pr-5 backdrop-blur border border-gray-700 overflow-x-auto flex flex-col items-center">
-                <div>
-                  {/* Month labels */}
-                  <div className="flex gap-1 mb-2 ml-11">
-                    {(() => {
-                      const months = [];
-                      if (activityData.length === 0) return null;
+              <div className="inline-block relative bg-gray-800/50 rounded-xl p-3 backdrop-blur border border-gray-700 overflow-hidden max-[820px]:overflow-x-auto max-[820px]:block max-[820px]:w-full">
+                {/* Month labels - dynamically positioned */}
+                <div className="relative mb-2 ml-9 h-4">
+                  {(() => {
+                    if (activityData.length === 0) return null;
 
-                      let currentMonth = -1;
-                      let weekIndex = 0;
-                      let weekStartIndex = 0;
+                    const months = [];
+                    let currentMonth = -1;
+                    let weekIndex = 0;
 
-                      // Process each week to determine month boundaries
-                      for (let i = 0; i < activityData.length; i += 7) {
-                        const weekStart = new Date(activityData[i].date);
-                        const weekMonth = weekStart.getMonth();
+                    // Process each week to determine month boundaries
+                    for (let i = 0; i < activityData.length; i += 7) {
+                      // Find the first day in this week that's actually in 2025
+                      let firstValidDay = null;
+                      for (let j = i; j < Math.min(i + 7, activityData.length); j++) {
+                        const date = new Date(activityData[j].date);
+                        if (date.getFullYear() === 2025) {
+                          firstValidDay = date;
+                          break;
+                        }
+                      }
 
-                        // Initialize month tracking
-                        if (currentMonth === -1) {
-                          currentMonth = weekMonth;
-                          weekStartIndex = weekIndex;
-                        } else if (weekMonth !== currentMonth) {
-                          // Month changed, record the previous month
+                      if (firstValidDay) {
+                        const weekMonth = firstValidDay.getMonth();
+
+                        if (weekMonth !== currentMonth) {
+                          // New month started
                           months.push({
-                            month: currentMonth,
-                            startWeek: weekStartIndex,
-                            weeks: weekIndex - weekStartIndex,
+                            month: weekMonth,
+                            weekIndex: weekIndex,
+                            name: firstValidDay.toLocaleDateString("en-US", { month: "short" }),
                           });
                           currentMonth = weekMonth;
-                          weekStartIndex = weekIndex;
                         }
-                        weekIndex++;
                       }
+                      weekIndex++;
+                    }
 
-                      // Add the last month
-                      if (currentMonth !== -1) {
-                        months.push({
-                          month: currentMonth,
-                          startWeek: weekStartIndex,
-                          weeks: weekIndex - weekStartIndex,
-                        });
-                      }
+                    return months.map((item, index) => (
+                      <span
+                        key={index}
+                        className="absolute text-[10px] text-gray-500"
+                        style={{ left: `${item.weekIndex * (11 + 2)}px` }} // 11px square + 2px gap
+                      >
+                        {item.name}
+                      </span>
+                    ));
+                  })()}
+                </div>
 
-                      return months.map((item, index) => {
-                        const monthName = new Date(2024, item.month).toLocaleDateString("en-US", { month: "short" });
-                        return (
-                          <div key={index} style={{ width: `${item.weeks * 17}px` }} className="text-xs text-gray-500">
-                            {monthName}
-                          </div>
-                        );
+                {/* Activity grid */}
+                <div className="inline-flex gap-1 relative">
+                  {/* Activity squares organized by week */}
+                  <div className="flex gap-0.5 ml-9">
+                    {(() => {
+
+                      // Organize data into weeks (Monday to Sunday)
+                      const weeks = [];
+                      let currentWeek = new Array(7).fill(null);
+                      let weekStarted = false;
+
+                      activityData.forEach((day, idx) => {
+                        // Parse date properly to avoid timezone issues
+                        const [year, month, dayNum] = day.date.split("-").map(Number);
+                        const date = new Date(year, month - 1, dayNum);
+                        const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+                        currentWeek[dayOfWeek] = day;
+                        weekStarted = true;
+
+
+                        // If this is Saturday (last day of week), push the week
+                        if (dayOfWeek === 6 && weekStarted) {
+                          weeks.push([...currentWeek]);
+                          currentWeek = new Array(7).fill(null);
+                          weekStarted = false;
+                        }
                       });
-                    })()}
-                  </div>
 
-                  {/* Activity grid */}
-                  <div className="flex gap-1">
-                    {/* Day labels */}
-                    <div className="flex flex-col gap-1 text-xs text-gray-500 pr-2">
-                      <div className="h-[13px] flex items-center text-[10px]">Mon</div>
-                      <div className="h-[13px]"></div>
-                      <div className="h-[13px] flex items-center text-[10px]">Wed</div>
-                      <div className="h-[13px]"></div>
-                      <div className="h-[13px] flex items-center text-[10px]">Fri</div>
-                      <div className="h-[13px]"></div>
-                      <div className="h-[13px] flex items-center text-[10px]">Sun</div>
-                    </div>
+                      // Add any remaining days as the last week
+                      if (weekStarted) {
+                        weeks.push(currentWeek);
+                      }
 
-                    {/* Activity squares organized by week */}
-                    <div className="flex gap-1">
-                      {(() => {
-                        // Organize data into weeks (Monday to Sunday)
-                        const weeks = [];
-                        let currentWeek = new Array(7).fill(null);
-                        let weekStarted = false;
-
-                        activityData.forEach((day) => {
-                          const date = new Date(day.date);
-                          const dayOfWeek = date.getDay();
-                          // Convert Sunday (0) to 6, Monday (1) to 0, etc.
-                          const adjustedDayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-                          currentWeek[adjustedDayIndex] = day;
-                          weekStarted = true;
-
-                          // If this is Sunday (last day of week), push the week
-                          if (dayOfWeek === 0 && weekStarted) {
-                            weeks.push([...currentWeek]);
-                            currentWeek = new Array(7).fill(null);
-                            weekStarted = false;
-                          }
-                        });
-
-                        // Add any remaining days as the last week
-                        if (weekStarted) {
-                          weeks.push(currentWeek);
+                      // Debug: Check for trailing empty weeks
+                      let emptyWeeksAtEnd = 0;
+                      for (let i = weeks.length - 1; i >= 0; i--) {
+                        const week = weeks[i];
+                        const hasAnyDay = Array.isArray(week)
+                          ? week.some((day) => day !== null)
+                          : Object.values(week).some((day) => day !== null);
+                        if (!hasAnyDay) {
+                          emptyWeeksAtEnd++;
+                        } else {
+                          break;
                         }
+                      }
 
-                        return weeks.map((week, weekIndex) => (
-                          <div key={weekIndex} className="flex flex-col gap-1">
-                            {week.map((day, dayIndex) => {
+
+                      // Filter out completely empty weeks AND ensure first/last weeks contain Jan 1/Dec 31
+                      const filteredWeeks: (DayActivity[] | null)[] = [];
+                      let foundJan1Week = 0;
+                      let lastWeekWithDec31 = -1;
+
+                      // First pass: find the week with Jan 1 and the week with Dec 31
+                      weeks.forEach((week, index) => {
+                        if (Array.isArray(week)) {
+                          const hasJan1 = week.some((day) => {
+                            if (day && day.date) {
+                              const date = new Date(day.date);
+                              return date.getMonth() === 0 && date.getDate() === 1 && date.getFullYear() === 2025;
+                            }
+                            return false;
+                          });
+
+                          const hasDec31 = week.some((day) => {
+                            if (day && day.date) {
+                              const date = new Date(day.date);
+                              return date.getMonth() === 11 && date.getDate() === 31 && date.getFullYear() === 2025;
+                            }
+                            return false;
+                          });
+
+                          if (hasJan1) foundJan1Week = index;
+                          if (hasDec31) lastWeekWithDec31 = index;
+                        }
+                      });
+
+                      // Second pass: only include weeks from Jan 1 week to Dec 31 week
+                      weeks.forEach((week, index) => {
+                        if (index >= foundJan1Week && index <= lastWeekWithDec31) {
+                          filteredWeeks.push(week);
+                        }
+                      });
+
+                      const nonEmptyWeeks = filteredWeeks;
+
+                      return nonEmptyWeeks.map((week, weekIndex) => {
+                        const isLastWeek = weekIndex === nonEmptyWeeks.length - 1;
+
+
+                        // Don't trim any weeks - show all 7 days
+                        return (
+                          <div key={weekIndex} className="flex flex-col gap-0.5 relative">
+                            {/* Always render 7 days for every week */}
+                            {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
+                              const day = week ? week[dayIndex] : null;
+
+                              // Add day labels for the first week only
+                              const showDayLabel =
+                                weekIndex === 0 && (dayIndex === 1 || dayIndex === 3 || dayIndex === 5);
+                              const dayLabel = dayIndex === 1 ? "Mon" : dayIndex === 3 ? "Wed" : "Fri";
+
                               if (!day) {
-                                return <div key={`empty-${dayIndex}`} className="w-[13px] h-[13px]"></div>;
+                                return (
+                                  <div key={`empty-${dayIndex}`} className="relative">
+                                    <div className="w-[11px] h-[11px]"></div>
+                                    {showDayLabel && (
+                                      <div className="absolute right-full mr-2 top-0 h-[11px] flex items-center">
+                                        <span className="text-[10px] text-gray-500 block w-[20px] text-left">
+                                          {dayLabel}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
                               }
 
                               const date = new Date(day.date);
                               return (
                                 <div key={dayIndex} className="relative group">
                                   <div
-                                    className={`w-[13px] h-[13px] rounded-sm ${getActivityColor(
+                                    className={`w-[11px] h-[11px] rounded-sm ${getActivityColor(
                                       day.count,
                                       day.totalSeconds
                                     )} hover:ring-2 hover:ring-white transition-all cursor-pointer`}
                                     title={`${day.date}: ${day.count} tasks`}
                                   />
+                                  {showDayLabel && (
+                                    <div className="absolute right-full mr-2 top-0 h-[11px] flex items-center">
+                                      <span className="text-[10px] text-gray-500 block w-[20px] text-left">
+                                        {dayLabel}
+                                      </span>
+                                    </div>
+                                  )}
                                   {/* Tooltip */}
                                   <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 border border-gray-700">
                                     {date.toLocaleDateString("en-US", {
@@ -479,29 +633,37 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                                       month: "short",
                                       day: "numeric",
                                     })}
-                                    : {day.count} tasks{day.totalSeconds > 0 ? ` | ${formatTime(day.totalSeconds)}` : ''}
+                                    : {day.count} tasks
+                                    {day.totalSeconds > 0 ? ` | ${formatTime(day.totalSeconds)}` : ""}
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
-                        ));
-                      })()}
-                    </div>
+                        );
+                      });
+                    })()}
                   </div>
+                </div>
 
-                  {/* Legend */}
-                  <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
+                {/* Legend */}
+                <div className="mt-2 ml-9">
+                  <div className="flex items-center gap-2 text-[9px] text-gray-400">
                     <span>Less</span>
-                    <div className="flex gap-1">
-                      <div className="w-[13px] h-[13px] rounded-sm bg-gray-800"></div>
-                      <div className="w-[13px] h-[13px] rounded-sm bg-green-900"></div>
-                      <div className="w-[13px] h-[13px] rounded-sm bg-green-700"></div>
-                      <div className="w-[13px] h-[13px] rounded-sm bg-green-500"></div>
-                      <div className="w-[13px] h-[13px] rounded-sm bg-green-400"></div>
+                    <div className="flex gap-0.5">
+                      <div className="w-[8px] h-[8px] rounded-sm bg-gray-800"></div>
+                      <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]/20"></div>
+                      <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]/40"></div>
+                      <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]/70"></div>
+                      <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]"></div>
                     </div>
                     <span>More</span>
-                    {colorByTime && <span className="ml-2 text-gray-500">(0-30m, 30-60m, 1-2h, 2h+)</span>}
+                    {colorByTime && (
+                      <>
+                        <span className="text-gray-500">|</span>
+                        <span className="text-gray-500">0-30m | 30-60m | 1-2h | 2h+</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -510,21 +672,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {/* Average Tasks per Day */}
-              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-lg p-3 border border-blue-700/50 backdrop-blur transform hover:scale-105 transition-transform">
+              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-lg p-3 border border-blue-700/50 backdrop-blur transform hover:scale-105 transition-transform text-center">
                 <div className="text-blue-400 text-xs font-semibold">Avg Tasks/Day</div>
-                <div className="text-2xl font-black text-white">{metrics.avgTasksPerDay.toFixed(1)}</div>
+                <div className="text-2xl font-black text-white">{Math.round(metrics.avgTasksPerDay)}</div>
                 <div className="text-gray-400 text-xs">Daily average</div>
               </div>
 
               {/* Average Time per Day */}
-              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur transform hover:scale-105 transition-transform">
+              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur transform hover:scale-105 transition-transform text-center">
                 <div className="text-purple-400 text-xs font-semibold">Avg Time/Day</div>
                 <div className="text-2xl font-black text-white">{formatTime(metrics.avgTimePerDay)}</div>
                 <div className="text-gray-400 text-xs">Daily focus time</div>
               </div>
 
               {/* Average Time per Task */}
-              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-lg p-3 border border-green-700/50 backdrop-blur transform hover:scale-105 transition-transform">
+              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-lg p-3 border border-green-700/50 backdrop-blur transform hover:scale-105 transition-transform text-center">
                 <div className="text-green-400 text-xs font-semibold">Avg Time/Task</div>
                 <div className="text-2xl font-black text-white">{formatTime(metrics.avgTimePerTask)}</div>
                 <div className="text-gray-400 text-xs">Per task average</div>
@@ -534,8 +696,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             {/* Additional Insights */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               {/* Current Streak */}
-              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+                <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">🔥</span>
                   <h4 className="text-sm font-bold text-white">Current Streak</h4>
                 </div>
@@ -546,8 +708,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
               </div>
 
               {/* Longest Streak */}
-              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+                <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">🏆</span>
                   <h4 className="text-sm font-bold text-white">Best Streak</h4>
                 </div>
@@ -559,104 +721,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             </div>
 
             {/* Total Stats */}
+            <h3 className="text-lg font-bold text-white mb-2">All Time</h3>
             <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-black text-white">
-                    {taskHistory.filter((t) => t.completed !== false).length}
+                    {allTimeMetrics.totalTasks}
                   </div>
                   <div className="text-gray-300 text-xs font-semibold">Total Tasks</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-white">{formatTime(metrics.totalTime)}</div>
+                  <div className="text-2xl font-black text-white">{formatTime(allTimeMetrics.totalTime)}</div>
                   <div className="text-gray-300 text-xs font-semibold">Total Time</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-white">
-                    {activityData.filter((d) => d.count > 0).length}
-                  </div>
+                  <div className="text-2xl font-black text-white">{allTimeMetrics.activeDays}</div>
                   <div className="text-gray-300 text-xs font-semibold">Active Days</div>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
-
-        {/* Close button */}
-        <div className="flex justify-center">
-          <button
-            onClick={onClose}
-            className="mt-1 bg-[#FFAA00] text-black font-extrabold text-base px-6 py-2 rounded-lg shadow hover:scale-105 transition-transform"
-          >
-            Close
-          </button>
-        </div>
       </div>
-
-      {/* Add animations */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes goldPulse {
-          0%,
-          100% {
-            opacity: 1;
-            filter: brightness(1);
-          }
-          50% {
-            opacity: 0.8;
-            filter: brightness(1.3);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-
-        .animate-slideUp {
-          animation: slideUp 0.4s ease-out;
-        }
-
-        .animate-goldPulse {
-          animation: goldPulse 2s ease-in-out infinite;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #1f2937;
-          border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #ffaa00;
-          border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #ff9500;
-        }
-      `}</style>
     </div>
   );
 };

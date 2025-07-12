@@ -99,17 +99,63 @@ const calculatePageSize = (width: number, height: number) => {
   return 3; // Default for small heights
 };
 
-export default function History({ roomId, onClose }: { roomId: string; onClose?: () => void }) {
+export default function History({
+  roomId,
+  userId,
+  onClose,
+}: {
+  roomId: string;
+  userId?: string;
+  onClose?: () => void;
+}) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [pageSize, setPageSize] = useState(3); // Default to 3
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
+
+  // Filter history based on toggle
+  const filteredHistory = showOnlyMine && userId ? history.filter((entry) => entry.userId === userId) : history;
+
+  // Calculate total time for filtered tasks (excluding quit tasks)
+  const calculateTotalTime = () => {
+    let totalSeconds = 0;
+    const tasksToCalculate = filteredHistory.filter((entry) => !entry.task.toLowerCase().includes("quit early"));
+
+    tasksToCalculate.forEach((entry) => {
+      const parts = entry.duration.split(":").map(Number);
+      if (parts.length === 3) {
+        // HH:MM:SS format
+        const [hours, minutes, seconds] = parts;
+        totalSeconds += hours * 3600 + minutes * 60 + seconds;
+      } else if (parts.length === 2) {
+        // MM:SS format - check if minutes >= 60
+        const [minutes, seconds] = parts;
+        totalSeconds += minutes * 60 + seconds;
+      }
+    });
+
+    // Format total time
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const totalTime = calculateTotalTime();
 
   const PAGE_SIZE = pageSize;
-  const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
-  const paginated = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / PAGE_SIZE));
+  const paginated = filteredHistory.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Update page size based on screen dimensions
   useEffect(() => {
@@ -173,14 +219,35 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
           className={`bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
+          <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
+            <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
+            <div className="text-lg text-gray-300 font-mono">Total: 0s</div>
+            {userId && (
+              <button
+                onClick={() => setShowOnlyMine(!showOnlyMine)}
+                className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                  showOnlyMine ? "bg-[#FFAA00] text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                }`}
+              >
+                {showOnlyMine ? "My Tasks" : "All Tasks"}
+              </button>
+            )}
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+            >
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
           <div className="text-center text-white">No History Yet</div>
-          <button
-            className="mt-2 sm:mt-3 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
-            onClick={onClose}
-          >
-            Close
-          </button>
         </div>
       </div>
     );
@@ -192,7 +259,34 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
         className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-1 mt-1">History</div>
+        <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
+          <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
+          <div className="text-lg text-gray-300 font-mono">Total: {totalTime}</div>
+          {userId && (
+            <button
+              onClick={() => setShowOnlyMine(!showOnlyMine)}
+              className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                showOnlyMine ? "bg-[#FFAA00] text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              {showOnlyMine ? "My Tasks" : "All Tasks"}
+            </button>
+          )}
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+          >
+            <svg
+              className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
         {/* Content */}
         <div className="w-full">
           {/* Mobile Card Layout */}
@@ -281,7 +375,7 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
           </div>
         </div>
         {/* Pagination controls - integrated into modal */}
-        {history.length > PAGE_SIZE && (
+        {filteredHistory.length > PAGE_SIZE && (
           <div className="mt-3 flex items-center justify-center gap-4 lg:gap-8">
             <button
               className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
@@ -310,32 +404,24 @@ export default function History({ roomId, onClose }: { roomId: string; onClose?:
             </button>
           </div>
         )}
-
-        {/* Close button */}
-        <button
-          className="mt-2 sm:mt-3 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
-          onClick={onClose}
-        >
-          Close
-        </button>
       </div>
-      
+
       {/* Add scrollbar styling */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar-track {
           background: #1f2937;
           border-radius: 4px;
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #FFAA00;
+          background: #ffaa00;
           border-radius: 4px;
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #ff9500;
         }
