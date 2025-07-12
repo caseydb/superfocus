@@ -7,6 +7,7 @@ import { ref, onValue, off } from "firebase/database";
 interface AnalyticsProps {
   roomId: string;
   userId: string;
+  displayName?: string;
   onClose: () => void;
 }
 
@@ -23,7 +24,7 @@ interface DayActivity {
   count: number;
 }
 
-const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onClose }) => {
   const [taskHistory, setTaskHistory] = useState<TaskData[]>([]);
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -304,7 +305,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
         {/* Header with gradient */}
         <div className="mb-2 text-center relative">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
-            Analytics Dashboard
+            {displayName ? `${displayName.split(' ')[0]}'s Analytics` : 'Analytics Dashboard'}
           </h2>
         </div>
 

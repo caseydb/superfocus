@@ -932,7 +932,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
           )}
           {showAnalytics && currentInstance && user && (
-            <Analytics roomId={currentInstance.id} userId={user.id} onClose={() => setShowAnalytics(false)} />
+            <Analytics roomId={currentInstance.id} userId={user.id} displayName={user.displayName} onClose={() => setShowAnalytics(false)} />
           )}
           {showPreferences && (
             <Preferences onClose={() => setShowPreferences(false)} />
