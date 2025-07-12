@@ -11,7 +11,7 @@ import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
 
 export default function Lobby() {
-  const { instances, currentInstance, joinInstance, createInstance, leaveInstance } = useInstance();
+  const { instances, currentInstance, createInstance, leaveInstance } = useInstance();
   const router = useRouter();
   const [signedIn, setSignedIn] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
@@ -135,12 +135,15 @@ export default function Lobby() {
           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
           onClick={() => {
-            const available = instances.find((i) => i.users.length < 5 && i.type === "public");
-            if (available) {
-              joinInstance(available.id);
-            } else {
-              createInstance("public");
-            }
+            // Temporary redirect to /GSD instead of lobby logic
+            window.location.href = "/GSD";
+            // Original logic (kept for reference):
+            // const available = instances.find((i) => i.users.length < 5 && i.type === "public");
+            // if (available) {
+            //   joinInstance(available.id);
+            // } else {
+            //   createInstance("public");
+            // }
           }}
         >
           🚀 Quick Join

@@ -8,6 +8,7 @@ import { ref, set, remove, push, onValue, off, runTransaction } from "firebase/d
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
+import Analytics from "./Analytics";
 import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
 import Leaderboard from "./Leaderboard";
@@ -49,6 +50,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [realTimeUserCount, setRealTimeUserCount] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
@@ -78,6 +80,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowRoomsModal(false);
     setShowNotes(false);
     setShowPreferences(false);
+    setShowAnalytics(false);
     setShowQuitModal(false);
     setShowSignInModal(false);
   }, []);
@@ -468,6 +471,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         task: task + " (Quit Early)",
         duration: `${hours}:${minutes}:${secs}`,
         timestamp: Date.now(),
+        completed: false,
       };
       push(historyRef, quitData);
 
@@ -555,6 +559,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         task,
         duration,
         timestamp: Date.now(),
+        completed: true,
       };
       push(historyRef, completionData);
 
@@ -641,10 +646,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         closeAllModals();
         setShowLeaderboard(!wasOpen);
       }
+      // Cmd/Ctrl+A: Toggle Analytics
+      else if (key === "a") {
+        e.preventDefault();
+        const wasOpen = showAnalytics;
+        closeAllModals();
+        setShowAnalytics(!wasOpen);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [task, localVolume, previousVolume, currentInstance?.type, showTaskList, showNotes, showHistory, showLeaderboard, closeAllModals]);
+  }, [task, localVolume, previousVolume, currentInstance?.type, showTaskList, showNotes, showHistory, showLeaderboard, showAnalytics, closeAllModals]);
 
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn
@@ -759,6 +771,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setShowLeaderboard={setShowLeaderboard}
               setShowRoomsModal={setShowRoomsModal}
               setShowPreferences={setShowPreferences}
+              showAnalytics={showAnalytics}
+              setShowAnalytics={setShowAnalytics}
               closeAllModals={closeAllModals}
             />
           </div>
@@ -930,6 +944,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           )}
           {showHistory && currentInstance && (
             <History roomId={currentInstance.id} onClose={() => setShowHistory(false)} />
+          )}
+          {showAnalytics && currentInstance && user && (
+            <Analytics roomId={currentInstance.id} userId={user.id} onClose={() => setShowAnalytics(false)} />
           )}
           {showPreferences && (
             <Preferences onClose={() => setShowPreferences(false)} />

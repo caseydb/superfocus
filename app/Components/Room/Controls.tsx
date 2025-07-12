@@ -21,6 +21,8 @@ interface ControlsProps {
   setShowLeaderboard: (show: boolean) => void;
   setShowRoomsModal: (show: boolean) => void;
   setShowPreferences: (show: boolean) => void;
+  showAnalytics: boolean;
+  setShowAnalytics: (show: boolean) => void;
   closeAllModals: () => void;
 }
 
@@ -39,6 +41,8 @@ export default function Controls({
   setShowLeaderboard,
   setShowRoomsModal,
   setShowPreferences,
+  showAnalytics,
+  setShowAnalytics,
   closeAllModals,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
@@ -430,6 +434,30 @@ export default function Controls({
               </span>
             </button>
 
+            {/* Analytics Button */}
+            <button
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+              onClick={() => {
+                closeAllModals();
+                setShowAnalytics(!showAnalytics);
+                setDropdownOpen(false);
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                <path
+                  d="M9 11v6M12 5v12M15 8v9M3 21h18"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+              </svg>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
+                Analytics
+              </span>
+            </button>
+
             {/* Leave Room Button */}
             <button
               className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
@@ -782,6 +810,30 @@ export default function Controls({
                 </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
                   {showHistory ? "Timer" : "History"}
+                </span>
+              </button>
+
+              {/* Analytics Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                onClick={() => {
+                  closeAllModals();
+                  setShowAnalytics(!showAnalytics);
+                  setShowSideModal(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M9 11v6M12 5v12M15 8v9M3 21h18"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
+                  Analytics
                 </span>
               </button>
 

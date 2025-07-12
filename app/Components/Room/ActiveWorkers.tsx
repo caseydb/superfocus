@@ -29,39 +29,48 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     }
   };
 
-  // Simple streak calculation (same as PersonalStats) - using UTC time
-  const calculateStreak = (dailyCompletions: Record<string, boolean>) => {
-    if (!dailyCompletions) return 0;
+  // Calculate streak from actual task history (matching Analytics/PersonalStats)
+  const calculateStreakFromHistory = (completedDates: string[]) => {
+    if (!completedDates || completedDates.length === 0) return 0;
 
-    const getStreakDate = (timestamp: number = Date.now()) => {
-      const date = new Date(timestamp);
-      const utcHour = date.getUTCHours();
-      if (utcHour < 4) {
-        date.setUTCDate(date.getUTCDate() - 1);
-      }
-      return date.toISOString().split("T")[0];
-    };
-
-    let currentStreak = 0;
-    const currentStreakDate = getStreakDate();
-
-    for (let i = 0; i < 365; i++) {
-      const checkDate = new Date();
-      checkDate.setUTCDate(checkDate.getUTCDate() - i);
-      if (new Date().getUTCHours() < 4) {
-        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
-      }
-      const streakDateStr = checkDate.toISOString().split("T")[0];
-
-      if (dailyCompletions[streakDateStr]) {
-        currentStreak++;
-      } else {
-        if (streakDateStr !== currentStreakDate) {
+    // Get unique dates and sort them
+    const uniqueDates = Array.from(new Set(completedDates));
+    const sortedDates = uniqueDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    
+    // Calculate current streak (working backwards from today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toDateString();
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    
+    const lastTaskDate = new Date(sortedDates[sortedDates.length - 1]).toDateString();
+    
+    // Check if the streak is current (task completed today or yesterday)
+    if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
+      let currentStreak = 1;
+      let checkDate = new Date(lastTaskDate);
+      
+      // Work backwards to count consecutive days
+      for (let i = sortedDates.length - 2; i >= 0; i--) {
+        const prevDate = new Date(sortedDates[i]);
+        const expectedDate = new Date(checkDate);
+        expectedDate.setDate(expectedDate.getDate() - 1);
+        
+        if (prevDate.toDateString() === expectedDate.toDateString()) {
+          currentStreak++;
+          checkDate = expectedDate;
+        } else {
           break;
         }
       }
+      
+      return currentStreak;
     }
-    return currentStreak;
+    
+    return 0;
   };
 
   useEffect(() => {
@@ -78,31 +87,65 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return () => off(activeRef, "value", handle);
   }, [roomId]);
 
-  // Load streaks for active users
+  // Load streaks for active users from task history
   useEffect(() => {
     if (activeUsers.length === 0) {
       setUserStreaks({});
       return;
     }
 
-    const handles: Array<() => void> = [];
-    const streaks: Record<string, number> = {};
-
-    activeUsers.forEach((user) => {
-      // Load streak data
-      const dailyCompletionsRef = ref(rtdb, `users/${user.id}/dailyCompletions`);
-      const streakHandle = onValue(dailyCompletionsRef, (snapshot) => {
-        const dailyCompletions = snapshot.val() || {};
-        const currentStreak = calculateStreak(dailyCompletions);
-        streaks[user.id] = currentStreak;
-        setUserStreaks({ ...streaks });
-      });
-      handles.push(() => off(dailyCompletionsRef, "value", streakHandle));
-    });
-
-    return () => {
-      handles.forEach((cleanup) => cleanup());
+    const loadStreaksFromHistory = () => {
+      const instancesRef = ref(rtdb, "instances");
+      onValue(instancesRef, (snapshot) => {
+        const instancesData = snapshot.val();
+        const userStreakData: Record<string, string[]> = {};
+        
+        // Initialize empty arrays for each active user
+        activeUsers.forEach(user => {
+          userStreakData[user.id] = [];
+        });
+        
+        if (instancesData) {
+          // Go through each instance/room
+          Object.entries(instancesData).forEach(([, instanceData]) => {
+            const typedInstanceData = instanceData as { history?: Record<string, { userId: string; task: string; timestamp?: number; duration?: string; completed?: boolean }> };
+            if (typedInstanceData.history) {
+              Object.entries(typedInstanceData.history).forEach(([, entry]) => {
+                const activeUser = activeUsers.find(u => u.id === entry.userId);
+                if (activeUser && !entry.task.toLowerCase().includes("quit early") && entry.timestamp) {
+                  // Count task if completed is true OR undefined (legacy tasks)
+                  // Only skip if explicitly false
+                  if (entry.completed !== false) {
+                    const taskDate = new Date(entry.timestamp);
+                    const year = taskDate.getFullYear();
+                    const month = (taskDate.getMonth() + 1).toString().padStart(2, '0');
+                    const day = taskDate.getDate().toString().padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
+                    userStreakData[activeUser.id].push(dateStr);
+                  }
+                }
+              });
+            }
+          });
+        }
+        
+        // Calculate streaks for each user
+        const streaks: Record<string, number> = {};
+        activeUsers.forEach(user => {
+          streaks[user.id] = calculateStreakFromHistory(userStreakData[user.id]);
+        });
+        
+        setUserStreaks(streaks);
+      }, { onlyOnce: true });
     };
+    
+    // Load immediately
+    loadStreaksFromHistory();
+    
+    // Refresh every minute
+    const interval = setInterval(loadStreaksFromHistory, 60000);
+    
+    return () => clearInterval(interval);
   }, [activeUsers]);
 
   // Load daily stats from history for active users
@@ -306,11 +349,13 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           }}
         >
           {(userStreaks[u.id] || 0) > 0 && (
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 border ${
-              userStreaks[u.id] >= 5 ? "border-[#FFAA00]" : "border-gray-400"
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${
+              userStreaks[u.id] >= 10 
+                ? "bg-gradient-to-br from-[#ffaa00] to-[#e69500]" 
+                : `border ${userStreaks[u.id] >= 5 ? "border-[#FFAA00]" : "border-gray-400"}`
             }`}>
               <span className={`text-xs font-bold font-sans ${
-                userStreaks[u.id] >= 10 ? "text-[#FFAA00]" : "text-[#9CA3AF]"
+                userStreaks[u.id] >= 10 ? "text-black" : userStreaks[u.id] >= 5 ? "text-[#FFAA00]" : "text-[#9CA3AF]"
               }`}>{userStreaks[u.id]}</span>
             </div>
           )}
