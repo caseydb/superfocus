@@ -22,6 +22,7 @@ interface TaskData {
 interface DayActivity {
   date: string;
   count: number;
+  totalSeconds: number;
 }
 
 const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onClose }) => {
@@ -35,8 +36,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     const currentYear = today.getFullYear();
     const data: DayActivity[] = [];
 
-    // Create a map of date to task count
+    // Create maps for date to task count and total time
     const tasksByDate = new Map<string, number>();
+    const timeByDate = new Map<string, number>();
 
     tasks.forEach((task) => {
       // Count task if completed is true OR undefined (legacy tasks didn't have this field)
@@ -49,6 +51,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
         const day = date.getDate().toString().padStart(2, "0");
         const dateStr = `${year}-${month}-${day}`;
         tasksByDate.set(dateStr, (tasksByDate.get(dateStr) || 0) + 1);
+        
+        // Add time for this task
+        const seconds = parseDuration(task.duration);
+        timeByDate.set(dateStr, (timeByDate.get(dateStr) || 0) + seconds);
       }
     });
 
@@ -73,6 +79,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       data.push({
         date: dateStr,
         count: isCurrentYear && isPastDate ? taskCount : 0,
+        totalSeconds: isCurrentYear && isPastDate ? (timeByDate.get(dateStr) || 0) : 0,
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
@@ -438,7 +445,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                                       month: "short",
                                       day: "numeric",
                                     })}
-                                    : {day.count} tasks
+                                    : {day.count} tasks{day.totalSeconds > 0 ? ` | ${formatTime(day.totalSeconds)}` : ''}
                                   </div>
                                 </div>
                               );
