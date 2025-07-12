@@ -303,7 +303,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, onClose }) => {
       >
         {/* Header with gradient */}
         <div className="mb-3 text-center relative">
-          <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-[#FFAA00] to-orange-500 animate-goldPulse">
+          <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
             Analytics Dashboard
           </h2>
         </div>
