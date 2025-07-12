@@ -29,6 +29,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   const [taskHistory, setTaskHistory] = useState<TaskData[]>([]);
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [colorByTime, setColorByTime] = useState(false);
 
   // Generate activity data for the current calendar year (GitHub-style)
   const generateActivityData = (tasks: TaskData[]) => {
@@ -76,10 +77,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       const isPastDate = currentDate <= today;
       const taskCount = tasksByDate.get(dateStr) || 0;
 
+      // If there are tasks but no time recorded, default to 1 minute per task
+      const timeSeconds = timeByDate.get(dateStr) || 0;
+      const adjustedTimeSeconds = (taskCount > 0 && timeSeconds === 0) ? taskCount * 60 : timeSeconds;
+      
       data.push({
         date: dateStr,
         count: isCurrentYear && isPastDate ? taskCount : 0,
-        totalSeconds: isCurrentYear && isPastDate ? (timeByDate.get(dateStr) || 0) : 0,
+        totalSeconds: isCurrentYear && isPastDate ? adjustedTimeSeconds : 0,
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
@@ -285,12 +290,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   };
 
   // Get color intensity for activity chart
-  const getActivityColor = (count: number) => {
-    if (count === 0) return "bg-gray-800";
-    if (count <= 2) return "bg-green-900";
-    if (count <= 5) return "bg-green-700";
-    if (count <= 10) return "bg-green-500";
-    return "bg-green-400";
+  const getActivityColor = (count: number, totalSeconds: number = 0) => {
+    if (colorByTime) {
+      // Color based on time (in minutes)
+      const minutes = totalSeconds / 60;
+      if (minutes === 0) return "bg-gray-800";
+      if (minutes <= 30) return "bg-green-900";
+      if (minutes <= 60) return "bg-green-700";
+      if (minutes <= 120) return "bg-green-500";
+      return "bg-green-400";
+    } else {
+      // Color based on task count
+      if (count === 0) return "bg-gray-800";
+      if (count <= 2) return "bg-green-900";
+      if (count <= 5) return "bg-green-700";
+      if (count <= 10) return "bg-green-500";
+      return "bg-green-400";
+    }
   };
 
   // Handle click outside to close
@@ -324,7 +340,24 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
           <>
             {/* GitHub-style Activity Chart */}
             <div className="mb-4">
-              <h3 className="text-lg font-bold text-white mb-2">2025 Activity Overview</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold text-white">2025 Activity Overview</h3>
+                {/* Toggle switch */}
+                <button
+                  onClick={() => setColorByTime(!colorByTime)}
+                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  <span className={colorByTime ? "text-gray-500" : "text-white font-medium"}>Tasks</span>
+                  <div className="relative w-10 h-5 bg-gray-700 rounded-full transition-colors">
+                    <div
+                      className={`absolute top-0.5 h-4 w-4 bg-white rounded-full transition-transform shadow-sm ${
+                        colorByTime ? "translate-x-5" : "translate-x-0.5"
+                      }`}
+                    />
+                  </div>
+                  <span className={colorByTime ? "text-white font-medium" : "text-gray-500"}>Time</span>
+                </button>
+              </div>
               <div className="bg-gray-800/50 rounded-xl p-3 pr-5 backdrop-blur border border-gray-700 overflow-x-auto flex flex-col items-center">
                 <div>
                   {/* Month labels */}
@@ -434,7 +467,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                                 <div key={dayIndex} className="relative group">
                                   <div
                                     className={`w-[13px] h-[13px] rounded-sm ${getActivityColor(
-                                      day.count
+                                      day.count,
+                                      day.totalSeconds
                                     )} hover:ring-2 hover:ring-white transition-all cursor-pointer`}
                                     title={`${day.date}: ${day.count} tasks`}
                                   />
@@ -467,6 +501,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                       <div className="w-[13px] h-[13px] rounded-sm bg-green-400"></div>
                     </div>
                     <span>More</span>
+                    {colorByTime && <span className="ml-2 text-gray-500">(0-30m, 30-60m, 1-2h, 2h+)</span>}
                   </div>
                 </div>
               </div>
