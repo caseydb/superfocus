@@ -368,7 +368,15 @@ export default function Controls({
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
                 <path
-                  d="M7 12L12 7L17 12M8 21H16M12 21V17M6 8V3H18V8M6 8C6 9.10457 5.10457 10 4 10S2 9.10457 2 8C2 6.89543 2.89543 6 4 6C4.53043 6 5.03914 6.21071 5.41421 6.58579C5.78929 6.96086 6 7.46957 6 8ZM18 8C18 9.10457 18.8954 10 20 10S22 9.10457 22 8C22 6.89543 21.1046 6 20 6C19.4696 6 18.9609 6.21071 18.5858 6.58579C18.2107 6.96086 18 7.46957 18 8Z"
+                  d="M7 10V4H17V10C17 13 15 15 12 15C9 15 7 13 7 10Z"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+                <path
+                  d="M12 15V19M9 19H15"
                   stroke="#9ca3af"
                   strokeWidth="2"
                   strokeLinecap="round"
