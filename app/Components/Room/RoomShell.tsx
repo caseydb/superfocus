@@ -1023,6 +1023,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
         {/* Rooms Modal */}
         <RoomsModal isOpen={showRoomsModal} onClose={() => setShowRoomsModal(false)} />
+        
       </>
     );
   }

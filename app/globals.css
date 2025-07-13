@@ -295,3 +295,98 @@ body,
     opacity: 0.3;
   }
 }
+
+/* Custom date picker styles for dark theme */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  margin-left: 8px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.7);
+  opacity: 1;
+}
+
+/* Style the date picker text fields */
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  background: transparent;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  color: rgb(107, 114, 128);
+  padding: 0 0.125rem;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: rgb(243, 244, 246);
+  background: transparent;
+  padding: 0.125rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-day-field:focus,
+input[type="date"]::-webkit-datetime-edit-year-field:focus {
+  background: rgba(255, 170, 0, 0.2);
+  color: #FFAA00;
+  outline: none;
+}
+
+/* Firefox date input styles */
+input[type="date"] {
+  color-scheme: dark;
+}
+
+/* Hover state for date inputs */
+input[type="date"]:hover::-webkit-datetime-edit-month-field,
+input[type="date"]:hover::-webkit-datetime-edit-day-field,
+input[type="date"]:hover::-webkit-datetime-edit-year-field {
+  color: #FFAA00;
+}
+
+/* Style the calendar popup for webkit browsers */
+input[type="date"]::-webkit-calendar-picker-indicator:focus,
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(255, 170, 0, 0.1);
+  border-radius: 4px;
+}
+
+/* Override default blue focus styles */
+input[type="date"]:focus {
+  outline: none;
+}
+
+/* Style for calendar dropdown (webkit) */
+::-webkit-datetime-edit-day-field:focus,
+::-webkit-datetime-edit-month-field:focus,
+::-webkit-datetime-edit-year-field:focus {
+  background-color: rgba(255, 170, 0, 0.2);
+  color: #FFAA00;
+  outline: none;
+}
+
+/* Override default calendar styles */
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button {
+  display: none;
+}
+
+/* Custom focus ring */
+input[type="date"]:focus-visible {
+  outline: 2px solid #FFAA00;
+  outline-offset: 2px;
+}
