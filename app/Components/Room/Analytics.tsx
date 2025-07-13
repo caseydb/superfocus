@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, off } from "firebase/database";
-import DateRangePicker from "../DateRangePicker";
+// import DateRangePicker from "../DateRangePicker"; // TEMPORARILY COMMENTED OUT
 
 interface AnalyticsProps {
   roomId: string;
@@ -223,8 +223,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return 0;
   };
 
-  // Filter tasks by date range
+  // Filter tasks by date range - TEMPORARILY RETURNING ALL TASKS
   const getFilteredTasks = () => {
+    return taskHistory; // Return all tasks for now
+    /*
     if (!dateRange.start || !dateRange.end) return taskHistory;
     
     const startTime = dateRange.start.getTime();
@@ -233,6 +235,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return taskHistory.filter(task => {
       return task.timestamp >= startTime && task.timestamp <= endTime;
     });
+    */
   };
 
   // Calculate analytics metrics
@@ -260,21 +263,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     }
 
     
-    // Calculate the actual number of days for averages
+    // Calculate the actual number of days for averages - USING ALL TIME
     let daysDiff = 1;
-    if (dateRange.start && dateRange.end) {
-      // Use the later of: selected start date or first task date
-      const effectiveStartDate = firstTaskDate && firstTaskDate > dateRange.start 
-        ? firstTaskDate 
-        : dateRange.start;
-      
-      // Use the earlier of: selected end date or today
-      const effectiveEndDate = dateRange.end > new Date() 
-        ? new Date() 
-        : dateRange.end;
-      
-      daysDiff = Math.ceil((effectiveEndDate.getTime() - effectiveStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (firstTaskDate) {
+      const today = new Date();
+      daysDiff = Math.ceil((today.getTime() - firstTaskDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       daysDiff = Math.max(1, daysDiff); // Ensure at least 1 day
+    } else if (taskHistory.length > 0) {
+      // Fallback: use number of unique days with tasks
+      const dates = completedTasks.map((t) => new Date(t.timestamp).toDateString());
+      const uniqueDates = new Set(dates).size;
+      daysDiff = Math.max(1, uniqueDates);
     }
 
     // Calculate total time
@@ -737,6 +736,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             </div>
 
             {/* Date Range Picker - Centered */}
+            {/* TEMPORARILY COMMENTED OUT - PRODUCTION ERROR
             <div className="mb-4">
               <div className="flex justify-center">
                 {mounted && (
@@ -747,13 +747,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                   />
                 )}
               </div>
-              {/* Show info if first task date is after selected start date */}
               {mounted && firstTaskDate && dateRange.start && firstTaskDate > dateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
                   Calculated from your first task on {firstTaskDate.toLocaleDateString('en-US')}
                 </div>
               )}
             </div>
+            */}
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
