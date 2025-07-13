@@ -88,7 +88,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     const currentDate = new Date(firstSunday);
     currentDate.setHours(0, 0, 0, 0);
     lastSaturday.setHours(23, 59, 59, 999);
-    let daysGenerated = 0;
 
     // Continue until we've covered the last Saturday
     while (currentDate <= lastSaturday) {
@@ -112,9 +111,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
         totalSeconds: isPastDate ? adjustedTimeSeconds : 0,
       });
 
-
       currentDate.setDate(currentDate.getDate() + 1);
-      daysGenerated++;
     }
 
 
@@ -502,7 +499,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                       let currentWeek = new Array(7).fill(null);
                       let weekStarted = false;
 
-                      activityData.forEach((day, idx) => {
+                      activityData.forEach((day) => {
                         // Parse date properly to avoid timezone issues
                         const [year, month, dayNum] = day.date.split("-").map(Number);
                         const date = new Date(year, month - 1, dayNum);
@@ -525,19 +522,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                         weeks.push(currentWeek);
                       }
 
-                      // Debug: Check for trailing empty weeks
-                      let emptyWeeksAtEnd = 0;
-                      for (let i = weeks.length - 1; i >= 0; i--) {
-                        const week = weeks[i];
-                        const hasAnyDay = Array.isArray(week)
-                          ? week.some((day) => day !== null)
-                          : Object.values(week).some((day) => day !== null);
-                        if (!hasAnyDay) {
-                          emptyWeeksAtEnd++;
-                        } else {
-                          break;
-                        }
-                      }
 
 
                       // Filter out completely empty weeks AND ensure first/last weeks contain Jan 1/Dec 31
@@ -579,7 +563,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                       const nonEmptyWeeks = filteredWeeks;
 
                       return nonEmptyWeeks.map((week, weekIndex) => {
-                        const isLastWeek = weekIndex === nonEmptyWeeks.length - 1;
 
 
                         // Don't trim any weeks - show all 7 days
