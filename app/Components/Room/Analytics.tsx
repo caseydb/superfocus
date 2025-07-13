@@ -37,6 +37,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     start: null,
     end: null
   });
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted before rendering date-dependent content
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Generate activity data for the current calendar year (GitHub-style)
   const generateActivityData = (tasks: TaskData[], applyDateFilter: boolean = false) => {
@@ -162,13 +168,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return sampleTasks;
   };
 
-  // Set initial date range on client side
-  useEffect(() => {
-    if (!dateRange.end) {
-      setDateRange(prev => ({ ...prev, end: new Date() }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Re-generate activity data when date range changes
   useEffect(() => {
@@ -191,31 +190,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
         setTaskHistory(userTasks);
         setActivityData(generateActivityData(userTasks));
-        
-        // Set initial date range to "All Time" if not already set
-        if (!dateRange.start && userTasks.length > 0) {
-          const sortedTasks = [...userTasks].sort((a, b) => a.timestamp - b.timestamp);
-          const firstDate = new Date(sortedTasks[0].timestamp);
-          setDateRange({
-            start: firstDate,
-            end: new Date()
-          });
-        }
       } else {
         // Use sample data if no real data
         const sampleTasks = generateSampleData();
         setTaskHistory(sampleTasks);
         setActivityData(generateActivityData(sampleTasks));
-        
-        // Set initial date range for sample data
-        if (!dateRange.start && sampleTasks.length > 0) {
-          const sortedTasks = [...sampleTasks].sort((a, b) => a.timestamp - b.timestamp);
-          const firstDate = new Date(sortedTasks[0].timestamp);
-          setDateRange({
-            start: firstDate,
-            end: new Date()
-          });
-        }
       }
       setIsLoading(false);
     });
@@ -329,6 +308,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   };
   
   const firstTaskDate = getFirstTaskDate();
+  
+  // Set initial date range on client side and ensure hydration safety
+  useEffect(() => {
+    const now = new Date();
+    if (mounted && (!dateRange.start || !dateRange.end)) {
+      setDateRange({
+        start: dateRange.start || (firstTaskDate || new Date('2020-01-01')),
+        end: dateRange.end || now
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, firstTaskDate]);
   
   // Calculate streaks using all task history (not filtered by date range)
   const calculateStreaks = () => {
@@ -748,14 +739,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             {/* Date Range Picker - Centered */}
             <div className="mb-4">
               <div className="flex justify-center">
-                <DateRangePicker
-                  value={dateRange}
-                  onChange={setDateRange}
-                  firstTaskDate={firstTaskDate}
-                />
+                {mounted && (
+                  <DateRangePicker
+                    value={dateRange}
+                    onChange={setDateRange}
+                    firstTaskDate={firstTaskDate}
+                  />
+                )}
               </div>
               {/* Show info if first task date is after selected start date */}
-              {firstTaskDate && dateRange.start && firstTaskDate > dateRange.start && (
+              {mounted && firstTaskDate && dateRange.start && firstTaskDate > dateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
                   Calculated from your first task on {firstTaskDate.toLocaleDateString('en-US')}
                 </div>

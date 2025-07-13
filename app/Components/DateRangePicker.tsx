@@ -36,7 +36,14 @@ function getTodayDate() {
 
 function formatDateForInput(date: Date | null): string {
   if (!date) return ''
-  return date.toISOString().slice(0, 10)
+  try {
+    // Ensure we have a valid date object
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10)
+  } catch {
+    return ''
+  }
 }
 
 
