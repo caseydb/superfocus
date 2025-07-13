@@ -34,8 +34,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   const [isLoading, setIsLoading] = useState(true);
   const [colorByTime, setColorByTime] = useState(false);
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({
-    start: null, // Will be set to first task date or fallback
-    end: new Date()
+    start: null,
+    end: null
   });
 
   // Generate activity data for the current calendar year (GitHub-style)
@@ -161,6 +161,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
     return sampleTasks;
   };
+
+  // Set initial date range on client side
+  useEffect(() => {
+    if (!dateRange.end) {
+      setDateRange(prev => ({ ...prev, end: new Date() }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Re-generate activity data when date range changes
   useEffect(() => {

@@ -43,9 +43,20 @@ function formatDateForInput(date: Date | null): string {
 export default function DateRangePicker({ value, onChange, firstTaskDate }: DateRangePickerProps) {
   const [selectedRange, setSelectedRange] = useState<number | "custom" | "today" | "all">("all")
   const [dateRange, setDateRange] = useState<DateRange>({
-    start: value?.start || (firstTaskDate || new Date('2020-01-01')),
-    end: value?.end || getTodayDate()
+    start: value?.start || null,
+    end: value?.end || null
   })
+
+  // Initialize dates on client side
+  useEffect(() => {
+    if (!dateRange.start || !dateRange.end) {
+      setDateRange({
+        start: firstTaskDate || new Date('2020-01-01'),
+        end: getTodayDate()
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstTaskDate])
 
   // Update parent when dateRange changes
   useEffect(() => {
