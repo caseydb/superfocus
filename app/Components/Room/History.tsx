@@ -52,7 +52,7 @@ const truncateText = (text: string, maxLength: number = 50) => {
 };
 
 // Calculate dynamic width based on history content
-const calculateDynamicWidth = (history: HistoryEntry[]) => {
+const calculateDynamicWidth = () => {
   // Fixed width with max-w-[700px] for all screen sizes
   return "w-[95%]";
 };
@@ -145,8 +145,8 @@ export default function History({
 
   // Update dynamic width when history changes
   useEffect(() => {
-    setDynamicWidthClasses(calculateDynamicWidth(history));
-  }, [history]);
+    setDynamicWidthClasses(calculateDynamicWidth());
+  }, []);
 
   useEffect(() => {
     if (!roomId) return;
