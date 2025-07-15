@@ -33,7 +33,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [colorByTime, setColorByTime] = useState(false);
-  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({
+  const [clientDateRange, setClientDateRange] = useState<{ start: Date | null; end: Date | null }>({
     start: null,
     end: null
   });
@@ -175,7 +175,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       setActivityData(generateActivityData(taskHistory));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange, taskHistory]);
+  }, [clientDateRange, taskHistory]);
 
   useEffect(() => {
     // Try to fetch real data first
@@ -223,12 +223,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return 0;
   };
 
-  // Filter tasks by date range
+  // Filter tasks by date range - only on client side
   const getFilteredTasks = () => {
-    if (!dateRange.start || !dateRange.end) return taskHistory;
+    // If not mounted, return all tasks (server-side)
+    if (!mounted) return taskHistory;
     
-    const startTime = dateRange.start.getTime();
-    const endTime = dateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1); // End of day
+    // If no date range selected, return all tasks
+    if (!clientDateRange.start || !clientDateRange.end) return taskHistory;
+    
+    // Client-side filtering
+    const startTime = clientDateRange.start.getTime();
+    const endTime = clientDateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1); // End of day
     
     return taskHistory.filter(task => {
       return task.timestamp >= startTime && task.timestamp <= endTime;
@@ -305,17 +310,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   
   const firstTaskDate = getFirstTaskDate();
   
-  // Set initial date range on client side and ensure hydration safety
-  useEffect(() => {
-    const now = new Date();
-    if (mounted && (!dateRange.start || !dateRange.end)) {
-      setDateRange({
-        start: dateRange.start || (firstTaskDate || new Date('2020-01-01')),
-        end: dateRange.end || now
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, firstTaskDate]);
+  // Don't set initial date range - let the DateRangePicker handle it
+  // This avoids any server-side date creation issues
   
   // Calculate streaks using all task history (not filtered by date range)
   const calculateStreaks = () => {
@@ -736,12 +732,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             <div className="mb-4">
               <div className="flex justify-center">
                 <DateRangePicker
-                  value={dateRange}
-                  onChange={setDateRange}
+                  value={clientDateRange}
+                  onChange={setClientDateRange}
                   firstTaskDate={firstTaskDate}
                 />
               </div>
-              {mounted && firstTaskDate && dateRange.start && firstTaskDate > dateRange.start && (
+              {mounted && firstTaskDate && clientDateRange.start && firstTaskDate > clientDateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
                   Calculated from your first task on {firstTaskDate.toLocaleDateString('en-US')}
                 </div>
