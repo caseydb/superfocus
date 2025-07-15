@@ -53,42 +53,14 @@ const truncateText = (text: string, maxLength: number = 50) => {
 
 // Calculate dynamic width based on history content
 const calculateDynamicWidth = (history: HistoryEntry[]) => {
-  if (history.length === 0) return "w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]";
-
-  const maxTaskLength = Math.max(...history.map((entry) => entry.task.length));
-
-  // Base percentages for different screen sizes
-  const basePercentage = 95; // < 600px
-  const mediumPercentage = 90; // 600px - 1028px
-  const largePercentage = 60; // >= 1028px
-
-  // Calculate multiplier based on max task length - grow more aggressively
-  let multiplier = 1;
-  if (maxTaskLength > 20) {
-    multiplier = Math.min(1 + (maxTaskLength - 20) / 100, 1.4); // More conservative growth for percentages
-  }
-
-  const smallWidth = Math.min(Math.round(basePercentage * multiplier), 95); // Cap at 95%
-  const mediumWidth = Math.min(Math.round(mediumPercentage * multiplier), 90); // Cap at 90%
-  const largeWidth = Math.min(Math.round(largePercentage * multiplier), 85); // Cap at 85%
-
-  return `w-[${smallWidth}%] min-[600px]:w-[${mediumWidth}%] min-[1028px]:w-[${largeWidth}%]`;
+  // Fixed width with max-w-[700px] for all screen sizes
+  return "w-[95%]";
 };
 
 // Calculate PAGE_SIZE based on screen size
 const calculatePageSize = (width: number, height: number) => {
-  // If width >= 1024px (desktop table layout), use height-based logic for large screens
-  if (width >= 1024) {
-    if (height >= 850) return 15;
-    if (height >= 800) return 13;
-    if (height >= 750) return 10;
-    if (height >= 700) return 7;
-    if (height >= 650) return 5;
-    if (height <= 650) return 3;
-    return 5; // Default for large screens
-  }
-
-  // Otherwise use height-based logic for card layout
+  // Since we're now using card layout for all screen sizes with max-width 700px,
+  // use consistent height-based logic for pagination
   if (height >= 1100) return 10;
   if (height >= 1000) return 9;
   if (height >= 910) return 8;
@@ -256,7 +228,7 @@ export default function History({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div
-        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar`}
+        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-2 sm:gap-3 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
@@ -275,7 +247,7 @@ export default function History({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+            className="absolute -top-2 -right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -289,8 +261,8 @@ export default function History({
         </div>
         {/* Content */}
         <div className="w-full">
-          {/* Mobile Card Layout */}
-          <div className="block lg:hidden space-y-3 w-full">
+          {/* Card/Blocks Layout - Now shown on all screen sizes */}
+          <div className="block space-y-3 w-full">
             {displayEntries.map((entry, i) => (
               <div
                 key={i}
@@ -328,8 +300,8 @@ export default function History({
             ))}
           </div>
 
-          {/* Desktop Table Layout */}
-          <div className="hidden lg:block overflow-x-auto">
+          {/* Desktop Table Layout - Now hidden since we're using blocks on all sizes */}
+          <div className="hidden overflow-x-auto">
             <table className="w-full text-left border-separate border-spacing-y-0 min-w-[600px]">
               <thead>
                 <tr className="text-gray-400 text-base">

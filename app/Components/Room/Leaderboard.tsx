@@ -128,10 +128,25 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between w-full mb-2">
+        {/* Close button - positioned absolutely */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+        >
+          <svg
+            className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="flex items-center justify-center gap-2 w-full mb-2">
           <button
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl text-gray-400 cursor-not-allowed"
             disabled
@@ -148,7 +163,10 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
             →
           </button>
         </div>
-        <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Leaderboard</div>
+        {/* Header with title */}
+        <div className="w-full text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Leaderboard</h2>
+        </div>
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left mt-2 min-w-[300px]">
             <thead>
@@ -185,30 +203,29 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
             </tbody>
           </table>
         </div>
-        <button
-          className="mt-4 sm:mt-6 bg-[#FFAA00] text-black font-extrabold text-lg sm:text-xl px-8 sm:px-10 py-3 rounded-lg shadow hover:scale-105 transition-transform"
-          onClick={onClose}
-        >
-          Close
-        </button>
+
+        {/* Keyboard Shortcut Tip */}
+        <div className="mt-4 text-center text-xs text-gray-500">
+          Shortcut <span className="px-2 py-1 bg-gray-800 rounded">⌘L</span>
+        </div>
       </div>
-      
+
       {/* Add scrollbar styling */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar-track {
           background: #1f2937;
           border-radius: 4px;
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #FFAA00;
+          background: #ffaa00;
           border-radius: 4px;
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #ff9500;
         }
