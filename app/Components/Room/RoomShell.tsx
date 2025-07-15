@@ -631,8 +631,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         closeAllModals();
         setShowLeaderboard(!wasOpen);
       }
-      // Cmd/Ctrl+A: Toggle Analytics
-      else if (key === "a") {
+      // Cmd/Ctrl+S: Toggle Analytics
+      else if (key === "s") {
         e.preventDefault();
         const wasOpen = showAnalytics;
         closeAllModals();

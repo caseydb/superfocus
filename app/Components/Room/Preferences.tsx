@@ -89,7 +89,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <span>Leaderboard</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘A</span>
+                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">⌘S</span>
                 <span>Analytics</span>
               </div>
             </div>

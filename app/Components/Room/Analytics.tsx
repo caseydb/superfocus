@@ -233,7 +233,25 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     
     // Client-side filtering
     const startTime = clientDateRange.start.getTime();
-    const endTime = clientDateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1); // End of day
+    
+    // For single day selection (when start and end dates are the same day at midnight),
+    // we need to get the end of that day, not add 24 hours to midnight
+    const startDate = new Date(clientDateRange.start);
+    const endDate = new Date(clientDateRange.end);
+    
+    let endTime: number;
+    if (startDate.toDateString() === endDate.toDateString() && 
+        endDate.getHours() === 0 && 
+        endDate.getMinutes() === 0 && 
+        endDate.getSeconds() === 0) {
+      // Same day at midnight - get end of this day
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      endTime = endOfDay.getTime();
+    } else {
+      // Different days or custom time - add 24 hours to include full end day
+      endTime = clientDateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1);
+    }
     
     return taskHistory.filter(task => {
       return task.timestamp >= startTime && task.timestamp <= endTime;
@@ -828,6 +846,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                 </div>
                 <div className="text-gray-400 text-xs">Personal record</div>
               </div>
+            </div>
+            
+            {/* Keyboard Shortcut Tip */}
+            <div className="mt-4 text-center text-xs text-gray-500">
+              Shortcut <span className="px-2 py-1 bg-gray-800 rounded">⌘S</span>
             </div>
           </div>
         )}
