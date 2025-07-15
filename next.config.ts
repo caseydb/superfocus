@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  // Enable source maps in production for better error tracking
+  productionBrowserSourceMaps: true,
+  // External packages for server components
+  serverExternalPackages: ["firebase-admin"],
 };
 
 export default nextConfig;
