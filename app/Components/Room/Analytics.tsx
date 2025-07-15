@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, off } from "firebase/database";
-// import DateRangePicker from "../DateRangePicker"; // TEMPORARILY COMMENTED OUT
+import DateRangePicker from "../DateRangePicker";
 
 interface AnalyticsProps {
   roomId: string;
@@ -223,10 +223,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return 0;
   };
 
-  // Filter tasks by date range - TEMPORARILY RETURNING ALL TASKS
+  // Filter tasks by date range
   const getFilteredTasks = () => {
-    return taskHistory; // Return all tasks for now
-    /*
     if (!dateRange.start || !dateRange.end) return taskHistory;
     
     const startTime = dateRange.start.getTime();
@@ -235,7 +233,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return taskHistory.filter(task => {
       return task.timestamp >= startTime && task.timestamp <= endTime;
     });
-    */
   };
 
   // Calculate analytics metrics
@@ -736,16 +733,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             </div>
 
             {/* Date Range Picker - Centered */}
-            {/* TEMPORARILY COMMENTED OUT - PRODUCTION ERROR
             <div className="mb-4">
               <div className="flex justify-center">
-                {mounted && (
-                  <DateRangePicker
-                    value={dateRange}
-                    onChange={setDateRange}
-                    firstTaskDate={firstTaskDate}
-                  />
-                )}
+                <DateRangePicker
+                  value={dateRange}
+                  onChange={setDateRange}
+                  firstTaskDate={firstTaskDate}
+                />
               </div>
               {mounted && firstTaskDate && dateRange.start && firstTaskDate > dateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
@@ -753,7 +747,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                 </div>
               )}
             </div>
-            */}
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
