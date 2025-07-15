@@ -299,11 +299,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     };
   };
 
-  const metrics = calculateMetrics();
+  // Calculate metrics only on client side
+  const metrics = mounted ? calculateMetrics() : {
+    avgTasksPerDay: 0,
+    avgTimePerDay: 0,
+    avgTimePerTask: 0,
+    totalTime: 0,
+    completionRate: 0,
+    mostProductiveHour: 12,
+  };
   
-  // Get the earliest task date for display
+  // Get the earliest task date for display - only on client
   const getFirstTaskDate = () => {
-    if (taskHistory.length === 0) return null;
+    if (!mounted || taskHistory.length === 0) return null;
     const sortedTasks = [...taskHistory].sort((a, b) => a.timestamp - b.timestamp);
     return new Date(sortedTasks[0].timestamp);
   };
@@ -377,7 +385,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return { currentStreak, longestStreak };
   };
   
-  const streakMetrics = calculateStreaks();
+  // Calculate streaks only on client side
+  const streakMetrics = mounted ? calculateStreaks() : { currentStreak: 0, longestStreak: 0 };
   
   // Calculate all-time metrics (using current room data only, matching History component)
   const calculateAllTimeMetrics = () => {
@@ -419,7 +428,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     };
   };
   
-  const allTimeMetrics = calculateAllTimeMetrics();
+  // Calculate all-time metrics only on client side
+  const allTimeMetrics = mounted ? calculateAllTimeMetrics() : {
+    totalTasks: 0,
+    totalTime: 0,
+    activeDays: 0
+  };
 
   // Format time display
   const formatTime = (seconds: number) => {

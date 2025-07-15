@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from "react";
 
 interface DateRange {
-  start: Date | null
-  end: Date | null
+  start: Date | null;
+  end: Date | null;
 }
 
 interface DateRangePickerProps {
-  value?: DateRange
-  onChange?: (range: DateRange) => void
-  firstTaskDate?: Date | null
+  value?: DateRange;
+  onChange?: (range: DateRange) => void;
+  firstTaskDate?: Date | null;
 }
 
 const TIME_RANGES = [
@@ -22,15 +22,15 @@ const TIME_RANGES = [
   { label: "Last 365 days", value: 365 },
   { label: "All Time", value: "all" },
   { label: "Custom", value: "custom" },
-]
+];
 
 export default function DateRangePicker({ value, onChange, firstTaskDate }: DateRangePickerProps) {
-  const [selectedRange, setSelectedRange] = useState<number | "custom" | "today" | "all">("all")
-  const [mounted, setMounted] = useState(false)
+  const [selectedRange, setSelectedRange] = useState<number | "custom" | "today" | "all">("all");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Only render the actual picker on client
   if (!mounted) {
@@ -46,25 +46,25 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
 
   // Client-side only date helpers
   const getDateNDaysAgo = (n: number) => {
-    const d = new Date()
-    d.setDate(d.getDate() - n + 1)
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
+    const d = new Date();
+    d.setDate(d.getDate() - n + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
 
   const getTodayDate = () => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
 
   const formatDateForInput = (date: Date | null): string => {
-    if (!date) return ''
+    if (!date) return "";
     const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
-  }
+  };
 
   // Get current date range values
   const getCurrentDateRange = (): DateRange => {
@@ -73,57 +73,57 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
     }
     // Default to all time
     return {
-      start: firstTaskDate || new Date('2020-01-01'),
-      end: getTodayDate()
+      start: firstTaskDate || new Date("2020-01-01"),
+      end: getTodayDate(),
     };
-  }
+  };
 
   const currentRange = getCurrentDateRange();
 
   // When dropdown changes
   const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value
-    setSelectedRange(val as number | "custom" | "today" | "all")
-    
+    const val = e.target.value;
+    setSelectedRange(val as number | "custom" | "today" | "all");
+
     let newRange: DateRange = { start: null, end: null };
-    
+
     if (val === "custom") {
       // Keep current range
       newRange = currentRange;
     } else if (val === "today") {
-      const today = getTodayDate()
+      const today = getTodayDate();
       newRange = { start: today, end: today };
     } else if (val === "all") {
       newRange = {
-        start: firstTaskDate || new Date('2020-01-01'),
-        end: getTodayDate()
+        start: firstTaskDate || new Date("2020-01-01"),
+        end: getTodayDate(),
       };
     } else {
-      const days = Number(val)
+      const days = Number(val);
       newRange = {
         start: getDateNDaysAgo(days),
-        end: getTodayDate()
+        end: getTodayDate(),
       };
     }
-    
+
     onChange?.(newRange);
-  }
+  };
 
   // When user manually changes date
   const handleDateChange = (which: "start" | "end", value: string) => {
     if (!value) return;
-    
-    const [year, month, day] = value.split('-').map(Number);
+
+    const [year, month, day] = value.split("-").map(Number);
     const newDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-    
+
     const newRange = {
       ...currentRange,
-      [which]: newDate
+      [which]: newDate,
     };
-    
+
     setSelectedRange("custom");
     onChange?.(newRange);
-  }
+  };
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md mx-auto">
@@ -151,7 +151,7 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </div>
-      
+
       {/* Date Picker */}
       <div className="flex items-center border border-gray-700 rounded-lg px-3 py-2 bg-gray-900 w-full sm:w-auto hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 group focus-within:ring-2 focus-within:ring-[#FFAA00] focus-within:border-[#FFAA00] focus-within:shadow-[0_0_0_4px_rgba(255,170,0,0.1)]">
         <input
@@ -167,10 +167,10 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
           className="outline-none text-gray-100 text-xs bg-transparent cursor-pointer [color-scheme:dark] focus:text-[#FFAA00] font-mono w-[115px]"
           value={formatDateForInput(currentRange.end)}
           onChange={(e) => handleDateChange("end", e.target.value)}
-          min={formatDateForInput(currentRange.start || new Date('2020-01-01'))}
+          min={formatDateForInput(currentRange.start || new Date("2020-01-01"))}
           max={formatDateForInput(getTodayDate())}
         />
       </div>
     </div>
-  )
+  );
 }
