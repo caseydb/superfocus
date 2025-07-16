@@ -26,8 +26,6 @@ interface DayActivity {
   totalSeconds: number;
 }
 
-
-
 const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onClose }) => {
   const [taskHistory, setTaskHistory] = useState<TaskData[]>([]);
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
@@ -35,7 +33,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   const [colorByTime, setColorByTime] = useState(false);
   const [clientDateRange, setClientDateRange] = useState<{ start: Date | null; end: Date | null }>({
     start: null,
-    end: null
+    end: null,
   });
   const [mounted, setMounted] = useState(false);
 
@@ -49,7 +47,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     const today = new Date();
     const currentYear = today.getFullYear();
     const data: DayActivity[] = [];
-    
+
     // Filter tasks by date range if requested
     const tasksToProcess = applyDateFilter ? getFilteredTasks() : tasks;
 
@@ -89,7 +87,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       firstSunday.setDate(startDate.getDate() - jan1DayOfWeek);
     }
 
-
     // Find the Saturday of the week containing December 31st
     const dec31DayOfWeek = endDate.getDay();
     const lastSaturday = new Date(endDate);
@@ -97,7 +94,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     if (dec31DayOfWeek !== 6) {
       lastSaturday.setDate(endDate.getDate() + (6 - dec31DayOfWeek));
     }
-
 
     // Start from the Sunday of the first week
     const currentDate = new Date(firstSunday);
@@ -128,7 +124,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
       currentDate.setDate(currentDate.getDate() + 1);
     }
-
 
     return data;
   };
@@ -168,7 +163,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     return sampleTasks;
   };
 
-
   // Re-generate activity data when date range changes
   useEffect(() => {
     if (taskHistory.length > 0) {
@@ -203,7 +197,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, userId]);
 
-
   // Parse duration string "HH:MM:SS" or "MM:SS" to seconds
   const parseDuration = (duration: string | number | undefined): number => {
     if (typeof duration === "number") return duration;
@@ -227,23 +220,25 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   const getFilteredTasks = () => {
     // If not mounted, return all tasks (server-side)
     if (!mounted) return taskHistory;
-    
+
     // If no date range selected, return all tasks
     if (!clientDateRange.start || !clientDateRange.end) return taskHistory;
-    
+
     // Client-side filtering
     const startTime = clientDateRange.start.getTime();
-    
+
     // For single day selection (when start and end dates are the same day at midnight),
     // we need to get the end of that day, not add 24 hours to midnight
     const startDate = new Date(clientDateRange.start);
     const endDate = new Date(clientDateRange.end);
-    
+
     let endTime: number;
-    if (startDate.toDateString() === endDate.toDateString() && 
-        endDate.getHours() === 0 && 
-        endDate.getMinutes() === 0 && 
-        endDate.getSeconds() === 0) {
+    if (
+      startDate.toDateString() === endDate.toDateString() &&
+      endDate.getHours() === 0 &&
+      endDate.getMinutes() === 0 &&
+      endDate.getSeconds() === 0
+    ) {
       // Same day at midnight - get end of this day
       const endOfDay = new Date(endDate);
       endOfDay.setHours(23, 59, 59, 999);
@@ -252,8 +247,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       // Different days or custom time - add 24 hours to include full end day
       endTime = clientDateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1);
     }
-    
-    return taskHistory.filter(task => {
+
+    return taskHistory.filter((task) => {
       return task.timestamp >= startTime && task.timestamp <= endTime;
     });
   };
@@ -282,7 +277,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       firstTaskDate = new Date(sortedTasks[0].timestamp);
     }
 
-    
     // Calculate the actual number of days for averages - USING ALL TIME
     let daysDiff = 1;
     if (firstTaskDate) {
@@ -318,48 +312,50 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   };
 
   // Calculate metrics only on client side
-  const metrics = mounted ? calculateMetrics() : {
-    avgTasksPerDay: 0,
-    avgTimePerDay: 0,
-    avgTimePerTask: 0,
-    totalTime: 0,
-    completionRate: 0,
-    mostProductiveHour: 12,
-  };
-  
+  const metrics = mounted
+    ? calculateMetrics()
+    : {
+        avgTasksPerDay: 0,
+        avgTimePerDay: 0,
+        avgTimePerTask: 0,
+        totalTime: 0,
+        completionRate: 0,
+        mostProductiveHour: 12,
+      };
+
   // Get the earliest task date for display - only on client
   const getFirstTaskDate = () => {
     if (!mounted || taskHistory.length === 0) return null;
     const sortedTasks = [...taskHistory].sort((a, b) => a.timestamp - b.timestamp);
     return new Date(sortedTasks[0].timestamp);
   };
-  
+
   const firstTaskDate = getFirstTaskDate();
-  
+
   // Don't set initial date range - let the DateRangePicker handle it
   // This avoids any server-side date creation issues
-  
+
   // Calculate streaks using all task history (not filtered by date range)
   const calculateStreaks = () => {
     const allCompletedTasks = taskHistory.filter((t) => !t.task.toLowerCase().includes("quit early"));
     const dates = allCompletedTasks.map((t) => new Date(t.timestamp).toDateString());
     const uniqueDateStrings = Array.from(new Set(dates));
     const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    
+
     let longestStreak = 0;
     let currentStreak = 0;
-    
+
     if (sortedDateStrings.length > 0) {
       let tempStreak = 1;
       longestStreak = 1;
-      
+
       // Calculate longest streak
       for (let i = 1; i < sortedDateStrings.length; i++) {
         const prevDate = new Date(sortedDateStrings[i - 1]);
         const currDate = new Date(sortedDateStrings[i]);
         const diffTime = currDate.getTime() - prevDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) {
           tempStreak++;
           longestStreak = Math.max(longestStreak, tempStreak);
@@ -367,29 +363,29 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
           tempStreak = 1;
         }
       }
-      
+
       // Calculate current streak (working backwards from today)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toDateString();
-      
+
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toDateString();
-      
+
       const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
-      
+
       // Check if the streak is current (task completed today or yesterday)
       if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
         currentStreak = 1;
         let checkDate = new Date(lastTaskDate);
-        
+
         // Work backwards to count consecutive days
         for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
           const prevDate = new Date(sortedDateStrings[i]);
           const expectedDate = new Date(checkDate);
           expectedDate.setDate(expectedDate.getDate() - 1);
-          
+
           if (prevDate.toDateString() === expectedDate.toDateString()) {
             currentStreak++;
             checkDate = expectedDate;
@@ -399,26 +395,26 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
         }
       }
     }
-    
+
     return { currentStreak, longestStreak };
   };
-  
+
   // Calculate streaks only on client side
   const streakMetrics = mounted ? calculateStreaks() : { currentStreak: 0, longestStreak: 0 };
-  
+
   // Calculate all-time metrics (using current room data only, matching History component)
   const calculateAllTimeMetrics = () => {
     // Use filtered tasks based on date range
     const filteredTasks = getFilteredTasks();
-    
+
     // Filter out quit tasks using the same logic as History
     const completedTasks = filteredTasks.filter((t) => !t.task.toLowerCase().includes("quit early"));
     const totalTasks = completedTasks.length;
-    
+
     // Calculate total time using the same method as History component
     let totalSeconds = 0;
-    completedTasks.forEach(task => {
-      if (typeof task.duration === 'string') {
+    completedTasks.forEach((task) => {
+      if (typeof task.duration === "string") {
         const parts = task.duration.split(":").map(Number);
         if (parts.length === 3) {
           // HH:MM:SS format
@@ -433,25 +429,26 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             totalSeconds += minutes * 60 + seconds;
           }
         }
-      } else if (typeof task.duration === 'number') {
+      } else if (typeof task.duration === "number") {
         totalSeconds += task.duration;
       }
     });
-    
-    
+
     return {
       totalTasks,
       totalTime: totalSeconds,
-      activeDays: new Set(completedTasks.map((t) => new Date(t.timestamp).toDateString())).size
+      activeDays: new Set(completedTasks.map((t) => new Date(t.timestamp).toDateString())).size,
     };
   };
-  
+
   // Calculate all-time metrics only on client side
-  const allTimeMetrics = mounted ? calculateAllTimeMetrics() : {
-    totalTasks: 0,
-    totalTime: 0,
-    activeDays: 0
-  };
+  const allTimeMetrics = mounted
+    ? calculateAllTimeMetrics()
+    : {
+        totalTasks: 0,
+        totalTime: 0,
+        activeDays: 0,
+      };
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -601,7 +598,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                   {/* Activity squares organized by week */}
                   <div className="flex gap-0.5 ml-9">
                     {(() => {
-
                       // Organize data into weeks (Monday to Sunday)
                       const weeks = [];
                       let currentWeek = new Array(7).fill(null);
@@ -616,7 +612,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                         currentWeek[dayOfWeek] = day;
                         weekStarted = true;
 
-
                         // If this is Saturday (last day of week), push the week
                         if (dayOfWeek === 6 && weekStarted) {
                           weeks.push([...currentWeek]);
@@ -629,8 +624,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                       if (weekStarted) {
                         weeks.push(currentWeek);
                       }
-
-
 
                       // Filter out completely empty weeks AND ensure first/last weeks contain Jan 1/Dec 31
                       const filteredWeeks: (DayActivity[] | null)[] = [];
@@ -671,8 +664,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                       const nonEmptyWeeks = filteredWeeks;
 
                       return nonEmptyWeeks.map((week, weekIndex) => {
-
-
                         // Don't trim any weeks - show all 7 days
                         return (
                           <div key={weekIndex} className="flex flex-col gap-0.5 relative">
@@ -763,15 +754,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             {/* Date Range Picker - Centered */}
             <div className="mb-4">
               <div className="flex justify-center">
-                <DateRangePicker
-                  value={clientDateRange}
-                  onChange={setClientDateRange}
-                  firstTaskDate={firstTaskDate}
-                />
+                <DateRangePicker value={clientDateRange} onChange={setClientDateRange} firstTaskDate={firstTaskDate} />
               </div>
               {mounted && firstTaskDate && clientDateRange.start && firstTaskDate > clientDateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
-                  Calculated from your first task on {firstTaskDate.toLocaleDateString('en-US')}
+                  Calculated from your first task on {firstTaskDate.toLocaleDateString("en-US")}
                 </div>
               )}
             </div>
@@ -800,14 +787,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
               </div>
             </div>
 
-
             {/* Total Stats */}
             <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-black text-white">
-                    {allTimeMetrics.totalTasks}
-                  </div>
+                  <div className="text-2xl font-black text-white">{allTimeMetrics.totalTasks}</div>
                   <div className="text-gray-300 text-xs font-semibold">Total Tasks</div>
                 </div>
                 <div>
@@ -829,9 +813,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                   <span className="text-lg">🔥</span>
                   <h4 className="text-sm font-bold text-white">Current Streak</h4>
                 </div>
-                <div className="text-xl font-black text-[#FFAA00]">
-                  {streakMetrics.currentStreak} days
-                </div>
+                <div className="text-xl font-black text-[#FFAA00]">{streakMetrics.currentStreak} days</div>
                 <div className="text-gray-400 text-xs">Keep it going!</div>
               </div>
 
@@ -841,13 +823,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                   <span className="text-lg">🏆</span>
                   <h4 className="text-sm font-bold text-white">Best Streak</h4>
                 </div>
-                <div className="text-xl font-black text-[#FFAA00]">
-                  {streakMetrics.longestStreak} days
-                </div>
+                <div className="text-xl font-black text-[#FFAA00]">{streakMetrics.longestStreak} days</div>
                 <div className="text-gray-400 text-xs">Personal record</div>
               </div>
             </div>
-            
+
             {/* Keyboard Shortcut Tip */}
             <div className="mt-4 text-center text-xs text-gray-500">
               Shortcut <span className="px-2 py-1 bg-gray-800 rounded">⌘S</span>
