@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off, DataSnapshot } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, onValue, off, DataSnapshot } from "firebase/database";
 import Image from "next/image";
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
@@ -10,16 +11,19 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   const [userDailyTimes, setUserDailyTimes] = useState<Record<string, number>>({});
   const [userDailyTasks, setUserDailyTasks] = useState<Record<string, number>>({});
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
-  const [runningTimerData, setRunningTimerData] = useState<Record<string, { startTime: number; baseSeconds: number }>>({});
+  const [runningTimerData, setRunningTimerData] = useState<Record<string, { startTime: number; baseSeconds: number }>>(
+    {}
+  );
   const [runningTimers, setRunningTimers] = useState<Record<string, boolean>>({});
-  const [hoveredUserSnapshot, setHoveredUserSnapshot] = useState<{ dailyTime: number; dailyTasks: number } | null>(null);
-
+  const [hoveredUserSnapshot, setHoveredUserSnapshot] = useState<{ dailyTime: number; dailyTasks: number } | null>(
+    null
+  );
 
   // Format time display
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else if (minutes > 0) {
@@ -30,35 +34,36 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   };
 
   // Calculate streak from actual task history (matching Analytics/PersonalStats)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const calculateStreakFromHistory = (completedDates: string[]) => {
     if (!completedDates || completedDates.length === 0) return 0;
 
     // Get unique dates and sort them
     const uniqueDates = Array.from(new Set(completedDates));
     const sortedDates = uniqueDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    
+
     // Calculate current streak (working backwards from today)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toDateString();
-    
+
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toDateString();
-    
+
     const lastTaskDate = new Date(sortedDates[sortedDates.length - 1]).toDateString();
-    
+
     // Check if the streak is current (task completed today or yesterday)
     if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
       let currentStreak = 1;
       let checkDate = new Date(lastTaskDate);
-      
+
       // Work backwards to count consecutive days
       for (let i = sortedDates.length - 2; i >= 0; i--) {
         const prevDate = new Date(sortedDates[i]);
         const expectedDate = new Date(checkDate);
         expectedDate.setDate(expectedDate.getDate() - 1);
-        
+
         if (prevDate.toDateString() === expectedDate.toDateString()) {
           currentStreak++;
           checkDate = expectedDate;
@@ -66,27 +71,34 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           break;
         }
       }
-      
+
       return currentStreak;
     }
-    
+
     return 0;
   };
 
+  // TODO: Replace with Firebase RTDB listener for active users
   useEffect(() => {
     if (!roomId) return;
-    const activeRef = ref(rtdb, `instances/${roomId}/activeUsers`);
-    const handle = onValue(activeRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setActiveUsers(Object.values(data));
-      } else {
-        setActiveUsers([]);
-      }
-    });
-    return () => off(activeRef, "value", handle);
+
+    // Simulating active users - replace with Firebase RTDB
+    // const activeRef = ref(rtdb, `instances/${roomId}/activeUsers`);
+    // const handle = onValue(activeRef, (snapshot) => {
+    //   const data = snapshot.val();
+    //   if (data) {
+    //     setActiveUsers(Object.values(data));
+    //   } else {
+    //     setActiveUsers([]);
+    //   }
+    // });
+    // return () => off(activeRef, "value", handle);
+
+    // Temporary mock data
+    setActiveUsers([]);
   }, [roomId]);
 
+  // TODO: Replace with Firebase RTDB listener for user streaks
   // Load streaks for active users from task history
   useEffect(() => {
     if (activeUsers.length === 0) {
@@ -95,59 +107,28 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     }
 
     const loadStreaksFromHistory = () => {
-      const instancesRef = ref(rtdb, "instances");
-      onValue(instancesRef, (snapshot) => {
-        const instancesData = snapshot.val();
-        const userStreakData: Record<string, string[]> = {};
-        
-        // Initialize empty arrays for each active user
-        activeUsers.forEach(user => {
-          userStreakData[user.id] = [];
-        });
-        
-        if (instancesData) {
-          // Go through each instance/room
-          Object.entries(instancesData).forEach(([, instanceData]) => {
-            const typedInstanceData = instanceData as { history?: Record<string, { userId: string; task: string; timestamp?: number; duration?: string; completed?: boolean }> };
-            if (typedInstanceData.history) {
-              Object.entries(typedInstanceData.history).forEach(([, entry]) => {
-                const activeUser = activeUsers.find(u => u.id === entry.userId);
-                if (activeUser && !entry.task.toLowerCase().includes("quit early") && entry.timestamp) {
-                  // Count task if completed is true OR undefined (legacy tasks)
-                  // Only skip if explicitly false
-                  if (entry.completed !== false) {
-                    const taskDate = new Date(entry.timestamp);
-                    const year = taskDate.getFullYear();
-                    const month = (taskDate.getMonth() + 1).toString().padStart(2, '0');
-                    const day = taskDate.getDate().toString().padStart(2, '0');
-                    const dateStr = `${year}-${month}-${day}`;
-                    userStreakData[activeUser.id].push(dateStr);
-                  }
-                }
-              });
-            }
-          });
-        }
-        
-        // Calculate streaks for each user
-        const streaks: Record<string, number> = {};
-        activeUsers.forEach(user => {
-          streaks[user.id] = calculateStreakFromHistory(userStreakData[user.id]);
-        });
-        
-        setUserStreaks(streaks);
-      }, { onlyOnce: true });
+      // TODO: Replace with Firebase RTDB query
+      // const instancesRef = ref(rtdb, "instances");
+      // onValue(instancesRef, (snapshot) => { ... }, { onlyOnce: true });
+
+      // Temporary: Set empty streaks
+      const streaks: Record<string, number> = {};
+      activeUsers.forEach((user) => {
+        streaks[user.id] = 0;
+      });
+      setUserStreaks(streaks);
     };
-    
+
     // Load immediately
     loadStreaksFromHistory();
-    
+
     // Refresh every minute
     const interval = setInterval(loadStreaksFromHistory, 60000);
-    
+
     return () => clearInterval(interval);
   }, [activeUsers]);
 
+  // TODO: Replace with Firebase RTDB listener for daily stats
   // Load daily stats from history for active users
   useEffect(() => {
     if (activeUsers.length === 0) {
@@ -166,74 +147,25 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       return date.toISOString().split("T")[0];
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const currentStreakDate = getStreakDate();
 
     const loadDailyStats = () => {
-      // Listen to all instances to calculate daily stats
-      const instancesRef = ref(rtdb, "instances");
-      onValue(instancesRef, (snapshot) => {
-      const instancesData = snapshot.val();
+      // TODO: Replace with Firebase RTDB query
+      // const instancesRef = ref(rtdb, "instances");
+      // onValue(instancesRef, (snapshot) => { ... }, { onlyOnce: true });
+
+      // Temporary: Set empty stats
       const dailyTimes: Record<string, number> = {};
       const dailyTasks: Record<string, number> = {};
 
-      // Initialize all active users with 0
-      activeUsers.forEach(user => {
+      activeUsers.forEach((user) => {
         dailyTimes[user.id] = 0;
         dailyTasks[user.id] = 0;
       });
 
-      if (instancesData) {
-        // Go through each instance/room
-        Object.entries(instancesData).forEach(([, instanceData]) => {
-          const typedInstanceData = instanceData as { history?: Record<string, { userId: string; task: string; timestamp?: number; duration?: string }> };
-          // Check if there's history data for this instance
-          if (typedInstanceData.history) {
-            // Go through each history entry in this room
-            Object.entries(typedInstanceData.history).forEach(([, entry]) => {
-              const typedEntry = entry;
-              // Check if this entry belongs to one of our active users
-              const activeUser = activeUsers.find(u => u.id === typedEntry.userId);
-              if (activeUser && !typedEntry.task.toLowerCase().includes("quit early")) {
-                // Check if it's within today's 4am UTC window
-                if (typedEntry.timestamp) {
-                  const entryStreakDate = getStreakDate(typedEntry.timestamp);
-
-                  if (entryStreakDate === currentStreakDate) {
-                    // Parse duration
-                    let seconds = 0;
-                    if (typedEntry.duration && typeof typedEntry.duration === "string") {
-                      const parts = typedEntry.duration.split(":").map(Number);
-                      if (parts.length === 3) {
-                        // hh:mm:ss format
-                        const [h, m, s] = parts;
-                        if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
-                          seconds = h * 3600 + m * 60 + s;
-                        }
-                      } else if (parts.length === 2) {
-                        // mm:ss format
-                        const [m, s] = parts;
-                        if (!isNaN(m) && !isNaN(s)) {
-                          seconds = m * 60 + s;
-                        }
-                      }
-                    }
-
-                    // Only process if we got valid seconds
-                    if (seconds > 0) {
-                      dailyTimes[activeUser.id] = (dailyTimes[activeUser.id] || 0) + seconds;
-                      dailyTasks[activeUser.id] = (dailyTasks[activeUser.id] || 0) + 1;
-                    }
-                  }
-                }
-              }
-            });
-          }
-        });
-      }
-
       setUserDailyTimes(dailyTimes);
       setUserDailyTasks(dailyTasks);
-    }, { onlyOnce: true }); // Use onlyOnce to avoid continuous listening
     };
 
     // Load stats immediately
@@ -242,77 +174,44 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     // Set up periodic refresh every 60 seconds
     const interval = setInterval(loadDailyStats, 60000);
 
+    // TODO: Replace with Firebase RTDB listener for lastEvent
     // Also listen to lastEvent to refresh when someone completes a task
-    let lastEventRef: ReturnType<typeof ref> | null = null;
-    let lastEventHandleFunc: ((snapshot: DataSnapshot) => void) | null = null;
-    if (roomId) {
-      lastEventRef = ref(rtdb, `instances/${roomId}/lastEvent`);
-      let lastEventTimestamp = 0;
-      
-      lastEventHandleFunc = (snapshot: DataSnapshot) => {
-        const event = snapshot.val();
-        if (event && event.timestamp > lastEventTimestamp) {
-          lastEventTimestamp = event.timestamp;
-          // Only refresh on complete events (not start/quit)
-          if (event.type === "complete") {
-            // Small delay to ensure history is written
-            setTimeout(loadDailyStats, 500);
-          }
-        }
-      };
-      
-      onValue(lastEventRef, lastEventHandleFunc);
-    }
+    // let lastEventRef: ReturnType<typeof ref> | null = null;
+    // let lastEventHandleFunc: ((snapshot: DataSnapshot) => void) | null = null;
+    // if (roomId) {
+    //   lastEventRef = ref(rtdb, `instances/${roomId}/lastEvent`);
+    //   onValue(lastEventRef, lastEventHandleFunc);
+    // }
 
     return () => {
       clearInterval(interval);
-      if (lastEventRef && lastEventHandleFunc) {
-        off(lastEventRef, "value", lastEventHandleFunc);
-      }
+      // TODO: Clean up Firebase listeners
+      // if (lastEventRef && lastEventHandleFunc) {
+      //   off(lastEventRef, "value", lastEventHandleFunc);
+      // }
     };
   }, [activeUsers, roomId]);
 
+  // TODO: Replace with Firebase RTDB listener for user timers
   // Listen to user timers to track who's actively running
   useEffect(() => {
     if (!roomId) return;
 
-    const userTimersRef = ref(rtdb, `instances/${roomId}/userTimers`);
-    const handle = onValue(userTimersRef, (snapshot) => {
-      const timersData = snapshot.val();
-      const running: Record<string, boolean> = {};
-      const runningData: Record<string, { startTime: number; baseSeconds: number }> = {};
-      
-      if (timersData) {
-        Object.entries(timersData).forEach(([userId, userTimerData]) => {
-          const typedTimerData = userTimerData as { 
-            running?: boolean; 
-            startTime?: number; 
-            baseSeconds?: number;
-          };
-          running[userId] = typedTimerData.running || false;
-          
-          // Store timer data for running timers
-          if (typedTimerData.running && typedTimerData.startTime) {
-            runningData[userId] = {
-              startTime: typedTimerData.startTime,
-              baseSeconds: typedTimerData.baseSeconds || 0
-            };
-          }
-        });
-      }
-      
-      setRunningTimers(running);
-      setRunningTimerData(runningData);
-    });
+    // TODO: Replace with Firebase RTDB listener
+    // const userTimersRef = ref(rtdb, `instances/${roomId}/userTimers`);
+    // const handle = onValue(userTimersRef, (snapshot) => { ... });
+    // return () => off(userTimersRef, "value", handle);
 
-    return () => off(userTimersRef, "value", handle);
+    // Temporary: Set empty timers
+    setRunningTimers({});
+    setRunningTimerData({});
   }, [roomId]);
 
   // Calculate the current elapsed time for a running timer (only for sorting)
   const getRunningTimerElapsed = (userId: string) => {
     const timerData = runningTimerData[userId];
     if (!timerData) return 0;
-    
+
     const elapsedSinceStart = Math.floor((Date.now() - timerData.startTime) / 1000);
     return timerData.baseSeconds + elapsedSinceStart;
   };
@@ -340,7 +239,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             // Take a snapshot of the current data
             setHoveredUserSnapshot({
               dailyTime: userDailyTimes[u.id] || 0,
-              dailyTasks: userDailyTasks[u.id] || 0
+              dailyTasks: userDailyTasks[u.id] || 0,
             });
           }}
           onMouseLeave={() => {
@@ -349,14 +248,20 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           }}
         >
           {(userStreaks[u.id] || 0) > 0 && (
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${
-              userStreaks[u.id] >= 10 
-                ? "bg-gradient-to-br from-[#ffaa00] to-[#e69500]" 
-                : `border ${userStreaks[u.id] >= 5 ? "border-[#FFAA00]" : "border-gray-400"}`
-            }`}>
-              <span className={`text-xs font-bold font-sans ${
-                userStreaks[u.id] >= 10 ? "text-black" : userStreaks[u.id] >= 5 ? "text-[#FFAA00]" : "text-[#9CA3AF]"
-              }`}>{userStreaks[u.id]}</span>
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${
+                userStreaks[u.id] >= 10
+                  ? "bg-gradient-to-br from-[#ffaa00] to-[#e69500]"
+                  : `border ${userStreaks[u.id] >= 5 ? "border-[#FFAA00]" : "border-gray-400"}`
+              }`}
+            >
+              <span
+                className={`text-xs font-bold font-sans ${
+                  userStreaks[u.id] >= 10 ? "text-black" : userStreaks[u.id] >= 5 ? "text-[#FFAA00]" : "text-[#9CA3AF]"
+                }`}
+              >
+                {userStreaks[u.id]}
+              </span>
             </div>
           )}
           <span className="cursor-pointer flex items-center gap-1">
@@ -365,10 +270,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <Image src="/axe.png" alt="axe" width={16} height={16} className="inline-block" />
             )}
             <span>
-              {" "}is <span className="hidden sm:inline">actively </span>working
+              {" "}
+              is <span className="hidden sm:inline">actively </span>working
             </span>
           </span>
-          
+
           {/* Tooltip */}
           {hoveredUserId === u.id && (
             <div className="absolute top-full left-0 mt-1" style={{ zIndex: 100 }}>
@@ -377,9 +283,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                   <span className="text-gray-400">Today:</span>{" "}
                   <span className="text-gray-100 font-medium">{hoveredUserSnapshot?.dailyTasks || 0}</span>{" "}
                   <span className="text-gray-400">tasks</span> |{" "}
-                  <span className="text-gray-100 font-medium">
-                    {formatTime(hoveredUserSnapshot?.dailyTime || 0)}
-                  </span>
+                  <span className="text-gray-100 font-medium">{formatTime(hoveredUserSnapshot?.dailyTime || 0)}</span>
                 </div>
                 {/* Arrow */}
                 <div className="absolute bottom-full left-4 transform border-4 border-transparent border-b-gray-700"></div>

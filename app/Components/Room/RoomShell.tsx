@@ -2,9 +2,12 @@
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 import ActiveWorkers from "./ActiveWorkers";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set, remove, push, onValue, off, runTransaction } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, set, remove, push, onValue, off, runTransaction } from "firebase/database";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
 import History from "./History";
@@ -28,6 +31,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
   const router = useRouter();
+  
+  // Get user data from Redux store
+  const reduxUser = useSelector((state: RootState) => state.user);
   const [task, setTask] = useState("");
   const [inputLocked, setInputLocked] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -66,7 +72,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
     return 0.2;
   });
-  
+
   // Track previous volume for mute/unmute functionality
   const [previousVolume, setPreviousVolume] = useState(0.2);
 
@@ -88,6 +94,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [hasActiveTimer, setHasActiveTimer] = useState(false);
   const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
 
+
+  // Log Redux user state only when it changes
+  useEffect(() => {
+    if (reduxUser.user_id) {
+      console.log("Redux user state in room:", reduxUser);
+    }
+  }, [reduxUser]);
+
+  // TODO: Replace with Firebase RTDB listener for tasks
   // Find taskId for current task
   useEffect(() => {
     if (!user?.id || !task.trim()) {
@@ -95,23 +110,36 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       return;
     }
 
-    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-    const handle = onValue(tasksRef, (snapshot) => {
-      const tasksData = snapshot.val();
-      if (tasksData) {
-        const taskId = Object.keys(tasksData).find((id) => {
-          const taskItem = tasksData[id];
-          return taskItem.text === task.trim() && !taskItem.completed;
-        });
-        setCurrentTaskId(taskId || null);
-      } else {
-        setCurrentTaskId(null);
-      }
-    });
+    // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+    // const handle = onValue(tasksRef, (snapshot) => {
+    //   const tasksData = snapshot.val();
+    //   if (tasksData) {
+    //     const taskId = Object.keys(tasksData).find((id) => {
+    //       const taskItem = tasksData[id];
+    //       return taskItem.text === task.trim() && !taskItem.completed;
+    //     });
+    //     setCurrentTaskId(taskId || null);
+    //   } else {
+    //     setCurrentTaskId(null);
+    //   }
+    // });
 
-    return () => off(tasksRef, "value", handle);
+    // return () => off(tasksRef, "value", handle);
+    
+    // Temporary: Generate a task ID based on task text to enable notes
+    // This allows notes to work locally (but won't persist after reload)
+    if (task.trim()) {
+      // Create a simple hash of the task text to use as ID
+      const tempTaskId = task.trim().split('').reduce((acc, char, idx) => {
+        return acc + char.charCodeAt(0) * (idx + 1);
+      }, 0).toString();
+      setCurrentTaskId(tempTaskId);
+    } else {
+      setCurrentTaskId(null);
+    }
   }, [user?.id, task]);
 
+  // TODO: Replace with Firebase RTDB listener for timer state
   // Listen for timer state to determine if input should be locked and track current seconds
   useEffect(() => {
     if (!currentInstance || !user?.id) {
@@ -120,63 +148,70 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       return;
     }
 
-    const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-    const handle = onValue(timerStateRef, (snapshot) => {
-      const timerState = snapshot.val();
+    // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+    // const handle = onValue(timerStateRef, (snapshot) => {
+    //   const timerState = snapshot.val();
 
-      if (timerState) {
-        let currentSeconds = 0;
-        if (timerState.running && timerState.startTime) {
-          // Calculate current seconds for running timer: base + elapsed time since start
-          const elapsedMs = Date.now() - timerState.startTime;
-          const elapsedSeconds = Math.floor(elapsedMs / 1000);
-          currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-        } else {
-          // Use stored total seconds when paused
-          currentSeconds = timerState.totalSeconds || 0;
-        }
-        // Timer is considered active if it has accumulated time (running or paused)
-        setHasActiveTimer(currentSeconds > 0);
-        setCurrentTimerSeconds(currentSeconds);
+    //   if (timerState) {
+    //     let currentSeconds = 0;
+    //     if (timerState.running && timerState.startTime) {
+    //       // Calculate current seconds for running timer: base + elapsed time since start
+    //       const elapsedMs = Date.now() - timerState.startTime;
+    //       const elapsedSeconds = Math.floor(elapsedMs / 1000);
+    //       currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+    //     } else {
+    //       // Use stored total seconds when paused
+    //       currentSeconds = timerState.totalSeconds || 0;
+    //     }
+    //     // Timer is considered active if it has accumulated time (running or paused)
+    //     setHasActiveTimer(currentSeconds > 0);
+    //     setCurrentTimerSeconds(currentSeconds);
 
-        // Restore task if timer has accumulated time and current task is empty
-        if (currentSeconds > 0 && timerState.task && !task.trim()) {
-          setTask(timerState.task);
-        }
-      } else {
-        setHasActiveTimer(false);
-        setCurrentTimerSeconds(0);
-      }
-    });
+    //     // Restore task if timer has accumulated time and current task is empty
+    //     if (currentSeconds > 0 && timerState.task && !task.trim()) {
+    //       setTask(timerState.task);
+    //     }
+    //   } else {
+    //     setHasActiveTimer(false);
+    //     setCurrentTimerSeconds(0);
+    //   }
+    // });
 
-    return () => off(timerStateRef, "value", handle);
+    // return () => off(timerStateRef, "value", handle);
+    
+    // Temporary: No timer state tracking
+    setHasActiveTimer(false);
+    setCurrentTimerSeconds(0);
   }, [currentInstance, user?.id, task]);
 
+  // TODO: Replace with Firebase RTDB real-time timer updates
   // Update timer seconds in real-time when timer is running
   useEffect(() => {
     if (!currentInstance || !user?.id || !timerRunning) return;
 
-    const interval = setInterval(() => {
-      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-      // Get current timer state to calculate live seconds
-      const unsubscribe = onValue(
-        timerStateRef,
-        (snapshot) => {
-          const timerState = snapshot.val();
-          if (timerState && timerState.running && timerState.startTime) {
-            const elapsedMs = Date.now() - timerState.startTime;
-            const elapsedSeconds = Math.floor(elapsedMs / 1000);
-            const currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-            setCurrentTimerSeconds(currentSeconds);
-          }
-        },
-        { onlyOnce: true }
-      );
+    // const interval = setInterval(() => {
+    //   const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+    //   // Get current timer state to calculate live seconds
+    //   const unsubscribe = onValue(
+    //     timerStateRef,
+    //     (snapshot) => {
+    //       const timerState = snapshot.val();
+    //       if (timerState && timerState.running && timerState.startTime) {
+    //         const elapsedMs = Date.now() - timerState.startTime;
+    //         const elapsedSeconds = Math.floor(elapsedMs / 1000);
+    //         const currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+    //         setCurrentTimerSeconds(currentSeconds);
+    //       }
+    //     },
+    //     { onlyOnce: true }
+    //   );
 
-      return () => unsubscribe();
-    }, 1000);
+    //   return () => unsubscribe();
+    // }, 1000);
 
-    return () => clearInterval(interval);
+    // return () => clearInterval(interval);
+    
+    // Temporary: No real-time timer updates
   }, [currentInstance, user?.id, timerRunning]);
 
   // Persist volume to localStorage whenever it changes
@@ -189,7 +224,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
     }
   }, [localVolume]);
-
 
   useEffect(() => {
     if (instances.length === 0) return;
@@ -205,6 +239,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setLoading(false);
   }, [instances, roomUrl, currentInstance, joinInstance]);
 
+  // TODO: Replace with Firebase RTDB tab counting
   // Track user tab count to handle multi-tab scenarios
   const userTabCountRef = React.useRef(0);
 
@@ -212,102 +247,108 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     if (!currentInstance || !user) return;
 
-    // Path to user's tab count
-    const tabCountRef = ref(rtdb, `instances/${currentInstance.id}/tabCounts/${user.id}`);
+    // // Path to user's tab count
+    // const tabCountRef = ref(rtdb, `instances/${currentInstance.id}/tabCounts/${user.id}`);
 
-    // Increment tab count when this tab opens/joins room
-    runTransaction(tabCountRef, (currentData) => {
-      const currentCount = currentData?.count || 0;
-      const newCount = currentCount + 1;
-      return {
-        count: newCount,
-        displayName: user.displayName,
-        lastUpdated: Date.now(),
-      };
-    });
+    // // Increment tab count when this tab opens/joins room
+    // runTransaction(tabCountRef, (currentData) => {
+    //   const currentCount = currentData?.count || 0;
+    //   const newCount = currentCount + 1;
+    //   return {
+    //     count: newCount,
+    //     displayName: user.displayName,
+    //     lastUpdated: Date.now(),
+    //   };
+    // });
 
-    // Listen to tab count changes
-    const handle = onValue(tabCountRef, (snapshot) => {
-      const data = snapshot.val();
-      const tabCount = data?.count || 0;
-      userTabCountRef.current = tabCount;
+    // // Listen to tab count changes
+    // const handle = onValue(tabCountRef, (snapshot) => {
+    //   const data = snapshot.val();
+    //   const tabCount = data?.count || 0;
+    //   userTabCountRef.current = tabCount;
 
-      // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
-      // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
-    });
+    //   // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
+    //   // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
+    // });
 
-    // Add beforeunload listener to track page navigation/refresh
-    const handleBeforeUnload = () => {
-      // Decrement tab count immediately on beforeunload for reliability
-      runTransaction(tabCountRef, (currentData) => {
-        const currentCount = currentData?.count || 0;
-        const newCount = Math.max(0, currentCount - 1);
+    // // Add beforeunload listener to track page navigation/refresh
+    // const handleBeforeUnload = () => {
+    //   // Decrement tab count immediately on beforeunload for reliability
+    //   runTransaction(tabCountRef, (currentData) => {
+    //     const currentCount = currentData?.count || 0;
+    //     const newCount = Math.max(0, currentCount - 1);
 
-        if (newCount === 0) {
-          // Remove the tab count entry if this was the last tab
-          const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-          const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-          remove(activeRef);
-          remove(usersRef); // Also remove from main users list
-          return null; // Remove the entire node
-        } else {
-          // Just decrement the count - user still has other tabs open
-          return {
-            count: newCount,
-            displayName: user.displayName,
-            lastUpdated: Date.now(),
-          };
-        }
-      });
-    };
+    //     if (newCount === 0) {
+    //       // Remove the tab count entry if this was the last tab
+    //       const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+    //       const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+    //       remove(activeRef);
+    //       remove(usersRef); // Also remove from main users list
+    //       return null; // Remove the entire node
+    //     } else {
+    //       // Just decrement the count - user still has other tabs open
+    //       return {
+    //         count: newCount,
+    //         displayName: user.displayName,
+    //         lastUpdated: Date.now(),
+    //       };
+    //     }
+    //   });
+    // };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    // window.addEventListener("beforeunload", handleBeforeUnload);
 
-    return () => {
-      // Remove event listener
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+    // return () => {
+    //   // Remove event listener
+    //   window.removeEventListener("beforeunload", handleBeforeUnload);
 
-      // Fallback cleanup when component unmounts - only decrement if tab count is still > 0
-      // This handles edge cases where beforeunload didn't fire
-      if (userTabCountRef.current > 0) {
-        runTransaction(tabCountRef, (currentData) => {
-          const currentCount = currentData?.count || 0;
-          const newCount = Math.max(0, currentCount - 1);
+    //   // Fallback cleanup when component unmounts - only decrement if tab count is still > 0
+    //   // This handles edge cases where beforeunload didn't fire
+    //   if (userTabCountRef.current > 0) {
+    //     runTransaction(tabCountRef, (currentData) => {
+    //       const currentCount = currentData?.count || 0;
+    //       const newCount = Math.max(0, currentCount - 1);
 
-          if (newCount === 0) {
-            const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-            const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-            remove(activeRef);
-            remove(usersRef);
-            return null;
-          } else {
-            return {
-              count: newCount,
-              displayName: user.displayName,
-              lastUpdated: Date.now(),
-            };
-          }
-        });
-      }
+    //       if (newCount === 0) {
+    //         const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+    //         const usersRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+    //         remove(activeRef);
+    //         remove(usersRef);
+    //         return null;
+    //       } else {
+    //         return {
+    //           count: newCount,
+    //           displayName: user.displayName,
+    //           lastUpdated: Date.now(),
+    //         };
+    //       }
+    //     });
+    //   }
 
-      off(tabCountRef, "value", handle);
-    };
+    //   off(tabCountRef, "value", handle);
+    // };
+    
+    // Temporary: Set default tab count
+    userTabCountRef.current = 1;
   }, [currentInstance, user]);
 
+  // TODO: Replace with Firebase RTDB active user tracking
   // Track active user status in Firebase RTDB
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
-    const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+    // const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
     setTimerRunning(isActive);
     if (isActive) {
-      set(activeRef, { id: user.id, displayName: user.displayName });
+      // set(activeRef, { id: user.id, displayName: user.displayName });
       // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
       // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
+      console.log('User became active:', user.displayName);
       setInputLocked(true);
       setHasStarted(true);
     } else {
       // Always remove from activeUsers when timer is paused/stopped
-      remove(activeRef);
+      // remove(activeRef);
+      console.log('User became inactive:', user.displayName);
       setInputLocked(true); // keep locked until complete/clear/quit
     }
   };
@@ -346,72 +387,79 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, [timerRunning]);
 
+  // TODO: Replace with Firebase RTDB listener for event notifications
   // Listen for event notifications (🥊🏆💀)
   useEffect(() => {
     if (!currentInstance) return;
-    const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
-    let timeout: NodeJS.Timeout | null = null;
-    let firstRun = true;
-    const handle = onValue(lastEventRef, (snap) => {
-      if (firstRun) {
-        firstRun = false;
-        return;
-      }
-      const val = snap.val();
-      if (val && val.displayName && val.type) {
-        let emoji = "";
-        if (val.type === "start") emoji = "🥊";
-        if (val.type === "complete") emoji = "🏆";
-        if (val.type === "quit") emoji = "💀";
-        document.title = `${emoji} ${val.displayName}`;
-        if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          // Resume timer or default title immediately after notification
-          if (timerRunning) {
-            document.title = formatTime(timerSecondsRef.current);
-          } else {
-            document.title = "Locked In";
-          }
-        }, 5000);
-      }
-    });
-    return () => {
-      off(lastEventRef, "value", handle);
-      if (timeout) clearTimeout(timeout);
-    };
+    // const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
+    // let timeout: NodeJS.Timeout | null = null;
+    // let firstRun = true;
+    // const handle = onValue(lastEventRef, (snap) => {
+    //   if (firstRun) {
+    //     firstRun = false;
+    //     return;
+    //   }
+    //   const val = snap.val();
+    //   if (val && val.displayName && val.type) {
+    //     let emoji = "";
+    //     if (val.type === "start") emoji = "🥊";
+    //     if (val.type === "complete") emoji = "🏆";
+    //     if (val.type === "quit") emoji = "💀";
+    //     document.title = `${emoji} ${val.displayName}`;
+    //     if (timeout) clearTimeout(timeout);
+    //     timeout = setTimeout(() => {
+    //       // Resume timer or default title immediately after notification
+    //       if (timerRunning) {
+    //         document.title = formatTime(timerSecondsRef.current);
+    //       } else {
+    //         document.title = "Locked In";
+    //       }
+    //     }, 5000);
+    //   }
+    // });
+    // return () => {
+    //   off(lastEventRef, "value", handle);
+    //   if (timeout) clearTimeout(timeout);
+    // };
+    
+    // Temporary: No event notifications
   }, [currentInstance, timerRunning]);
 
+  // TODO: Replace with Firebase RTDB listener for flying messages
   // Listen for flying messages from Firebase
   useEffect(() => {
     if (!currentInstance) return;
 
-    const flyingMessagesRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages`);
-    const handle = onValue(flyingMessagesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Convert Firebase object to array and sort by timestamp
-        const messages = Object.entries(data).map(([id, msg]) => {
-          const typedMsg = msg as { text: string; color: string; userId: string; timestamp: number };
-          return {
-            id,
-            text: typedMsg.text,
-            color: typedMsg.color,
-            userId: typedMsg.userId,
-            timestamp: typedMsg.timestamp,
-          };
-        });
+    // const flyingMessagesRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages`);
+    // const handle = onValue(flyingMessagesRef, (snapshot) => {
+    //   const data = snapshot.val();
+    //   if (data) {
+    //     // Convert Firebase object to array and sort by timestamp
+    //     const messages = Object.entries(data).map(([id, msg]) => {
+    //       const typedMsg = msg as { text: string; color: string; userId: string; timestamp: number };
+    //       return {
+    //         id,
+    //         text: typedMsg.text,
+    //         color: typedMsg.color,
+    //         userId: typedMsg.userId,
+    //         timestamp: typedMsg.timestamp,
+    //       };
+    //     });
 
-        // Filter out messages older than 7 seconds
-        const now = Date.now();
-        const recentMessages = messages.filter((msg) => now - msg.timestamp < 7000);
+    //     // Filter out messages older than 7 seconds
+    //     const now = Date.now();
+    //     const recentMessages = messages.filter((msg) => now - msg.timestamp < 7000);
 
-        setFlyingMessages(recentMessages);
-      } else {
-        setFlyingMessages([]);
-      }
-    });
+    //     setFlyingMessages(recentMessages);
+    //   } else {
+    //     setFlyingMessages([]);
+    //   }
+    // });
 
-    return () => off(flyingMessagesRef, "value", handle);
+    // return () => off(flyingMessagesRef, "value", handle);
+    
+    // Temporary: No flying messages
+    setFlyingMessages([]);
   }, [currentInstance]);
 
   const handleClear = () => {
@@ -425,18 +473,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
+    // TODO: Replace with Firebase RTDB timer state removal
     // Clear Firebase timer state when clearing
     if (currentInstance && user?.id) {
-      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-      remove(timerStateRef);
+      // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      // remove(timerStateRef);
+      console.log('Would clear timer state for user:', user.id);
     }
   };
 
+  // TODO: Replace with Firebase RTDB event notification
   // Add event notification for complete and quit
   function notifyEvent(type: "complete" | "quit") {
     if (currentInstance) {
-      const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
-      set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
+      // const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
+      // set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
+      console.log('Event notification:', { displayName: user.displayName, type, timestamp: Date.now() });
     }
   }
 
@@ -449,7 +501,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         .toString()
         .padStart(2, "0");
       const secs = (timerSecondsRef.current % 60).toString().padStart(2, "0");
-      const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
+      // TODO: Replace with Firebase RTDB history push
+      // const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
       const quitData = {
         userId: user.id,
         displayName: user.displayName,
@@ -458,38 +511,66 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         timestamp: Date.now(),
         completed: false,
       };
-      push(historyRef, quitData);
+      // push(historyRef, quitData);
+      console.log('Would save quit data to history:', quitData);
 
+      // TODO: Replace with Firebase RTDB user history push
       // Also save to user's personal completion history for cross-room stats
-      const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
-      push(userHistoryRef, quitData);
+      // const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
+      // push(userHistoryRef, quitData);
+      console.log('Would save to user completion history:', quitData);
       
+      // Also add to global completed tasks (will be filtered out from stats due to "Quit Early")
+      if (typeof window !== "undefined") {
+        const windowWithTask = window as Window & { addCompletedTask?: (task: typeof quitData) => void };
+        if (windowWithTask.addCompletedTask) {
+          windowWithTask.addCompletedTask(quitData);
+        }
+      }
+
       // Always play quit sound locally
       const quitAudio = new Audio("/quit.mp3");
       quitAudio.volume = localVolume;
       quitAudio.play();
-      
+
+      // TODO: Replace with Firebase RTDB quit sound cooldown check
       // Only notify others if timer was > 5 seconds AND cooldown has passed
       if (timerSecondsRef.current > 5 && user?.id && currentInstance) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const now = Date.now();
-        const lastQuitRef = ref(rtdb, `instances/${currentInstance.id}/lastQuitSound/${user.id}`);
+        // const lastQuitRef = ref(rtdb, `instances/${currentInstance.id}/lastQuitSound/${user.id}`);
+
+        // // Check last quit sound timestamp
+        // onValue(
+        //   lastQuitRef,
+        //   (snapshot) => {
+        //     const lastQuitTime = snapshot.val() || 0;
+        //     const timeSinceLastQuit = now - lastQuitTime;
+
+        //     if (timeSinceLastQuit > 300000) {
+        //       // 5 minutes cooldown
+        //       notifyEvent("quit");
+        //       set(lastQuitRef, now);
+        //     }
+        //   },
+        //   { onlyOnce: true }
+        // );
         
-        // Check last quit sound timestamp
-        onValue(lastQuitRef, (snapshot) => {
-          const lastQuitTime = snapshot.val() || 0;
-          const timeSinceLastQuit = now - lastQuitTime;
-          
-          if (timeSinceLastQuit > 300000) { // 5 minutes cooldown
-            notifyEvent("quit");
-            set(lastQuitRef, now);
-          }
-        }, { onlyOnce: true });
+        // Temporary: Always notify quit (no cooldown check)
+        notifyEvent("quit");
       }
-      
+
+      // TODO: Replace with Firebase RTDB flying message
       // Add flying message for quit to Firebase
       const flyingMessageId = `${user.id}-quit-${Date.now()}`;
-      const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
-      set(flyingMessageRef, {
+      // const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+      // set(flyingMessageRef, {
+      //   text: `💀 ${user.displayName} folded faster than a lawn chair.`,
+      //   color: "text-red-500",
+      //   userId: user.id,
+      //   timestamp: Date.now(),
+      // });
+      console.log('Would add flying message:', {
         text: `💀 ${user.displayName} folded faster than a lawn chair.`,
         color: "text-red-500",
         userId: user.id,
@@ -498,7 +579,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       // Auto-remove the message after 7 seconds
       setTimeout(() => {
-        remove(flyingMessageRef);
+        // remove(flyingMessageRef);
+        console.log('Would remove flying message:', flyingMessageId);
       }, 7000);
     }
     setTimerRunning(false);
@@ -507,13 +589,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setInputLocked(false);
     setHasStarted(false);
     setShowQuitModal(false);
+    // TODO: Replace with Firebase RTDB cleanup on quit
     // Clear Firebase timer state when quitting
     if (currentInstance && user?.id) {
-      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-      remove(timerStateRef);
-      // Remove user from activeUsers when quitting (same as complete)
-      const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-      remove(activeRef);
+      // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      // remove(timerStateRef);
+      // // Remove user from activeUsers when quitting (same as complete)
+      // const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+      // remove(activeRef);
+      console.log('Would clear timer state and remove from active users');
     }
   };
 
@@ -528,16 +612,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
+    // TODO: Replace with Firebase RTDB cleanup on complete
     // Clear Firebase timer state when completing
     if (currentInstance && user?.id) {
-      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-      remove(timerStateRef);
+      // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      // remove(timerStateRef);
+      console.log('Would clear timer state on complete');
     }
     if (currentInstance && user) {
-      const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
-      remove(activeRef);
+      // const activeRef = ref(rtdb, `instances/${currentInstance.id}/activeUsers/${user.id}`);
+      // remove(activeRef);
+      console.log('Would remove from active users');
+      // TODO: Replace with Firebase RTDB history save
       // Save to history
-      const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
+      // const historyRef = ref(rtdb, `instances/${currentInstance.id}/history`);
       const completionData = {
         userId: user.id,
         displayName: user.displayName,
@@ -546,17 +634,35 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         timestamp: Date.now(),
         completed: true,
       };
-      push(historyRef, completionData);
+      // push(historyRef, completionData);
+      console.log('Would save completion to history:', completionData);
 
+      // TODO: Replace with Firebase RTDB user history save
       // Also save to user's personal completion history for cross-room stats
-      const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
-      push(userHistoryRef, completionData);
+      // const userHistoryRef = ref(rtdb, `users/${user.id}/completionHistory`);
+      // push(userHistoryRef, completionData);
+      console.log('Would save to user completion history:', completionData);
+      
+      // Trigger global task completed event for PersonalStats
+      if (typeof window !== "undefined") {
+        const windowWithTask = window as Window & { addCompletedTask?: (task: typeof completionData) => void };
+        if (windowWithTask.addCompletedTask) {
+          windowWithTask.addCompletedTask(completionData);
+        }
+      }
 
+      // TODO: Replace with Firebase RTDB flying message
       // notifyEvent is now handled by Timer component conditionally based on duration
       // Add flying message to Firebase
       const flyingMessageId = `${user.id}-complete-${Date.now()}`;
-      const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
-      set(flyingMessageRef, {
+      // const flyingMessageRef = ref(rtdb, `instances/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+      // set(flyingMessageRef, {
+      //   text: `🏆 ${user.displayName} has successfully completed a task!`,
+      //   color: "text-green-400",
+      //   userId: user.id,
+      //   timestamp: Date.now(),
+      // });
+      console.log('Would add flying message:', {
         text: `🏆 ${user.displayName} has successfully completed a task!`,
         color: "text-green-400",
         userId: user.id,
@@ -565,7 +671,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       // Auto-remove the message after 7 seconds
       setTimeout(() => {
-        remove(flyingMessageRef);
+        // remove(flyingMessageRef);
+        console.log('Would remove flying message:', flyingMessageId);
       }, 7000);
     }
   };
@@ -582,11 +689,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const isModifierPressed = isMac ? e.metaKey : e.ctrlKey;
-      
+
       if (!isModifierPressed) return;
-      
+
       const key = e.key.toLowerCase();
-      
+
       // Cmd/Ctrl+K: Toggle TaskList
       if (key === "k") {
         e.preventDefault();
@@ -641,7 +748,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [task, localVolume, previousVolume, currentInstance?.type, showTaskList, showNotes, showHistory, showLeaderboard, showAnalytics, closeAllModals]);
+  }, [
+    task,
+    localVolume,
+    previousVolume,
+    currentInstance?.type,
+    showTaskList,
+    showNotes,
+    showHistory,
+    showLeaderboard,
+    showAnalytics,
+    closeAllModals,
+  ]);
 
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn
@@ -656,7 +774,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               Level up your work with others in the zone.
             </p>
           </div>
-          
+
           {/* Room access message */}
           <div className="bg-gray-900/50 rounded-xl px-6 py-4 mb-8 border border-gray-800 max-w-md">
             <div className="flex items-center gap-3">
@@ -677,7 +795,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex flex-col items-center">
             <button
               onClick={() => signInWithGoogle()}
@@ -932,11 +1050,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <History roomId={currentInstance.id} userId={user?.id} onClose={() => setShowHistory(false)} />
           )}
           {showAnalytics && currentInstance && user && (
-            <Analytics roomId={currentInstance.id} userId={user.id} displayName={user.displayName} onClose={() => setShowAnalytics(false)} />
+            <Analytics
+              roomId={currentInstance.id}
+              userId={user.id}
+              displayName={user.displayName}
+              onClose={() => setShowAnalytics(false)}
+            />
           )}
-          {showPreferences && (
-            <Preferences onClose={() => setShowPreferences(false)} />
-          )}
+          {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
         </div>
         {/* Invite Modal - rendered as separate overlay */}
         {showInviteModal && (
@@ -1023,7 +1144,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
         {/* Rooms Modal */}
         <RoomsModal isOpen={showRoomsModal} onClose={() => setShowRoomsModal(false)} />
-        
       </>
     );
   }

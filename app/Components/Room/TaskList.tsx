@@ -20,8 +20,9 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off, remove } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, set, onValue, off, remove } from "firebase/database";
 
 interface Task {
   id: string;
@@ -76,6 +77,7 @@ function SortableTask({
   onToggleExpanded?: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useInstance();
   const [isHovered, setIsHovered] = useState(false);
   const [items, setItems] = useState<NoteItem[]>([{ id: "1", type: "text", content: "", level: 0 }]);
@@ -85,30 +87,34 @@ function SortableTask({
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load notes from Firebase when task is expanded
+  // Load notes from global state when task is expanded
+  // TODO: Replace with proper persistence - currently using local state only
   useEffect(() => {
-    if (!user?.id || !task.id || !isExpanded) return;
+    if (!task.id || !isExpanded) return;
 
-    const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${task.id}`);
-    const handle = onValue(notesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.items) {
-        setItems(data.items);
+    // Load from global notes map
+    if (typeof window !== "undefined") {
+      const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
+      const savedNotes = windowWithNotes.notesMap?.[task.id];
+      
+      if (savedNotes) {
+        setItems(savedNotes);
         // Find the highest ID to set nextId correctly
-        const maxId = Math.max(...data.items.map((item: NoteItem) => parseInt(item.id)), 0);
+        const maxId = Math.max(...savedNotes.map((item) => parseInt(item.id)), 0);
         setNextId(maxId + 1);
+      } else {
+        // No existing notes, start with empty note
+        setItems([{ id: "1", type: "text", content: "", level: 0 }]);
+        setNextId(2);
       }
-    });
-
-    return () => {
-      off(notesRef, "value", handle);
-    };
-  }, [user?.id, task.id, isExpanded]);
+    }
+  }, [task.id, isExpanded]);
 
 
-  // Save notes to Firebase with debouncing
+  // Save notes to global state with debouncing
+  // TODO: Replace with proper persistence - currently saves to local state only
   const saveNotes = (newItems: NoteItem[]) => {
-    if (!user?.id || !task.id) return;
+    if (!task.id) return;
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -117,14 +123,14 @@ function SortableTask({
 
     // Set new timeout for debounced save
     saveTimeoutRef.current = setTimeout(() => {
-      const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${task.id}`);
-      set(notesRef, {
-        items: newItems,
-        taskId: task.id,
-        taskText: task.text,
-        lastUpdated: Date.now(),
-        userId: user.id,
-      });
+      // Update global notes map
+      if (typeof window !== "undefined") {
+        const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
+        if (!windowWithNotes.notesMap) {
+          windowWithNotes.notesMap = {};
+        }
+        windowWithNotes.notesMap[task.id] = newItems;
+      }
     }, 500); // 500ms debounce
   };
 
@@ -876,27 +882,32 @@ export default function TaskList({
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
+  // TODO: Replace with Firebase RTDB refresh
   // Function to manually refresh tasks from Firebase
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const refreshTasks = () => {
     if (!user?.id) return;
-    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-    onValue(
-      tasksRef,
-      (snapshot) => {
-        const tasksData = snapshot.val();
-        if (tasksData) {
-          const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
-            id,
-            ...(task as Omit<Task, "id">),
-          }));
-          tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
-          setTasks(tasksArray);
-        } else {
-          setTasks([]);
-        }
-      },
-      { onlyOnce: true }
-    );
+    // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+    // onValue(
+    //   tasksRef,
+    //   (snapshot) => {
+    //     const tasksData = snapshot.val();
+    //     if (tasksData) {
+    //       const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
+    //         id,
+    //         ...(task as Omit<Task, "id">),
+    //       }));
+    //       tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
+    //       setTasks(tasksArray);
+    //     } else {
+    //       setTasks([]);
+    //     }
+    //   },
+    //   { onlyOnce: true }
+    // );
+    
+    // Temporary: No refresh needed with local state
+    console.log('Would refresh tasks from Firebase');
   };
 
   const sensors = useSensors(
@@ -910,35 +921,49 @@ export default function TaskList({
     })
   );
 
+  // TODO: Replace with Firebase RTDB listener for tasks
   // Load tasks from Firebase (user-specific)
   useEffect(() => {
     if (!user?.id) return;
 
-    const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-    const handle = onValue(tasksRef, (snapshot) => {
-      const tasksData = snapshot.val();
-      if (tasksData) {
-        // Convert Firebase object to array and sort by order
-        const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
-          id,
-          ...(task as Omit<Task, "id">),
-        }));
-        // Sort by order field, or fallback to creation order
-        tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
+    // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+    // const handle = onValue(tasksRef, (snapshot) => {
+    //   const tasksData = snapshot.val();
+    //   if (tasksData) {
+    //     // Convert Firebase object to array and sort by order
+    //     const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
+    //       id,
+    //       ...(task as Omit<Task, "id">),
+    //     }));
+    //     // Sort by order field, or fallback to creation order
+    //     tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // Only update tasks if no task is currently being edited
-        // This prevents Firebase updates from interfering with local editing state
-        if (!editingId) {
-          setTasks(tasksArray);
-        }
-      } else {
-        setTasks([]);
-      }
-    });
+    //     // Only update tasks if no task is currently being edited
+    //     // This prevents Firebase updates from interfering with local editing state
+    //     if (!editingId) {
+    //       setTasks(tasksArray);
+    //     }
+    //   } else {
+    //     setTasks([]);
+    //   }
+    // });
 
-    return () => {
-      off(tasksRef, "value", handle);
-    };
+    // return () => {
+    //   off(tasksRef, "value", handle);
+    // };
+    
+    // Temporary: Use seed example tasks
+    const sampleTasks: Task[] = [
+      { id: "1", text: "Complete the quarterly report", completed: false, order: 0 },
+      { id: "2", text: "Review pull requests", completed: false, order: 1 },
+      { id: "3", text: "Update project documentation", completed: false, order: 2 },
+      { id: "4", text: "Prepare for team standup", completed: false, order: 3 },
+      { id: "5", text: "Refactor authentication module", completed: false, order: 4 },
+    ];
+    
+    if (!editingId) {
+      setTasks(sampleTasks);
+    }
   }, [user?.id, editingId]);
 
   // Focus input when opening - but not if it was opened via sidebar mode
@@ -978,26 +1003,37 @@ export default function TaskList({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showClearMenu]);
 
+  // TODO: Replace with Firebase RTDB task creation
   const addTask = () => {
     if (newTaskText.trim() && user?.id) {
       const id = Date.now().toString();
       // Find the highest order number and add 1 to ensure it goes to the end
       const maxOrder = tasks.length > 0 ? Math.max(...tasks.map((task) => task.order || 0)) : -1;
-      const newTask: Omit<Task, "id"> = {
+      const newTask: Task = {
+        id,
         text: newTaskText.trim(),
         completed: false,
         order: maxOrder + 1,
       };
-      const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
-      set(taskRef, newTask);
+      // const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
+      // set(taskRef, newTask);
+      
+      // Temporary: Add to local state
+      setTasks([...tasks, newTask]);
       setNewTaskText("");
+      console.log('Would save new task to Firebase:', newTask);
     }
   };
 
+  // TODO: Replace with Firebase RTDB task removal
   const removeTask = (id: string) => {
     if (user?.id) {
-      const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
-      remove(taskRef);
+      // const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
+      // remove(taskRef);
+      
+      // Temporary: Remove from local state
+      setTasks(tasks.filter(t => t.id !== id));
+      console.log('Would remove task from Firebase:', id);
     }
   };
 
@@ -1006,17 +1042,24 @@ export default function TaskList({
     setEditingText(task.text);
   };
 
+  // TODO: Replace with Firebase RTDB task update
   const saveEdit = () => {
     if (editingText.trim() && editingId && user?.id) {
-      const taskRef = ref(rtdb, `users/${user.id}/tasks/${editingId}`);
+      // const taskRef = ref(rtdb, `users/${user.id}/tasks/${editingId}`);
       const task = tasks.find((t) => t.id === editingId);
       if (task) {
-        set(taskRef, { ...task, text: editingText.trim() });
+        // set(taskRef, { ...task, text: editingText.trim() });
+        
+        // Temporary: Update local state
+        setTasks(tasks.map(t => 
+          t.id === editingId ? { ...t, text: editingText.trim() } : t
+        ));
+        console.log('Would update task in Firebase:', { ...task, text: editingText.trim() });
       }
       setEditingId(null);
       setEditingText("");
       // Force refresh tasks from Firebase after editing
-      refreshTasks();
+      // refreshTasks();
     } else if (!editingText.trim() && editingId) {
       // If the text is empty, cancel the edit without saving
       setEditingId(null);
@@ -1044,13 +1087,14 @@ export default function TaskList({
     setEditingId(null);
     setEditingText("");
     // Force refresh tasks from Firebase after cancelling edit
-    refreshTasks();
+    // refreshTasks();
   };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
   };
 
+  // TODO: Replace with Firebase RTDB task reordering
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -1061,11 +1105,16 @@ export default function TaskList({
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
 
-        // Update order in Firebase for all tasks
-        reorderedTasks.forEach((task, index) => {
-          const taskRef = ref(rtdb, `users/${user.id}/tasks/${task.id}`);
-          set(taskRef, { ...task, order: index });
-        });
+        // TODO: Update order in Firebase for all tasks
+        // reorderedTasks.forEach((task, index) => {
+        //   const taskRef = ref(rtdb, `users/${user.id}/tasks/${task.id}`);
+        //   set(taskRef, { ...task, order: index });
+        // });
+        
+        // Temporary: Update local state with new order
+        const updatedTasks = reorderedTasks.map((task, index) => ({ ...task, order: index }));
+        setTasks(updatedTasks);
+        console.log('Would update task order in Firebase');
       }
     }
 
@@ -1077,10 +1126,15 @@ export default function TaskList({
     setShowClearAllConfirm(true);
   };
 
+  // TODO: Replace with Firebase RTDB clear all tasks
   const confirmClearAll = () => {
     if (user?.id) {
-      const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-      set(tasksRef, null);
+      // const tasksRef = ref(rtdb, `users/${user.id}/tasks");
+      // set(tasksRef, null);
+      
+      // Temporary: Clear local state
+      setTasks([]);
+      console.log('Would clear all tasks from Firebase');
     }
     setShowClearAllConfirm(false);
   };

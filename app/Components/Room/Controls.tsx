@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, set, onValue, off } from "firebase/database";
 import { signOut, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 
 interface ControlsProps {
   className?: string;
@@ -53,6 +56,9 @@ export default function Controls({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
   const router = useRouter();
+  
+  // Get user data from Redux store
+  const reduxUser = useSelector((state: RootState) => state.user);
 
   // Close menus on outside click
   useEffect(() => {
@@ -69,33 +75,41 @@ export default function Controls({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // TODO: Replace with Firebase RTDB sync for volume
   // Sync volume to RTDB when it changes
   useEffect(() => {
     if (!currentInstance || !user?.id) return;
-    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-    set(userRef, { ...user, displayName: user.displayName, volume: localVolume, previousVolume });
+    // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+    // set(userRef, { ...user, displayName: user.displayName, volume: localVolume, previousVolume });
+    
+    // Temporary: Just log the volume change
+    console.log('Volume changed:', { volume: localVolume, previousVolume });
   }, [localVolume, previousVolume, currentInstance, user]);
 
+  // TODO: Replace with Firebase RTDB listener for volume
   // On mount, load volume from RTDB if present
   useEffect(() => {
     if (!currentInstance || !user?.id) return;
-    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-    const handle = onValue(userRef, (snap) => {
-      const data = snap.val();
-      if (data && typeof data.volume === "number") {
-        setLocalVolume(data.volume);
-        // If no previousVolume saved and current volume > 0, use current as previous
-        if (typeof data.previousVolume !== "number" && data.volume > 0) {
-          setPreviousVolume(data.volume);
-        }
-      }
-      if (data && typeof data.previousVolume === "number") {
-        setPreviousVolume(data.previousVolume);
-      }
-    });
-    return () => {
-      off(userRef, "value", handle);
-    };
+    // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+    // const handle = onValue(userRef, (snap) => {
+    //   const data = snap.val();
+    //   if (data && typeof data.volume === "number") {
+    //     setLocalVolume(data.volume);
+    //     // If no previousVolume saved and current volume > 0, use current as previous
+    //     if (typeof data.previousVolume !== "number" && data.volume > 0) {
+    //       setPreviousVolume(data.volume);
+    //     }
+    //   }
+    //   if (data && typeof data.previousVolume === "number") {
+    //     setPreviousVolume(data.previousVolume);
+    //   }
+    // });
+    // return () => {
+    //   off(userRef, "value", handle);
+    // };
+    
+    // Temporary: Use default volume
+    // Volume will reset on refresh
   }, [currentInstance, user, setLocalVolume]);
 
   // Helper function to update volume and track previous volume
@@ -200,9 +214,9 @@ export default function Controls({
               onClick={() => {
                 setDropdownOpen((v) => !v);
               }}
-              title={user.displayName}
+              title={reduxUser.first_name || user.displayName}
             >
-              {user.displayName.split(" ")[0]}
+              {reduxUser.first_name || user.displayName.split(" ")[0]}
             </span>
             {/* Mobile hamburger icon (screens < 640px) */}
             <span
@@ -234,11 +248,15 @@ export default function Controls({
           {/* User Header */}
           <div className="flex items-center mb-6 pb-4 border-b border-gray-700">
             <div className="w-12 h-12 bg-[#FFAA00] rounded-full flex items-center justify-center text-black font-bold">
-              {user.displayName.charAt(0).toUpperCase()}
+              {(reduxUser.first_name || user.displayName).charAt(0).toUpperCase()}
             </div>
             <div className="ml-3">
-              <h3 className="font-semibold text-white font-mono">{user.displayName}</h3>
-              <p className="text-sm text-gray-400 font-mono">{auth.currentUser?.email || ""}</p>
+              <h3 className="font-semibold text-white font-mono">
+                {reduxUser.first_name && reduxUser.last_name 
+                  ? `${reduxUser.first_name} ${reduxUser.last_name}`
+                  : user.displayName}
+              </h3>
+              <p className="text-sm text-gray-400 font-mono">{reduxUser.email || auth.currentUser?.email || ""}</p>
             </div>
           </div>
 
@@ -567,10 +585,14 @@ export default function Controls({
                     await updateProfile(auth.currentUser, { displayName: editedName.trim() });
                   }
                   // Update the local user state
+                  // TODO: Replace with Firebase RTDB update for display name
                   user.displayName = editedName.trim();
                   if (currentInstance) {
-                    const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-                    set(userRef, { ...user, displayName: editedName.trim() });
+                    // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
+                    // set(userRef, { ...user, displayName: editedName.trim() });
+                    
+                    // Temporary: Just update local user object
+                    console.log('Would update display name to:', editedName.trim());
                   }
                 }
                 setShowNameModal(false);
@@ -616,11 +638,15 @@ export default function Controls({
               </button>
               <div className="flex items-center mt-8">
                 <div className="w-12 h-12 bg-[#FFAA00] rounded-full flex items-center justify-center text-black font-bold">
-                  {user.displayName.charAt(0).toUpperCase()}
+                  {(reduxUser.first_name || user.displayName).charAt(0).toUpperCase()}
                 </div>
                 <div className="ml-3">
-                  <h3 className="font-semibold text-white font-mono">{user.displayName}</h3>
-                  <p className="text-sm text-gray-400 font-mono">{auth.currentUser?.email || ""}</p>
+                  <h3 className="font-semibold text-white font-mono">
+                    {reduxUser.first_name && reduxUser.last_name 
+                      ? `${reduxUser.first_name} ${reduxUser.last_name}`
+                      : user.displayName}
+                  </h3>
+                  <p className="text-sm text-gray-400 font-mono">{reduxUser.email || auth.currentUser?.email || ""}</p>
                 </div>
               </div>
             </div>

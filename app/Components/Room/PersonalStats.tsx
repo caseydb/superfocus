@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off, set, get } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, onValue, off, set, get } from "firebase/database";
 
 interface HistoryEntry {
   displayName: string;
@@ -18,6 +19,7 @@ interface User {
   isPremium: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface InstanceData {
   history?: Record<string, HistoryEntry>;
   users?: Record<string, User>;
@@ -38,6 +40,23 @@ function formatTime(totalSeconds: number) {
   } else {
     return `${minutes}m`;
   }
+}
+
+// Global state for tracking completed tasks (temporary replacement for Firebase)
+const globalCompletedTasks: Array<{
+  task: string;
+  duration: string;
+  timestamp: number;
+  userId: string;
+}> = [];
+
+// Global function to add completed task
+if (typeof window !== "undefined") {
+  (window as Window & { addCompletedTask?: (task: { task: string; duration: string; timestamp: number; userId: string }) => void }).addCompletedTask = (task: { task: string; duration: string; timestamp: number; userId: string }) => {
+    globalCompletedTasks.push(task);
+    // Trigger re-render by dispatching a custom event
+    window.dispatchEvent(new Event('taskCompleted'));
+  };
 }
 
 export default function PersonalStats() {
@@ -69,6 +88,7 @@ export default function PersonalStats() {
   };
 
   // Calculate streak from actual task history (matching Analytics exactly)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const calculateStreakFromHistory = (taskDates: Date[]) => {
     if (!taskDates || taskDates.length === 0) return 0;
 
@@ -157,19 +177,24 @@ export default function PersonalStats() {
     return () => clearInterval(interval);
   }, []);
 
+  // TODO: Replace with Firebase RTDB streak marking
   // Expose the markTodayComplete function globally so other components can call it
   useEffect(() => {
     const markTodayCompleteWrapper = async () => {
       if (!user?.id) return;
 
       const currentStreakDate = getStreakDate(); // Use 4am UTC window
-      const dailyCompletionRef = ref(rtdb, `users/${user.id}/dailyCompletions/${currentStreakDate}`);
+      // const dailyCompletionRef = ref(rtdb, `users/${user.id}/dailyCompletions/${currentStreakDate}`);
 
-      // Check if already marked for this streak day
-      const snapshot = await get(dailyCompletionRef);
-      if (!snapshot.exists()) {
-        await set(dailyCompletionRef, true);
-      }
+      // // Check if already marked for this streak day
+      // const snapshot = await get(dailyCompletionRef);
+      // if (!snapshot.exists()) {
+      //   await set(dailyCompletionRef, true);
+      // }
+      
+      // Temporary: Just set hasCompletedToday
+      setHasCompletedToday(true);
+      console.log('Would mark streak complete for date:', currentStreakDate);
     };
     
     if (typeof window !== "undefined") {
@@ -177,114 +202,105 @@ export default function PersonalStats() {
     }
   }, [user?.id]);
 
+  // TODO: Replace with Firebase RTDB listener for stats
   useEffect(() => {
     if (!user?.id) {
       setLoading(false);
       return;
     }
 
-    // Listen to all instances to find user's completions across all rooms
-    const instancesRef = ref(rtdb, "instances");
-    const handle = onValue(instancesRef, (snapshot) => {
-      const instancesData = snapshot.val();
-      let userTasksCompleted = 0;
+    // Calculate stats from global completed tasks
+    const calculateStats = () => {
+      const currentStreakDate = getStreakDate();
+      // Filter tasks for current user and today
+      const userTasks = globalCompletedTasks.filter(task => 
+        task.userId === user.id && 
+        !task.task.toLowerCase().includes("quit early") &&
+        getStreakDate(task.timestamp) === currentStreakDate
+      );
+      
+      // Calculate today's stats
+      const userTasksCompleted = userTasks.length;
       let userTotalSeconds = 0;
-      const completedTasks: Array<{
-        task: string;
-        duration: string;
-        timestamp: number;
-        seconds: number;
-        roomId: string;
-      }> = [];
-      const roomsWithUserData: string[] = [];
-      const allCompletedDates: Date[] = []; // Collect all dates for streak calculation
-
-      if (instancesData) {
-        const currentStreakDate = getStreakDate(); // Get today's streak date (4am UTC window)
-
-        // Go through each instance/room
-        Object.entries(instancesData).forEach(([instanceId, instanceData]) => {
-          const typedInstanceData = instanceData as InstanceData;
-          // Check if there's history data for this instance
-          if (typedInstanceData.history) {
-            let foundUserInRoom = false;
-
-            // Go through each history entry in this room
-            Object.entries(typedInstanceData.history).forEach(([, entry]) => {
-              const typedEntry = entry as HistoryEntry;
-              // Check if this entry belongs to our user
-              if (typedEntry.userId === user.id && !typedEntry.task.toLowerCase().includes("quit early")) {
-                foundUserInRoom = true;
-
-                if (typedEntry.timestamp) {
-                  // Collect date for streak calculation
-                  const taskDate = new Date(typedEntry.timestamp);
-                  allCompletedDates.push(taskDate);
-
-                  // Check if it's within today's 4am UTC window for today's stats
-                  const entryStreakDate = getStreakDate(typedEntry.timestamp);
-                  if (entryStreakDate === currentStreakDate) {
-                    // Parse duration more robustly
-                    let seconds = 0;
-                    if (typedEntry.duration && typeof typedEntry.duration === "string") {
-                      const parts = typedEntry.duration.split(":").map(Number);
-                      if (parts.length === 3) {
-                        // hh:mm:ss format
-                        const [h, m, s] = parts;
-                        if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
-                          seconds = h * 3600 + m * 60 + s;
-                        }
-                      } else if (parts.length === 2) {
-                        // mm:ss format
-                        const [m, s] = parts;
-                        if (!isNaN(m) && !isNaN(s)) {
-                          seconds = m * 60 + s;
-                        }
-                      }
-                    }
-
-                    // Only process if we got valid seconds
-                    if (seconds > 0) {
-                      userTasksCompleted += 1;
-                      userTotalSeconds += seconds;
-
-                      // Add to completed tasks array for logging
-                      completedTasks.push({
-                        task: typedEntry.task,
-                        duration: typedEntry.duration,
-                        timestamp: typedEntry.timestamp,
-                        seconds: seconds,
-                        roomId: instanceId,
-                      });
-                    }
-                  }
-                }
-              }
-            });
-
-            if (foundUserInRoom) {
-              roomsWithUserData.push(instanceId);
+      
+      userTasks.forEach(task => {
+        // Parse duration
+        let seconds = 0;
+        if (task.duration && typeof task.duration === "string") {
+          const parts = task.duration.split(":").map(Number);
+          if (parts.length === 3) {
+            // hh:mm:ss format
+            const [h, m, s] = parts;
+            if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+              seconds = h * 3600 + m * 60 + s;
+            }
+          } else if (parts.length === 2) {
+            // mm:ss format
+            const [m, s] = parts;
+            if (!isNaN(m) && !isNaN(s)) {
+              seconds = m * 60 + s;
             }
           }
-        });
+        }
+        userTotalSeconds += seconds;
+      });
+      
+      // Calculate streak (consecutive days)
+      const allUserTasks = globalCompletedTasks.filter(task => 
+        task.userId === user.id && 
+        !task.task.toLowerCase().includes("quit early")
+      );
+      
+      // Get unique dates
+      const uniqueDates = new Set(allUserTasks.map(task => getStreakDate(task.timestamp)));
+      const sortedDates = Array.from(uniqueDates).sort();
+      
+      // Calculate current streak
+      let currentStreak = 0;
+      if (sortedDates.length > 0) {
+        const today = getStreakDate();
+        const yesterday = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
+        
+        if (sortedDates.includes(today) || sortedDates.includes(yesterday)) {
+          currentStreak = 1;
+          // Count backwards from most recent date
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const lastDate = sortedDates[sortedDates.length - 1];
+          for (let i = sortedDates.length - 2; i >= 0; i--) {
+            const prevDate = new Date(sortedDates[i]);
+            const currentDate = new Date(sortedDates[i + 1]);
+            const dayDiff = (currentDate.getTime() - prevDate.getTime()) / (24 * 60 * 60 * 1000);
+            
+            if (Math.abs(dayDiff - 1) < 0.1) { // Allow for small time differences
+              currentStreak++;
+            } else {
+              break;
+            }
+          }
+        }
       }
 
-      // Calculate streak from actual history
-      const calculatedStreak = calculateStreakFromHistory(allCompletedDates);
-      setStreak(calculatedStreak);
-      
-      // Check if completed today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toDateString();
-      setHasCompletedToday(allCompletedDates.some(date => date.toDateString() === todayStr));
-
+      // Update state
       setTasksCompleted(userTasksCompleted);
       setTotalSeconds(userTotalSeconds);
+      setStreak(currentStreak);
+      setHasCompletedToday(userTasksCompleted > 0);
       setLoading(false);
-    });
-
-    return () => off(instancesRef, "value", handle);
+    };
+    
+    // Calculate stats initially
+    calculateStats();
+    
+    // Listen for task completion events
+    const handleTaskCompleted = () => {
+      calculateStats();
+    };
+    
+    window.addEventListener('taskCompleted', handleTaskCompleted);
+    
+    return () => {
+      window.removeEventListener('taskCompleted', handleTaskCompleted);
+    };
   }, [user?.id]);
 
 

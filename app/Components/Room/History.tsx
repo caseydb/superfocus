@@ -1,8 +1,9 @@
 //History
 
 import React, { useEffect, useState } from "react";
-import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, onValue, off } from "firebase/database";
 
 interface HistoryEntry {
   displayName: string;
@@ -148,36 +149,45 @@ export default function History({
     setDynamicWidthClasses(calculateDynamicWidth());
   }, []);
 
+  // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
     if (!roomId) return;
-    const usersRef = ref(rtdb, `instances/${roomId}/users`);
-    const handle = onValue(usersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setUsers(data);
-      } else {
-        setUsers({});
-      }
-    });
-    return () => off(usersRef, "value", handle);
+    // const usersRef = ref(rtdb, `instances/${roomId}/users`);
+    // const handle = onValue(usersRef, (snapshot) => {
+    //   const data = snapshot.val();
+    //   if (data) {
+    //     setUsers(data);
+    //   } else {
+    //     setUsers({});
+    //   }
+    // });
+    // return () => off(usersRef, "value", handle);
+    
+    // Temporary: No users data
+    setUsers({});
   }, [roomId]);
 
+  // TODO: Replace with Firebase RTDB listener for history
   useEffect(() => {
     if (!roomId) return;
-    const historyRef = ref(rtdb, `instances/${roomId}/history`);
-    const handle = onValue(historyRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Convert to array and sort by timestamp desc
-        const arr = Object.values(data) as HistoryEntry[];
-        arr.sort((a, b) => b.timestamp - a.timestamp);
-        setHistory(arr);
-      } else {
-        setHistory([]);
-      }
-      setLoading(false);
-    });
-    return () => off(historyRef, "value", handle);
+    // const historyRef = ref(rtdb, `instances/${roomId}/history`);
+    // const handle = onValue(historyRef, (snapshot) => {
+    //   const data = snapshot.val();
+    //   if (data) {
+    //     // Convert to array and sort by timestamp desc
+    //     const arr = Object.values(data) as HistoryEntry[];
+    //     arr.sort((a, b) => b.timestamp - a.timestamp);
+    //     setHistory(arr);
+    //   } else {
+    //     setHistory([]);
+    //   }
+    //   setLoading(false);
+    // });
+    // return () => off(historyRef, "value", handle);
+    
+    // Temporary: No history data
+    setHistory([]);
+    setLoading(false);
   }, [roomId]);
 
   if (loading) {

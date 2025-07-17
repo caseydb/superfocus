@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off, remove, DataSnapshot } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, set, onValue, off, remove, DataSnapshot } from "firebase/database";
 
 export default function Timer({
   onActiveChange,
@@ -38,41 +39,46 @@ export default function Timer({
   const inactivityDurationRef = useRef(3600); // Track timeout duration in ref to avoid effect re-runs
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
 
+  // TODO: Replace with Firebase RTDB timer state save
   // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
     (isRunning: boolean, baseSeconds: number = 0) => {
       if (currentInstance && user?.id) {
-        const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+        // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
         const now = Date.now();
 
         if (isRunning) {
           // Store when timer started and base seconds
-          set(timerStateRef, {
-            running: true,
-            startTime: now,
-            baseSeconds: baseSeconds, // seconds accumulated before this start
-            task: task || "",
-            lastUpdate: now,
-          });
+          // set(timerStateRef, {
+          //   running: true,
+          //   startTime: now,
+          //   baseSeconds: baseSeconds, // seconds accumulated before this start
+          //   task: task || "",
+          //   lastUpdate: now,
+          // });
+          console.log('Would save timer state (running):', { running: true, startTime: now, baseSeconds, task });
         } else {
           // Store paused state with total accumulated seconds
-          set(timerStateRef, {
-            running: false,
-            totalSeconds: baseSeconds,
-            task: task || "",
-            lastUpdate: now,
-          });
+          // set(timerStateRef, {
+          //   running: false,
+          //   totalSeconds: baseSeconds,
+          //   task: task || "",
+          //   lastUpdate: now,
+          // });
+          console.log('Would save timer state (paused):', { running: false, totalSeconds: baseSeconds, task });
         }
       }
     },
     [currentInstance, user?.id, task]
   );
 
+  // TODO: Replace with Firebase RTDB timer state clear
   // Helper to clear timer state from Firebase
   const clearTimerState = React.useCallback(() => {
     if (currentInstance && user?.id) {
-      const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
-      remove(timerStateRef);
+      // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+      // remove(timerStateRef);
+      console.log('Would clear timer state from Firebase');
     }
   }, [currentInstance, user?.id]);
 
@@ -98,69 +104,76 @@ export default function Timer({
       return;
     }
 
-    const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
+    // TODO: Replace with Firebase RTDB timer state restore
+    // const timerStateRef = ref(rtdb, `instances/${currentInstance.id}/userTimers/${user.id}`);
 
-    const handleTimerState = (snapshot: DataSnapshot) => {
-      const timerState = snapshot.val();
+    // const handleTimerState = (snapshot: DataSnapshot) => {
+    //   const timerState = snapshot.val();
 
-      if (timerState) {
-        const isRunning = timerState.running || false;
-        let currentSeconds = 0;
+    //   if (timerState) {
+    //     const isRunning = timerState.running || false;
+    //     let currentSeconds = 0;
 
-        if (isRunning && timerState.startTime) {
-          // Calculate current seconds: base + elapsed time since start
-          const elapsedMs = Date.now() - timerState.startTime;
-          const elapsedSeconds = Math.floor(elapsedMs / 1000);
-          currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-        } else {
-          // Use stored total seconds when paused
-          currentSeconds = timerState.totalSeconds || 0;
-        }
+    //     if (isRunning && timerState.startTime) {
+    //       // Calculate current seconds: base + elapsed time since start
+    //       const elapsedMs = Date.now() - timerState.startTime;
+    //       const elapsedSeconds = Math.floor(elapsedMs / 1000);
+    //       currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+    //     } else {
+    //       // Use stored total seconds when paused
+    //       currentSeconds = timerState.totalSeconds || 0;
+    //     }
 
-        // Normal restoration - don't check user count here
-        setSeconds(currentSeconds);
-        setRunning(isRunning);
-        setIsStarting(false); // Clear starting state when loading from Firebase
-      } else if (isInitializedRef.current) {
-        // Only reset if we were already initialized (not on first load)
-        setSeconds(0);
-        setRunning(false);
-        setIsStarting(false);
-      }
+    //     // Normal restoration - don't check user count here
+    //     setSeconds(currentSeconds);
+    //     setRunning(isRunning);
+    //     setIsStarting(false); // Clear starting state when loading from Firebase
+    //   } else if (isInitializedRef.current) {
+    //     // Only reset if we were already initialized (not on first load)
+    //     setSeconds(0);
+    //     setRunning(false);
+    //     setIsStarting(false);
+    //   }
 
-      isInitializedRef.current = true;
-    };
+    //   isInitializedRef.current = true;
+    // };
 
-    const handle = onValue(timerStateRef, handleTimerState);
+    // const handle = onValue(timerStateRef, handleTimerState);
 
-    return () => {
-      off(timerStateRef, "value", handle);
-    };
+    // return () => {
+    //   off(timerStateRef, "value", handle);
+    // };
+    
+    // Temporary: Initialize timer state
+    isInitializedRef.current = true;
   }, [currentInstance, user?.id]);
 
+  // TODO: Replace with Firebase RTDB listener for user count
   // Separate effect: Listen for user count changes and pause timer when room becomes empty
   useEffect(() => {
     if (!currentInstance || !user?.id) return;
 
-    const usersRef = ref(rtdb, `instances/${currentInstance.id}/users`);
+    // const usersRef = ref(rtdb, `instances/${currentInstance.id}/users`);
 
-    const handleUserCountChange = (snapshot: DataSnapshot) => {
-      const usersData = snapshot.val();
-      const userCount = usersData ? Object.keys(usersData).length : 0;
+    // const handleUserCountChange = (snapshot: DataSnapshot) => {
+    //   const usersData = snapshot.val();
+    //   const userCount = usersData ? Object.keys(usersData).length : 0;
 
-      // If room becomes empty and timer is running, pause it immediately
-      if (userCount === 0 && running) {
-        setRunning(false);
-        // Save paused state to Firebase
-        saveTimerState(false, seconds);
-      }
-    };
+    //   // If room becomes empty and timer is running, pause it immediately
+    //   if (userCount === 0 && running) {
+    //     setRunning(false);
+    //     // Save paused state to Firebase
+    //     saveTimerState(false, seconds);
+    //   }
+    // };
 
-    const handle = onValue(usersRef, handleUserCountChange);
+    // const handle = onValue(usersRef, handleUserCountChange);
 
-    return () => {
-      off(usersRef, "value", handle);
-    };
+    // return () => {
+    //   off(usersRef, "value", handle);
+    // };
+    
+    // Temporary: No user count tracking
   }, [currentInstance, user?.id, running, seconds, task, saveTimerState]);
 
   // Notify parent of running state
@@ -168,28 +181,33 @@ export default function Timer({
     if (onActiveChange) onActiveChange(running);
   }, [running, onActiveChange]);
 
+  // TODO: Replace with Firebase RTDB preferences listener
   // Load user's inactivity timeout preference
   useEffect(() => {
     if (!user?.id) return;
     
-    const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
-    const handle = onValue(prefsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.inactivityTimeout !== undefined) {
-        const timeoutValue = data.inactivityTimeout;
-        if (timeoutValue === "never") {
-          setInactivityTimeout(Infinity);
-          inactivityDurationRef.current = Infinity;
-        } else {
-          // Value is already in seconds
-          const timeoutSeconds = parseInt(timeoutValue);
-          setInactivityTimeout(timeoutSeconds);
-          inactivityDurationRef.current = timeoutSeconds;
-        }
-      }
-    });
+    // const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
+    // const handle = onValue(prefsRef, (snapshot) => {
+    //   const data = snapshot.val();
+    //   if (data && data.inactivityTimeout !== undefined) {
+    //     const timeoutValue = data.inactivityTimeout;
+    //     if (timeoutValue === "never") {
+    //       setInactivityTimeout(Infinity);
+    //       inactivityDurationRef.current = Infinity;
+    //     } else {
+    //       // Value is already in seconds
+    //       const timeoutSeconds = parseInt(timeoutValue);
+    //       setInactivityTimeout(timeoutSeconds);
+    //       inactivityDurationRef.current = timeoutSeconds;
+    //     }
+    //   }
+    // });
     
-    return () => off(prefsRef, "value", handle);
+    // return () => off(prefsRef, "value", handle);
+    
+    // Temporary: Use default 1 hour timeout
+    setInactivityTimeout(3600);
+    inactivityDurationRef.current = 3600;
   }, [user?.id]);
 
   // Keep localVolumeRef in sync with localVolume prop
@@ -306,21 +324,26 @@ export default function Timer({
       startAudio.volume = localVolume;
       startAudio.play();
       
+      // TODO: Replace with Firebase RTDB check for sound cooldown
       // Check if we should notify others (with cooldown)
       if (user?.id && currentInstance) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const now = Date.now();
-        const lastStartRef = ref(rtdb, `instances/${currentInstance.id}/lastStartSound/${user.id}`);
+        // const lastStartRef = ref(rtdb, `instances/${currentInstance.id}/lastStartSound/${user.id}`);
         
         // Check last start sound timestamp
-        onValue(lastStartRef, (snapshot) => {
-          const lastStartTime = snapshot.val() || 0;
-          const timeSinceLastStart = now - lastStartTime;
-          
-          if (timeSinceLastStart > 600000) { // 10 minutes cooldown for others
-            notifyEvent("start");
-            set(lastStartRef, now);
-          }
-        }, { onlyOnce: true });
+        // onValue(lastStartRef, (snapshot) => {
+        //   const lastStartTime = snapshot.val() || 0;
+        //   const timeSinceLastStart = now - lastStartTime;
+        //   
+        //   if (timeSinceLastStart > 600000) { // 10 minutes cooldown for others
+        //     notifyEvent("start");
+        //     set(lastStartRef, now);
+        //   }
+        // }, { onlyOnce: true });
+        
+        // Temporary: Always notify start event
+        notifyEvent("start");
       }
     }
   }
@@ -330,53 +353,58 @@ export default function Timer({
     async (taskText: string): Promise<void> => {
       if (!user?.id) return;
 
-      const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+      // TODO: Replace with Firebase RTDB task management
+      // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
 
       return new Promise((resolve) => {
         // Get current tasks and move/add the task to position #1
-        onValue(
-          tasksRef,
-          (snapshot) => {
-            const tasksData = snapshot.val();
-            const updates: Record<string, { text: string; completed: boolean; order: number }> = {};
+        // onValue(
+        //   tasksRef,
+        //   (snapshot) => {
+        //     const tasksData = snapshot.val();
+        //     const updates: Record<string, { text: string; completed: boolean; order: number }> = {};
 
-            // Find if task already exists
-            let existingTaskId: string | null = null;
-            if (tasksData) {
-              existingTaskId =
-                Object.keys(tasksData).find((taskId) => {
-                  const task = tasksData[taskId];
-                  return task.text === taskText && !task.completed;
-                }) || null;
-            }
+        //     // Find if task already exists
+        //     let existingTaskId: string | null = null;
+        //     if (tasksData) {
+        //       existingTaskId =
+        //         Object.keys(tasksData).find((taskId) => {
+        //           const task = tasksData[taskId];
+        //           return task.text === taskText && !task.completed;
+        //         }) || null;
+        //     }
 
-            // Increment order of all other tasks
-            if (tasksData) {
-              Object.keys(tasksData).forEach((taskId) => {
-                if (taskId !== existingTaskId) {
-                  const existingTask = tasksData[taskId];
-                  updates[taskId] = {
-                    text: existingTask.text,
-                    completed: existingTask.completed,
-                    order: (existingTask.order || 0) + 1,
-                  };
-                }
-              });
-            }
+        //     // Increment order of all other tasks
+        //     if (tasksData) {
+        //       Object.keys(tasksData).forEach((taskId) => {
+        //         if (taskId !== existingTaskId) {
+        //           const existingTask = tasksData[taskId];
+        //           updates[taskId] = {
+        //             text: existingTask.text,
+        //             completed: existingTask.completed,
+        //             order: (existingTask.order || 0) + 1,
+        //           };
+        //         }
+        //       });
+        //     }
 
-            // Add/move the target task to position 0
-            const targetTaskId = existingTaskId || Date.now().toString();
-            updates[targetTaskId] = {
-              text: taskText,
-              completed: false,
-              order: 0,
-            };
+        //     // Add/move the target task to position 0
+        //     const targetTaskId = existingTaskId || Date.now().toString();
+        //     updates[targetTaskId] = {
+        //       text: taskText,
+        //       completed: false,
+        //       order: 0,
+        //     };
 
-            // Update all tasks at once and resolve promise
-            set(tasksRef, updates).then(() => resolve());
-          },
-          { onlyOnce: true }
-        );
+        //     // Update all tasks at once and resolve promise
+        //     set(tasksRef, updates).then(() => resolve());
+        //   },
+        //   { onlyOnce: true }
+        // );
+        
+        // Temporary: Just log and resolve
+        console.log('Would move task to top:', taskText);
+        resolve();
       });
     },
     [user?.id]
@@ -387,41 +415,49 @@ export default function Timer({
     async (taskText: string) => {
       if (!user?.id || !taskText.trim()) return;
 
-      const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
+      // TODO: Replace with Firebase RTDB task completion
+      // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
 
       // Find and complete the matching task
-      onValue(
-        tasksRef,
-        (snapshot) => {
-          const tasksData = snapshot.val();
-          if (tasksData) {
-            // Find the first incomplete task that matches the text
-            const matchingTaskId = Object.keys(tasksData).find((taskId) => {
-              const taskItem = tasksData[taskId];
-              return taskItem.text === taskText && !taskItem.completed;
-            });
+      // onValue(
+      //   tasksRef,
+      //   (snapshot) => {
+      //     const tasksData = snapshot.val();
+      //     if (tasksData) {
+      //       // Find the first incomplete task that matches the text
+      //       const matchingTaskId = Object.keys(tasksData).find((taskId) => {
+      //         const taskItem = tasksData[taskId];
+      //         return taskItem.text === taskText && !taskItem.completed;
+      //       });
 
-            if (matchingTaskId) {
-              const taskRef = ref(rtdb, `users/${user.id}/tasks/${matchingTaskId}`);
-              const matchingTask = tasksData[matchingTaskId];
-              set(taskRef, {
-                ...matchingTask,
-                completed: true,
-              });
-            }
-          }
-        },
-        { onlyOnce: true }
-      );
+      //       if (matchingTaskId) {
+      //         const taskRef = ref(rtdb, `users/${user.id}/tasks/${matchingTaskId}`);
+      //         const matchingTask = tasksData[matchingTaskId];
+      //         set(taskRef, {
+      //           ...matchingTask,
+      //           completed: true,
+      //         });
+      //       }
+      //     }
+      //   },
+      //   { onlyOnce: true }
+      // );
+      
+      // Temporary: Just log task completion
+      console.log('Would complete task:', taskText);
     },
     [user?.id]
   );
 
+  // TODO: Replace with Firebase RTDB event notification
   // Add event notification for start, complete, and quit
   function notifyEvent(type: "start" | "complete" | "quit") {
     if (currentInstance && user?.id) {
-      const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
-      set(lastEventRef, { displayName: user.displayName, userId: user.id, type, timestamp: Date.now() });
+      // const lastEventRef = ref(rtdb, `instances/${currentInstance.id}/lastEvent`);
+      // set(lastEventRef, { displayName: user.displayName, userId: user.id, type, timestamp: Date.now() });
+      
+      // Temporary: Just log the event
+      console.log('Would notify event:', { displayName: user.displayName, userId: user.id, type, timestamp: Date.now() });
     }
   }
 
@@ -527,21 +563,26 @@ export default function Timer({
                 completeAudio.volume = localVolume;
                 completeAudio.play();
                 
+                // TODO: Replace with Firebase RTDB sound cooldown check
                 // Only notify others if task took more than 15 seconds AND cooldown has passed
                 if (seconds > 15 && user?.id && currentInstance) {
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
                   const now = Date.now();
-                  const lastCompleteRef = ref(rtdb, `instances/${currentInstance.id}/lastCompleteSound/${user.id}`);
+                  // const lastCompleteRef = ref(rtdb, `instances/${currentInstance.id}/lastCompleteSound/${user.id}`);
                   
                   // Check last complete sound timestamp
-                  onValue(lastCompleteRef, (snapshot) => {
-                    const lastCompleteTime = snapshot.val() || 0;
-                    const timeSinceLastComplete = now - lastCompleteTime;
-                    
-                    if (timeSinceLastComplete > 300000) { // 5 minutes cooldown
-                      notifyEvent("complete");
-                      set(lastCompleteRef, now);
-                    }
-                  }, { onlyOnce: true });
+                  // onValue(lastCompleteRef, (snapshot) => {
+                  //   const lastCompleteTime = snapshot.val() || 0;
+                  //   const timeSinceLastComplete = now - lastCompleteTime;
+                  //   
+                  //   if (timeSinceLastComplete > 300000) { // 5 minutes cooldown
+                  //     notifyEvent("complete");
+                  //     set(lastCompleteRef, now);
+                  //   }
+                  // }, { onlyOnce: true });
+                  
+                  // Temporary: Always notify complete event
+                  notifyEvent("complete");
                 }
                 
                 if (onComplete) {

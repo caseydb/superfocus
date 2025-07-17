@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { rtdb } from "@/lib/firebase";
-import { ref, onValue, off } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "@/lib/firebase";
+// import { ref, onValue, off } from "firebase/database";
 import DateRangePicker from "../DateRangePicker";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 
 interface AnalyticsProps {
   roomId: string;
@@ -36,6 +39,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     end: null,
   });
   const [mounted, setMounted] = useState(false);
+  
+  // Get user data from Redux store
+  const reduxUser = useSelector((state: RootState) => state.user);
 
   // Ensure component is mounted before rendering date-dependent content
   useEffect(() => {
@@ -171,29 +177,36 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientDateRange, taskHistory]);
 
+  // TODO: Replace with Firebase RTDB listener for task history
   useEffect(() => {
     // Try to fetch real data first
-    const historyRef = ref(rtdb, `instances/${roomId}/history`);
+    // const historyRef = ref(rtdb, `instances/${roomId}/history`);
 
-    const unsubscribe = onValue(historyRef, (snapshot) => {
-      const data = snapshot.val();
+    // const unsubscribe = onValue(historyRef, (snapshot) => {
+    //   const data = snapshot.val();
 
-      if (data) {
-        const allTasks = Object.values(data as Record<string, TaskData>);
-        const userTasks = allTasks.filter((task: TaskData) => task.userId === userId);
+    //   if (data) {
+    //     const allTasks = Object.values(data as Record<string, TaskData>);
+    //     const userTasks = allTasks.filter((task: TaskData) => task.userId === userId);
 
-        setTaskHistory(userTasks);
-        setActivityData(generateActivityData(userTasks));
-      } else {
-        // Use sample data if no real data
-        const sampleTasks = generateSampleData();
-        setTaskHistory(sampleTasks);
-        setActivityData(generateActivityData(sampleTasks));
-      }
-      setIsLoading(false);
-    });
+    //     setTaskHistory(userTasks);
+    //     setActivityData(generateActivityData(userTasks));
+    //   } else {
+    //     // Use sample data if no real data
+    //     const sampleTasks = generateSampleData();
+    //     setTaskHistory(sampleTasks);
+    //     setActivityData(generateActivityData(sampleTasks));
+    //   }
+    //   setIsLoading(false);
+    // });
 
-    return () => off(historyRef, "value", unsubscribe);
+    // return () => off(historyRef, "value", unsubscribe);
+    
+    // Temporary: Use sample data
+    const sampleTasks = generateSampleData();
+    setTaskHistory(sampleTasks);
+    setActivityData(generateActivityData(sampleTasks));
+    setIsLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, userId]);
 
@@ -499,7 +512,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
         {/* Header with gradient */}
         <div className="mb-2 text-center relative">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
-            {displayName ? `${displayName.split(" ")[0]}'s Analytics` : "Analytics Dashboard"}
+            {reduxUser.first_name ? `${reduxUser.first_name}'s Analytics` : displayName ? `${displayName.split(" ")[0]}'s Analytics` : "Analytics Dashboard"}
           </h2>
           {/* Close button */}
           <button

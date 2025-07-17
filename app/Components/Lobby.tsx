@@ -4,25 +4,32 @@ import { useInstance } from "../Components/Instances";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SignOut from "./SignOut";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import SignIn from "./SignIn";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 export default function Lobby() {
-  const { instances, currentInstance, createInstance, leaveInstance } = useInstance();
+  const { instances, currentInstance, createInstance, leaveInstance, user, userReady } = useInstance();
   const router = useRouter();
-  const [signedIn, setSignedIn] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showPrivateRoomModal, setShowPrivateRoomModal] = useState(false);
   const [privateRoomName, setPrivateRoomName] = useState("");
   const [roomNameError, setRoomNameError] = useState("");
 
+  // Get user data from Redux store
+  const reduxUser = useSelector((state: RootState) => state.user);
+
+  // Check if user is signed in (not a temporary user)
+  const signedIn = userReady && user.id && !user.id.startsWith("user-");
+
+  // Log Redux user state only when it changes
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => setSignedIn(!!user));
-    return () => unsub();
-  }, []);
+    if (reduxUser.user_id) {
+      console.log("Redux user state:", reduxUser);
+    }
+  }, [reduxUser]);
 
   // Close modal when signed in
   useEffect(() => {

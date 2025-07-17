@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off } from "firebase/database";
+// TODO: Remove firebase imports when replacing with proper persistence
+// import { rtdb } from "../../../lib/firebase";
+// import { ref, set, onValue, off } from "firebase/database";
 
 interface NoteItem {
   id: string;
@@ -22,7 +23,9 @@ interface NoteItem {
 //   userId: string;
 // }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task: string; taskId?: string | null }) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useInstance();
   const [mounted, setMounted] = useState(false);
   const [items, setItems] = useState<NoteItem[]>([{ id: "1", type: "text", content: "", level: 0 }]);
@@ -33,6 +36,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   const [isMac, setIsMac] = useState(false);
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [notesMap, setNotesMap] = useState<Record<string, NoteItem[]>>({});
 
   // Set focus only when Notes is explicitly opened
   const prevIsOpen = useRef(isOpen);
@@ -53,35 +57,77 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
     setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
   }, []);
 
-  // Load notes from Firebase when component mounts or task changes
+  // TODO: Replace with proper persistence - currently using local state only
+  // Initialize with seed notes for seed tasks
   useEffect(() => {
-    if (!mounted || !user?.id || !taskId) return;
+    if (!mounted) return;
 
-    // Use the same path as TaskList: users/${user.id}/taskNotes/${taskId}
-    const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${taskId}`);
-    
-    const handle = onValue(notesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.items) {
-        setItems(data.items);
-        // Find the highest ID to set nextId correctly
-        const maxId = Math.max(...data.items.map((item: NoteItem) => parseInt(item.id)), 0);
-        setNextId(maxId + 1);
-      } else {
-        // No existing notes, start with empty note
-        setItems([{ id: "1", type: "text", content: "", level: 0 }]);
-        setNextId(2);
-      }
-    });
-
-    return () => {
-      off(notesRef, "value", handle);
+    // Seed notes data for the 5 seed tasks (using calculated task IDs from task text)
+    const seedNotes: Record<string, NoteItem[]> = {
+      "44556": [ // Complete the quarterly report
+        { id: "1", type: "checkbox", content: "Review Q3 financial data", completed: true, level: 0 },
+        { id: "2", type: "checkbox", content: "Update executive summary", completed: false, level: 0 },
+        { id: "3", type: "checkbox", content: "Add revenue projections", completed: false, level: 0 },
+        { id: "4", type: "bullet", content: "Due by end of week", level: 0 }
+      ],
+      "21856": [ // Review pull requests
+        { id: "1", type: "checkbox", content: "Frontend PR #234", completed: true, level: 0 },
+        { id: "2", type: "checkbox", content: "Backend PR #567", completed: false, level: 0 },
+        { id: "3", type: "checkbox", content: "Documentation updates", completed: false, level: 0 },
+        { id: "4", type: "text", content: "Focus on security fixes first", level: 0 }
+      ],
+      "42124": [ // Update project documentation
+        { id: "1", type: "text", content: "Main sections to update:", level: 0 },
+        { id: "2", type: "bullet", content: "API endpoints documentation", level: 0 },
+        { id: "3", type: "bullet", content: "Installation guide", level: 0 },
+        { id: "4", type: "bullet", content: "Architecture overview", level: 0 }
+      ],
+      "29625": [ // Prepare for team standup
+        { id: "1", type: "checkbox", content: "Review yesterday's tasks", completed: true, level: 0 },
+        { id: "2", type: "checkbox", content: "Update Jira board", completed: false, level: 0 },
+        { id: "3", type: "checkbox", content: "Prepare blockers list", completed: false, level: 0 },
+        { id: "4", type: "text", content: "Meeting at 10am sharp", level: 0 }
+      ],
+      "47491": [ // Refactor authentication module
+        { id: "1", type: "number", content: "Review current auth flow", level: 0 },
+        { id: "2", type: "number", content: "Implement JWT refresh tokens", level: 0 },
+        { id: "3", type: "number", content: "Add rate limiting", level: 0 },
+        { id: "4", type: "checkbox", content: "Update unit tests", completed: false, level: 0 }
+      ]
     };
-  }, [mounted, user?.id, taskId]);
 
-  // Save notes to Firebase with debouncing
+    // Initialize notes map from window if available
+    if (typeof window !== "undefined") {
+      const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
+      if (!windowWithNotes.notesMap) {
+        windowWithNotes.notesMap = seedNotes;
+      }
+      setNotesMap(windowWithNotes.notesMap);
+    }
+  }, [mounted]);
+
+  // Load notes for current task
+  useEffect(() => {
+    if (!mounted || !taskId) return;
+
+    // Load from local notes map
+    const savedNotes = notesMap[taskId];
+    if (savedNotes) {
+      setItems(savedNotes);
+      // Find the highest ID to set nextId correctly
+      const maxId = Math.max(...savedNotes.map((item) => parseInt(item.id)), 0);
+      setNextId(maxId + 1);
+    } else {
+      // No existing notes, start with empty note
+      setItems([{ id: "1", type: "text", content: "", level: 0 }]);
+      setNextId(2);
+    }
+  }, [mounted, taskId, notesMap]);
+
+  // TODO: Replace with proper persistence - currently saves to local state only
+  // Save notes to local state with debouncing
   const saveNotes = (newItems: NoteItem[]) => {
-    if (!user?.id || !mounted || !taskId) return;
+    if (!mounted || !taskId) return;
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -90,15 +136,15 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
     // Set new timeout for debounced save
     saveTimeoutRef.current = setTimeout(() => {
-      // Use the same path as TaskList: users/${user.id}/taskNotes/${taskId}
-      const notesRef = ref(rtdb, `users/${user.id}/taskNotes/${taskId}`);
-      set(notesRef, {
-        items: newItems,
-        taskId: taskId,
-        taskText: task.trim(),
-        lastUpdated: Date.now(),
-        userId: user.id,
-      });
+      // Update local notes map
+      const updatedNotesMap = { ...notesMap, [taskId]: newItems };
+      setNotesMap(updatedNotesMap);
+      
+      // Update global window object
+      if (typeof window !== "undefined") {
+        const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
+        windowWithNotes.notesMap = updatedNotesMap;
+      }
     }, 500); // 500ms debounce
   };
 
