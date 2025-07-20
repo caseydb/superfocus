@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { transferTaskToPostgres, endTimeSegment } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off, set, remove, push, runTransaction } from "firebase/database";
+import { ref, onValue, off, set, remove, push, runTransaction, get } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
@@ -92,9 +92,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowSignInModal(false);
   }, []);
 
-  // Track if there's an active timer state from Firebase
-  const [hasActiveTimer] = useState(false);
-  const [currentTimerSeconds] = useState(0);
+  // Track if there's an active timer state from Redux or TaskBuffer
+  const [hasTaskInBuffer, setHasTaskInBuffer] = useState(false);
+  const hasActiveTimer = Boolean(activeTaskId) || hasTaskInBuffer;
+  const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
 
   // Find taskId for current task
   useEffect(() => {
@@ -278,24 +279,104 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   }
 
-  // Tab title management - update every second when timer is running
+  // Tab title management and timer seconds tracking - update every second when timer is running
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
     if (timerRunning) {
-      const updateTitle = () => {
+      const updateTitleAndSeconds = () => {
         document.title = formatTime(timerSecondsRef.current);
+        setCurrentTimerSeconds(timerSecondsRef.current);
       };
-      interval = setInterval(updateTitle, 1000);
-      updateTitle(); // Set immediately
+      interval = setInterval(updateTitleAndSeconds, 1000);
+      updateTitleAndSeconds(); // Set immediately
     } else {
       document.title = "Locked In";
+      // When timer is not running, still update currentTimerSeconds to show accumulated time
+      setCurrentTimerSeconds(timerSecondsRef.current);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [timerRunning]);
+
+  // Sync timer seconds periodically to ensure TaskList shows correct time
+  // This is especially important on page load when timer state is restored
+  useEffect(() => {
+    // Initial sync
+    setCurrentTimerSeconds(timerSecondsRef.current);
+    
+    // Set up periodic sync to catch any updates
+    const syncInterval = setInterval(() => {
+      setCurrentTimerSeconds(timerSecondsRef.current);
+    }, 100); // Check every 100ms
+    
+    return () => clearInterval(syncInterval);
+  }, []);
+
+  // Check TaskBuffer for active tasks on mount
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const checkTaskBuffer = async () => {
+      const userTasksRef = ref(rtdb, `TaskBuffer/${user.id}`);
+      try {
+        const snapshot = await get(userTasksRef);
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          // Check if there are any task entries (excluding timer_state, heartbeat, etc.)
+          const taskIds = Object.keys(data).filter(
+            (key) =>
+              key !== "timer_state" &&
+              key !== "heartbeat" &&
+              key !== "tasks" &&
+              key !== "rooms" &&
+              key !== "completionHistory" &&
+              key !== "lastStartSound" &&
+              key !== "lastCompleteSound" &&
+              key !== "history" &&
+              key !== "lastEvent"
+          );
+          setHasTaskInBuffer(taskIds.length > 0);
+        } else {
+          setHasTaskInBuffer(false);
+        }
+      } catch (error) {
+        console.error("Error checking TaskBuffer:", error);
+        setHasTaskInBuffer(false);
+      }
+    };
+
+    checkTaskBuffer();
+
+    // Also set up a listener for real-time updates
+    const userTasksRef = ref(rtdb, `TaskBuffer/${user.id}`);
+    const unsubscribe = onValue(userTasksRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const taskIds = Object.keys(data).filter(
+          (key) =>
+            key !== "timer_state" &&
+            key !== "heartbeat" &&
+            key !== "tasks" &&
+            key !== "rooms" &&
+            key !== "completionHistory" &&
+            key !== "lastStartSound" &&
+            key !== "lastCompleteSound" &&
+            key !== "history" &&
+            key !== "lastEvent"
+        );
+        setHasTaskInBuffer(taskIds.length > 0);
+      } else {
+        setHasTaskInBuffer(false);
+      }
+    });
+
+    return () => {
+      off(userTasksRef, "value", unsubscribe);
+    };
+  }, [user?.id]);
 
   // Listen for event notifications (🥊🏆💀)
   useEffect(() => {

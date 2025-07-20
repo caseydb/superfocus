@@ -40,6 +40,7 @@ interface Task {
   text: string;
   completed: boolean;
   order?: number;
+  timeSpent?: number;
 }
 
 interface NoteItem {
@@ -513,14 +514,14 @@ function SortableTask({
                 if (onStartTask) onStartTask(task.text);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              disabled={Boolean(hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim())}
+              disabled={Boolean(hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim()))}
               className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
-                hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
+                hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim())
                   ? "text-gray-600 cursor-not-allowed"
                   : "text-gray-400 hover:text-[#FFAA00]"
               }`}
               title={
-                hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
+                hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim())
                   ? "Another task is active"
                   : "Start timer for this task"
               }
@@ -704,25 +705,36 @@ function SortableTask({
                   </div>
                 );
               } else {
+                // Non-active tasks
+                const taskTime = task.timeSpent || 0;
+                
                 return (
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center">
+                    {/* Time Display for non-active tasks with time */}
+                    {taskTime > 0 && (
+                      <div className="text-gray-500 text-xs font-mono font-medium mr-2 group-hover:opacity-0 transition-opacity duration-200">
+                        {formatTime(taskTime)}
+                      </div>
+                    )}
                     {/* Delete Button for non-active tasks */}
-                    <button
-                      onClick={() => onRemove(task.id)}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-                      title="Delete task"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
+                    <div className={`flex items-center ${taskTime > 0 ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                      <button
+                        onClick={() => onRemove(task.id)}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+                        title="Delete task"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 );
               }
@@ -893,6 +905,7 @@ export default function TaskList({
     text: task.name,
     completed: task.completed,
     order: 0, // Not used in Redux version
+    timeSpent: task.timeSpent, // Include the timeSpent from Redux
   }));
 
   const [newTaskText, setNewTaskText] = useState("");
