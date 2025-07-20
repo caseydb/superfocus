@@ -139,6 +139,31 @@ export const deleteTaskThunk = createAsyncThunk(
     if (firebaseUserId) {
       const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
       await remove(taskRef);
+      
+      // Check if this was the last task and clean up if needed
+      const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+      const userSnapshot = await get(userTasksRef);
+      
+      if (userSnapshot.exists()) {
+        const userData = userSnapshot.val();
+        const remainingTasks = Object.keys(userData).filter(key => 
+          key !== 'timer_state' && 
+          key !== 'heartbeat' && 
+          key !== 'tasks' && 
+          key !== 'rooms' &&
+          key !== 'completionHistory' &&
+          key !== 'lastStartSound' &&
+          key !== 'lastCompleteSound' &&
+          key !== 'history' &&
+          key !== 'lastEvent'
+        );
+        
+        // If no other tasks, remove entire user node
+        if (remainingTasks.length === 0) {
+          await remove(userTasksRef);
+          console.log("[deleteTaskThunk] Removed entire user node from TaskBuffer as no tasks remain");
+        }
+      }
     }
 
     return id; // Return the task ID that was deleted
@@ -229,10 +254,75 @@ export const transferTaskToPostgres = createAsyncThunk(
       console.log("[transferTaskToPostgres] PostgreSQL confirmed task update:", savedTask);
       console.log("[transferTaskToPostgres] Task duration saved:", savedTask.duration, "seconds");
       
-      // 3. On success, delete from TaskBuffer
-      console.log("[transferTaskToPostgres] PostgreSQL update confirmed, now removing from TaskBuffer");
+      // 3. On success, delete ALL TaskBuffer data for this user
+      console.log("[transferTaskToPostgres] PostgreSQL update confirmed, now cleaning up ALL TaskBuffer data");
+      
+      // Remove the specific task
       await remove(taskRef);
-      console.log("[transferTaskToPostgres] Successfully removed task from TaskBuffer:", `TaskBuffer/${firebaseUserId}/${taskId}`);
+      console.log("[transferTaskToPostgres] Removed task from TaskBuffer:", `TaskBuffer/${firebaseUserId}/${taskId}`);
+      
+      // Check if user has any other active tasks in TaskBuffer
+      const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+      const userSnapshot = await get(userTasksRef);
+      
+      if (userSnapshot.exists()) {
+        const userData = userSnapshot.val();
+        // Check if there are any remaining tasks (excluding timer_state, heartbeat, etc.)
+        const remainingTasks = Object.keys(userData).filter(key => 
+          key !== 'timer_state' && 
+          key !== 'heartbeat' && 
+          key !== 'tasks' && 
+          key !== 'rooms' &&
+          key !== 'completionHistory' &&
+          key !== 'lastStartSound' &&
+          key !== 'lastCompleteSound' &&
+          key !== 'history' &&
+          key !== 'lastEvent'
+        );
+        
+        console.log("[transferTaskToPostgres] Remaining tasks for user:", remainingTasks);
+        
+        // If no other tasks, clean up ALL user data from TaskBuffer
+        if (remainingTasks.length === 0) {
+          console.log("[transferTaskToPostgres] No other tasks found, removing entire user node from TaskBuffer");
+          await remove(userTasksRef);
+          console.log("[transferTaskToPostgres] Successfully removed entire user node from TaskBuffer");
+        } else {
+          // Still clean up non-task data even if other tasks exist
+          console.log("[transferTaskToPostgres] Other tasks exist, cleaning up only non-task data");
+          const cleanupPromises = [];
+          
+          // Remove timer state
+          if (userData.timer_state) {
+            cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`)));
+          }
+          
+          // Remove heartbeat
+          if (userData.heartbeat) {
+            cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/heartbeat`)));
+          }
+          
+          // Remove tasks list
+          if (userData.tasks) {
+            cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/tasks`)));
+          }
+          
+          // Remove rooms data
+          if (userData.rooms) {
+            cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/rooms`)));
+          }
+          
+          // Remove any other non-task data
+          ['completionHistory', 'lastStartSound', 'lastCompleteSound', 'history', 'lastEvent'].forEach(key => {
+            if (userData[key]) {
+              cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/${key}`)));
+            }
+          });
+          
+          await Promise.all(cleanupPromises);
+          console.log("[transferTaskToPostgres] Cleaned up non-task data from TaskBuffer");
+        }
+      }
       
       return { savedTask, status };
       

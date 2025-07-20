@@ -509,9 +509,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       };
       push(historyRef, completionData);
 
-      // Also save to user's personal completion history for cross-room stats
-      const userHistoryRef = ref(rtdb, `TaskBuffer/${user.id}/completionHistory`);
-      push(userHistoryRef, completionData);
+      // Completion history should be stored elsewhere, not in TaskBuffer
+      // TaskBuffer is only for temporary task data during active work
       
       // Trigger global task completed event for PersonalStats
       if (typeof window !== "undefined") {
