@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, get, update, remove } from "firebase/database";
-import { adminAuth } from "@/lib/firebase-admin";
 
 // Firebase TaskBuffer operations
 export async function GET(req: NextRequest) {
@@ -50,7 +49,7 @@ export async function GET(req: NextRequest) {
         .filter(([key]) => key !== 'timer_state' && key !== 'heartbeat' && key !== 'tasks' && key !== 'rooms') // Filter out non-task entries
         .map(([id, data]) => ({
           id,
-          ...data as any
+          ...data as object
         }));
 
       return NextResponse.json({

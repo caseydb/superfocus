@@ -7,8 +7,6 @@ import SignOut from "./SignOut";
 import SignIn from "./SignIn";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
-import { useSelector } from "react-redux";
-import { RootState } from "../store/store";
 
 export default function Lobby() {
   const { instances, currentInstance, createInstance, leaveInstance, user, userReady } = useInstance();
@@ -17,9 +15,6 @@ export default function Lobby() {
   const [showPrivateRoomModal, setShowPrivateRoomModal] = useState(false);
   const [privateRoomName, setPrivateRoomName] = useState("");
   const [roomNameError, setRoomNameError] = useState("");
-
-  // Get user data from Redux store
-  const reduxUser = useSelector((state: RootState) => state.user);
 
   // Check if user is signed in (not a temporary user)
   const signedIn = userReady && user.id && !user.id.startsWith("user-");

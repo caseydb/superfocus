@@ -46,7 +46,7 @@ export const addTaskToBufferWhenStarted = createAsyncThunk(
     // Check if task already exists in TaskBuffer
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
     const snapshot = await get(taskRef);
-    
+
     if (!snapshot.exists()) {
       // Only add to TaskBuffer if it doesn't exist
       const taskData = {
@@ -59,13 +59,11 @@ export const addTaskToBufferWhenStarted = createAsyncThunk(
         total_time: 0,
         time_segments: [], // Initialize empty, will be added by startTimeSegment
       };
-      
-      console.log("[addTaskToBufferWhenStarted] Creating new task in buffer:", taskData);
+
       await set(taskRef, taskData);
       return taskData;
     } else {
       // Task already exists in buffer, just return existing data
-      console.log("[addTaskToBufferWhenStarted] Task already exists in buffer");
       return snapshot.val();
     }
   }
@@ -83,10 +81,9 @@ export const createTaskThunk = createAsyncThunk(
     name: string;
     userId: string;
   }) => {
-
     // Get room ID from the current URL
-    const roomId = window.location.pathname.split('/').pop() || 'default';
-    
+    const roomId = window.location.pathname.split("/").pop() || "default";
+
     // Call API to persist to database
     const response = await fetch("/api/task/postgres", {
       method: "POST",
@@ -109,7 +106,6 @@ export const createTaskThunk = createAsyncThunk(
 
     const data = await response.json();
 
-
     return data;
   }
 );
@@ -117,15 +113,7 @@ export const createTaskThunk = createAsyncThunk(
 // Thunk for deleting a task from database
 export const deleteTaskThunk = createAsyncThunk(
   "tasks/delete",
-  async ({
-    id,
-    userId,
-    firebaseUserId,
-  }: {
-    id: string;
-    userId: string;
-    firebaseUserId?: string;
-  }) => {
+  async ({ id, userId, firebaseUserId }: { id: string; userId: string; firebaseUserId?: string }) => {
     // Call API to delete from database
     const response = await fetch(`/api/task/postgres?id=${id}&user_id=${userId}`, {
       method: "DELETE",
@@ -139,29 +127,29 @@ export const deleteTaskThunk = createAsyncThunk(
     if (firebaseUserId) {
       const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
       await remove(taskRef);
-      
+
       // Check if this was the last task and clean up if needed
       const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
       const userSnapshot = await get(userTasksRef);
-      
+
       if (userSnapshot.exists()) {
         const userData = userSnapshot.val();
-        const remainingTasks = Object.keys(userData).filter(key => 
-          key !== 'timer_state' && 
-          key !== 'heartbeat' && 
-          key !== 'tasks' && 
-          key !== 'rooms' &&
-          key !== 'completionHistory' &&
-          key !== 'lastStartSound' &&
-          key !== 'lastCompleteSound' &&
-          key !== 'history' &&
-          key !== 'lastEvent'
+        const remainingTasks = Object.keys(userData).filter(
+          (key) =>
+            key !== "timer_state" &&
+            key !== "heartbeat" &&
+            key !== "tasks" &&
+            key !== "rooms" &&
+            key !== "completionHistory" &&
+            key !== "lastStartSound" &&
+            key !== "lastCompleteSound" &&
+            key !== "history" &&
+            key !== "lastEvent"
         );
-        
+
         // If no other tasks, remove entire user node
         if (remainingTasks.length === 0) {
           await remove(userTasksRef);
-          console.log("[deleteTaskThunk] Removed entire user node from TaskBuffer as no tasks remain");
         }
       }
     }
@@ -179,23 +167,19 @@ export const transferTaskToPostgres = createAsyncThunk(
     status,
     token,
     duration,
-    retryCount = 0,
   }: {
     taskId: string;
     firebaseUserId: string;
     status: "completed" | "quit";
     token: string;
     duration?: number; // Optional duration in seconds to override Firebase calculation
-    retryCount?: number;
   }) => {
-    const MAX_RETRIES = 3;
-    console.log("[transferTaskToPostgres] Starting transfer for task:", taskId, "status:", status);
-    
+
     try {
       // 1. Get task data from TaskBuffer
       const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
       const snapshot = await get(taskRef);
-      
+
       if (!snapshot.exists()) {
         console.error("[transferTaskToPostgres] Task not found in TaskBuffer");
         console.error("[transferTaskToPostgres] Looking for path:", `TaskBuffer/${firebaseUserId}/${taskId}`);
@@ -210,28 +194,23 @@ export const transferTaskToPostgres = createAsyncThunk(
         }
         throw new Error("Task not found in TaskBuffer - it may have already been completed");
       }
-      
+
       const taskData = snapshot.val();
-      console.log("[transferTaskToPostgres] Task data from Firebase:", taskData);
-      
+
       // Calculate final total time including any open segments
       let finalTotalTime = taskData.total_time || 0;
       const timeSegments = taskData.time_segments || [];
-      console.log("[transferTaskToPostgres] Initial total_time:", finalTotalTime);
-      console.log("[transferTaskToPostgres] Time segments:", timeSegments);
-      
+
       // If there's an open segment, close it and add to total
       if (timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null) {
         const lastSegment = timeSegments[timeSegments.length - 1];
         const segmentDuration = Math.floor((Date.now() - lastSegment.start) / 1000);
-        console.log("[transferTaskToPostgres] Found open segment, duration:", segmentDuration);
         finalTotalTime += segmentDuration;
       }
-      
+
       // Use provided duration if available, otherwise use calculated duration
       const durationToSave = duration !== undefined ? duration : finalTotalTime;
-      console.log("[transferTaskToPostgres] Duration provided:", duration, "Calculated:", finalTotalTime, "Using:", durationToSave);
-      
+
       // 2. Update task in Postgres with completion data
       const patchBody = {
         id: taskData.id,
@@ -240,24 +219,22 @@ export const transferTaskToPostgres = createAsyncThunk(
           duration: durationToSave, // Use provided or calculated duration
           updated_at: new Date().toISOString(),
           completed_at: status === "completed" ? new Date().toISOString() : null,
-        }
+        },
       };
-      
-      console.log("[transferTaskToPostgres] PATCH body:", JSON.stringify(patchBody, null, 2));
-      
+
       const response = await fetch("/api/task/postgres", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(patchBody),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[transferTaskToPostgres] PATCH failed:", response.status, errorText);
-        
+
         // Try to parse error details
         let errorMessage = `Failed to update task in Postgres: ${response.status}`;
         try {
@@ -265,109 +242,85 @@ export const transferTaskToPostgres = createAsyncThunk(
           if (errorJson.error) {
             errorMessage = errorJson.error;
           }
-        } catch (e) {
+        } catch {
           // If not JSON, use the text as is
           if (errorText) {
             errorMessage = errorText;
           }
         }
-        
+
         throw new Error(errorMessage);
       }
-      
+
       const savedTask = await response.json();
-      console.log("[transferTaskToPostgres] PostgreSQL confirmed task update:", savedTask);
-      console.log("[transferTaskToPostgres] Task duration saved:", savedTask.duration, "seconds");
-      
+
       // 3. On success, delete ALL TaskBuffer data for this user
-      console.log("[transferTaskToPostgres] PostgreSQL update confirmed, now cleaning up ALL TaskBuffer data");
-      
+
       // Remove the specific task
       await remove(taskRef);
-      console.log("[transferTaskToPostgres] Removed task from TaskBuffer:", `TaskBuffer/${firebaseUserId}/${taskId}`);
-      
+
       // Check if user has any other active tasks in TaskBuffer
       const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
       const userSnapshot = await get(userTasksRef);
-      
+
       if (userSnapshot.exists()) {
         const userData = userSnapshot.val();
         // Check if there are any remaining tasks (excluding timer_state, heartbeat, etc.)
-        const remainingTasks = Object.keys(userData).filter(key => 
-          key !== 'timer_state' && 
-          key !== 'heartbeat' && 
-          key !== 'tasks' && 
-          key !== 'rooms' &&
-          key !== 'completionHistory' &&
-          key !== 'lastStartSound' &&
-          key !== 'lastCompleteSound' &&
-          key !== 'history' &&
-          key !== 'lastEvent'
+        const remainingTasks = Object.keys(userData).filter(
+          (key) =>
+            key !== "timer_state" &&
+            key !== "heartbeat" &&
+            key !== "tasks" &&
+            key !== "rooms" &&
+            key !== "completionHistory" &&
+            key !== "lastStartSound" &&
+            key !== "lastCompleteSound" &&
+            key !== "history" &&
+            key !== "lastEvent"
         );
-        
-        console.log("[transferTaskToPostgres] Remaining tasks for user:", remainingTasks);
-        
+
         // If no other tasks, clean up ALL user data from TaskBuffer
         if (remainingTasks.length === 0) {
-          console.log("[transferTaskToPostgres] No other tasks found, removing entire user node from TaskBuffer");
           await remove(userTasksRef);
-          console.log("[transferTaskToPostgres] Successfully removed entire user node from TaskBuffer");
         } else {
           // Still clean up non-task data even if other tasks exist
-          console.log("[transferTaskToPostgres] Other tasks exist, cleaning up only non-task data");
           const cleanupPromises = [];
-          
+
           // Remove timer state
           if (userData.timer_state) {
             cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`)));
           }
-          
+
           // Remove heartbeat
           if (userData.heartbeat) {
             cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/heartbeat`)));
           }
-          
+
           // Remove tasks list
           if (userData.tasks) {
             cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/tasks`)));
           }
-          
+
           // Remove rooms data
           if (userData.rooms) {
             cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/rooms`)));
           }
-          
+
           // Remove any other non-task data
-          ['completionHistory', 'lastStartSound', 'lastCompleteSound', 'history', 'lastEvent'].forEach(key => {
+          ["completionHistory", "lastStartSound", "lastCompleteSound", "history", "lastEvent"].forEach((key) => {
             if (userData[key]) {
               cleanupPromises.push(remove(ref(rtdb, `TaskBuffer/${firebaseUserId}/${key}`)));
             }
           });
-          
+
           await Promise.all(cleanupPromises);
-          console.log("[transferTaskToPostgres] Cleaned up non-task data from TaskBuffer");
         }
       }
-      
+
       return { savedTask, status };
-      
     } catch (error) {
-      // Retry logic
-      if (retryCount < MAX_RETRIES) {
-        console.warn(`Retrying task transfer (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
-        
-        // Retry with incremented count
-        return transferTaskToPostgres({
-          taskId,
-          firebaseUserId,
-          status,
-          token,
-          retryCount: retryCount + 1,
-        });
-      }
-      
-      // If all retries failed, throw the error
+      // For now, just throw the error without retry
+      // TODO: Implement retry logic without circular reference
       throw error;
     }
   }
@@ -391,7 +344,6 @@ export const completeTaskWithHistory = createAsyncThunk(
     duration: number; // in seconds
     token: string;
   }) => {
-
     // Call API to save to task_history
     const response = await fetch("/api/task-history", {
       method: "POST",
@@ -425,24 +377,34 @@ export const fetchTasksFromBuffer = createAsyncThunk(
   async ({ firebaseUserId }: { firebaseUserId: string }) => {
     const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
     const snapshot = await get(userRef);
-    
+
     if (!snapshot.exists()) {
       return [];
     }
-    
+
     const tasksData = snapshot.val();
-    const tasks = Object.values(tasksData).map((task: any) => {
+    interface FirebaseTaskData {
+      id: string;
+      name: string;
+      status: string;
+      total_time?: number;
+      time_segments?: Array<{ start: number; end: number | null }>;
+      created_at?: number;
+      updated_at?: number;
+    }
+    
+    const tasks = Object.values(tasksData as Record<string, FirebaseTaskData>).map((task) => {
       // Calculate current total time including any open segment
       let currentTotalTime = task.total_time || 0;
       const timeSegments = task.time_segments || [];
-      
+
       // If there's an open segment, add its duration to the total
       if (timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null) {
         const lastSegment = timeSegments[timeSegments.length - 1];
         const segmentDuration = Math.floor((Date.now() - lastSegment.start) / 1000);
         currentTotalTime += segmentDuration;
       }
-      
+
       return {
         id: task.id,
         name: task.name,
@@ -453,7 +415,7 @@ export const fetchTasksFromBuffer = createAsyncThunk(
         status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
       };
     });
-    
+
     return tasks;
   }
 );
@@ -461,37 +423,36 @@ export const fetchTasksFromBuffer = createAsyncThunk(
 // Thunk for checking and restoring active task state
 export const checkForActiveTask = createAsyncThunk(
   "tasks/checkForActiveTask",
-  async ({ firebaseUserId, userId }: { firebaseUserId: string; userId: string }) => {
+  async ({ firebaseUserId }: { firebaseUserId: string; userId: string }) => {
     const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
     const snapshot = await get(userRef);
-    
+
     if (!snapshot.exists()) {
       return null;
     }
-    
+
     const tasksData = snapshot.val();
-    
+
     // Find any task that's in progress or paused with time accumulated
     let activeTask = null;
     let totalTimeSpent = 0;
-    
+
     for (const [taskId, taskData] of Object.entries(tasksData)) {
-      const task = taskData as any;
-      
+      const task = taskData as Record<string, unknown>;
+
       // Calculate total time including all segments
-      let taskTotalTime = task.total_time || 0;
-      const timeSegments = task.time_segments || [];
-      
+      let taskTotalTime = (task.total_time as number) || 0;
+      const timeSegments = (task.time_segments as Array<{ start: number; end: number | null }>) || [];
+
       // Check if this task has unclosed segments (was active when window closed)
-      const hasOpenSegment = timeSegments.length > 0 && 
-                           timeSegments[timeSegments.length - 1].end === null;
-      
+      const hasOpenSegment = timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null;
+
       // If there's an open segment, close it and add its time
       if (hasOpenSegment) {
         const lastSegment = timeSegments[timeSegments.length - 1];
         const segmentDuration = Math.floor((Date.now() - lastSegment.start) / 1000);
         taskTotalTime += segmentDuration;
-        
+
         // Close the open segment in Firebase
         timeSegments[timeSegments.length - 1].end = Date.now();
         const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
@@ -502,9 +463,12 @@ export const checkForActiveTask = createAsyncThunk(
           updated_at: Date.now(),
         });
       }
-      
+
       // Check if this task has time accumulated (either paused or had open segment)
-      if ((task.status === "in_progress" || task.status === "paused" || hasOpenSegment) && (taskTotalTime > 0 || hasOpenSegment)) {
+      if (
+        (task.status === "in_progress" || task.status === "paused" || hasOpenSegment) &&
+        (taskTotalTime > 0 || hasOpenSegment)
+      ) {
         activeTask = {
           id: taskId,
           name: task.name,
@@ -516,14 +480,13 @@ export const checkForActiveTask = createAsyncThunk(
         break;
       }
     }
-    
+
     return activeTask ? { task: activeTask, totalTime: totalTimeSpent } : null;
   }
 );
 
 // Thunk for fetching user's tasks from database
 export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: { userId: string }) => {
-  console.log("[fetchTasks] Fetching tasks for user:", userId);
   const response = await fetch(`/api/task/postgres?user_id=${userId}`);
 
   if (!response.ok) {
@@ -532,10 +495,9 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
   }
 
   const data = await response.json();
-  console.log("[fetchTasks] Raw API response:", data);
 
   // Transform database tasks to Redux format
-  const transformedTasks = data.map((task: any) => ({
+  const transformedTasks = data.map((task: { id: string; task_name: string; status: string; duration?: number; created_at: string; updated_at?: string }) => ({
     id: task.id,
     name: task.task_name, // Changed from task.name to task.task_name
     completed: task.status === "completed",
@@ -544,50 +506,39 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
     lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
     status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
   }));
-  
-  console.log("[fetchTasks] Transformed tasks:", transformedTasks);
+
   return transformedTasks;
 });
 
 // Thunk for recording time segment when starting task
 export const startTimeSegment = createAsyncThunk(
   "tasks/startTimeSegment",
-  async ({
-    taskId,
-    firebaseUserId,
-  }: {
-    taskId: string;
-    firebaseUserId: string;
-  }) => {
-    console.log("[startTimeSegment] Starting for task:", taskId);
+  async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
-    
+
     // Get current task data
     const snapshot = await get(taskRef);
     if (!snapshot.exists()) {
       console.error("[startTimeSegment] Task not found in TaskBuffer");
       throw new Error("Task not found in TaskBuffer");
     }
-    
+
     const taskData = snapshot.val();
-    console.log("[startTimeSegment] Current task data:", taskData);
     const timeSegments = taskData.time_segments || [];
-    
+
     // Add new segment with start time
     const now = Date.now();
-    console.log("[startTimeSegment] Creating new segment at:", now);
     timeSegments.push({
       start: now,
       end: null,
     });
-    
+
     await update(taskRef, {
       status: "in_progress",
       time_segments: timeSegments,
       updated_at: now,
     });
-    
-    console.log("[startTimeSegment] Updated with new segment, total segments:", timeSegments.length);
+
     return { taskId, timeSegments };
   }
 );
@@ -595,56 +546,42 @@ export const startTimeSegment = createAsyncThunk(
 // Thunk for recording time segment when pausing task
 export const endTimeSegment = createAsyncThunk(
   "tasks/endTimeSegment",
-  async ({
-    taskId,
-    firebaseUserId,
-  }: {
-    taskId: string;
-    firebaseUserId: string;
-  }) => {
-    console.log("[endTimeSegment] Starting for task:", taskId);
+  async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
-    
+
     // Get current task data
     const snapshot = await get(taskRef);
     if (!snapshot.exists()) {
       console.error("[endTimeSegment] Task not found in TaskBuffer");
       throw new Error("Task not found in TaskBuffer");
     }
-    
+
     const taskData = snapshot.val();
-    console.log("[endTimeSegment] Current task data:", taskData);
     const timeSegments = taskData.time_segments || [];
-    
+
     // End the last segment
     if (timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null) {
       const now = Date.now();
-      console.log("[endTimeSegment] Ending open segment at:", now);
       timeSegments[timeSegments.length - 1].end = now;
     } else {
-      console.log("[endTimeSegment] No open segment to end");
     }
-    
+
     // Calculate total time from all segments
-    const totalTime = timeSegments.reduce((total, segment) => {
+    const totalTime = timeSegments.reduce((total: number, segment: { start: number; end: number | null }) => {
       if (segment.start && segment.end) {
         const segmentDuration = Math.floor((segment.end - segment.start) / 1000);
-        console.log("[endTimeSegment] Segment duration:", segmentDuration, "seconds");
         return total + segmentDuration;
       }
       return total;
     }, 0);
-    
-    console.log("[endTimeSegment] Total time calculated:", totalTime, "seconds");
-    
+
     await update(taskRef, {
       status: "paused",
       time_segments: timeSegments,
       total_time: totalTime,
       updated_at: Date.now(),
     });
-    
-    console.log("[endTimeSegment] Updated Firebase with total time:", totalTime);
+
     return { taskId, timeSegments, totalTime };
   }
 );
@@ -664,18 +601,18 @@ export const updateTaskStatusInBuffer = createAsyncThunk(
     totalTime?: number;
   }) => {
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
-    
-    const updates: any = {
+
+    const updates: Record<string, unknown> = {
       status,
       updated_at: Date.now(),
     };
-    
+
     if (totalTime !== undefined) {
       updates.total_time = totalTime;
     }
-    
+
     await update(taskRef, updates);
-    
+
     return { taskId, status, totalTime };
   }
 );
@@ -692,7 +629,6 @@ export const updateTaskStatusThunk = createAsyncThunk(
     status: "not_started" | "in_progress" | "paused" | "completed" | "quit";
     token: string;
   }) => {
-
     // Database status matches our frontend status directly now
     const dbStatus = status;
 
@@ -788,7 +724,7 @@ const taskSlice = createSlice({
   extraReducers: (builder) => {
     // Handle addTaskToBufferWhenStarted
     builder
-      .addCase(addTaskToBufferWhenStarted.pending, (state) => {
+      .addCase(addTaskToBufferWhenStarted.pending, () => {
         // Task is being added to buffer
       })
       .addCase(addTaskToBufferWhenStarted.fulfilled, (state, action) => {
@@ -817,7 +753,7 @@ const taskSlice = createSlice({
         state.error = action.error.message || "Failed to fetch tasks from buffer";
       })
       // Handle transferTaskToPostgres
-      .addCase(transferTaskToPostgres.pending, (state) => {
+      .addCase(transferTaskToPostgres.pending, () => {
         // Task is being transferred
       })
       .addCase(transferTaskToPostgres.fulfilled, (state, action) => {
@@ -837,7 +773,7 @@ const taskSlice = createSlice({
         const task = state.tasks.find((t) => t.id === taskId);
         if (task) {
           task.status = status;
-          task.completed = status === "completed";
+          task.completed = false; // This thunk doesn't handle completed status
           task.lastActive = Date.now();
         }
       })
@@ -882,10 +818,10 @@ const taskSlice = createSlice({
       })
       .addCase(endTimeSegment.rejected, (state, action) => {
         state.error = action.error.message || "Failed to end time segment";
-      })
+      });
     // Handle createTaskThunk (legacy)
     builder
-      .addCase(createTaskThunk.pending, (state) => {
+      .addCase(createTaskThunk.pending, () => {
         // Optimistic update is already done via addTask
       })
       .addCase(createTaskThunk.fulfilled, (state, action) => {
@@ -903,7 +839,7 @@ const taskSlice = createSlice({
         state.error = action.error.message || "Failed to create task";
       })
       // Handle deleteTaskThunk
-      .addCase(deleteTaskThunk.pending, (state) => {
+      .addCase(deleteTaskThunk.pending, () => {
         // Task deletion is in progress
       })
       .addCase(deleteTaskThunk.fulfilled, (state, action) => {
@@ -928,7 +864,7 @@ const taskSlice = createSlice({
         state.error = action.error.message || "Failed to fetch tasks";
       })
       // Handle checkForActiveTask
-      .addCase(checkForActiveTask.pending, (state) => {
+      .addCase(checkForActiveTask.pending, () => {
         // Checking for active task
       })
       .addCase(checkForActiveTask.fulfilled, (state, action) => {
@@ -936,11 +872,11 @@ const taskSlice = createSlice({
           const { task } = action.payload;
           // Set the active task
           state.activeTaskId = task.id;
-          
+
           // Update the task in the tasks array
-          const existingTask = state.tasks.find(t => t.id === task.id);
+          const existingTask = state.tasks.find((t) => t.id === task.id);
           if (existingTask) {
-            existingTask.status = task.status;
+            existingTask.status = task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit";
             existingTask.timeSpent = task.totalTime;
             existingTask.lastActive = Date.now();
           }
@@ -962,7 +898,7 @@ const taskSlice = createSlice({
           task.lastActive = Date.now();
         }
       })
-      .addCase(updateTaskStatusThunk.fulfilled, (state, action) => {
+      .addCase(updateTaskStatusThunk.fulfilled, (state) => {
         // Status already updated optimistically, just clear any errors
         state.error = null;
       })

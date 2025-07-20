@@ -1,10 +1,8 @@
 // components/AuthForm.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword } from "@/lib/auth";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
 import Image from "next/image";
 
 export default function SignIn() {

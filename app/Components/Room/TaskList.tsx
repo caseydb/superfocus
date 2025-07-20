@@ -22,8 +22,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { addTask, deleteTask, updateTask, reorderTasks, toggleTaskComplete, createTaskThunk, deleteTaskThunk } from "../../store/taskSlice";
-import { v4 as uuidv4 } from 'uuid';
+import {
+  addTask,
+  deleteTask,
+  updateTask,
+  reorderTasks,
+  createTaskThunk,
+  deleteTaskThunk,
+} from "../../store/taskSlice";
+import { v4 as uuidv4 } from "uuid";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, set, onValue, off, remove } from "firebase/database";
@@ -100,7 +107,7 @@ function SortableTask({
     if (typeof window !== "undefined") {
       const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
       const savedNotes = windowWithNotes.notesMap?.[task.id];
-      
+
       if (savedNotes) {
         setItems(savedNotes);
         // Find the highest ID to set nextId correctly
@@ -113,7 +120,6 @@ function SortableTask({
       }
     }
   }, [task.id, isExpanded]);
-
 
   // Save notes to global state with debouncing
   // TODO: Replace with proper persistence - currently saves to local state only
@@ -214,7 +220,7 @@ function SortableTask({
     if (e.key === " " || e.key === "Enter") {
       e.stopPropagation();
     }
-    
+
     const currentIndex = items.findIndex((item) => item.id === id);
     const currentItem = items[currentIndex];
 
@@ -233,7 +239,9 @@ function SortableTask({
       }
       // If current item is empty and formatted, convert it to text first
       if (["checkbox", "bullet", "number"].includes(currentItem.type) && currentItem.content.length === 0) {
-        const updatedItems = items.map((item) => (item.id === id ? { ...item, type: "text" as const, completed: false } : item));
+        const updatedItems = items.map((item) =>
+          item.id === id ? { ...item, type: "text" as const, completed: false } : item
+        );
         setItems(updatedItems);
         saveNotes(updatedItems);
         return;
@@ -249,7 +257,6 @@ function SortableTask({
       newItems.splice(currentIndex + 1, 0, newItem);
       setItems(newItems);
       saveNotes(newItems);
-      
 
       // Focus new item after render
       setTimeout(() => {
@@ -269,7 +276,7 @@ function SortableTask({
 
       if (currentIndex > 0) {
         const prevId = newItems[currentIndex - 1].id;
-        
+
         setTimeout(() => {
           const prevTextarea = inputRefs.current[prevId];
           if (prevTextarea) {
@@ -299,14 +306,12 @@ function SortableTask({
       e.preventDefault();
       const prevId = items[currentIndex - 1].id;
       inputRefs.current[prevId]?.focus();
-      
     }
 
     if (e.key === "ArrowDown" && currentIndex < items.length - 1) {
       e.preventDefault();
       const nextId = items[currentIndex + 1].id;
       inputRefs.current[nextId]?.focus();
-      
     }
   };
 
@@ -458,37 +463,68 @@ function SortableTask({
             </svg>
           </div>
 
-        {/* Start/Pause Button */}
-        {(() => {
-          // Check if this task is the currently active task
-          const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+          {/* Start/Pause Button */}
+          {(() => {
+            // Check if this task is the currently active task
+            const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
 
-          return isCurrentTask;
-        })() ? (
-          // Show pause/resume button for the current active task
-          <button
-            onClick={() => {
-              if (isTimerRunning) {
-                // Timer is running, pause it
-                if (onPauseTimer) onPauseTimer();
-              } else {
-                // Timer is paused, resume it (which is the same as starting)
+            return isCurrentTask;
+          })() ? (
+            // Show pause/resume button for the current active task
+            <button
+              onClick={() => {
+                if (isTimerRunning) {
+                  // Timer is running, pause it
+                  if (onPauseTimer) onPauseTimer();
+                } else {
+                  // Timer is paused, resume it (which is the same as starting)
+                  if (onStartTask) onStartTask(task.text);
+                }
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
+                isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+              }`}
+              title={isTimerRunning ? "Pause timer" : "Resume timer"}
+            >
+              {isTimerRunning ? (
+                // Pause icon
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 4H10V20H6V4ZM14 4H18V20H14V4Z" fill="currentColor" />
+                </svg>
+              ) : (
+                // Resume/Play icon
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M8 5V19L19 12L8 5Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="currentColor"
+                  />
+                </svg>
+              )}
+            </button>
+          ) : (
+            // Show start button for other tasks
+            <button
+              onClick={() => {
                 if (onStartTask) onStartTask(task.text);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              disabled={Boolean(hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim())}
+              className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
+                hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
+                  ? "text-gray-600 cursor-not-allowed"
+                  : "text-gray-400 hover:text-[#FFAA00]"
+              }`}
+              title={
+                hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
+                  ? "Another task is active"
+                  : "Start timer for this task"
               }
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
-              isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
-            }`}
-            title={isTimerRunning ? "Pause timer" : "Resume timer"}
-          >
-            {isTimerRunning ? (
-              // Pause icon
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                <path d="M6 4H10V20H6V4ZM14 4H18V20H14V4Z" fill="currentColor" />
-              </svg>
-            ) : (
-              // Resume/Play icon
+            >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M8 5V19L19 12L8 5Z"
@@ -499,122 +535,93 @@ function SortableTask({
                   fill="currentColor"
                 />
               </svg>
-            )}
-          </button>
-        ) : (
-          // Show start button for other tasks
-          <button
-            onClick={() => {
-              if (onStartTask) onStartTask(task.text);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            disabled={Boolean(hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim())}
-            className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
-              hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
-                ? "text-gray-600 cursor-not-allowed"
-                : "text-gray-400 hover:text-[#FFAA00]"
-            }`}
-            title={
-              hasActiveTimer && currentTask && currentTask.trim() !== task.text.trim()
-                ? "Another task is active"
-                : "Start timer for this task"
-            }
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M8 5V19L19 12L8 5Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
-        )}
+            </button>
+          )}
 
-        {/* Task Text */}
-        <div className="flex-1 min-w-0">
-          {isEditing ? (
-            <div className="relative w-full">
-              <input
-                ref={editInputRef as React.RefObject<HTMLInputElement>}
-                type="text"
-                value={editingText}
-                onChange={(e) => {
-                  if (e.target.value.length <= 69) {
-                    onEditTextChange(e.target.value);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    onSaveEdit();
-                  } else if (e.key === "Escape") {
-                    onCancelEdit();
-                  } else if (e.key === " ") {
-                    // Prevent space bar from causing any focus issues
-                    e.stopPropagation();
-                  }
-                }}
-                onBlur={(e) => {
-                  // Use a small delay to check if focus is really lost
-                  setTimeout(() => {
-                    // Only save if the textarea is no longer the active element
-                    if (document.activeElement !== e.target) {
+          {/* Task Text */}
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <div className="relative w-full">
+                <input
+                  ref={editInputRef as React.RefObject<HTMLInputElement>}
+                  type="text"
+                  value={editingText}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 69) {
+                      onEditTextChange(e.target.value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
                       onSaveEdit();
+                    } else if (e.key === "Escape") {
+                      onCancelEdit();
+                    } else if (e.key === " ") {
+                      // Prevent space bar from causing any focus issues
+                      e.stopPropagation();
                     }
-                  }, 100);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="w-full bg-gray-800 text-white px-2 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm"
-                maxLength={69}
-                autoFocus
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">{editingText.length}/69</div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 flex-1">
-              <p
-                onClick={() => {
-                  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                  if (!isCurrentTask) {
-                    // For non-active tasks: edit and expand
-                    onStartEditing(task);
-                    if (!isExpanded && onToggleExpanded) {
-                      onToggleExpanded(task.id);
+                  }}
+                  onBlur={(e) => {
+                    // Use a small delay to check if focus is really lost
+                    setTimeout(() => {
+                      // Only save if the textarea is no longer the active element
+                      if (document.activeElement !== e.target) {
+                        onSaveEdit();
+                      }
+                    }, 100);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="w-full bg-gray-800 text-white px-2 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm"
+                  maxLength={69}
+                  autoFocus
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                  {editingText.length}/69
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-1">
+                <p
+                  onClick={() => {
+                    const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                    if (!isCurrentTask) {
+                      // For non-active tasks: edit and expand
+                      onStartEditing(task);
+                      if (!isExpanded && onToggleExpanded) {
+                        onToggleExpanded(task.id);
+                      }
+                    } else {
+                      // For active tasks: only expand (no edit)
+                      if (!isExpanded && onToggleExpanded) {
+                        onToggleExpanded(task.id);
+                      }
                     }
-                  } else {
-                    // For active tasks: only expand (no edit)
-                    if (!isExpanded && onToggleExpanded) {
-                      onToggleExpanded(task.id);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className={`flex-1 ${(() => {
+                    const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                    if (isCurrentTask) {
+                      return "cursor-pointer text-gray-400 text-sm hover:text-gray-300";
+                    } else {
+                      return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
+                        isHovered ? "whitespace-normal break-words" : "truncate"
+                      }`;
                     }
-                  }
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                className={`flex-1 ${(() => {
-                  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                  if (isCurrentTask) {
-                    return "cursor-pointer text-gray-400 text-sm hover:text-gray-300";
-                  } else {
-                    return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
-                      isHovered ? "whitespace-normal break-words" : "truncate"
-                    }`;
-                  }
-                })()}`}
-                title={(() => {
-                  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                  if (isCurrentTask) {
-                    return "Click to expand and view notes";
-                  } else {
-                    return "Click to edit and expand";
-                  }
-                })()}
-              >
-                {task.text}
-              </p>
-              {/* Expand/Collapse button */}
-              <button
+                  })()}`}
+                  title={(() => {
+                    const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+                    if (isCurrentTask) {
+                      return "Click to expand and view notes";
+                    } else {
+                      return "Click to edit and expand";
+                    }
+                  })()}
+                >
+                  {task.text}
+                </p>
+                {/* Expand/Collapse button */}
+                <button
                   onClick={() => {
                     if (onToggleExpanded) {
                       onToggleExpanded(task.id);
@@ -622,8 +629,8 @@ function SortableTask({
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   className={`p-1 rounded transition-all duration-200 flex items-center justify-center w-5 h-5 ${
-                    isExpanded 
-                      ? "text-[#FFAA00] hover:text-[#FF9900] bg-[#FFAA00]/10" 
+                    isExpanded
+                      ? "text-[#FFAA00] hover:text-[#FF9900] bg-[#FFAA00]/10"
                       : "text-gray-500 hover:text-[#FFAA00] hover:bg-gray-800"
                   }`}
                   title={isExpanded ? "Collapse notes" : "Expand to add notes"}
@@ -638,218 +645,220 @@ function SortableTask({
                     />
                   </svg>
                 </button>
-            </div>
-          )}
-        </div>
-
-        {/* Collapse/Remove Button */}
-        {isExpanded ? (
-          // Collapse button when expanded
-          <button
-            onClick={() => {
-              if (onToggleExpanded) {
-                onToggleExpanded(task.id);
-              }
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-white"
-            title="Collapse"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M18 6L6 18M6 6L18 18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        ) : (
-          // Timer display and remove button when collapsed
-          !isEditing &&
-          (() => {
-            if (isCurrentTask) {
-              return (
-                <div className="flex items-center">
-                  {/* Timer Display - visible by default, hidden on hover */}
-                  <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
-                    {formatTime(timerSeconds || 0)}
-                  </div>
-                  {/* Delete Button - disabled for active tasks */}
-                  <button
-                    onClick={() => onRemove(task.id)}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    disabled={true}
-                    className="text-gray-600 cursor-not-allowed p-1 rounded opacity-0 group-hover:opacity-100 absolute"
-                    title="Cannot delete active task"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              );
-            } else {
-              return (
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Delete Button for non-active tasks */}
-                  <button
-                    onClick={() => onRemove(task.id)}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
-                    title="Delete task"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              );
-            }
-          })()
-        )}
-      </div>
-
-      {/* Notes Section - Only visible when expanded */}
-      {isExpanded && (
-        <div className="animate-in slide-in-from-top-2 duration-200">
-          <div className="bg-[#0A0E1A] rounded-xl border border-gray-800/50 overflow-hidden">
-            {/* Notes Content */}
-            <div className="p-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
-              <div className="space-y-2">
-                {items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-start gap-3 group transition-all duration-200 ${
-                      draggedId === item.id ? "opacity-50 scale-95" : ""
-                    } ${dragOverId === item.id ? "bg-gray-700/30 rounded-lg" : ""}`}
-                    style={{ paddingLeft: `${item.level * 24}px` }}
-                    draggable={item.type === "checkbox"}
-                    onDragStart={(e) => handleNoteDragStart(e, item.id)}
-                    onDragOver={(e) => handleNoteDragOver(e, item.id)}
-                    onDragLeave={handleNoteDragLeave}
-                    onDrop={(e) => handleNoteDrop(e, item.id)}
-                    onDragEnd={handleNoteDragEnd}
-                  >
-                    {/* Drag Handle - Only for checklist items */}
-                    {item.type === "checkbox" && (
-                      <div className="flex items-center justify-center w-6 h-7 flex-shrink-0 cursor-grab active:cursor-grabbing">
-                        <div className="w-4 h-4 text-gray-500 hover:text-gray-300 transition-colors">
-                          <svg viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="8" cy="6" r="1.5" />
-                            <circle cx="16" cy="6" r="1.5" />
-                            <circle cx="8" cy="12" r="1.5" />
-                            <circle cx="16" cy="12" r="1.5" />
-                            <circle cx="8" cy="18" r="1.5" />
-                            <circle cx="16" cy="18" r="1.5" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* List Marker */}
-                    <div className="flex items-center justify-center w-6 h-7 flex-shrink-0">
-                      {item.type === "checkbox" && (
-                        <button
-                          onClick={() => toggleCheckbox(item.id)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
-                            item.completed
-                              ? "bg-[#FFAA00] border-[#FFAA00] shadow-lg shadow-[#FFAA00]/25"
-                              : "border-gray-500 hover:border-[#FFAA00] bg-transparent"
-                          }`}
-                        >
-                          {item.completed && (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-black">
-                              <path
-                                d="M20 6L9 17l-5-5"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      )}
-                      {item.type === "bullet" && <div className="w-2 h-2 rounded-full bg-gray-400"></div>}
-                      {item.type === "number" && (
-                        <div className="text-gray-400 font-mono text-sm w-6 text-right">{getNumberedIndex(index)}.</div>
-                      )}
-                    </div>
-
-                    {/* Content Input */}
-                    <div className="flex-1 min-w-0">
-                      <textarea
-                        ref={(el) => {
-                          if (el) inputRefs.current[item.id] = el;
-                        }}
-                        value={item.content}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          handleContentChange(item.id, value);
-                          // Only check for formatting on text items
-                          if (item.type === "text") {
-                            handleInput(item.id, value);
-                          }
-                        }}
-                        onKeyDown={(e) => handleKeyDown(e, item.id)}
-                        onFocus={() => {}}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        placeholder={index === 0 ? "Start writing..." : ""}
-                        className={`w-full bg-transparent text-white placeholder-gray-500 border-none outline-none resize-none font-medium leading-relaxed ${
-                          item.completed ? "line-through text-gray-400" : ""
-                        }`}
-                        style={{
-                          minHeight: "28px",
-                          lineHeight: "1.75",
-                          fontSize: "16px",
-                        }}
-                        rows={1}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Footer with shortcuts - only show when no content */}
-            {items.length === 1 && items[0].content === "" && (
-              <div className="px-6 py-4 border-t border-gray-800/50 bg-gray-900/30">
-                <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-1">
-                      <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">[]</span>
-                      <span>Checkbox</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">-</span>
-                      <span>Bullet</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">1.</span>
-                      <span>Number</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
+
+          {/* Collapse/Remove Button */}
+          {isExpanded ? (
+            // Collapse button when expanded
+            <button
+              onClick={() => {
+                if (onToggleExpanded) {
+                  onToggleExpanded(task.id);
+                }
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-white"
+              title="Collapse"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M18 6L6 18M6 6L18 18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          ) : (
+            // Timer display and remove button when collapsed
+            !isEditing &&
+            (() => {
+              if (isCurrentTask) {
+                return (
+                  <div className="flex items-center">
+                    {/* Timer Display - visible by default, hidden on hover */}
+                    <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
+                      {formatTime(timerSeconds || 0)}
+                    </div>
+                    {/* Delete Button - disabled for active tasks */}
+                    <button
+                      onClick={() => onRemove(task.id)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={true}
+                      className="text-gray-600 cursor-not-allowed p-1 rounded opacity-0 group-hover:opacity-100 absolute"
+                      title="Cannot delete active task"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Delete Button for non-active tasks */}
+                    <button
+                      onClick={() => onRemove(task.id)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+                      title="Delete task"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              }
+            })()
+          )}
         </div>
-      )}
-    </div>
+
+        {/* Notes Section - Only visible when expanded */}
+        {isExpanded && (
+          <div className="animate-in slide-in-from-top-2 duration-200">
+            <div className="bg-[#0A0E1A] rounded-xl border border-gray-800/50 overflow-hidden">
+              {/* Notes Content */}
+              <div className="p-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                <div className="space-y-2">
+                  {items.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-start gap-3 group transition-all duration-200 ${
+                        draggedId === item.id ? "opacity-50 scale-95" : ""
+                      } ${dragOverId === item.id ? "bg-gray-700/30 rounded-lg" : ""}`}
+                      style={{ paddingLeft: `${item.level * 24}px` }}
+                      draggable={item.type === "checkbox"}
+                      onDragStart={(e) => handleNoteDragStart(e, item.id)}
+                      onDragOver={(e) => handleNoteDragOver(e, item.id)}
+                      onDragLeave={handleNoteDragLeave}
+                      onDrop={(e) => handleNoteDrop(e, item.id)}
+                      onDragEnd={handleNoteDragEnd}
+                    >
+                      {/* Drag Handle - Only for checklist items */}
+                      {item.type === "checkbox" && (
+                        <div className="flex items-center justify-center w-6 h-7 flex-shrink-0 cursor-grab active:cursor-grabbing">
+                          <div className="w-4 h-4 text-gray-500 hover:text-gray-300 transition-colors">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="8" cy="6" r="1.5" />
+                              <circle cx="16" cy="6" r="1.5" />
+                              <circle cx="8" cy="12" r="1.5" />
+                              <circle cx="16" cy="12" r="1.5" />
+                              <circle cx="8" cy="18" r="1.5" />
+                              <circle cx="16" cy="18" r="1.5" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* List Marker */}
+                      <div className="flex items-center justify-center w-6 h-7 flex-shrink-0">
+                        {item.type === "checkbox" && (
+                          <button
+                            onClick={() => toggleCheckbox(item.id)}
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                              item.completed
+                                ? "bg-[#FFAA00] border-[#FFAA00] shadow-lg shadow-[#FFAA00]/25"
+                                : "border-gray-500 hover:border-[#FFAA00] bg-transparent"
+                            }`}
+                          >
+                            {item.completed && (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-black">
+                                <path
+                                  d="M20 6L9 17l-5-5"
+                                  stroke="currentColor"
+                                  strokeWidth="3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                        {item.type === "bullet" && <div className="w-2 h-2 rounded-full bg-gray-400"></div>}
+                        {item.type === "number" && (
+                          <div className="text-gray-400 font-mono text-sm w-6 text-right">
+                            {getNumberedIndex(index)}.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content Input */}
+                      <div className="flex-1 min-w-0">
+                        <textarea
+                          ref={(el) => {
+                            if (el) inputRefs.current[item.id] = el;
+                          }}
+                          value={item.content}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            handleContentChange(item.id, value);
+                            // Only check for formatting on text items
+                            if (item.type === "text") {
+                              handleInput(item.id, value);
+                            }
+                          }}
+                          onKeyDown={(e) => handleKeyDown(e, item.id)}
+                          onFocus={() => {}}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          placeholder={index === 0 ? "Start writing..." : ""}
+                          className={`w-full bg-transparent text-white placeholder-gray-500 border-none outline-none resize-none font-medium leading-relaxed ${
+                            item.completed ? "line-through text-gray-400" : ""
+                          }`}
+                          style={{
+                            minHeight: "28px",
+                            lineHeight: "1.75",
+                            fontSize: "16px",
+                          }}
+                          rows={1}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer with shortcuts - only show when no content */}
+              {items.length === 1 && items[0].content === "" && (
+                <div className="px-6 py-4 border-t border-gray-800/50 bg-gray-900/30">
+                  <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-1">
+                        <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">[]</span>
+                        <span>Checkbox</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">-</span>
+                        <span>Bullet</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">1.</span>
+                        <span>Number</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -876,22 +885,16 @@ export default function TaskList({
   const { user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
-  const timerState = useSelector((state: RootState) => state.timer);
   const reduxUser = useSelector((state: RootState) => state.user);
-  
-  console.log("[TaskList] Redux tasks:", reduxTasks);
-  console.log("[TaskList] Redux user:", reduxUser);
-  
+
   // Convert Redux tasks to the format expected by this component
-  const tasks: Task[] = reduxTasks.map(task => ({
+  const tasks: Task[] = reduxTasks.map((task) => ({
     id: task.id,
     text: task.name,
     completed: task.completed,
-    order: 0 // Not used in Redux version
+    order: 0, // Not used in Redux version
   }));
-  
-  console.log("[TaskList] Converted tasks:", tasks);
-  console.log("[TaskList] Completed status of tasks:", tasks.map(t => ({ text: t.text, completed: t.completed })));
+
   const [newTaskText, setNewTaskText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -926,7 +929,7 @@ export default function TaskList({
     //   },
     //   { onlyOnce: true }
     // );
-    
+
     // Temporary: No refresh needed with local state
     // Tasks are now managed by Redux
   };
@@ -972,7 +975,7 @@ export default function TaskList({
     // return () => {
     //   off(tasksRef, "value", handle);
     // };
-    
+
     // Tasks are now managed by Redux
   }, [user?.id, tasks.length]);
 
@@ -1018,32 +1021,24 @@ export default function TaskList({
     if (newTaskText.trim() && user?.id && reduxUser.user_id) {
       // Generate proper UUID
       const taskId = uuidv4();
-      
+
       // Add optimistic task immediately
-      dispatch(addTask({ 
-        id: taskId, 
-        name: newTaskText.trim() 
-      }));
-      
+      dispatch(
+        addTask({
+          id: taskId,
+          name: newTaskText.trim(),
+        })
+      );
+
       // Persist to database using PostgreSQL user ID
-      dispatch(createTaskThunk({ 
-        id: taskId,
-        name: newTaskText.trim(), 
-        userId: reduxUser.user_id, // Use PostgreSQL UUID
-      }) as any);
-      
-      // Get room ID from the current URL
-      const roomId = window.location.pathname.split('/').pop() || 'default';
-      
-      console.log("Task created from TaskList:", {
-        task_id: taskId,
-        room_id: roomId,
-        user_id: reduxUser.user_id, // PostgreSQL UUID
-        firebase_auth_id: user.id, // Firebase Auth ID for reference
-        task_name: newTaskText.trim(),
-        created_at: new Date().toISOString()
-      });
-      
+      dispatch(
+        createTaskThunk({
+          id: taskId,
+          name: newTaskText.trim(),
+          userId: reduxUser.user_id, // Use PostgreSQL UUID
+        })
+      );
+
       setNewTaskText("");
     }
   };
@@ -1053,13 +1048,15 @@ export default function TaskList({
     if (user?.id && reduxUser.user_id) {
       // First remove from Redux optimistically
       dispatch(deleteTask(id));
-      
+
       // Then delete from database and Firebase TaskBuffer
-      dispatch(deleteTaskThunk({ 
-        id, 
-        userId: reduxUser.user_id,
-        firebaseUserId: user.id // Firebase Auth ID
-      }) as any);
+      dispatch(
+        deleteTaskThunk({
+          id,
+          userId: reduxUser.user_id,
+          firebaseUserId: user.id, // Firebase Auth ID
+        })
+      );
     }
   };
 
@@ -1071,10 +1068,12 @@ export default function TaskList({
   // Update task in Redux store
   const saveEdit = () => {
     if (editingText.trim() && editingId && user?.id) {
-      dispatch(updateTask({ 
-        id: editingId, 
-        updates: { name: editingText.trim() } 
-      }));
+      dispatch(
+        updateTask({
+          id: editingId,
+          updates: { name: editingText.trim() },
+        })
+      );
       setEditingId(null);
       setEditingText("");
     } else if (!editingText.trim() && editingId) {
@@ -1094,7 +1093,7 @@ export default function TaskList({
       setTimeout(() => {
         const element = document.querySelector(`[data-task-id="${expandedTaskId}"]`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          element.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
       }, 100);
     }
@@ -1137,7 +1136,7 @@ export default function TaskList({
   const confirmClearAll = () => {
     if (user?.id) {
       // Clear all tasks by deleting each one
-      reduxTasks.forEach(task => {
+      reduxTasks.forEach((task) => {
         dispatch(deleteTask(task.id));
       });
     }
@@ -1146,8 +1145,6 @@ export default function TaskList({
 
   // Only show incomplete tasks
   const filteredTasks = tasks.filter((task) => !task.completed);
-  console.log("[TaskList] Filtered tasks (incomplete only):", filteredTasks);
-  console.log("[TaskList] Number of incomplete tasks:", filteredTasks.length);
 
   const incompleteTasks = tasks.filter((task) => !task.completed).length;
 

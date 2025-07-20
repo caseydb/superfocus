@@ -34,7 +34,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               localStorage.setItem("firebase_token", idToken);
             }
           }
-        } catch (syncError) {
+        } catch {
           // Silent error - will retry with user data fetch
         }
 
@@ -44,22 +44,20 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         // Try to fetch user data
         try {
           const userData = await dispatch(fetchUserData()).unwrap();
-          console.log("[ReduxInitializer] User data fetched:", userData);
           // If user data is fetched successfully, fetch tasks from PostgreSQL
           if (userData && userData.user_id) {
-            console.log("[ReduxInitializer] Fetching tasks for user:", userData.user_id);
-            const tasks = await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
-            console.log("[ReduxInitializer] Tasks fetched:", tasks);
-            
+            await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
+
             // Check for any active tasks in Firebase TaskBuffer
-            await dispatch(checkForActiveTask({ 
-              firebaseUserId: firebaseUser.uid, 
-              userId: userData.user_id 
-            })).unwrap();
+            await dispatch(
+              checkForActiveTask({
+                firebaseUserId: firebaseUser.uid,
+                userId: userData.user_id,
+              })
+            ).unwrap();
           } else {
-            console.log("[ReduxInitializer] No user_id found in userData");
           }
-        } catch (error) {
+        } catch {
           // Retry once after another delay
           setTimeout(async () => {
             try {
@@ -67,14 +65,16 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               // If user data is fetched successfully, fetch tasks from PostgreSQL
               if (userData && userData.user_id) {
                 await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
-                
+
                 // Check for any active tasks in Firebase TaskBuffer
-                await dispatch(checkForActiveTask({ 
-                  firebaseUserId: firebaseUser.uid, 
-                  userId: userData.user_id 
-                })).unwrap();
+                await dispatch(
+                  checkForActiveTask({
+                    firebaseUserId: firebaseUser.uid,
+                    userId: userData.user_id,
+                  })
+                ).unwrap();
               }
-            } catch (retryError) {}
+            } catch {}
           }, 3000);
         }
       } else if (!firebaseUser) {

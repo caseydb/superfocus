@@ -56,7 +56,7 @@ export default function Controls({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
   const router = useRouter();
-  
+
   // Get user data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
 
@@ -81,7 +81,7 @@ export default function Controls({
     if (!currentInstance || !user?.id) return;
     // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
     // set(userRef, { ...user, displayName: user.displayName, volume: localVolume, previousVolume });
-    
+
     // Volume state is managed locally
   }, [localVolume, previousVolume, currentInstance, user]);
 
@@ -106,7 +106,7 @@ export default function Controls({
     // return () => {
     //   off(userRef, "value", handle);
     // };
-    
+
     // Temporary: Use default volume
     // Volume will reset on refresh
   }, [currentInstance, user, setLocalVolume]);
@@ -251,7 +251,7 @@ export default function Controls({
             </div>
             <div className="ml-3">
               <h3 className="font-semibold text-white font-mono">
-                {reduxUser.first_name && reduxUser.last_name 
+                {reduxUser.first_name && reduxUser.last_name
                   ? `${reduxUser.first_name} ${reduxUser.last_name}`
                   : user.displayName}
               </h3>
@@ -369,9 +369,7 @@ export default function Controls({
                   className="group-hover:stroke-[#FFAA00]"
                 />
               </svg>
-              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                Analytics
-              </span>
+              <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Analytics</span>
             </button>
 
             {/* Leaderboard Button */}
@@ -473,10 +471,46 @@ export default function Controls({
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                <rect x="3" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                <rect x="14" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                <rect x="3" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                <rect x="14" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                <rect
+                  x="3"
+                  y="3"
+                  width="7"
+                  height="7"
+                  rx="1"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+                <rect
+                  x="14"
+                  y="3"
+                  width="7"
+                  height="7"
+                  rx="1"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+                <rect
+                  x="3"
+                  y="14"
+                  width="7"
+                  height="7"
+                  rx="1"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
+                <rect
+                  x="14"
+                  y="14"
+                  width="7"
+                  height="7"
+                  rx="1"
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  className="group-hover:stroke-[#FFAA00]"
+                />
               </svg>
               <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
             </button>
@@ -589,9 +623,7 @@ export default function Controls({
                   if (currentInstance) {
                     // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
                     // set(userRef, { ...user, displayName: editedName.trim() });
-                    
                     // Temporary: Just update local user object
-                    console.log('Would update display name to:', editedName.trim());
                   }
                 }
                 setShowNameModal(false);
@@ -641,7 +673,7 @@ export default function Controls({
                 </div>
                 <div className="ml-3">
                   <h3 className="font-semibold text-white font-mono">
-                    {reduxUser.first_name && reduxUser.last_name 
+                    {reduxUser.first_name && reduxUser.last_name
                       ? `${reduxUser.first_name} ${reduxUser.last_name}`
                       : user.displayName}
                   </h3>
@@ -762,7 +794,7 @@ export default function Controls({
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
                 onClick={() => {
                   closeAllModals();
-                setShowInviteModal(true);
+                  setShowInviteModal(true);
                   setShowSideModal(false);
                 }}
               >
@@ -784,15 +816,51 @@ export default function Controls({
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
                 onClick={() => {
                   closeAllModals();
-                setShowRoomsModal(true);
+                  setShowRoomsModal(true);
                   setShowSideModal(false);
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <rect x="3" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                  <rect x="14" y="3" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
-                  <rect x="14" y="14" width="7" height="7" rx="1" stroke="#9ca3af" strokeWidth="2" className="group-hover:stroke-[#FFAA00]"/>
+                  <rect
+                    x="3"
+                    y="3"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                  <rect
+                    x="14"
+                    y="3"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                  <rect
+                    x="3"
+                    y="14"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
+                  <rect
+                    x="14"
+                    y="14"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    className="group-hover:stroke-[#FFAA00]"
+                  />
                 </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
               </button>
@@ -802,7 +870,7 @@ export default function Controls({
                 className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
                 onClick={() => {
                   closeAllModals();
-                setShowPreferences(true);
+                  setShowPreferences(true);
                   setShowSideModal(false);
                 }}
               >
@@ -848,7 +916,7 @@ export default function Controls({
                     setTimeout(() => setShowHistoryTooltip(false), 3000);
                   } else {
                     closeAllModals();
-                  setShowHistory(!showHistory);
+                    setShowHistory(!showHistory);
                   }
                   setShowSideModal(false);
                 }}
@@ -887,9 +955,7 @@ export default function Controls({
                     className="group-hover:stroke-[#FFAA00]"
                   />
                 </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">
-                  Analytics
-                </span>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Analytics</span>
               </button>
 
               {/* Leave Room Button */}

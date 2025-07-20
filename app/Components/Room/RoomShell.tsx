@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { transferTaskToPostgres } from "../../store/taskSlice";
+import { transferTaskToPostgres, endTimeSegment } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, set, remove, push, runTransaction } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
@@ -32,7 +32,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [roomFound, setRoomFound] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  
+
   // Get user data from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
@@ -105,7 +105,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
     // Task list operations removed from TaskBuffer
     // Task ID should come from Redux state
-    const activeTask = reduxTasks.find(t => t.name === task.trim());
+    const activeTask = reduxTasks.find((t) => t.name === task.trim());
     setCurrentTaskId(activeTask?.id || null);
   }, [user?.id, task, reduxTasks]);
 
@@ -113,14 +113,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     if (activeTaskId && !task) {
       // Find the active task in Redux tasks
-      const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+      const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
       if (activeTask) {
-        console.log("[RoomShell] Restoring active task from Redux:", activeTask.name);
         setTask(activeTask.name);
         setCurrentTaskId(activeTask.id);
-        
+
         // Lock the input if the task is in progress
-        if (activeTask.status === 'in_progress' || activeTask.status === 'paused') {
+        if (activeTask.status === "in_progress" || activeTask.status === "paused") {
           setInputLocked(true);
           setHasStarted(true);
         }
@@ -412,7 +411,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       // Also save to user's personal completion history for cross-room stats
       // Completion history removed from TaskBuffer - store elsewhere if needed
-      
+
       // Also add to global completed tasks (will be filtered out from stats due to "Quit Early")
       if (typeof window !== "undefined") {
         const windowWithTask = window as Window & { addCompletedTask?: (task: typeof quitData) => void };
@@ -446,33 +445,35 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       setTimeout(() => {
         remove(flyingMessageRef);
       }, 7000);
-      
+
       // End time segment and transfer task from TaskBuffer to Postgres with quit status
       const activeTask = reduxTasks.find((t) => t.name === task?.trim());
       if (activeTask?.id && user?.id) {
         // First end the time segment to ensure duration is captured
-        await dispatch(endTimeSegment({ 
-          taskId: activeTask.id, 
-          firebaseUserId: user.id,
-        }) as any).unwrap();
-        
+        await dispatch(
+          endTimeSegment({
+            taskId: activeTask.id,
+            firebaseUserId: user.id,
+          })
+        ).unwrap();
+
         // Small delay to ensure Firebase has updated
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         // Then transfer to Postgres
         if (typeof window !== "undefined") {
           const token = localStorage.getItem("firebase_token") || "";
           try {
-            const result = await dispatch(transferTaskToPostgres({ 
-              taskId: activeTask.id, 
-              firebaseUserId: user.id,
-              status: "quit",
-              token,
-              duration: timerSecondsRef.current // Pass the actual timer seconds
-            }) as any).unwrap();
-            
-            console.log("[QUIT] Task successfully transferred to Postgres and removed from TaskBuffer:", result);
-          } catch (error) {
+            await dispatch(
+              transferTaskToPostgres({
+                taskId: activeTask.id,
+                firebaseUserId: user.id,
+                status: "quit",
+                token,
+                duration: timerSecondsRef.current, // Pass the actual timer seconds
+              })
+            ).unwrap();
+          } catch (error: unknown) {
             console.error("[QUIT] Failed to transfer task to Postgres:", error);
             // Could show an error message to user here
           }
@@ -526,7 +527,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       // Completion history should be stored elsewhere, not in TaskBuffer
       // TaskBuffer is only for temporary task data during active work
-      
+
       // Trigger global task completed event for PersonalStats
       if (typeof window !== "undefined") {
         const windowWithTask = window as Window & { addCompletedTask?: (task: typeof completionData) => void };
@@ -804,7 +805,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setTask={setTask}
               disabled={(hasStarted && inputLocked) || hasActiveTimer}
               onStart={() => {
-                console.log("[RoomShell onStart] Enter pressed, starting timer");
                 // Simply trigger the timer's start button - let it handle all the logic
                 if (timerStartRef.current) {
                   timerStartRef.current();
@@ -832,7 +832,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               task={task}
               localVolume={localVolume}
               onTaskRestore={(taskName) => {
-                console.log("[RoomShell] Task restored from timer state:", taskName);
                 setTask(taskName);
                 setInputLocked(true);
                 setHasStarted(true);

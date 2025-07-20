@@ -3,7 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useInstance } from "../../Components/Instances";
 import { useDispatch, useSelector } from "react-redux";
 import { setIsActive } from "../../store/realtimeSlice";
-import { RootState } from "../../store/store";
+import { RootState, AppDispatch } from "../../store/store";
+import type { DataSnapshot } from "firebase/database";
 import {
   updateTask,
   transferTaskToPostgres,
@@ -42,7 +43,7 @@ export default function Timer({
   onTaskRestore?: (taskName: string) => void;
 }) {
   const { currentInstance, user } = useInstance();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
@@ -78,7 +79,7 @@ export default function Timer({
         set(timerRef, timerState);
       }
     },
-    [reduxTasks, task]
+    [reduxTasks, task, user?.id]
   );
 
   // Helper to clear timer state from Firebase
@@ -113,7 +114,7 @@ export default function Timer({
 
     const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
 
-    const handleTimerState = (snapshot: any) => {
+    const handleTimerState = (snapshot: DataSnapshot) => {
       const timerState = snapshot.val();
 
       if (timerState) {
@@ -139,7 +140,6 @@ export default function Timer({
         if (timerState.taskId && !task?.trim()) {
           const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
           if (restoredTask && onTaskRestore) {
-            console.log("[Timer] Restoring task from timer state:", restoredTask.name);
             onTaskRestore(restoredTask.name);
           }
         }
@@ -242,10 +242,6 @@ export default function Timer({
           clearTimeout(modalCountdownRef.current);
         }
       };
-    } else if (showStillWorkingModal && modalCountdown === 0) {
-      // Auto-pause when countdown reaches 0
-      setShowStillWorkingModal(false);
-      handleStop();
     }
   }, [showStillWorkingModal, modalCountdown]);
 
@@ -266,12 +262,11 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState]);
 
   async function handleStart() {
-    console.log("[handleStart] Starting timer with task:", task, "seconds:", seconds);
     setIsStarting(true);
 
     // Move task to position #1 in task list BEFORE starting timer
     if (task && task.trim() && user?.id) {
-      await moveTaskToTop(task.trim());
+      await moveTaskToTop();
       // Small delay to ensure TaskList component receives the update
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -282,7 +277,6 @@ export default function Timer({
 
     // If task doesn't exist, create it
     if (!activeTask && task?.trim() && user?.id && currentInstance && reduxUser.user_id) {
-      console.log("[handleStart] Creating new task:", task.trim());
       taskId = uuidv4();
 
       // Add optimistic task immediately
@@ -299,7 +293,7 @@ export default function Timer({
           id: taskId,
           name: task.trim(),
           userId: reduxUser.user_id, // PostgreSQL UUID
-        }) as any
+        })
       );
 
       // Set the new task as active
@@ -308,8 +302,6 @@ export default function Timer({
       // Set existing task as active
       dispatch(setActiveTask(activeTask.id));
     }
-
-    console.log("[handleStart] Task ID:", taskId);
 
     // Optimistically update task status to in_progress
     if (taskId) {
@@ -323,7 +315,6 @@ export default function Timer({
 
     // Add task to TaskBuffer first, then start a new time segment
     if (taskId && user?.id && currentInstance) {
-      console.log("[handleStart] Adding task to buffer and starting time segment for task:", taskId);
 
       // First, ensure task exists in TaskBuffer
       await dispatch(
@@ -333,7 +324,7 @@ export default function Timer({
           userId: reduxUser.user_id!,
           roomId: currentInstance.id,
           firebaseUserId: user.id,
-        }) as any
+        })
       ).unwrap();
 
       // Then start the time segment
@@ -341,7 +332,7 @@ export default function Timer({
         startTimeSegment({
           taskId,
           firebaseUserId: user.id,
-        }) as any
+        })
       ).unwrap();
     }
 
@@ -371,7 +362,7 @@ export default function Timer({
     // Set running state AFTER all async operations
     setRunning(true);
     setIsStarting(false);
-    
+
     // Small delay to ensure state is set before Firebase save
     setTimeout(() => {
       saveTimerState(true, seconds);
@@ -391,14 +382,14 @@ export default function Timer({
   }
 
   // Helper to move task to position #1 in task list (removed - task list not in TaskBuffer)
-  const moveTaskToTop = React.useCallback(async (_taskText: string): Promise<void> => {
+  const moveTaskToTop = React.useCallback(async (): Promise<void> => {
     // Task list operations should be handled through PostgreSQL
     // This is a no-op for now
     return Promise.resolve();
   }, []);
 
   // Helper to mark matching task as completed in task list (removed - task list not in TaskBuffer)
-  const completeTaskInList = React.useCallback(async (_taskText: string) => {
+  const completeTaskInList = React.useCallback(async () => {
     // Task list operations should be handled through PostgreSQL
     // This is a no-op for now
   }, []);
@@ -411,8 +402,7 @@ export default function Timer({
     }
   }
 
-  function handleStop() {
-
+  const handleStop = React.useCallback(() => {
     // Optimistically update task status to paused
     const activeTask = reduxTasks.find((t) => t.name === task?.trim());
     if (activeTask?.id) {
@@ -429,7 +419,7 @@ export default function Timer({
           endTimeSegment({
             taskId: activeTask.id,
             firebaseUserId: user.id,
-          }) as any
+          })
         );
       }
 
@@ -452,12 +442,20 @@ export default function Timer({
     // Set state AFTER all operations
     setRunning(false);
     setIsStarting(false);
-    
+
     // Save timer state to Firebase AFTER setting local state
     setTimeout(() => {
       saveTimerState(false, seconds);
     }, 50);
-  }
+  }, [dispatch, task, reduxTasks, user?.id, seconds, saveTimerState]);
+
+  // Auto-pause when countdown reaches 0
+  useEffect(() => {
+    if (showStillWorkingModal && modalCountdown === 0) {
+      setShowStillWorkingModal(false);
+      handleStop();
+    }
+  }, [showStillWorkingModal, modalCountdown, handleStop]);
 
   // Handle "Yes, still working" response
   const handleStillWorking = () => {
@@ -542,12 +540,11 @@ export default function Timer({
             <button
               className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
               onClick={async () => {
-                console.log("[COMPLETE] Starting completion with seconds:", seconds);
                 const completionTime = formatTime(seconds);
 
                 // Mark matching task as completed in task list
                 if (task && task.trim()) {
-                  completeTaskInList(task.trim());
+                  completeTaskInList();
                 }
 
                 // Mark today as completed for streak tracking
@@ -571,10 +568,8 @@ export default function Timer({
 
                 // Transfer task to Postgres - this handles time segments automatically
                 const activeTaskForTransfer = reduxTasks.find((t) => t.name === task?.trim());
-                console.log("[COMPLETE] Found task:", activeTaskForTransfer?.id, "for task name:", task);
 
                 if (activeTaskForTransfer?.id && user?.id) {
-                  console.log("[COMPLETE] Transferring task to Postgres with duration:", seconds);
 
                   // Transfer task from TaskBuffer to Postgres atomically
                   // This will:
@@ -583,43 +578,30 @@ export default function Timer({
                   // 3. Delete the task from TaskBuffer after successful update
                   if (typeof window !== "undefined") {
                     const token = localStorage.getItem("firebase_token") || "";
-                    console.log(
-                      "[COMPLETE] Transferring to Postgres with token:",
-                      token ? "present" : "missing",
-                      "duration:",
-                      seconds
-                    );
 
                     try {
-                      const result = await dispatch(
+                      await dispatch(
                         transferTaskToPostgres({
                           taskId: activeTaskForTransfer.id,
                           firebaseUserId: user.id,
                           status: "completed",
                           token,
                           duration: seconds, // Pass the actual timer seconds
-                        }) as any
+                        })
                       ).unwrap();
 
-                      console.log(
-                        "[COMPLETE] Task successfully transferred to Postgres and removed from TaskBuffer:",
-                        result
-                      );
 
-                      // Show success message to user
-                      const message = `Task "${task}" completed! Duration: ${formatTime(seconds)}`;
-                      console.log("[COMPLETE] Success:", message);
-                    } catch (error: any) {
+                    } catch (error: unknown) {
                       console.error("[COMPLETE] Failed to transfer task to Postgres:", error);
                       console.error("[COMPLETE] Error details:", {
-                        message: error.message,
+                        message: (error as Error).message,
                         taskId: activeTaskForTransfer.id,
                         userId: user.id,
                         token: token ? "present" : "missing",
                       });
 
                       // Show error message to user
-                      alert(`Failed to save task completion: ${error.message || "Unknown error"}`);
+                      alert(`Failed to save task completion: ${(error as Error).message || "Unknown error"}`);
                     }
                   }
                 }
@@ -699,7 +681,7 @@ export default function Timer({
                 : `${Math.floor(inactivityTimeout / 3600)} hour${
                     Math.floor(inactivityTimeout / 3600) !== 1 ? "s" : ""
                   }`}
-              . Are you still working on "{task}"?
+              . Are you still working on &quot;{task}&quot;?
             </p>
             <div className="flex gap-4">
               <button

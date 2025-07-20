@@ -25,9 +25,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
   // Initialize display name from Redux user data
   useEffect(() => {
     if (reduxUser.first_name) {
-      const fullName = reduxUser.last_name 
-        ? `${reduxUser.first_name} ${reduxUser.last_name}`
-        : reduxUser.first_name;
+      const fullName = reduxUser.last_name ? `${reduxUser.first_name} ${reduxUser.last_name}` : reduxUser.first_name;
       setDisplayName(fullName);
     } else if (user?.displayName) {
       setDisplayName(user.displayName);
@@ -49,33 +47,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
     // });
 
     // return () => off(prefsRef, "value", handle);
-    
+
     // Temporary: Use default values
     setInactivityTimeout("3600");
     setTaskSelectionMode("dropdown");
   }, [user?.id]);
-
-  // TODO: Replace with Firebase RTDB save
-  // Save preferences to Firebase
-  const savePreferences = (updates: Record<string, string | number | boolean>) => {
-    if (!user?.id) return;
-
-    // const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
-    // set(prefsRef, {
-    //   inactivityTimeout,
-    //   taskSelectionMode,
-    //   ...updates,
-    //   lastUpdated: Date.now(),
-    // });
-    
-    // Temporary: Just update local state, no persistence
-    console.log('Preferences would be saved:', {
-      inactivityTimeout,
-      taskSelectionMode,
-      ...updates,
-      lastUpdated: Date.now(),
-    });
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
@@ -161,36 +137,38 @@ export default function Preferences({ onClose }: PreferencesProps) {
                     onClick={async () => {
                       if (displayName.trim()) {
                         const trimmedName = displayName.trim();
-                        
+
                         // Parse display name into first and last name
-                        const nameParts = trimmedName.split(' ');
+                        const nameParts = trimmedName.split(" ");
                         const firstName = nameParts[0];
-                        const lastName = nameParts.slice(1).join(' ') || null;
+                        const lastName = nameParts.slice(1).join(" ") || null;
 
                         // Optimistic update to Redux
-                        dispatch(updateUser({
-                          first_name: firstName,
-                          last_name: lastName,
-                        }));
+                        dispatch(
+                          updateUser({
+                            first_name: firstName,
+                            last_name: lastName,
+                          })
+                        );
 
                         // TODO: Replace with Firebase RTDB update for real-time presence
                         // Update the local user state for real-time presence (but not Firebase Auth)
                         if (user && currentInstance) {
                           // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
                           // set(userRef, { ...user, displayName: trimmedName });
-                          
                           // Temporary: Just log the update
-                          console.log('Would update user presence with display name:', trimmedName);
                         }
 
                         // Update PostgreSQL via API (this also updates Redux with server response)
                         try {
-                          await dispatch(updateUserData({
-                            first_name: firstName,
-                            last_name: lastName || undefined,
-                          })).unwrap();
+                          await dispatch(
+                            updateUserData({
+                              first_name: firstName,
+                              last_name: lastName || undefined,
+                            })
+                          ).unwrap();
                         } catch (error) {
-                          console.error('Failed to update user data:', error);
+                          console.error("Failed to update user data:", error);
                           // The Redux state will be updated with the server response
                           // If it fails, the optimistic update will be overwritten
                         }
@@ -205,7 +183,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                     onClick={() => {
                       // Reset to current Redux/Firebase state
                       if (reduxUser.first_name) {
-                        const fullName = reduxUser.last_name 
+                        const fullName = reduxUser.last_name
                           ? `${reduxUser.first_name} ${reduxUser.last_name}`
                           : reduxUser.first_name;
                         setDisplayName(fullName);
@@ -238,7 +216,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 onChange={(e) => {
                   const newValue = e.target.value;
                   setTaskSelectionMode(newValue);
-                  savePreferences({ taskSelectionMode: newValue });
+                  // TODO: savePreferences({ taskSelectionMode: newValue });
                 }}
                 className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
               >
@@ -258,7 +236,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 onChange={(e) => {
                   const newValue = e.target.value;
                   setInactivityTimeout(newValue);
-                  savePreferences({ inactivityTimeout: newValue });
+                  // TODO: savePreferences({ inactivityTimeout: newValue });
                 }}
                 className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
               >

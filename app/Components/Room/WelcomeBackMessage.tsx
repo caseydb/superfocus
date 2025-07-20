@@ -91,7 +91,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
     // Check immediately - no delay needed
     checkWelcomeBack();
-  }, [user?.id, roomId]);
+  }, [user?.id, user?.displayName, roomId]);
 
   if (!showWelcome) return null;
 

@@ -118,7 +118,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
     onValue(instancesRef, handleValue);
     return () => off(instancesRef, "value", handleValue);
-  }, []);
+  }, [currentInstance]);
 
   // Create a new instance and join it
   const createInstance = useCallback(
