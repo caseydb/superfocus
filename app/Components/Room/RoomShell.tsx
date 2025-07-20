@@ -1,13 +1,12 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { addTask, setActiveTask, createTaskThunk, updateTaskStatusThunk, addTaskToBufferWhenStarted, fetchTasksFromBuffer, endTimeSegment, startTimeSegment, transferTaskToPostgres } from "../../store/taskSlice";
-import { v4 as uuidv4 } from 'uuid';
+import { transferTaskToPostgres } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off, update, set, remove, push, runTransaction } from "firebase/database";
+import { ref, onValue, off, set, remove, push, runTransaction } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
@@ -35,7 +34,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const dispatch = useDispatch<AppDispatch>();
   
   // Get user data from Redux store
-  const reduxUser = useSelector((state: RootState) => state.user);
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const [task, setTask] = useState("");
@@ -95,8 +93,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   }, []);
 
   // Track if there's an active timer state from Firebase
-  const [hasActiveTimer, setHasActiveTimer] = useState(false);
-  const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
+  const [hasActiveTimer] = useState(false);
+  const [currentTimerSeconds] = useState(0);
 
   // Find taskId for current task
   useEffect(() => {
@@ -110,6 +108,25 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const activeTask = reduxTasks.find(t => t.name === task.trim());
     setCurrentTaskId(activeTask?.id || null);
   }, [user?.id, task, reduxTasks]);
+
+  // Restore active task from Redux when page loads or activeTaskId changes
+  useEffect(() => {
+    if (activeTaskId && !task) {
+      // Find the active task in Redux tasks
+      const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+      if (activeTask) {
+        console.log("[RoomShell] Restoring active task from Redux:", activeTask.name);
+        setTask(activeTask.name);
+        setCurrentTaskId(activeTask.id);
+        
+        // Lock the input if the task is in progress
+        if (activeTask.status === 'in_progress' || activeTask.status === 'paused') {
+          setInputLocked(true);
+          setHasStarted(true);
+        }
+      }
+    }
+  }, [activeTaskId, reduxTasks, task]);
 
   // Timer state is now stored with the task - removed separate timer state listener
 
@@ -337,8 +354,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         });
 
         // Filter out messages older than 7 seconds
-        const now = Date.now();
-        const recentMessages = messages.filter((msg) => now - msg.timestamp < 7000);
+        const recentMessages = messages.filter((msg) => Date.now() - msg.timestamp < 7000);
 
         setFlyingMessages(recentMessages);
       } else {
@@ -412,7 +428,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       // Only notify others if timer was > 5 seconds AND cooldown has passed
       if (timerSecondsRef.current > 5 && user?.id && currentInstance) {
-        const now = Date.now();
         // Sound cooldowns removed from TaskBuffer - always notify
         notifyEvent("quit");
       }
@@ -789,71 +804,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setTask={setTask}
               disabled={(hasStarted && inputLocked) || hasActiveTimer}
               onStart={() => {
-                console.log("[RoomShell onStart] Starting with task:", task);
-                if (timerStartRef.current && task.trim()) {
-                  // Check if task already exists in Redux
-                  const existingTask = reduxTasks.find(t => t.name === task.trim());
-                  console.log("[RoomShell onStart] Existing task:", existingTask);
-                  if (!existingTask && user?.id && currentInstance && reduxUser.user_id) {
-                    // Generate proper UUID
-                    const taskId = uuidv4();
-                    
-                    // Add optimistic task immediately
-                    dispatch(addTask({ 
-                      id: taskId, 
-                      name: task.trim() 
-                    }));
-                    
-                    // Persist to PostgreSQL database only
-                    dispatch(createTaskThunk({ 
-                      id: taskId,
-                      name: task.trim(), 
-                      userId: reduxUser.user_id, // PostgreSQL UUID
-                    }) as any);
-                    
-                    // Set the new task as active
-                    dispatch(setActiveTask(taskId));
-                    
-                    // Add to Firebase TaskBuffer when starting
-                    console.log("[RoomShell onStart] Adding NEW task to buffer:", taskId);
-                    dispatch(addTaskToBufferWhenStarted({
-                      id: taskId,
-                      name: task.trim(),
-                      userId: reduxUser.user_id,
-                      roomId: currentInstance.id,
-                      firebaseUserId: user.id,
-                    }) as any);
-                    
-                    // Start time segment tracking for new task
-                    dispatch(startTimeSegment({ 
-                      taskId: taskId, 
-                      firebaseUserId: user.id 
-                    }) as any);
-                    
-                  } else if (existingTask) {
-                    // Set existing task as active
-                    dispatch(setActiveTask(existingTask.id));
-                    
-                    // Add to Firebase TaskBuffer when starting
-                    console.log("[RoomShell onStart] Adding EXISTING task to buffer:", existingTask.id);
-                    dispatch(addTaskToBufferWhenStarted({
-                      id: existingTask.id,
-                      name: existingTask.name,
-                      userId: reduxUser.user_id,
-                      roomId: currentInstance.id,
-                      firebaseUserId: user.id,
-                    }) as any);
-                    
-                    // Start time segment tracking for existing task
-                    dispatch(startTimeSegment({ 
-                      taskId: existingTask.id, 
-                      firebaseUserId: user.id 
-                    }) as any);
-                  }
-                  
+                console.log("[RoomShell onStart] Enter pressed, starting timer");
+                // Simply trigger the timer's start button - let it handle all the logic
+                if (timerStartRef.current) {
                   timerStartRef.current();
-                  // Close task list when starting a task
-                  setShowTaskList(false);
                 }
               }}
               setShowTaskList={setShowTaskList}
@@ -877,6 +831,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               requiredTask={!!task.trim()}
               task={task}
               localVolume={localVolume}
+              onTaskRestore={(taskName) => {
+                console.log("[RoomShell] Task restored from timer state:", taskName);
+                setTask(taskName);
+                setInputLocked(true);
+                setHasStarted(true);
+              }}
             />
             {task.trim() && (
               <div className="flex justify-center w-full gap-6">

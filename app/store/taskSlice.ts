@@ -198,7 +198,17 @@ export const transferTaskToPostgres = createAsyncThunk(
       
       if (!snapshot.exists()) {
         console.error("[transferTaskToPostgres] Task not found in TaskBuffer");
-        throw new Error("Task not found in TaskBuffer");
+        console.error("[transferTaskToPostgres] Looking for path:", `TaskBuffer/${firebaseUserId}/${taskId}`);
+        // Check if user has any tasks
+        const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+        const userSnapshot = await get(userTasksRef);
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.val();
+          console.error("[transferTaskToPostgres] User data exists, keys:", Object.keys(userData));
+        } else {
+          console.error("[transferTaskToPostgres] No user data found in TaskBuffer");
+        }
+        throw new Error("Task not found in TaskBuffer - it may have already been completed");
       }
       
       const taskData = snapshot.val();
@@ -247,7 +257,22 @@ export const transferTaskToPostgres = createAsyncThunk(
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[transferTaskToPostgres] PATCH failed:", response.status, errorText);
-        throw new Error(`Failed to update task in Postgres: ${response.status}`);
+        
+        // Try to parse error details
+        let errorMessage = `Failed to update task in Postgres: ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.error) {
+            errorMessage = errorJson.error;
+          }
+        } catch (e) {
+          // If not JSON, use the text as is
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const savedTask = await response.json();
