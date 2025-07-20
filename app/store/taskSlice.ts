@@ -1,0 +1,902 @@
+import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { rtdb } from "@/lib/firebase";
+import { ref, set, remove, get, update } from "firebase/database";
+
+export interface Task {
+  id: string;
+  name: string;
+  completed: boolean;
+  timeSpent: number;
+  lastActive?: number;
+  createdAt: number;
+  status: "not_started" | "in_progress" | "paused" | "completed" | "quit";
+  isOptimistic?: boolean; // Track if this is a temporary optimistic task
+}
+
+interface TaskState {
+  tasks: Task[];
+  activeTaskId: string | null;
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: TaskState = {
+  tasks: [],
+  activeTaskId: null,
+  loading: false,
+  error: null,
+};
+
+// Thunk for adding a task to Firebase TaskBuffer when it's started
+export const addTaskToBufferWhenStarted = createAsyncThunk(
+  "tasks/addToBufferWhenStarted",
+  async ({
+    id,
+    name,
+    userId,
+    roomId,
+    firebaseUserId,
+  }: {
+    id: string;
+    name: string;
+    userId: string; // PostgreSQL user ID
+    roomId: string;
+    firebaseUserId: string; // Firebase Auth user ID
+  }) => {
+    // Check if task already exists in TaskBuffer
+    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
+    const snapshot = await get(taskRef);
+    
+    if (!snapshot.exists()) {
+      // Only add to TaskBuffer if it doesn't exist
+      const taskData = {
+        id,
+        name,
+        user_id: userId,
+        room_id: roomId,
+        status: "in_progress", // Set as in_progress since it's being started
+        created_at: Date.now(),
+        total_time: 0,
+        time_segments: [], // Initialize empty, will be added by startTimeSegment
+      };
+      
+      console.log("[addTaskToBufferWhenStarted] Creating new task in buffer:", taskData);
+      await set(taskRef, taskData);
+      return taskData;
+    } else {
+      // Task already exists in buffer, just return existing data
+      console.log("[addTaskToBufferWhenStarted] Task already exists in buffer");
+      return snapshot.val();
+    }
+  }
+);
+
+// Thunk for creating a task with database persistence (legacy - will be removed)
+export const createTaskThunk = createAsyncThunk(
+  "tasks/create",
+  async ({
+    id,
+    name,
+    userId,
+  }: {
+    id: string; // UUID generated client-side
+    name: string;
+    userId: string;
+  }) => {
+
+    // Get room ID from the current URL
+    const roomId = window.location.pathname.split('/').pop() || 'default';
+    
+    // Call API to persist to database
+    const response = await fetch("/api/task/postgres", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id, // Send the UUID to the server
+        task_name: name, // Changed from 'name' to 'task_name'
+        user_id: userId,
+        room_id: roomId, // Added room_id
+        status: "not_started", // Added default status
+        duration: 0, // Added default duration
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create task");
+    }
+
+    const data = await response.json();
+
+
+    return data;
+  }
+);
+
+// Thunk for deleting a task from database
+export const deleteTaskThunk = createAsyncThunk(
+  "tasks/delete",
+  async ({
+    id,
+    userId,
+    firebaseUserId,
+  }: {
+    id: string;
+    userId: string;
+    firebaseUserId?: string;
+  }) => {
+    // Call API to delete from database
+    const response = await fetch(`/api/task/postgres?id=${id}&user_id=${userId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete task");
+    }
+
+    // Also delete from Firebase TaskBuffer if firebaseUserId is provided
+    if (firebaseUserId) {
+      const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
+      await remove(taskRef);
+    }
+
+    return id; // Return the task ID that was deleted
+  }
+);
+
+// Thunk for atomic handoff from TaskBuffer to Postgres
+export const transferTaskToPostgres = createAsyncThunk(
+  "tasks/transferToPostgres",
+  async ({
+    taskId,
+    firebaseUserId,
+    status,
+    token,
+    duration,
+    retryCount = 0,
+  }: {
+    taskId: string;
+    firebaseUserId: string;
+    status: "completed" | "quit";
+    token: string;
+    duration?: number; // Optional duration in seconds to override Firebase calculation
+    retryCount?: number;
+  }) => {
+    const MAX_RETRIES = 3;
+    console.log("[transferTaskToPostgres] Starting transfer for task:", taskId, "status:", status);
+    
+    try {
+      // 1. Get task data from TaskBuffer
+      const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+      const snapshot = await get(taskRef);
+      
+      if (!snapshot.exists()) {
+        console.error("[transferTaskToPostgres] Task not found in TaskBuffer");
+        throw new Error("Task not found in TaskBuffer");
+      }
+      
+      const taskData = snapshot.val();
+      console.log("[transferTaskToPostgres] Task data from Firebase:", taskData);
+      
+      // Calculate final total time including any open segments
+      let finalTotalTime = taskData.total_time || 0;
+      const timeSegments = taskData.time_segments || [];
+      console.log("[transferTaskToPostgres] Initial total_time:", finalTotalTime);
+      console.log("[transferTaskToPostgres] Time segments:", timeSegments);
+      
+      // If there's an open segment, close it and add to total
+      if (timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null) {
+        const lastSegment = timeSegments[timeSegments.length - 1];
+        const segmentDuration = Math.floor((Date.now() - lastSegment.start) / 1000);
+        console.log("[transferTaskToPostgres] Found open segment, duration:", segmentDuration);
+        finalTotalTime += segmentDuration;
+      }
+      
+      // Use provided duration if available, otherwise use calculated duration
+      const durationToSave = duration !== undefined ? duration : finalTotalTime;
+      console.log("[transferTaskToPostgres] Duration provided:", duration, "Calculated:", finalTotalTime, "Using:", durationToSave);
+      
+      // 2. Update task in Postgres with completion data
+      const patchBody = {
+        id: taskData.id,
+        updates: {
+          status,
+          duration: durationToSave, // Use provided or calculated duration
+          updated_at: new Date().toISOString(),
+          completed_at: status === "completed" ? new Date().toISOString() : null,
+        }
+      };
+      
+      console.log("[transferTaskToPostgres] PATCH body:", JSON.stringify(patchBody, null, 2));
+      
+      const response = await fetch("/api/task/postgres", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(patchBody),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[transferTaskToPostgres] PATCH failed:", response.status, errorText);
+        throw new Error(`Failed to update task in Postgres: ${response.status}`);
+      }
+      
+      const savedTask = await response.json();
+      console.log("[transferTaskToPostgres] PostgreSQL confirmed task update:", savedTask);
+      console.log("[transferTaskToPostgres] Task duration saved:", savedTask.duration, "seconds");
+      
+      // 3. On success, delete from TaskBuffer
+      console.log("[transferTaskToPostgres] PostgreSQL update confirmed, now removing from TaskBuffer");
+      await remove(taskRef);
+      console.log("[transferTaskToPostgres] Successfully removed task from TaskBuffer:", `TaskBuffer/${firebaseUserId}/${taskId}`);
+      
+      return { savedTask, status };
+      
+    } catch (error) {
+      // Retry logic
+      if (retryCount < MAX_RETRIES) {
+        console.warn(`Retrying task transfer (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        
+        // Retry with incremented count
+        return transferTaskToPostgres({
+          taskId,
+          firebaseUserId,
+          status,
+          token,
+          retryCount: retryCount + 1,
+        });
+      }
+      
+      // If all retries failed, throw the error
+      throw error;
+    }
+  }
+);
+
+// Thunk for completing a task and saving to task_history
+export const completeTaskWithHistory = createAsyncThunk(
+  "tasks/completeWithHistory",
+  async ({
+    taskId,
+    roomId,
+    userId,
+    taskName,
+    duration,
+    token,
+  }: {
+    taskId: string;
+    roomId: string;
+    userId: string;
+    taskName: string;
+    duration: number; // in seconds
+    token: string;
+  }) => {
+
+    // Call API to save to task_history
+    const response = await fetch("/api/task-history", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        task_id: taskId,
+        room_id: roomId,
+        user_id: userId,
+        task_name: taskName,
+        duration,
+        completed: true,
+        completed_at: new Date(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to save task history");
+    }
+
+    const data = await response.json();
+    return data;
+  }
+);
+
+// Thunk for fetching tasks from TaskBuffer
+export const fetchTasksFromBuffer = createAsyncThunk(
+  "tasks/fetchFromBuffer",
+  async ({ firebaseUserId }: { firebaseUserId: string }) => {
+    const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+    const snapshot = await get(userRef);
+    
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const tasksData = snapshot.val();
+    const tasks = Object.values(tasksData).map((task: any) => {
+      // Calculate current total time including any open segment
+      let currentTotalTime = task.total_time || 0;
+      const timeSegments = task.time_segments || [];
+      
+      // If there's an open segment, add its duration to the total
+      if (timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null) {
+        const lastSegment = timeSegments[timeSegments.length - 1];
+        const segmentDuration = Math.floor((Date.now() - lastSegment.start) / 1000);
+        currentTotalTime += segmentDuration;
+      }
+      
+      return {
+        id: task.id,
+        name: task.name,
+        completed: task.status === "completed",
+        timeSpent: currentTotalTime,
+        createdAt: task.created_at || Date.now(),
+        lastActive: task.updated_at,
+        status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
+      };
+    });
+    
+    return tasks;
+  }
+);
+
+// Thunk for checking and restoring active task state
+export const checkForActiveTask = createAsyncThunk(
+  "tasks/checkForActiveTask",
+  async ({ firebaseUserId, userId }: { firebaseUserId: string; userId: string }) => {
+    const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+    const snapshot = await get(userRef);
+    
+    if (!snapshot.exists()) {
+      return null;
+    }
+    
+    const tasksData = snapshot.val();
+    
+    // Find any task that's in progress or paused with time accumulated
+    let activeTask = null;
+    let totalTimeSpent = 0;
+    
+    for (const [taskId, taskData] of Object.entries(tasksData)) {
+      const task = taskData as any;
+      
+      // Calculate total time including all segments
+      let taskTotalTime = task.total_time || 0;
+      const timeSegments = task.time_segments || [];
+      
+      // Check if this task has unclosed segments (was active when window closed)
+      const hasOpenSegment = timeSegments.length > 0 && 
+                           timeSegments[timeSegments.length - 1].end === null;
+      
+      // If there's an open segment, close it and add its time
+      if (hasOpenSegment) {
+        const lastSegment = timeSegments[timeSegments.length - 1];
+        const segmentDuration = Math.floor((Date.now() - lastSegment.start) / 1000);
+        taskTotalTime += segmentDuration;
+        
+        // Close the open segment in Firebase
+        timeSegments[timeSegments.length - 1].end = Date.now();
+        const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+        update(taskRef, {
+          time_segments: timeSegments,
+          total_time: taskTotalTime,
+          status: "paused",
+          updated_at: Date.now(),
+        });
+      }
+      
+      // Check if this task has time accumulated (either paused or had open segment)
+      if ((task.status === "in_progress" || task.status === "paused" || hasOpenSegment) && (taskTotalTime > 0 || hasOpenSegment)) {
+        activeTask = {
+          id: taskId,
+          name: task.name,
+          totalTime: taskTotalTime,
+          status: "paused", // Always set as paused on restoration
+          timeSegments: timeSegments,
+        };
+        totalTimeSpent = taskTotalTime;
+        break;
+      }
+    }
+    
+    return activeTask ? { task: activeTask, totalTime: totalTimeSpent } : null;
+  }
+);
+
+// Thunk for fetching user's tasks from database
+export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: { userId: string }) => {
+  console.log("[fetchTasks] Fetching tasks for user:", userId);
+  const response = await fetch(`/api/task/postgres?user_id=${userId}`);
+
+  if (!response.ok) {
+    console.error("[fetchTasks] Failed to fetch tasks:", response.status);
+    throw new Error("Failed to fetch tasks");
+  }
+
+  const data = await response.json();
+  console.log("[fetchTasks] Raw API response:", data);
+
+  // Transform database tasks to Redux format
+  const transformedTasks = data.map((task: any) => ({
+    id: task.id,
+    name: task.task_name, // Changed from task.name to task.task_name
+    completed: task.status === "completed",
+    timeSpent: task.duration || 0,
+    createdAt: new Date(task.created_at).getTime(),
+    lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
+    status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
+  }));
+  
+  console.log("[fetchTasks] Transformed tasks:", transformedTasks);
+  return transformedTasks;
+});
+
+// Thunk for recording time segment when starting task
+export const startTimeSegment = createAsyncThunk(
+  "tasks/startTimeSegment",
+  async ({
+    taskId,
+    firebaseUserId,
+  }: {
+    taskId: string;
+    firebaseUserId: string;
+  }) => {
+    console.log("[startTimeSegment] Starting for task:", taskId);
+    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+    
+    // Get current task data
+    const snapshot = await get(taskRef);
+    if (!snapshot.exists()) {
+      console.error("[startTimeSegment] Task not found in TaskBuffer");
+      throw new Error("Task not found in TaskBuffer");
+    }
+    
+    const taskData = snapshot.val();
+    console.log("[startTimeSegment] Current task data:", taskData);
+    const timeSegments = taskData.time_segments || [];
+    
+    // Add new segment with start time
+    const now = Date.now();
+    console.log("[startTimeSegment] Creating new segment at:", now);
+    timeSegments.push({
+      start: now,
+      end: null,
+    });
+    
+    await update(taskRef, {
+      status: "in_progress",
+      time_segments: timeSegments,
+      updated_at: now,
+    });
+    
+    console.log("[startTimeSegment] Updated with new segment, total segments:", timeSegments.length);
+    return { taskId, timeSegments };
+  }
+);
+
+// Thunk for recording time segment when pausing task
+export const endTimeSegment = createAsyncThunk(
+  "tasks/endTimeSegment",
+  async ({
+    taskId,
+    firebaseUserId,
+  }: {
+    taskId: string;
+    firebaseUserId: string;
+  }) => {
+    console.log("[endTimeSegment] Starting for task:", taskId);
+    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+    
+    // Get current task data
+    const snapshot = await get(taskRef);
+    if (!snapshot.exists()) {
+      console.error("[endTimeSegment] Task not found in TaskBuffer");
+      throw new Error("Task not found in TaskBuffer");
+    }
+    
+    const taskData = snapshot.val();
+    console.log("[endTimeSegment] Current task data:", taskData);
+    const timeSegments = taskData.time_segments || [];
+    
+    // End the last segment
+    if (timeSegments.length > 0 && timeSegments[timeSegments.length - 1].end === null) {
+      const now = Date.now();
+      console.log("[endTimeSegment] Ending open segment at:", now);
+      timeSegments[timeSegments.length - 1].end = now;
+    } else {
+      console.log("[endTimeSegment] No open segment to end");
+    }
+    
+    // Calculate total time from all segments
+    const totalTime = timeSegments.reduce((total, segment) => {
+      if (segment.start && segment.end) {
+        const segmentDuration = Math.floor((segment.end - segment.start) / 1000);
+        console.log("[endTimeSegment] Segment duration:", segmentDuration, "seconds");
+        return total + segmentDuration;
+      }
+      return total;
+    }, 0);
+    
+    console.log("[endTimeSegment] Total time calculated:", totalTime, "seconds");
+    
+    await update(taskRef, {
+      status: "paused",
+      time_segments: timeSegments,
+      total_time: totalTime,
+      updated_at: Date.now(),
+    });
+    
+    console.log("[endTimeSegment] Updated Firebase with total time:", totalTime);
+    return { taskId, timeSegments, totalTime };
+  }
+);
+
+// Thunk for updating task status in TaskBuffer (legacy - kept for compatibility)
+export const updateTaskStatusInBuffer = createAsyncThunk(
+  "tasks/updateStatusInBuffer",
+  async ({
+    taskId,
+    firebaseUserId,
+    status,
+    totalTime,
+  }: {
+    taskId: string;
+    firebaseUserId: string;
+    status: "not_started" | "in_progress" | "paused";
+    totalTime?: number;
+  }) => {
+    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+    
+    const updates: any = {
+      status,
+      updated_at: Date.now(),
+    };
+    
+    if (totalTime !== undefined) {
+      updates.total_time = totalTime;
+    }
+    
+    await update(taskRef, updates);
+    
+    return { taskId, status, totalTime };
+  }
+);
+
+// Thunk for updating task status with persistence
+export const updateTaskStatusThunk = createAsyncThunk(
+  "tasks/updateStatus",
+  async ({
+    taskId,
+    status,
+    token,
+  }: {
+    taskId: string;
+    status: "not_started" | "in_progress" | "paused" | "completed" | "quit";
+    token: string;
+  }) => {
+
+    // Database status matches our frontend status directly now
+    const dbStatus = status;
+
+    // Call API to update status in database
+    const response = await fetch("/api/task/status", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        task_id: taskId,
+        status: dbStatus,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update task status");
+    }
+
+    const data = await response.json();
+
+    return {
+      taskId,
+      status,
+      dbStatus: data.status,
+      updatedAt: data.updated_at,
+    };
+  }
+);
+
+const taskSlice = createSlice({
+  name: "tasks",
+  initialState,
+  reducers: {
+    // Add task to Redux store (optimistic)
+    addTask: (state, action: PayloadAction<{ id: string; name: string }>) => {
+      const newTask: Task = {
+        id: action.payload.id,
+        name: action.payload.name,
+        completed: false,
+        timeSpent: 0,
+        createdAt: Date.now(),
+        status: "not_started",
+        isOptimistic: true,
+      };
+      state.tasks.push(newTask);
+    },
+    // Mark task as synced with database
+    markTaskSynced: (state, action: PayloadAction<string>) => {
+      const task = state.tasks.find((task) => task.id === action.payload);
+      if (task) {
+        task.isOptimistic = false;
+      }
+    },
+    updateTask: (state, action: PayloadAction<{ id: string; updates: Partial<Task> }>) => {
+      const taskIndex = state.tasks.findIndex((task) => task.id === action.payload.id);
+      if (taskIndex !== -1) {
+        state.tasks[taskIndex] = { ...state.tasks[taskIndex], ...action.payload.updates };
+      }
+    },
+    deleteTask: (state, action: PayloadAction<string>) => {
+      state.tasks = state.tasks.filter((task) => task.id !== action.payload);
+    },
+    setActiveTask: (state, action: PayloadAction<string | null>) => {
+      state.activeTaskId = action.payload;
+    },
+    toggleTaskComplete: (state, action: PayloadAction<string>) => {
+      const task = state.tasks.find((task) => task.id === action.payload);
+      if (task) {
+        task.completed = !task.completed;
+        task.status = task.completed ? "completed" : "not_started";
+      }
+    },
+    updateTaskTime: (state, action: PayloadAction<{ id: string; timeSpent: number }>) => {
+      const task = state.tasks.find((task) => task.id === action.payload.id);
+      if (task) {
+        task.timeSpent = action.payload.timeSpent;
+        task.lastActive = Date.now();
+        if (task.status === "not_started" && action.payload.timeSpent > 0) {
+          task.status = "in_progress";
+        }
+      }
+    },
+    reorderTasks: (state, action: PayloadAction<Task[]>) => {
+      state.tasks = action.payload;
+    },
+    removeOptimisticTask: (state, action: PayloadAction<string>) => {
+      // Remove optimistic task if API call fails
+      state.tasks = state.tasks.filter((task) => task.id !== action.payload);
+    },
+  },
+  extraReducers: (builder) => {
+    // Handle addTaskToBufferWhenStarted
+    builder
+      .addCase(addTaskToBufferWhenStarted.pending, (state) => {
+        // Task is being added to buffer
+      })
+      .addCase(addTaskToBufferWhenStarted.fulfilled, (state, action) => {
+        // Task successfully added to buffer when started
+        const taskId = action.meta.arg.id;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = "in_progress";
+          task.lastActive = Date.now();
+        }
+      })
+      .addCase(addTaskToBufferWhenStarted.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to add task to buffer";
+      })
+      // Handle fetchTasksFromBuffer
+      .addCase(fetchTasksFromBuffer.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTasksFromBuffer.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchTasksFromBuffer.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch tasks from buffer";
+      })
+      // Handle transferTaskToPostgres
+      .addCase(transferTaskToPostgres.pending, (state) => {
+        // Task is being transferred
+      })
+      .addCase(transferTaskToPostgres.fulfilled, (state, action) => {
+        // Remove task from local state as it's now in Postgres
+        const { savedTask, status } = action.payload;
+        if (status === "completed" || status === "quit") {
+          state.tasks = state.tasks.filter((task) => task.id !== savedTask.id);
+        }
+      })
+      .addCase(transferTaskToPostgres.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to transfer task to Postgres";
+      })
+      // Handle updateTaskStatusInBuffer
+      .addCase(updateTaskStatusInBuffer.pending, (state, action) => {
+        // Optimistically update the task status
+        const { taskId, status } = action.meta.arg;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = status;
+          task.completed = status === "completed";
+          task.lastActive = Date.now();
+        }
+      })
+      .addCase(updateTaskStatusInBuffer.fulfilled, (state) => {
+        // Status already updated optimistically
+        state.error = null;
+      })
+      .addCase(updateTaskStatusInBuffer.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to update task status in buffer";
+      })
+      // Handle startTimeSegment
+      .addCase(startTimeSegment.pending, (state, action) => {
+        const { taskId } = action.meta.arg;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = "in_progress";
+          task.lastActive = Date.now();
+        }
+      })
+      .addCase(startTimeSegment.fulfilled, (state) => {
+        state.error = null;
+      })
+      .addCase(startTimeSegment.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to start time segment";
+      })
+      // Handle endTimeSegment
+      .addCase(endTimeSegment.pending, (state, action) => {
+        const { taskId } = action.meta.arg;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = "paused";
+          task.lastActive = Date.now();
+        }
+      })
+      .addCase(endTimeSegment.fulfilled, (state, action) => {
+        const { taskId, totalTime } = action.payload;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.timeSpent = totalTime;
+        }
+        state.error = null;
+      })
+      .addCase(endTimeSegment.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to end time segment";
+      })
+    // Handle createTaskThunk (legacy)
+    builder
+      .addCase(createTaskThunk.pending, (state) => {
+        // Optimistic update is already done via addTask
+      })
+      .addCase(createTaskThunk.fulfilled, (state, action) => {
+        // Mark task as synced
+        const taskId = action.meta.arg.id;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.isOptimistic = false;
+        }
+      })
+      .addCase(createTaskThunk.rejected, (state, action) => {
+        // Remove the optimistic task on failure
+        const taskId = action.meta.arg.id;
+        state.tasks = state.tasks.filter((task) => task.id !== taskId);
+        state.error = action.error.message || "Failed to create task";
+      })
+      // Handle deleteTaskThunk
+      .addCase(deleteTaskThunk.pending, (state) => {
+        // Task deletion is in progress
+      })
+      .addCase(deleteTaskThunk.fulfilled, (state, action) => {
+        // Remove task from state after successful deletion
+        state.tasks = state.tasks.filter((task) => task.id !== action.payload);
+        state.error = null;
+      })
+      .addCase(deleteTaskThunk.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to delete task";
+      })
+      // Handle fetchTasks
+      .addCase(fetchTasks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTasks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch tasks";
+      })
+      // Handle checkForActiveTask
+      .addCase(checkForActiveTask.pending, (state) => {
+        // Checking for active task
+      })
+      .addCase(checkForActiveTask.fulfilled, (state, action) => {
+        if (action.payload) {
+          const { task } = action.payload;
+          // Set the active task
+          state.activeTaskId = task.id;
+          
+          // Update the task in the tasks array
+          const existingTask = state.tasks.find(t => t.id === task.id);
+          if (existingTask) {
+            existingTask.status = task.status;
+            existingTask.timeSpent = task.totalTime;
+            existingTask.lastActive = Date.now();
+          }
+        }
+      })
+      .addCase(checkForActiveTask.rejected, (state, action) => {
+        // Silently fail - not critical if we can't restore active task
+        console.error("Failed to check for active task:", action.error);
+      })
+      // Handle updateTaskStatusThunk
+      .addCase(updateTaskStatusThunk.pending, (state, action) => {
+        // Optimistically update the task status
+        const { taskId, status } = action.meta.arg;
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          // Update status and completed flag
+          task.status = status;
+          task.completed = status === "completed";
+          task.lastActive = Date.now();
+        }
+      })
+      .addCase(updateTaskStatusThunk.fulfilled, (state, action) => {
+        // Status already updated optimistically, just clear any errors
+        state.error = null;
+      })
+      .addCase(updateTaskStatusThunk.rejected, (state, action) => {
+        // Revert optimistic update on failure
+        state.error = action.error.message || "Failed to update task status";
+        // Could implement rollback logic here if needed
+      });
+  },
+  // extraReducers: (builder) => {
+  //   builder
+  //     .addCase(createTask.pending, (state) => {
+  //       state.loading = true;
+  //       state.error = null;
+  //     })
+  //     .addCase(createTask.fulfilled, (state, action) => {
+  //       state.loading = false;
+  //       // Find and replace the optimistic task with real one from database
+  //       const taskIndex = state.tasks.findIndex((task) =>
+  //         task.id.startsWith("temp_") && task.name === action.meta.arg.name
+  //       );
+  //       if (taskIndex !== -1) {
+  //         state.tasks[taskIndex] = action.payload;
+  //       } else {
+  //         // If optimistic task wasn't found, just add the new one
+  //         state.tasks.push(action.payload);
+  //       }
+  //     })
+  //     .addCase(createTask.rejected, (state, action) => {
+  //       state.loading = false;
+  //       state.error = action.error.message || "Failed to create task";
+  //       // Remove optimistic task on failure
+  //       state.tasks = state.tasks.filter((task) =>
+  //         !(task.id.startsWith("temp_") && task.name === action.meta.arg.name)
+  //       );
+  //     });
+  // },
+});
+
+export const {
+  addTask,
+  markTaskSynced,
+  updateTask,
+  deleteTask,
+  setActiveTask,
+  toggleTaskComplete,
+  updateTaskTime,
+  reorderTasks,
+  removeOptimisticTask,
+} = taskSlice.actions;
+
+export default taskSlice.reducer;

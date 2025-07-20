@@ -8,19 +8,17 @@ datasource db {
 }
 
 model user {
-  id                String           @id @default(uuid())
+  id                String   @id @default(uuid())
   first_name        String
   last_name         String
-  auth_id           String           @unique
-  email             String           @unique
+  auth_id           String   @unique
+  email             String   @unique
   profile_image     String?
-  created_at        DateTime         @default(now())
+  created_at        DateTime @default(now())
   last_active       DateTime
 
   preferences       preference?
-  tasks             task[]
-  task_histories    task_history[]
-  timer_sessions    timer_session[]
+  tasks             task[]   @relation("UserTasks")
   daily_streaks     daily_streak[]
   room_members      room_member[]
   flying_messages   flying_message[]
@@ -41,18 +39,20 @@ model preference {
 }
 
 model task {
-  id             String           @id @default(uuid())
+  id             String   @id @default(uuid())
   user_id        String
-  name           String
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
-  total_time     Int              @default(0)
-  status         String           @default("not_started")
+  room_id        String
+  task_name      String
+  status         String   @default("not_started")
+  duration       Int      @default(0)
+  completed_at   DateTime?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
-  user           user             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user           user     @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
+  room           room     @relation(fields: [room_id], references: [id])
+
   notes          note[]
-  timer_sessions timer_session[]
-  task_histories task_history[]
 }
 
 model note {
@@ -64,38 +64,6 @@ model note {
   position            Int
 
   task                task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
-}
-
-model task_history {
-  id           String   @id @default(uuid())
-  task_id      String
-  room_id      String
-  user_id      String
-  task_name    String
-  duration     Int
-  completed    Boolean
-  completed_at DateTime
-
-  task         task     @relation(fields: [task_id], references: [id])
-  user         user     @relation(fields: [user_id], references: [id])
-  room         room     @relation(fields: [room_id], references: [id])
-}
-
-model timer_session {
-  id           String   @id @default(uuid())
-  user_id      String
-  task_id      String
-  room_id      String
-  start_time   DateTime
-  end_time     DateTime
-  duration     Int      @default(0)
-  is_running   Boolean  @default(true)
-  is_completed Boolean  @default(false)
-  overdue      Boolean  @default(false)
-
-  user         user     @relation(fields: [user_id], references: [id])
-  task         task     @relation(fields: [task_id], references: [id])
-  room         room     @relation(fields: [room_id], references: [id])
 }
 
 model daily_streak {
@@ -129,11 +97,10 @@ model room {
   owner            String
 
   room_members      room_member[]
-  task_histories    task_history[]
-  timer_sessions    timer_session[]
   admin_setting     admin_setting?
   flying_messages   flying_message[]
   sound_cooldowns   sound_cooldown[]
+  tasks             task[]
 }
 
 model room_member {

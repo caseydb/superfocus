@@ -72,6 +72,7 @@ export const updateUserData = createAsyncThunk(
   }
 );
 
+
 const userSlice = createSlice({
   name: 'user',
   initialState,
@@ -119,7 +120,7 @@ const userSlice = createSlice({
       .addCase(updateUserData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to update user data';
-      });
+      })
   },
 });
 

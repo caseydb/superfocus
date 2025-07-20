@@ -1,6 +1,8 @@
 "use client";
 import React from "react";
 import { useInstance } from "../Instances";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, onValue, off } from "firebase/database";
@@ -39,44 +41,24 @@ export default function TaskInput({
   const suggestionsContainerRef = React.useRef<HTMLDivElement>(null);
   const [taskSelectionMode, setTaskSelectionMode] = React.useState("dropdown"); // default to dropdown
 
-  // TODO: Replace with Firebase RTDB listener for tasks
-  // Load tasks from Firebase (user-specific)
+  // Get tasks from Redux store
+  const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+  
+  // Filter and sort available tasks from Redux
   React.useEffect(() => {
-    if (!user?.id) return;
-
-    // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-    // const handle = onValue(tasksRef, (snapshot) => {
-    //   const tasksData = snapshot.val();
-    //   if (tasksData) {
-    //     // Convert Firebase object to array and sort by order
-    //     const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
-    //       id,
-    //       ...(task as Omit<Task, "id">),
-    //     }));
-    //     // Sort by order field, filter for incomplete tasks
-    //     const incompleteTasks = tasksArray
-    //       .filter((task) => !task.completed)
-    //       .sort((a, b) => (a.order || 0) - (b.order || 0));
-    //     setAvailableTasks(incompleteTasks);
-    //   } else {
-    //     setAvailableTasks([]);
-    //   }
-    // });
-
-    // return () => {
-    //   off(tasksRef, "value", handle);
-    // };
+    // Filter for incomplete tasks and sort by creation time
+    const incompleteTasks = reduxTasks
+      .filter((task) => !task.completed)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map((task) => ({
+        id: task.id,
+        text: task.name,
+        completed: task.completed,
+        order: 0, // Not used anymore but kept for compatibility
+      }));
     
-    // Temporary: Use same seed example tasks (only incomplete ones)
-    const sampleTasks: Task[] = [
-      { id: "1", text: "Complete the quarterly report", completed: false, order: 0 },
-      { id: "2", text: "Review pull requests", completed: false, order: 1 },
-      { id: "3", text: "Update project documentation", completed: false, order: 2 },
-      { id: "4", text: "Prepare for team standup", completed: false, order: 3 },
-      { id: "5", text: "Refactor authentication module", completed: false, order: 4 },
-    ];
-    setAvailableTasks(sampleTasks);
-  }, [user?.id]);
+    setAvailableTasks(incompleteTasks);
+  }, [reduxTasks]);
 
   // TODO: Replace with Firebase RTDB listener for preferences
   // Load user's task selection mode preference

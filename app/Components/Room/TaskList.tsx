@@ -20,6 +20,10 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useInstance } from "../Instances";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../store/store";
+import { addTask, deleteTask, updateTask, reorderTasks, toggleTaskComplete, createTaskThunk, deleteTaskThunk } from "../../store/taskSlice";
+import { v4 as uuidv4 } from 'uuid';
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, set, onValue, off, remove } from "firebase/database";
@@ -870,7 +874,24 @@ export default function TaskList({
   timerSeconds?: number;
 }) {
   const { user } = useInstance();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const dispatch = useDispatch<AppDispatch>();
+  const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+  const timerState = useSelector((state: RootState) => state.timer);
+  const reduxUser = useSelector((state: RootState) => state.user);
+  
+  console.log("[TaskList] Redux tasks:", reduxTasks);
+  console.log("[TaskList] Redux user:", reduxUser);
+  
+  // Convert Redux tasks to the format expected by this component
+  const tasks: Task[] = reduxTasks.map(task => ({
+    id: task.id,
+    text: task.name,
+    completed: task.completed,
+    order: 0 // Not used in Redux version
+  }));
+  
+  console.log("[TaskList] Converted tasks:", tasks);
+  console.log("[TaskList] Completed status of tasks:", tasks.map(t => ({ text: t.text, completed: t.completed })));
   const [newTaskText, setNewTaskText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -907,7 +928,7 @@ export default function TaskList({
     // );
     
     // Temporary: No refresh needed with local state
-    console.log('Would refresh tasks from Firebase');
+    // Tasks are now managed by Redux
   };
 
   const sensors = useSensors(
@@ -952,19 +973,8 @@ export default function TaskList({
     //   off(tasksRef, "value", handle);
     // };
     
-    // Temporary: Use seed example tasks
-    const sampleTasks: Task[] = [
-      { id: "1", text: "Complete the quarterly report", completed: false, order: 0 },
-      { id: "2", text: "Review pull requests", completed: false, order: 1 },
-      { id: "3", text: "Update project documentation", completed: false, order: 2 },
-      { id: "4", text: "Prepare for team standup", completed: false, order: 3 },
-      { id: "5", text: "Refactor authentication module", completed: false, order: 4 },
-    ];
-    
-    if (!editingId) {
-      setTasks(sampleTasks);
-    }
-  }, [user?.id, editingId]);
+    // Tasks are now managed by Redux
+  }, [user?.id, tasks.length]);
 
   // Focus input when opening - but not if it was opened via sidebar mode
   // This prevents stealing focus from the main task input
@@ -1003,37 +1013,53 @@ export default function TaskList({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showClearMenu]);
 
-  // TODO: Replace with Firebase RTDB task creation
-  const addTask = () => {
-    if (newTaskText.trim() && user?.id) {
-      const id = Date.now().toString();
-      // Find the highest order number and add 1 to ensure it goes to the end
-      const maxOrder = tasks.length > 0 ? Math.max(...tasks.map((task) => task.order || 0)) : -1;
-      const newTask: Task = {
-        id,
-        text: newTaskText.trim(),
-        completed: false,
-        order: maxOrder + 1,
-      };
-      // const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
-      // set(taskRef, newTask);
+  // Add task to Redux store
+  const handleAddTask = () => {
+    if (newTaskText.trim() && user?.id && reduxUser.user_id) {
+      // Generate proper UUID
+      const taskId = uuidv4();
       
-      // Temporary: Add to local state
-      setTasks([...tasks, newTask]);
+      // Add optimistic task immediately
+      dispatch(addTask({ 
+        id: taskId, 
+        name: newTaskText.trim() 
+      }));
+      
+      // Persist to database using PostgreSQL user ID
+      dispatch(createTaskThunk({ 
+        id: taskId,
+        name: newTaskText.trim(), 
+        userId: reduxUser.user_id, // Use PostgreSQL UUID
+      }) as any);
+      
+      // Get room ID from the current URL
+      const roomId = window.location.pathname.split('/').pop() || 'default';
+      
+      console.log("Task created from TaskList:", {
+        task_id: taskId,
+        room_id: roomId,
+        user_id: reduxUser.user_id, // PostgreSQL UUID
+        firebase_auth_id: user.id, // Firebase Auth ID for reference
+        task_name: newTaskText.trim(),
+        created_at: new Date().toISOString()
+      });
+      
       setNewTaskText("");
-      console.log('Would save new task to Firebase:', newTask);
     }
   };
 
-  // TODO: Replace with Firebase RTDB task removal
+  // Remove task from Redux store and database
   const removeTask = (id: string) => {
-    if (user?.id) {
-      // const taskRef = ref(rtdb, `users/${user.id}/tasks/${id}`);
-      // remove(taskRef);
+    if (user?.id && reduxUser.user_id) {
+      // First remove from Redux optimistically
+      dispatch(deleteTask(id));
       
-      // Temporary: Remove from local state
-      setTasks(tasks.filter(t => t.id !== id));
-      console.log('Would remove task from Firebase:', id);
+      // Then delete from database and Firebase TaskBuffer
+      dispatch(deleteTaskThunk({ 
+        id, 
+        userId: reduxUser.user_id,
+        firebaseUserId: user.id // Firebase Auth ID
+      }) as any);
     }
   };
 
@@ -1042,24 +1068,15 @@ export default function TaskList({
     setEditingText(task.text);
   };
 
-  // TODO: Replace with Firebase RTDB task update
+  // Update task in Redux store
   const saveEdit = () => {
     if (editingText.trim() && editingId && user?.id) {
-      // const taskRef = ref(rtdb, `users/${user.id}/tasks/${editingId}`);
-      const task = tasks.find((t) => t.id === editingId);
-      if (task) {
-        // set(taskRef, { ...task, text: editingText.trim() });
-        
-        // Temporary: Update local state
-        setTasks(tasks.map(t => 
-          t.id === editingId ? { ...t, text: editingText.trim() } : t
-        ));
-        console.log('Would update task in Firebase:', { ...task, text: editingText.trim() });
-      }
+      dispatch(updateTask({ 
+        id: editingId, 
+        updates: { name: editingText.trim() } 
+      }));
       setEditingId(null);
       setEditingText("");
-      // Force refresh tasks from Firebase after editing
-      // refreshTasks();
     } else if (!editingText.trim() && editingId) {
       // If the text is empty, cancel the edit without saving
       setEditingId(null);
@@ -1094,27 +1111,17 @@ export default function TaskList({
     setActiveId(String(event.active.id));
   };
 
-  // TODO: Replace with Firebase RTDB task reordering
+  // Update task order in Redux store
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (active.id !== over?.id && user?.id) {
-      const oldIndex = tasks.findIndex((item) => item.id === active.id);
-      const newIndex = tasks.findIndex((item) => item.id === over?.id);
+      const oldIndex = reduxTasks.findIndex((item) => item.id === active.id);
+      const newIndex = reduxTasks.findIndex((item) => item.id === over?.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
-
-        // TODO: Update order in Firebase for all tasks
-        // reorderedTasks.forEach((task, index) => {
-        //   const taskRef = ref(rtdb, `users/${user.id}/tasks/${task.id}`);
-        //   set(taskRef, { ...task, order: index });
-        // });
-        
-        // Temporary: Update local state with new order
-        const updatedTasks = reorderedTasks.map((task, index) => ({ ...task, order: index }));
-        setTasks(updatedTasks);
-        console.log('Would update task order in Firebase');
+        const reorderedTasks = arrayMove([...reduxTasks], oldIndex, newIndex);
+        dispatch(reorderTasks(reorderedTasks));
       }
     }
 
@@ -1126,21 +1133,21 @@ export default function TaskList({
     setShowClearAllConfirm(true);
   };
 
-  // TODO: Replace with Firebase RTDB clear all tasks
+  // Clear all tasks from Redux store
   const confirmClearAll = () => {
     if (user?.id) {
-      // const tasksRef = ref(rtdb, `users/${user.id}/tasks");
-      // set(tasksRef, null);
-      
-      // Temporary: Clear local state
-      setTasks([]);
-      console.log('Would clear all tasks from Firebase');
+      // Clear all tasks by deleting each one
+      reduxTasks.forEach(task => {
+        dispatch(deleteTask(task.id));
+      });
     }
     setShowClearAllConfirm(false);
   };
 
   // Only show incomplete tasks
   const filteredTasks = tasks.filter((task) => !task.completed);
+  console.log("[TaskList] Filtered tasks (incomplete only):", filteredTasks);
+  console.log("[TaskList] Number of incomplete tasks:", filteredTasks.length);
 
   const incompleteTasks = tasks.filter((task) => !task.completed).length;
 
@@ -1218,7 +1225,7 @@ export default function TaskList({
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    addTask();
+                    handleAddTask();
                   }
                 }}
                 placeholder="Add a new task..."
@@ -1232,7 +1239,7 @@ export default function TaskList({
               )}
             </div>
             <button
-              onClick={addTask}
+              onClick={handleAddTask}
               disabled={!newTaskText.trim()}
               className="bg-[#FFAA00] text-black px-6 py-3 rounded-xl font-medium hover:bg-[#FF9900] hover:shadow-lg hover:shadow-[#FFAA00]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
             >

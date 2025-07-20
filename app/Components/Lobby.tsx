@@ -24,12 +24,6 @@ export default function Lobby() {
   // Check if user is signed in (not a temporary user)
   const signedIn = userReady && user.id && !user.id.startsWith("user-");
 
-  // Log Redux user state only when it changes
-  useEffect(() => {
-    if (reduxUser.user_id) {
-      console.log("Redux user state:", reduxUser);
-    }
-  }, [reduxUser]);
 
   // Close modal when signed in
   useEffect(() => {

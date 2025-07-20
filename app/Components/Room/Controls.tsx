@@ -82,8 +82,7 @@ export default function Controls({
     // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
     // set(userRef, { ...user, displayName: user.displayName, volume: localVolume, previousVolume });
     
-    // Temporary: Just log the volume change
-    console.log('Volume changed:', { volume: localVolume, previousVolume });
+    // Volume state is managed locally
   }, [localVolume, previousVolume, currentInstance, user]);
 
   // TODO: Replace with Firebase RTDB listener for volume

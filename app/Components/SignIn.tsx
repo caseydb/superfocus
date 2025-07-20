@@ -15,48 +15,8 @@ export default function SignIn() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  // Auto-sync user to PostgreSQL when they sign in
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      console.log("🔍 Auth state changed, user:", user?.email || "no user");
-      if (user) {
-        console.log("🔍 User signed in, calling sync-user...");
-        
-        // First test if API routes work
-        fetch("/api/test-sync", {
-          method: "GET",
-        }).then(res => res.json()).then(data => {
-          console.log("🧪 Test endpoint response:", data);
-        }).catch(err => {
-          console.error("🧪 Test endpoint error:", err);
-        });
-        
-        // User signed in - sync to PostgreSQL
-        user.getIdToken().then((idToken) => {
-          console.log("🔍 Got ID token, length:", idToken.length);
-          fetch("/api/users/sync-user", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-            },
-          })
-            .then(async (response) => {
-              if (response.ok) {
-                const data = await response.json();
-                console.log("✅ User synced to database", data);
-              } else {
-                const error = await response.text();
-                console.error("❌ Failed to sync user to database:", response.status, error);
-              }
-            })
-            .catch((error) => {
-              console.error("❌ Error syncing user:", error);
-            });
-        });
-      }
-    });
-    return () => unsub();
-  }, []);
+  // Note: User sync to PostgreSQL is now handled in redux-initializer.tsx
+  // This component only handles the sign-in UI
 
   const handleAuth = async (fn: () => Promise<unknown>) => {
     setError(null);
