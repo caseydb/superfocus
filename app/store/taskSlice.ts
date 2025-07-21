@@ -660,6 +660,44 @@ export const updateTaskStatusThunk = createAsyncThunk(
   }
 );
 
+// Thunk for cleaning up TaskBuffer when quitting (without transferring to Postgres)
+export const cleanupTaskFromBuffer = createAsyncThunk(
+  "tasks/cleanupFromBuffer",
+  async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
+    // Remove task from TaskBuffer if it exists
+    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+    
+    // Check if task exists before trying to remove
+    const snapshot = await get(taskRef);
+    if (snapshot.exists()) {
+      await remove(taskRef);
+    }
+    
+    // Also clear any timer state if it exists
+    const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
+    const timerSnapshot = await get(timerRef);
+    if (timerSnapshot.exists()) {
+      const timerData = timerSnapshot.val();
+      // Only remove if it's for this task
+      if (timerData.taskId === taskId) {
+        await remove(timerRef);
+      }
+    }
+    
+    // Clear heartbeat if it exists and matches this task
+    const heartbeatRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/heartbeat`);
+    const heartbeatSnapshot = await get(heartbeatRef);
+    if (heartbeatSnapshot.exists()) {
+      const heartbeatData = heartbeatSnapshot.val();
+      if (heartbeatData.taskId === taskId) {
+        await remove(heartbeatRef);
+      }
+    }
+    
+    return { taskId };
+  }
+);
+
 const taskSlice = createSlice({
   name: "tasks",
   initialState,
@@ -759,8 +797,13 @@ const taskSlice = createSlice({
       .addCase(transferTaskToPostgres.fulfilled, (state, action) => {
         // Remove task from local state as it's now in Postgres
         const { savedTask, status } = action.payload;
-        if (status === "completed" || status === "quit") {
+        if (status === "completed") {
+          // Only remove from Redux if completed (not quit)
           state.tasks = state.tasks.filter((task) => task.id !== savedTask.id);
+          // Clear activeTaskId if the completed task was the active one
+          if (state.activeTaskId === savedTask.id) {
+            state.activeTaskId = null;
+          }
         }
       })
       .addCase(transferTaskToPostgres.rejected, (state, action) => {
@@ -818,6 +861,22 @@ const taskSlice = createSlice({
       })
       .addCase(endTimeSegment.rejected, (state, action) => {
         state.error = action.error.message || "Failed to end time segment";
+      })
+      // Handle cleanupTaskFromBuffer (for quit)
+      .addCase(cleanupTaskFromBuffer.fulfilled, (state, action) => {
+        const { taskId } = action.payload;
+        // Reset task to virgin state - as if it was never started
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = "not_started";
+          task.timeSpent = 0;
+          task.lastActive = undefined;
+          // Keep the original creation time
+        }
+        // Clear activeTaskId if this was the active task
+        if (state.activeTaskId === taskId) {
+          state.activeTaskId = null;
+        }
       });
     // Handle createTaskThunk (legacy)
     builder

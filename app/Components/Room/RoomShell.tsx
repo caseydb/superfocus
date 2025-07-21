@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { transferTaskToPostgres, endTimeSegment } from "../../store/taskSlice";
+import { transferTaskToPostgres, endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, set, remove, push, runTransaction, get } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
@@ -527,38 +527,48 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         remove(flyingMessageRef);
       }, 7000);
 
-      // End time segment and transfer task from TaskBuffer to Postgres with quit status
+      // Clean up everything related to this task - make it like it was never started
       const activeTask = reduxTasks.find((t) => t.name === task?.trim());
       if (activeTask?.id && user?.id) {
-        // First end the time segment to ensure duration is captured
-        await dispatch(
-          endTimeSegment({
-            taskId: activeTask.id,
-            firebaseUserId: user.id,
-          })
-        ).unwrap();
-
-        // Small delay to ensure Firebase has updated
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Then transfer to Postgres
-        if (typeof window !== "undefined") {
-          const token = localStorage.getItem("firebase_token") || "";
-          try {
-            await dispatch(
-              transferTaskToPostgres({
-                taskId: activeTask.id,
-                firebaseUserId: user.id,
-                status: "quit",
-                token,
-                duration: timerSecondsRef.current, // Pass the actual timer seconds
-              })
-            ).unwrap();
-          } catch (error: unknown) {
-            console.error("[QUIT] Failed to transfer task to Postgres:", error);
-            // Could show an error message to user here
-          }
+        // Try to end time segment if it exists, but don't fail if it doesn't
+        try {
+          await dispatch(
+            endTimeSegment({
+              taskId: activeTask.id,
+              firebaseUserId: user.id,
+            })
+          ).unwrap();
+        } catch (error) {
+          // Task might not be in TaskBuffer, that's OK - continue with cleanup
+          console.log("[QUIT] Task not in TaskBuffer, skipping time segment end");
         }
+
+        // Clean up task from TaskBuffer without transferring to Postgres
+        // This will reset the task status to "not_started" and clear activeTaskId
+        try {
+          await dispatch(
+            cleanupTaskFromBuffer({
+              taskId: activeTask.id,
+              firebaseUserId: user.id,
+            })
+          ).unwrap();
+        } catch (error: unknown) {
+          // Task might not be in TaskBuffer, that's OK
+          console.log("[QUIT] Task not in TaskBuffer, skipping cleanup");
+        }
+        
+        // Manually reset the task in Redux to ensure it's in virgin state
+        dispatch(updateTask({
+          id: activeTask.id,
+          updates: { 
+            status: "not_started" as const,
+            timeSpent: 0,
+            lastActive: undefined
+          }
+        }));
+        
+        // Clear active task
+        dispatch(setActiveTask(null));
       }
     }
     setTimerRunning(false);

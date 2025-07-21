@@ -606,7 +606,8 @@ export default function Timer({
                   }
                 }
 
-                // Clear timer state and UI immediately
+                // Heartbeat gets cleared when task is removed from TaskBuffer
+
                 // Clear heartbeat interval
                 if (heartbeatIntervalRef.current) {
                   clearInterval(heartbeatIntervalRef.current);
@@ -615,11 +616,6 @@ export default function Timer({
 
                 clearTimerState(); // Clear Firebase state when completing
                 dispatch(setIsActive(false)); // Update Redux state
-
-                // Call onComplete immediately to reset the input field
-                if (onComplete) {
-                  onComplete(completionTime);
-                }
 
                 // Always play completion sound locally
                 const completeAudio = new Audio("/complete.mp3");
@@ -630,6 +626,10 @@ export default function Timer({
                 if (seconds > 15 && user?.id && currentInstance) {
                   // Always notify for completion
                   notifyEvent("complete");
+                }
+
+                if (onComplete) {
+                  onComplete(completionTime);
                 }
               }}
             >
