@@ -179,9 +179,25 @@ export default function Timer({
             const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
             get(taskRef).then((taskSnapshot) => {
               const taskData = taskSnapshot.val();
-              if (taskData && taskData.name && onTaskRestore) {
+              if (taskData && taskData.name) {
                 console.log("[TIMER-INIT] Found task in TaskBuffer:", taskData.name);
-                onTaskRestore(taskData.name);
+                // Add task to Redux if not already there
+                dispatch(addTask({
+                  id: timerState.taskId,
+                  name: taskData.name
+                }));
+                // Always set as active task and restore name
+                dispatch(setActiveTask(timerState.taskId));
+                dispatch(updateTask({
+                  id: timerState.taskId,
+                  updates: { 
+                    status: isRunning ? "in_progress" : "paused" as const,
+                    timeSpent: currentSeconds
+                  }
+                }));
+                if (onTaskRestore) {
+                  onTaskRestore(taskData.name);
+                }
               } else {
                 console.log("[TIMER-INIT] Task not found in TaskBuffer either");
               }
