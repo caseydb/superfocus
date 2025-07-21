@@ -483,8 +483,7 @@ export default function Timer({
       startAudio.volume = localVolume;
       startAudio.play();
 
-      // Sound cooldowns removed - not part of task data
-      // Always notify for now
+      // Always send start event - cooldown is handled by Sounds component per user
       notifyEvent("start");
     }
   }
@@ -503,10 +502,29 @@ export default function Timer({
   }, []);
 
   // Add event notification for start, complete, and quit
-  function notifyEvent(type: "start" | "complete" | "quit") {
+  function notifyEvent(type: "start" | "complete" | "quit", duration?: number) {
     if (currentInstance && user?.id) {
-      const lastEventRef = ref(rtdb, `rooms/${currentInstance.id}/lastEvent`);
-      set(lastEventRef, { displayName: user.displayName, userId: user.id, type, timestamp: Date.now() });
+      // Write to new GlobalEffects structure
+      const eventId = `${user.id}-${type}-${Date.now()}`;
+      const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
+      const eventData: any = { 
+        displayName: user.displayName, 
+        userId: user.id, 
+        type, 
+        timestamp: Date.now() 
+      };
+      
+      // Include duration for complete/quit events
+      if ((type === "complete" || type === "quit") && duration !== undefined) {
+        eventData.duration = duration;
+      }
+      
+      set(eventRef, eventData);
+      
+      // Auto-cleanup old events after 30 seconds
+      setTimeout(() => {
+        remove(eventRef);
+      }, 30000);
     }
   }
 
@@ -750,10 +768,9 @@ export default function Timer({
                 completeAudio.volume = localVolume;
                 completeAudio.play();
 
-                // Only notify others if task took more than 15 seconds
-                if (seconds > 15 && user?.id && currentInstance) {
-                  // Always notify for completion
-                  notifyEvent("complete");
+                // Notify completion with duration
+                if (user?.id && currentInstance) {
+                  notifyEvent("complete", seconds);
                 }
 
                 if (onComplete) {

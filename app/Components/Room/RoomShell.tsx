@@ -378,46 +378,60 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, [user?.id]);
 
-  // Listen for event notifications (🥊🏆💀)
+  // Listen for event notifications (🥊🏆💀) from GlobalEffects
   useEffect(() => {
     if (!currentInstance) return;
-    const lastEventRef = ref(rtdb, `rooms/${currentInstance.id}/lastEvent`);
+    const eventsRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events`);
     let timeout: NodeJS.Timeout | null = null;
-    let firstRun = true;
-    const handle = onValue(lastEventRef, (snap) => {
-      if (firstRun) {
-        firstRun = false;
-        return;
-      }
-      const val = snap.val();
-      if (val && val.displayName && val.type) {
-        let emoji = "";
-        if (val.type === "start") emoji = "🥊";
-        if (val.type === "complete") emoji = "🏆";
-        if (val.type === "quit") emoji = "💀";
-        document.title = `${emoji} ${val.displayName}`;
-        if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          // Resume timer or default title immediately after notification
-          if (timerRunning) {
-            document.title = formatTime(timerSecondsRef.current);
-          } else {
-            document.title = "Locked In";
+    let processedEvents = new Set<string>();
+    
+    const handle = onValue(eventsRef, (snap) => {
+      const events = snap.val();
+      if (!events) return;
+      
+      // Find new events we haven't processed yet
+      Object.entries(events).forEach(([eventId, event]: [string, any]) => {
+        if (!processedEvents.has(eventId)) {
+          processedEvents.add(eventId);
+          
+          // Show notification in title
+          if (event.displayName && event.type) {
+            let emoji = "";
+            if (event.type === "start") emoji = "🥊";
+            if (event.type === "complete") emoji = "🏆";
+            if (event.type === "quit") emoji = "💀";
+            document.title = `${emoji} ${event.displayName}`;
+            
+            if (timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => {
+              // Resume timer or default title immediately after notification
+              if (timerRunning) {
+                document.title = formatTime(timerSecondsRef.current);
+              } else {
+                document.title = "Locked In";
+              }
+            }, 5000);
           }
-        }, 5000);
+        }
+      });
+      
+      // Clean up old event IDs from our set
+      if (processedEvents.size > 100) {
+        processedEvents.clear();
       }
     });
+    
     return () => {
-      off(lastEventRef, "value", handle);
+      off(eventsRef, "value", handle);
       if (timeout) clearTimeout(timeout);
     };
   }, [currentInstance, timerRunning]);
 
-  // Listen for flying messages from Firebase
+  // Listen for flying messages from GlobalEffects
   useEffect(() => {
     if (!currentInstance) return;
 
-    const flyingMessagesRef = ref(rtdb, `rooms/${currentInstance.id}/flyingMessages`);
+    const flyingMessagesRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages`);
     const handle = onValue(flyingMessagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -466,10 +480,29 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   };
 
   // Add event notification for complete and quit
-  function notifyEvent(type: "complete" | "quit") {
-    if (currentInstance) {
-      const lastEventRef = ref(rtdb, `rooms/${currentInstance.id}/lastEvent`);
-      set(lastEventRef, { displayName: user.displayName, type, timestamp: Date.now() });
+  function notifyEvent(type: "complete" | "quit", duration?: number) {
+    if (currentInstance && user?.id) {
+      // Write to new GlobalEffects structure
+      const eventId = `${user.id}-${type}-${Date.now()}`;
+      const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
+      const eventData: any = { 
+        displayName: user.displayName, 
+        userId: user.id, 
+        type, 
+        timestamp: Date.now() 
+      };
+      
+      // Include duration for complete/quit events
+      if (duration !== undefined) {
+        eventData.duration = duration;
+      }
+      
+      set(eventRef, eventData);
+      
+      // Auto-cleanup old events after 30 seconds
+      setTimeout(() => {
+        remove(eventRef);
+      }, 30000);
     }
   }
 
@@ -509,15 +542,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       quitAudio.volume = localVolume;
       quitAudio.play();
 
-      // Only notify others if timer was > 5 seconds AND cooldown has passed
-      if (timerSecondsRef.current > 5 && user?.id && currentInstance) {
-        // Sound cooldowns removed from TaskBuffer - always notify
-        notifyEvent("quit");
+      // Notify quit with duration
+      if (user?.id && currentInstance) {
+        notifyEvent("quit", timerSecondsRef.current);
       }
 
-      // Add flying message for quit to Firebase
+      // Add flying message for quit to GlobalEffects
       const flyingMessageId = `${user.id}-quit-${Date.now()}`;
-      const flyingMessageRef = ref(rtdb, `rooms/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+      const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
       set(flyingMessageRef, {
         text: `💀 ${user.displayName} folded faster than a lawn chair.`,
         color: "text-red-500",
@@ -643,9 +675,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
 
       // notifyEvent is now handled by Timer component conditionally based on duration
-      // Add flying message to Firebase
+      // Add flying message to GlobalEffects
       const flyingMessageId = `${user.id}-complete-${Date.now()}`;
-      const flyingMessageRef = ref(rtdb, `rooms/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+      const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
       set(flyingMessageRef, {
         text: `🏆 ${user.displayName} has successfully completed a task!`,
         color: "text-green-400",

@@ -10,38 +10,68 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
   const quitRef = useRef<HTMLAudioElement>(null);
   const lastEventTimestamp = useRef<number>(0);
   const [audioInitialized, setAudioInitialized] = useState(false);
+  const userStartCooldowns = useRef<Record<string, number>>({});  // Track last start sound time per user
+  const COOLDOWN_MS = 5 * 60 * 1000;  // 5 minutes in milliseconds for start sounds
+  const MIN_DURATION_MS = 5 * 60 * 1000;  // 5 minutes minimum for complete/quit sounds
 
   useEffect(() => {
     if (!roomId) return;
-    const lastEventRef = ref(rtdb, `instances/${roomId}/lastEvent`);
-    let firstRun = true;
-    const handle = onValue(lastEventRef, (snap) => {
-      if (firstRun) {
-        firstRun = false;
-        return;
-      }
-      const val = snap.val();
-      if (val && val.timestamp !== lastEventTimestamp.current) {
-        lastEventTimestamp.current = val.timestamp;
+    // Listen to GlobalEffects events for this room
+    const eventsRef = ref(rtdb, `GlobalEffects/${roomId}/events`);
+    const handle = onValue(eventsRef, (snap) => {
+      const events = snap.val();
+      if (!events) return;
+      
+      // Find the most recent event
+      const eventEntries = Object.entries(events);
+      if (eventEntries.length === 0) return;
+      
+      // Sort by timestamp to get the most recent
+      const sortedEvents = eventEntries.sort((a: [string, any], b: [string, any]) => 
+        b[1].timestamp - a[1].timestamp
+      );
+      
+      const [_, mostRecentEvent] = sortedEvents[0];
+      
+      // Check if this is a new event we haven't processed
+      if (mostRecentEvent.timestamp > lastEventTimestamp.current) {
+        lastEventTimestamp.current = mostRecentEvent.timestamp;
         
         // Skip playing sound if this event is from the current user
-        if (val.userId && val.userId === currentUserId) {
+        if (mostRecentEvent.userId === currentUserId) {
           return;
         }
         
-        if (val.type === "complete" && completeRef.current) {
-          completeRef.current.currentTime = 0;
-          completeRef.current.play();
-        } else if (val.type === "start" && startedRef.current) {
-          startedRef.current.currentTime = 0;
-          startedRef.current.play();
-        } else if (val.type === "quit" && quitRef.current) {
-          quitRef.current.currentTime = 0;
-          quitRef.current.play();
+        // Play the appropriate sound based on event type
+        if (mostRecentEvent.type === "complete" && completeRef.current) {
+          // Play complete sound only if task duration exceeds 10 seconds
+          const duration = mostRecentEvent.duration || 0;
+          if (duration * 1000 > MIN_DURATION_MS) {  // duration is in seconds, convert to ms
+            completeRef.current.currentTime = 0;
+            completeRef.current.play();
+          }
+        } else if (mostRecentEvent.type === "start" && startedRef.current) {
+          // Check per-user cooldown for start sounds (5 minutes)
+          const lastStartTime = userStartCooldowns.current[mostRecentEvent.userId] || 0;
+          const timeSinceLastStart = mostRecentEvent.timestamp - lastStartTime;
+          
+          // Play start sound if first time for this user or 5+ minutes since their last start
+          if (lastStartTime === 0 || timeSinceLastStart >= COOLDOWN_MS) {
+            startedRef.current.currentTime = 0;
+            startedRef.current.play();
+            userStartCooldowns.current[mostRecentEvent.userId] = mostRecentEvent.timestamp;
+          }
+        } else if (mostRecentEvent.type === "quit" && quitRef.current) {
+          // Play quit sound only if task duration exceeds 10 seconds
+          const duration = mostRecentEvent.duration || 0;
+          if (duration * 1000 > MIN_DURATION_MS) {  // duration is in seconds, convert to ms
+            quitRef.current.currentTime = 0;
+            quitRef.current.play();
+          }
         }
       }
     });
-    return () => off(lastEventRef, "value", handle);
+    return () => off(eventsRef, "value", handle);
   }, [roomId, currentUserId]);
 
   useEffect(() => {
