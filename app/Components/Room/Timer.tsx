@@ -86,9 +86,27 @@ export default function Timer({
         };
 
         set(timerRef, timerState);
+        
+        // Update ActiveWorker status
+        if (currentInstance) {
+          const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+          if (isRunning) {
+            set(activeWorkerRef, {
+              userId: user.id,
+              roomId: currentInstance.id,
+              taskId: activeTask.id,
+              isActive: true,
+              lastSeen: Date.now(),
+              displayName: user.displayName || "Anonymous"
+            });
+          } else {
+            // Remove ActiveWorker when not running
+            remove(activeWorkerRef);
+          }
+        }
       }
     },
-    [reduxTasks, task, user?.id]
+    [reduxTasks, task, user?.id, currentInstance]
   );
 
   // Helper to clear timer state from Firebase
@@ -97,6 +115,10 @@ export default function Timer({
     if (user?.id) {
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
+      
+      // Also remove ActiveWorker
+      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+      remove(activeWorkerRef);
     }
   }, [user?.id]);
 
@@ -310,6 +332,12 @@ export default function Timer({
       if (running) {
         // Pause the timer and save state to Firebase
         saveTimerState(false, seconds);
+        
+        // Remove ActiveWorker immediately on page unload
+        if (user?.id) {
+          const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+          remove(activeWorkerRef);
+        }
       }
     };
 
@@ -318,7 +346,7 @@ export default function Timer({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [running, seconds, task, saveTimerState]);
+  }, [running, seconds, task, saveTimerState, user?.id]);
 
   async function handleStart() {
     console.log("[TIMER-START] Starting timer - current seconds:", seconds);
@@ -408,6 +436,19 @@ export default function Timer({
       };
 
       set(heartbeatRef, heartbeatData);
+      
+      // Create ActiveWorker entry
+      if (currentInstance) {
+        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+        set(activeWorkerRef, {
+          userId: user.id,
+          roomId: currentInstance.id,
+          taskId,
+          isActive: true,
+          lastSeen: Date.now(),
+          displayName: user.displayName || "Anonymous"
+        });
+      }
 
       // Start heartbeat interval
       if (heartbeatIntervalRef.current) {
@@ -416,6 +457,11 @@ export default function Timer({
 
       heartbeatIntervalRef.current = setInterval(() => {
         update(heartbeatRef, { last_seen: Date.now() });
+        // Also update ActiveWorker lastSeen
+        if (currentInstance) {
+          const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+          update(activeWorkerRef, { lastSeen: Date.now() });
+        }
       }, 10000); // Update every 10 seconds
     }
 
@@ -493,6 +539,10 @@ export default function Timer({
           is_running: false,
           last_seen: Date.now(),
         });
+        
+        // Remove ActiveWorker when pausing
+        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+        remove(activeWorkerRef);
       }
     }
 
@@ -573,14 +623,20 @@ export default function Timer({
     if (secondsRef) secondsRef.current = seconds;
   }, [seconds, secondsRef]);
 
-  // Cleanup heartbeat on unmount
+  // Cleanup heartbeat and ActiveWorker on unmount
   React.useEffect(() => {
     return () => {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
+      
+      // Remove ActiveWorker on unmount if timer is running
+      if (running && user?.id) {
+        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+        remove(activeWorkerRef);
+      }
     };
-  }, []);
+  }, [running, user?.id]);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 sm:px-0">
@@ -678,6 +734,12 @@ export default function Timer({
                 if (heartbeatIntervalRef.current) {
                   clearInterval(heartbeatIntervalRef.current);
                   heartbeatIntervalRef.current = null;
+                }
+                
+                // Remove ActiveWorker on completion
+                if (user?.id) {
+                  const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+                  remove(activeWorkerRef);
                 }
 
                 clearTimerState(); // Clear Firebase state when completing

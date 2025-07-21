@@ -529,6 +529,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       setTimeout(() => {
         remove(flyingMessageRef);
       }, 7000);
+      
+      // Remove ActiveWorker immediately when quitting
+      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+      remove(activeWorkerRef);
 
       // Clean up everything related to this task - make it like it was never started
       const activeTask = reduxTasks.find((t) => t.name === task?.trim());

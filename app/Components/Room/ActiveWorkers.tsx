@@ -1,8 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, onValue, off, DataSnapshot } from "firebase/database";
+import { rtdb } from "../../../lib/firebase";
+import { ref, onValue, off } from "firebase/database";
 import Image from "next/image";
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
@@ -78,24 +77,43 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return 0;
   };
 
-  // TODO: Replace with Firebase RTDB listener for active users
+  // Listen to ActiveWorker for users actively running timers
   useEffect(() => {
     if (!roomId) return;
 
-    // Simulating active users - replace with Firebase RTDB
-    // const activeRef = ref(rtdb, `instances/${roomId}/activeUsers`);
-    // const handle = onValue(activeRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data) {
-    //     setActiveUsers(Object.values(data));
-    //   } else {
-    //     setActiveUsers([]);
-    //   }
-    // });
-    // return () => off(activeRef, "value", handle);
-
-    // Temporary mock data
-    setActiveUsers([]);
+    // Listen to all ActiveWorker entries
+    const activeWorkerRef = ref(rtdb, `ActiveWorker`);
+    const handle = onValue(activeWorkerRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const now = Date.now();
+        const STALE_THRESHOLD = 30000; // 30 seconds - if lastSeen is older than this, consider stale
+        
+        // Filter workers in this room who are actively working and not stale
+        const workersInRoom = Object.entries(data)
+          .filter(([_, worker]: [string, any]) => {
+            // Check if worker is in this room and active
+            if (worker.roomId !== roomId || !worker.isActive) return false;
+            
+            // Check if worker is stale (hasn't updated lastSeen recently)
+            if (worker.lastSeen && (now - worker.lastSeen) > STALE_THRESHOLD) {
+              // Worker is stale, they probably closed their browser without cleanup
+              return false;
+            }
+            
+            return true;
+          })
+          .map(([userId, worker]: [string, any]) => ({
+            id: userId,
+            displayName: worker.displayName || "Anonymous"
+          }));
+        setActiveUsers(workersInRoom);
+      } else {
+        setActiveUsers([]);
+      }
+    });
+    
+    return () => off(activeWorkerRef, "value", handle);
   }, [roomId]);
 
   // TODO: Replace with Firebase RTDB listener for user streaks
