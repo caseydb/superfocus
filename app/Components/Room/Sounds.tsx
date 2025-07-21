@@ -23,15 +23,15 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
       if (!events) return;
       
       // Find the most recent event
-      const eventEntries = Object.entries(events);
+      const eventEntries = Object.entries(events as Record<string, { timestamp: number; type?: string; userId?: string; displayName?: string; duration?: number }>);
       if (eventEntries.length === 0) return;
       
       // Sort by timestamp to get the most recent
-      const sortedEvents = eventEntries.sort((a: [string, any], b: [string, any]) => 
+      const sortedEvents = eventEntries.sort((a, b) => 
         b[1].timestamp - a[1].timestamp
       );
       
-      const [_, mostRecentEvent] = sortedEvents[0];
+      const [, mostRecentEvent] = sortedEvents[0];
       
       // Check if this is a new event we haven't processed
       if (mostRecentEvent.timestamp > lastEventTimestamp.current) {
@@ -50,7 +50,7 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
             completeRef.current.currentTime = 0;
             completeRef.current.play();
           }
-        } else if (mostRecentEvent.type === "start" && startedRef.current) {
+        } else if (mostRecentEvent.type === "start" && startedRef.current && mostRecentEvent.userId) {
           // Check per-user cooldown for start sounds (5 minutes)
           const lastStartTime = userStartCooldowns.current[mostRecentEvent.userId] || 0;
           const timeSinceLastStart = mostRecentEvent.timestamp - lastStartTime;
@@ -72,7 +72,7 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
       }
     });
     return () => off(eventsRef, "value", handle);
-  }, [roomId, currentUserId]);
+  }, [roomId, currentUserId, COOLDOWN_MS, MIN_DURATION_MS]);
 
   useEffect(() => {
     if (completeRef.current) completeRef.current.volume = localVolume;

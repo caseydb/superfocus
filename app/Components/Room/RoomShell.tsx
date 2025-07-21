@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { transferTaskToPostgres, endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
+import { endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, set, remove, push, runTransaction, get } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
@@ -383,14 +383,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     if (!currentInstance) return;
     const eventsRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events`);
     let timeout: NodeJS.Timeout | null = null;
-    let processedEvents = new Set<string>();
+    const processedEvents = new Set<string>();
     
     const handle = onValue(eventsRef, (snap) => {
       const events = snap.val();
       if (!events) return;
       
       // Find new events we haven't processed yet
-      Object.entries(events).forEach(([eventId, event]: [string, any]) => {
+      Object.entries(events as Record<string, { displayName?: string; type?: string }>).forEach(([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
           
@@ -467,10 +467,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => {
-      console.log("[ROOMSHELL] Incrementing timerResetKey from", k, "to", k + 1);
-      return k + 1;
-    });
+    setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
     // Clear Firebase timer state when clearing
@@ -485,7 +482,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Write to new GlobalEffects structure
       const eventId = `${user.id}-${type}-${Date.now()}`;
       const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
-      const eventData: any = { 
+      const eventData: { displayName: string; userId: string; type: string; timestamp: number; duration?: number } = { 
         displayName: user.displayName, 
         userId: user.id, 
         type, 
@@ -577,9 +574,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               firebaseUserId: user.id,
             })
           ).unwrap();
-        } catch (error) {
+        } catch {
           // Task might not be in TaskBuffer, that's OK - continue with cleanup
-          console.log("[QUIT] Task not in TaskBuffer, skipping time segment end");
         }
 
         // Clean up task from TaskBuffer without transferring to Postgres
@@ -591,9 +587,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               firebaseUserId: user.id,
             })
           ).unwrap();
-        } catch (error: unknown) {
+        } catch {
           // Task might not be in TaskBuffer, that's OK
-          console.log("[QUIT] Task not in TaskBuffer, skipping cleanup");
         }
         
         // Manually reset the task in Redux to ensure it's in virgin state
@@ -610,13 +605,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         dispatch(setActiveTask(null));
       }
     }
-    console.log("[ROOMSHELL-QUIT] Resetting all state after quit");
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => {
-      console.log("[ROOMSHELL] Incrementing timerResetKey from", k, "to", k + 1);
-      return k + 1;
-    });
+    setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
     setShowQuitModal(false);
@@ -635,13 +626,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Complete handler: reset timer, clear input, set inactive
   const handleComplete = (duration: string) => {
-    console.log("[ROOMSHELL-COMPLETE] Task completed - resetting state");
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => {
-      console.log("[ROOMSHELL] Incrementing timerResetKey from", k, "to", k + 1);
-      return k + 1;
-    });
+    setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
     // Clear Firebase timer state when completing

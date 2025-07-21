@@ -169,16 +169,6 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
       setDragOverId(null);
       return;
     }
-    
-    console.log("[NOTES] Checklist reordered:", {
-      draggedItem: notes[draggedIndex],
-      fromIndex: draggedIndex,
-      toIndex: targetIndex,
-      itemMoved: {
-        content: notes[draggedIndex].content,
-        completed: notes[draggedIndex].completed
-      }
-    });
 
     const newItems = [...notes];
     const [draggedItem] = newItems.splice(draggedIndex, 1);
@@ -199,17 +189,6 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
     const currentIndex = notes.findIndex((item) => item.id === id);
     const currentItem = notes[currentIndex];
-    
-    console.log("[NOTES] Key pressed:", {
-      key: e.key,
-      shiftKey: e.shiftKey,
-      currentItem: {
-        id: currentItem.id,
-        type: currentItem.type,
-        content: currentItem.content,
-        level: currentItem.level
-      }
-    });
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -309,26 +288,14 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
     let newType = item.type;
     let newContent = value;
-    
-    console.log("[NOTES] Input detected:", {
-      id,
-      originalType: item.type,
-      inputValue: value,
-      startsWithCheckbox: value.startsWith("[]"),
-      startsWithCheckedBox: value.startsWith("[x] ") || value.startsWith("[X] "),
-      startsWithBullet: value.startsWith("- "),
-      startsWithNumber: /^\d+\.\s/.test(value)
-    });
 
     // Auto-format based on input
     if (value.startsWith("[]") && (value.length === 2 || value[2] !== "[")) {
       newType = "checkbox";
       newContent = value.slice(2).replace(/^\s*/, "");
-      console.log("[NOTES] Converting to checkbox:", { newContent });
     } else if (value.startsWith("[x] ") || value.startsWith("[X] ")) {
       newType = "checkbox";
       newContent = value.slice(4);
-      console.log("[NOTES] Creating checked checkbox:", { content: newContent });
       // Toggle completed state
       dispatch(updateNote({ 
         taskId, 
@@ -339,11 +306,9 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
     } else if (value.startsWith("- ")) {
       newType = "bullet";
       newContent = value.slice(2);
-      console.log("[NOTES] Converting to bullet:", { newContent });
     } else if (/^\d+\.\s/.test(value)) {
       newType = "number";
       newContent = value.replace(/^\d+\.\s/, "");
-      console.log("[NOTES] Converting to numbered list:", { newContent });
     }
 
     dispatch(updateNote({ 
@@ -356,13 +321,6 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   // Toggle checkbox
   const toggleCheckbox = (id: string) => {
     if (!taskId) return;
-    const item = notes.find(i => i.id === id);
-    console.log("[NOTES] Checkbox toggled:", {
-      id,
-      content: item?.content,
-      wasCompleted: item?.completed || false,
-      nowCompleted: !item?.completed
-    });
     
     dispatch(toggleCheckboxAction({ taskId, noteId: id }));
   };

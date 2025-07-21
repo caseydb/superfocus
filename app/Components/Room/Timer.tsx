@@ -4,7 +4,6 @@ import { useInstance } from "../../Components/Instances";
 import { useDispatch, useSelector } from "react-redux";
 import { setIsActive } from "../../store/realtimeSlice";
 import { RootState, AppDispatch } from "../../store/store";
-import type { DataSnapshot } from "firebase/database";
 import {
   updateTask,
   transferTaskToPostgres,
@@ -16,7 +15,7 @@ import {
   setActiveTask,
 } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, onValue, off, remove, update, get } from "firebase/database";
+import { ref, set, remove, update, get } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
 
 export default function Timer({
@@ -47,9 +46,7 @@ export default function Timer({
   
   // Log mount/unmount
   React.useEffect(() => {
-    console.log("[TIMER-LIFECYCLE] Timer component mounted - task:", task);
     return () => {
-      console.log("[TIMER-LIFECYCLE] Timer component unmounting");
     };
   }, []);
   
@@ -106,12 +103,11 @@ export default function Timer({
         }
       }
     },
-    [reduxTasks, task, user?.id, currentInstance]
+    [reduxTasks, task, user?.id, user?.displayName, currentInstance]
   );
 
   // Helper to clear timer state from Firebase
   const clearTimerState = React.useCallback(() => {
-    console.log("[TIMER-CLEAR] Clearing timer state from Firebase");
     if (user?.id) {
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
@@ -145,13 +141,11 @@ export default function Timer({
 
     // Wait a bit to ensure Redux has loaded tasks
     const initTimer = setTimeout(() => {
-      console.log("[TIMER-INIT] Checking Firebase for saved timer state");
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       
       // One-time read to restore state
       get(timerRef).then((snapshot) => {
       const timerState = snapshot.val();
-      console.log("[TIMER-INIT] Retrieved timer state:", timerState);
       
       if (timerState && timerState.taskId) {
         const isRunning = timerState.running || false;
@@ -162,11 +156,9 @@ export default function Timer({
           const elapsedMs = Date.now() - timerState.startTime;
           const elapsedSeconds = Math.floor(elapsedMs / 1000);
           currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-          console.log("[TIMER-INIT] Calculated running seconds:", currentSeconds);
         } else {
           // Use stored total seconds when paused
           currentSeconds = timerState.totalSeconds || 0;
-          console.log("[TIMER-INIT] Using paused seconds:", currentSeconds);
         }
 
         // Restore state
@@ -175,13 +167,10 @@ export default function Timer({
         
         // Always restore the task associated with the timer
         if (timerState.taskId) {
-          console.log("[TIMER-INIT] Looking for task with ID:", timerState.taskId);
-          console.log("[TIMER-INIT] Available Redux tasks:", reduxTasks);
           
           // First try to find in Redux
           const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
           if (restoredTask) {
-            console.log("[TIMER-INIT] Found task in Redux:", restoredTask.name);
             // Set this as the active task
             dispatch(setActiveTask(timerState.taskId));
             // Update task status based on timer state
@@ -197,12 +186,10 @@ export default function Timer({
             }
           } else {
             // If not in Redux yet, try to get from TaskBuffer
-            console.log("[TIMER-INIT] Task not in Redux, checking TaskBuffer");
             const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
             get(taskRef).then((taskSnapshot) => {
               const taskData = taskSnapshot.val();
               if (taskData && taskData.name) {
-                console.log("[TIMER-INIT] Found task in TaskBuffer:", taskData.name);
                 // Add task to Redux if not already there
                 dispatch(addTask({
                   id: timerState.taskId,
@@ -221,7 +208,6 @@ export default function Timer({
                   onTaskRestore(taskData.name);
                 }
               } else {
-                console.log("[TIMER-INIT] Task not found in TaskBuffer either");
               }
             });
           }
@@ -236,7 +222,7 @@ export default function Timer({
     }, 1000); // Wait 1 second for Redux to load
     
     return () => clearTimeout(initTimer);
-  }, [user?.id, reduxTasks, onTaskRestore]); // Dependencies for initialization
+  }, [user?.id, reduxTasks, onTaskRestore, dispatch]); // Dependencies for initialization
 
   // Note: Room user count monitoring removed to keep all Firebase activity in TaskBuffer
   // If needed, this could be re-implemented using TaskBuffer/rooms/{roomId}/activeUsers
@@ -262,7 +248,6 @@ export default function Timer({
 
   // Update display every second when running (local only, no Firebase writes)
   useEffect(() => {
-    console.log("[TIMER] Running state changed:", running);
     if (running) {
       const interval = setInterval(() => {
         setSeconds((s) => s + 1);
@@ -349,7 +334,6 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState, user?.id]);
 
   async function handleStart() {
-    console.log("[TIMER-START] Starting timer - current seconds:", seconds);
     setIsStarting(true);
 
     // Move task to position #1 in task list BEFORE starting timer
@@ -466,13 +450,11 @@ export default function Timer({
     }
 
     // Set running state AFTER all async operations
-    console.log("[TIMER-START] Setting running=true, isStarting=false");
     setRunning(true);
     setIsStarting(false);
 
     // Small delay to ensure state is set before Firebase save
     setTimeout(() => {
-      console.log("[TIMER-START] Saving timer state after delay");
       saveTimerState(true, seconds);
     }, 50);
 
@@ -507,7 +489,7 @@ export default function Timer({
       // Write to new GlobalEffects structure
       const eventId = `${user.id}-${type}-${Date.now()}`;
       const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
-      const eventData: any = { 
+      const eventData: { displayName: string; userId: string; type: string; timestamp: number; duration?: number } = { 
         displayName: user.displayName, 
         userId: user.id, 
         type, 
@@ -529,7 +511,6 @@ export default function Timer({
   }
 
   const handleStop = React.useCallback(() => {
-    console.log("[TIMER-STOP] Stopping timer - current seconds:", seconds);
     // Optimistically update task status to paused
     const activeTask = reduxTasks.find((t) => t.name === task?.trim());
     if (activeTask?.id) {
@@ -571,13 +552,11 @@ export default function Timer({
     }
 
     // Set state AFTER all operations
-    console.log("[TIMER-STOP] Setting running=false, isStarting=false");
     setRunning(false);
     setIsStarting(false);
 
     // Save timer state to Firebase AFTER setting local state
     setTimeout(() => {
-      console.log("[TIMER-STOP] Saving timer state after delay");
       saveTimerState(false, seconds);
     }, 50);
   }, [dispatch, task, reduxTasks, user?.id, seconds, saveTimerState]);
@@ -679,7 +658,6 @@ export default function Timer({
             <button
               className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
               onClick={async () => {
-                console.log("[TIMER-COMPLETE] Completing task - seconds:", seconds);
                 const completionTime = formatTime(seconds);
 
                 // Mark matching task as completed in task list

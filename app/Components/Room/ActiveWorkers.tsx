@@ -90,8 +90,8 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         const STALE_THRESHOLD = 30000; // 30 seconds - if lastSeen is older than this, consider stale
         
         // Filter workers in this room who are actively working and not stale
-        const workersInRoom = Object.entries(data)
-          .filter(([_, worker]: [string, any]) => {
+        const workersInRoom = Object.entries(data as Record<string, { roomId: string; isActive: boolean; lastSeen?: number; displayName?: string }>)
+          .filter(([, worker]) => {
             // Check if worker is in this room and active
             if (worker.roomId !== roomId || !worker.isActive) return false;
             
@@ -103,7 +103,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             
             return true;
           })
-          .map(([userId, worker]: [string, any]) => ({
+          .map(([userId, worker]) => ({
             id: userId,
             displayName: worker.displayName || "Anonymous"
           }));
