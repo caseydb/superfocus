@@ -1,9 +1,21 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { useInstance } from "../Instances";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, set, onValue, off } from "firebase/database";
+import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
+import { 
+  setNotes, 
+  updateNote, 
+  addNote, 
+  removeNote, 
+  reorderNotes, 
+  toggleCheckbox as toggleCheckboxAction,
+  selectNotesByTaskId,
+  selectIsSavingByTaskId,
+  selectErrorByTaskId,
+  selectIsLoadingByTaskId,
+  selectHasNotesForTaskId
+} from "@/app/store/notesSlice";
+import { fetchNotes, saveNotes } from "@/app/store/notesThunks";
 
 interface NoteItem {
   id: string;
@@ -28,28 +40,32 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useInstance();
   const [mounted, setMounted] = useState(false);
-  const [items, setItems] = useState<NoteItem[]>([{ id: "1", type: "text", content: "", level: 0 }]);
+  const dispatch = useAppDispatch();
+  const notes = useAppSelector(selectNotesByTaskId(taskId));
+  const isSaving = useAppSelector(selectIsSavingByTaskId(taskId));
+  const saveError = useAppSelector(selectErrorByTaskId(taskId));
+  const isLoading = useAppSelector(selectIsLoadingByTaskId(taskId));
+  const hasNotesInStore = useAppSelector(selectHasNotesForTaskId(taskId));
+  
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [nextId, setNextId] = useState<number>(2);
   const [isMac, setIsMac] = useState(false);
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [notesMap, setNotesMap] = useState<Record<string, NoteItem[]>>({});
 
   // Set focus only when Notes is explicitly opened
   const prevIsOpen = useRef(isOpen);
   useEffect(() => {
     if (isOpen && !prevIsOpen.current) {
       // Notes just opened, set focus to first item
-      setFocusedId(items[0]?.id || null);
+      setFocusedId(notes[0]?.id || null);
     }
     if (!isOpen) {
       setFocusedId(null);
     }
     prevIsOpen.current = isOpen;
-  }, [isOpen, items]);
+  }, [isOpen, notes]);
 
   // Ensure component is mounted on client side and detect OS
   useEffect(() => {
@@ -57,95 +73,32 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
     setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
   }, []);
 
-  // TODO: Replace with proper persistence - currently using local state only
-  // Initialize with seed notes for seed tasks
+  // Load notes from database when taskId changes
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !taskId || hasNotesInStore) return;
+    
+    dispatch(fetchNotes(taskId));
+  }, [mounted, taskId, hasNotesInStore, dispatch]);
 
-    // Seed notes data for the 5 seed tasks (using calculated task IDs from task text)
-    const seedNotes: Record<string, NoteItem[]> = {
-      "44556": [ // Complete the quarterly report
-        { id: "1", type: "checkbox", content: "Review Q3 financial data", completed: true, level: 0 },
-        { id: "2", type: "checkbox", content: "Update executive summary", completed: false, level: 0 },
-        { id: "3", type: "checkbox", content: "Add revenue projections", completed: false, level: 0 },
-        { id: "4", type: "bullet", content: "Due by end of week", level: 0 }
-      ],
-      "21856": [ // Review pull requests
-        { id: "1", type: "checkbox", content: "Frontend PR #234", completed: true, level: 0 },
-        { id: "2", type: "checkbox", content: "Backend PR #567", completed: false, level: 0 },
-        { id: "3", type: "checkbox", content: "Documentation updates", completed: false, level: 0 },
-        { id: "4", type: "text", content: "Focus on security fixes first", level: 0 }
-      ],
-      "42124": [ // Update project documentation
-        { id: "1", type: "text", content: "Main sections to update:", level: 0 },
-        { id: "2", type: "bullet", content: "API endpoints documentation", level: 0 },
-        { id: "3", type: "bullet", content: "Installation guide", level: 0 },
-        { id: "4", type: "bullet", content: "Architecture overview", level: 0 }
-      ],
-      "29625": [ // Prepare for team standup
-        { id: "1", type: "checkbox", content: "Review yesterday's tasks", completed: true, level: 0 },
-        { id: "2", type: "checkbox", content: "Update Jira board", completed: false, level: 0 },
-        { id: "3", type: "checkbox", content: "Prepare blockers list", completed: false, level: 0 },
-        { id: "4", type: "text", content: "Meeting at 10am sharp", level: 0 }
-      ],
-      "47491": [ // Refactor authentication module
-        { id: "1", type: "number", content: "Review current auth flow", level: 0 },
-        { id: "2", type: "number", content: "Implement JWT refresh tokens", level: 0 },
-        { id: "3", type: "number", content: "Add rate limiting", level: 0 },
-        { id: "4", type: "checkbox", content: "Update unit tests", completed: false, level: 0 }
-      ]
-    };
-
-    // Initialize notes map from window if available
-    if (typeof window !== "undefined") {
-      const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
-      if (!windowWithNotes.notesMap) {
-        windowWithNotes.notesMap = seedNotes;
-      }
-      setNotesMap(windowWithNotes.notesMap);
+  // Initialize empty notes if none exist after fetch
+  useEffect(() => {
+    if (mounted && taskId && notes.length === 0 && hasNotesInStore && !isLoading) {
+      dispatch(setNotes({ taskId, notes: [{ id: "1", type: "text", content: "", level: 0 }] }));
     }
-  }, [mounted]);
+  }, [mounted, taskId, notes.length, hasNotesInStore, isLoading, dispatch]);
 
-  // Load notes for current task
+  // Update nextId when notes change
   useEffect(() => {
-    if (!mounted || !taskId) return;
-
-    // Load from local notes map
-    const savedNotes = notesMap[taskId];
-    if (savedNotes) {
-      setItems(savedNotes);
-      // Find the highest ID to set nextId correctly
-      const maxId = Math.max(...savedNotes.map((item) => parseInt(item.id)), 0);
+    if (notes.length > 0) {
+      const maxId = Math.max(...notes.map((item) => parseInt(item.id)), 0);
       setNextId(maxId + 1);
-    } else {
-      // No existing notes, start with empty note
-      setItems([{ id: "1", type: "text", content: "", level: 0 }]);
-      setNextId(2);
     }
-  }, [mounted, taskId, notesMap]);
+  }, [notes]);
 
-  // TODO: Replace with proper persistence - currently saves to local state only
-  // Save notes to local state with debouncing
-  const saveNotes = (newItems: NoteItem[]) => {
+  // Save notes to database manually
+  const saveNotesToDB = async () => {
     if (!mounted || !taskId) return;
-
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for debounced save
-    saveTimeoutRef.current = setTimeout(() => {
-      // Update local notes map
-      const updatedNotesMap = { ...notesMap, [taskId]: newItems };
-      setNotesMap(updatedNotesMap);
-      
-      // Update global window object
-      if (typeof window !== "undefined") {
-        const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
-        windowWithNotes.notesMap = updatedNotesMap;
-      }
-    }, 500); // 500ms debounce
+    dispatch(saveNotes({ taskId, notes }));
   };
 
   // Auto-resize textarea
@@ -156,11 +109,8 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   // Handle input changes
   const handleContentChange = (id: string, value: string) => {
-    const newItems = items.map((item) => (item.id === id ? { ...item, content: value } : item));
-    setItems(newItems);
-
-    // Save to Firebase
-    saveNotes(newItems);
+    if (!taskId) return;
+    dispatch(updateNote({ taskId, noteId: id, updates: { content: value } }));
 
     // Auto-resize
     const textarea = inputRefs.current[id];
@@ -171,7 +121,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, id: string) => {
-    const item = items.find((item) => item.id === id);
+    const item = notes.find((item) => item.id === id);
     if (item?.type !== "checkbox") {
       e.preventDefault();
       return;
@@ -182,7 +132,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   };
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
-    const item = items.find((item) => item.id === id);
+    const item = notes.find((item) => item.id === id);
     if (item?.type !== "checkbox") {
       return;
     }
@@ -197,7 +147,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   };
 
   const handleDrop = (e: React.DragEvent, targetId: string) => {
-    const targetItem = items.find((item) => item.id === targetId);
+    const targetItem = notes.find((item) => item.id === targetId);
     if (targetItem?.type !== "checkbox") {
       return;
     }
@@ -211,21 +161,31 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
       return;
     }
 
-    const draggedIndex = items.findIndex((item) => item.id === draggedId);
-    const targetIndex = items.findIndex((item) => item.id === targetId);
+    const draggedIndex = notes.findIndex((item) => item.id === draggedId);
+    const targetIndex = notes.findIndex((item) => item.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) {
       setDraggedId(null);
       setDragOverId(null);
       return;
     }
+    
+    console.log("[NOTES] Checklist reordered:", {
+      draggedItem: notes[draggedIndex],
+      fromIndex: draggedIndex,
+      toIndex: targetIndex,
+      itemMoved: {
+        content: notes[draggedIndex].content,
+        completed: notes[draggedIndex].completed
+      }
+    });
 
-    const newItems = [...items];
+    const newItems = [...notes];
     const [draggedItem] = newItems.splice(draggedIndex, 1);
     newItems.splice(targetIndex, 0, draggedItem);
 
-    setItems(newItems);
-    saveNotes(newItems);
+    if (!taskId) return;
+    dispatch(reorderNotes({ taskId, notes: newItems }));
     setDraggedId(null);
     setDragOverId(null);
   };
@@ -237,8 +197,19 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   // Handle key down events for formatting and navigation
   const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
-    const currentIndex = items.findIndex((item) => item.id === id);
-    const currentItem = items[currentIndex];
+    const currentIndex = notes.findIndex((item) => item.id === id);
+    const currentItem = notes[currentIndex];
+    
+    console.log("[NOTES] Key pressed:", {
+      key: e.key,
+      shiftKey: e.shiftKey,
+      currentItem: {
+        id: currentItem.id,
+        type: currentItem.type,
+        content: currentItem.content,
+        level: currentItem.level
+      }
+    });
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -255,7 +226,8 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
       }
       // If current item is empty and formatted, convert it to text first
       if (["checkbox", "bullet", "number"].includes(currentItem.type) && currentItem.content.length === 0) {
-        setItems(items.map((item) => (item.id === id ? { ...item, type: "text", completed: false } : item)));
+        if (!taskId) return;
+        dispatch(updateNote({ taskId, noteId: id, updates: { type: "text", completed: false } }));
         return;
       }
       const newItem: NoteItem = {
@@ -265,10 +237,8 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
         level: newLevel,
       };
 
-      const newItems = [...items];
-      newItems.splice(currentIndex + 1, 0, newItem);
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!taskId) return;
+      dispatch(addNote({ taskId, note: newItem }));
       setFocusedId(newId);
 
       // Focus new item after render
@@ -280,16 +250,15 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
       }, 0);
     }
 
-    if (e.key === "Backspace" && currentItem.content === "" && items.length > 1) {
+    if (e.key === "Backspace" && currentItem.content === "" && notes.length > 1) {
       e.preventDefault();
 
       // Remove current item and focus previous
-      const newItems = items.filter((item) => item.id !== id);
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!taskId) return;
+      dispatch(removeNote({ taskId, noteId: id }));
 
       if (currentIndex > 0) {
-        const prevId = newItems[currentIndex - 1].id;
+        const prevId = notes[currentIndex - 1].id;
         setFocusedId(prevId);
         setTimeout(() => {
           const prevTextarea = inputRefs.current[prevId];
@@ -302,11 +271,10 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
     }
 
     // If only one item left and it's not text, convert to text instead of deleting
-    if (e.key === "Backspace" && currentItem.content === "" && items.length === 1 && currentItem.type !== "text") {
+    if (e.key === "Backspace" && currentItem.content === "" && notes.length === 1 && currentItem.type !== "text") {
       e.preventDefault();
-      const newItems: NoteItem[] = [{ ...currentItem, type: "text" as const, completed: false }];
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!taskId) return;
+      dispatch(updateNote({ taskId, noteId: currentItem.id, updates: { type: "text", completed: false } }));
     }
 
     if (e.key === "Tab") {
@@ -315,21 +283,20 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
       // Increase/decrease indentation
       const newLevel = e.shiftKey ? Math.max(0, currentItem.level - 1) : Math.min(3, currentItem.level + 1);
 
-      const newItems = items.map((item) => (item.id === id ? { ...item, level: newLevel } : item));
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!taskId) return;
+      dispatch(updateNote({ taskId, noteId: id, updates: { level: newLevel } }));
     }
 
     if (e.key === "ArrowUp" && currentIndex > 0) {
       e.preventDefault();
-      const prevId = items[currentIndex - 1].id;
+      const prevId = notes[currentIndex - 1].id;
       inputRefs.current[prevId]?.focus();
       setFocusedId(prevId);
     }
 
-    if (e.key === "ArrowDown" && currentIndex < items.length - 1) {
+    if (e.key === "ArrowDown" && currentIndex < notes.length - 1) {
       e.preventDefault();
-      const nextId = items[currentIndex + 1].id;
+      const nextId = notes[currentIndex + 1].id;
       inputRefs.current[nextId]?.focus();
       setFocusedId(nextId);
     }
@@ -337,51 +304,74 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   // Handle input events for auto-formatting
   const handleInput = (id: string, value: string) => {
-    const item = items.find((item) => item.id === id);
-    if (!item) return;
+    const item = notes.find((item) => item.id === id);
+    if (!item || !taskId) return;
 
     let newType = item.type;
     let newContent = value;
+    
+    console.log("[NOTES] Input detected:", {
+      id,
+      originalType: item.type,
+      inputValue: value,
+      startsWithCheckbox: value.startsWith("[]"),
+      startsWithCheckedBox: value.startsWith("[x] ") || value.startsWith("[X] "),
+      startsWithBullet: value.startsWith("- "),
+      startsWithNumber: /^\d+\.\s/.test(value)
+    });
 
     // Auto-format based on input
     if (value.startsWith("[]") && (value.length === 2 || value[2] !== "[")) {
       newType = "checkbox";
       newContent = value.slice(2).replace(/^\s*/, "");
+      console.log("[NOTES] Converting to checkbox:", { newContent });
     } else if (value.startsWith("[x] ") || value.startsWith("[X] ")) {
       newType = "checkbox";
       newContent = value.slice(4);
+      console.log("[NOTES] Creating checked checkbox:", { content: newContent });
       // Toggle completed state
-      const newItems = items.map((item) =>
-        item.id === id ? { ...item, type: newType, content: newContent, completed: true } : item
-      );
-      setItems(newItems);
-      saveNotes(newItems);
+      dispatch(updateNote({ 
+        taskId, 
+        noteId: id, 
+        updates: { type: newType, content: newContent, completed: true } 
+      }));
       return;
     } else if (value.startsWith("- ")) {
       newType = "bullet";
       newContent = value.slice(2);
+      console.log("[NOTES] Converting to bullet:", { newContent });
     } else if (/^\d+\.\s/.test(value)) {
       newType = "number";
       newContent = value.replace(/^\d+\.\s/, "");
+      console.log("[NOTES] Converting to numbered list:", { newContent });
     }
 
-    const newItems = items.map((item) => (item.id === id ? { ...item, type: newType, content: newContent } : item));
-    setItems(newItems);
-    saveNotes(newItems);
+    dispatch(updateNote({ 
+      taskId, 
+      noteId: id, 
+      updates: { type: newType, content: newContent } 
+    }));
   };
 
   // Toggle checkbox
   const toggleCheckbox = (id: string) => {
-    const newItems = items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item));
-    setItems(newItems);
-    saveNotes(newItems);
+    if (!taskId) return;
+    const item = notes.find(i => i.id === id);
+    console.log("[NOTES] Checkbox toggled:", {
+      id,
+      content: item?.content,
+      wasCompleted: item?.completed || false,
+      nowCompleted: !item?.completed
+    });
+    
+    dispatch(toggleCheckboxAction({ taskId, noteId: id }));
   };
 
   // Get numbered list number
   const getNumberedIndex = (currentIndex: number): number => {
     let count = 1;
     for (let i = 0; i < currentIndex; i++) {
-      if (items[i].type === "number" && items[i].level === items[currentIndex].level) {
+      if (notes[i].type === "number" && notes[i].level === notes[currentIndex].level) {
         count++;
       }
     }
@@ -397,7 +387,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
         autoResize(textarea);
       }, 0);
     }
-  }, [focusedId, items, isOpen]);
+  }, [focusedId, notes, isOpen]);
 
   if (!isOpen || !mounted) return null;
 
@@ -415,10 +405,46 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
 
   return (
     <div className="w-full min-w-[650px] bg-gray-900 rounded-2xl shadow-xl border border-gray-800 overflow-hidden mb-6">
+      {/* Header with Save Button */}
+      <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between">
+        <div className="text-sm text-gray-400">
+          Notes for this task
+        </div>
+        <button
+          onClick={saveNotesToDB}
+          disabled={isSaving || !taskId}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            isSaving
+              ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+              : saveError
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : "bg-[#FFAA00] hover:bg-[#FF9900] text-black"
+          }`}
+        >
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              <span>Saving...</span>
+            </div>
+          ) : saveError ? (
+            "Retry Save"
+          ) : (
+            "Save Notes"
+          )}
+        </button>
+      </div>
+
+      {/* Error Message */}
+      {saveError && (
+        <div className="px-6 py-2 bg-red-900/20 border-b border-red-800/30">
+          <p className="text-sm text-red-400">{saveError}</p>
+        </div>
+      )}
+      
       {/* Notes Content */}
       <div className="p-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
         <div className="space-y-2">
-          {items.map((item, index) => (
+          {notes.map((item, index) => (
             <div
               key={item.id}
               className={`flex items-start gap-3 group transition-all duration-200 ${
@@ -508,7 +534,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
       </div>
 
       {/* Footer with shortcuts - only show when no content */}
-      {items.length === 1 && items[0].content === "" && (
+      {notes.length === 1 && notes[0].content === "" && (
         <div className="px-6 py-4 border-t border-gray-700 bg-gray-800/30">
           <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
             <div className="flex items-center gap-6">

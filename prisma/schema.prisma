@@ -21,8 +21,6 @@ model user {
   tasks             task[]   @relation("UserTasks")
   daily_streaks     daily_streak[]
   room_members      room_member[]
-  flying_messages   flying_message[]
-  sound_cooldowns   sound_cooldown[]
 }
 
 model preference {
@@ -51,8 +49,7 @@ model task {
 
   user           user     @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
   room           room     @relation(fields: [room_id], references: [id])
-
-  notes          note[]
+  notes          note[]   @relation("TaskNotes")
 }
 
 model note {
@@ -63,7 +60,7 @@ model note {
   checklist_completed Boolean  @default(false)
   position            Int
 
-  task                task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  task                task     @relation("TaskNotes", fields: [task_id], references: [id], onDelete: Cascade)
 }
 
 model daily_streak {
@@ -98,8 +95,6 @@ model room {
 
   room_members      room_member[]
   admin_setting     admin_setting?
-  flying_messages   flying_message[]
-  sound_cooldowns   sound_cooldown[]
   tasks             task[]
 }
 
@@ -112,28 +107,4 @@ model room_member {
 
   room      room     @relation(fields: [room_id], references: [id])
   user      user     @relation(fields: [user_id], references: [id])
-}
-
-model flying_message {
-  id          String   @id @default(uuid())
-  room_id     String
-  user_id     String
-  text        String
-  color       String
-  created_at  DateTime @default(now())
-  expires_at  DateTime
-
-  room        room     @relation(fields: [room_id], references: [id])
-  user        user     @relation(fields: [user_id], references: [id])
-}
-
-model sound_cooldown {
-  id          String   @id @default(uuid())
-  room_id     String
-  user_id     String
-  sound_type  String
-  last_played DateTime
-
-  room        room     @relation(fields: [room_id], references: [id])
-  user        user     @relation(fields: [user_id], references: [id])
 }

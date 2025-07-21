@@ -30,6 +30,18 @@ import {
   createTaskThunk,
   deleteTaskThunk,
 } from "../../store/taskSlice";
+import { 
+  setNotes, 
+  updateNote, 
+  addNote, 
+  removeNote, 
+  reorderNotes, 
+  toggleCheckbox as toggleCheckboxAction,
+  selectNotesByTaskId,
+  selectIsSavingByTaskId,
+  selectHasNotesForTaskId
+} from "../../store/notesSlice";
+import { fetchNotes, saveNotes as saveNotesThunk } from "../../store/notesThunks";
 import { v4 as uuidv4 } from "uuid";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
@@ -91,58 +103,44 @@ function SortableTask({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useInstance();
+  const dispatch = useDispatch<AppDispatch>();
+  const notes = useSelector((state: RootState) => selectNotesByTaskId(task.id)(state));
+  const isSavingNotes = useSelector((state: RootState) => selectIsSavingByTaskId(task.id)(state));
+  const hasNotesInStore = useSelector((state: RootState) => selectHasNotesForTaskId(task.id)(state));
   const [isHovered, setIsHovered] = useState(false);
-  const [items, setItems] = useState<NoteItem[]>([{ id: "1", type: "text", content: "", level: 0 }]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [nextId, setNextId] = useState<number>(2);
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load notes from global state when task is expanded
-  // TODO: Replace with proper persistence - currently using local state only
+  // Load notes when task is expanded for the first time
   useEffect(() => {
-    if (!task.id || !isExpanded) return;
+    if (!task.id || !isExpanded || hasNotesInStore) return;
+    
+    // Fetch notes from database
+    dispatch(fetchNotes(task.id));
+  }, [task.id, isExpanded, hasNotesInStore, dispatch]);
 
-    // Load from global notes map
-    if (typeof window !== "undefined") {
-      const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
-      const savedNotes = windowWithNotes.notesMap?.[task.id];
-
-      if (savedNotes) {
-        setItems(savedNotes);
-        // Find the highest ID to set nextId correctly
-        const maxId = Math.max(...savedNotes.map((item) => parseInt(item.id)), 0);
-        setNextId(maxId + 1);
-      } else {
-        // No existing notes, start with empty note
-        setItems([{ id: "1", type: "text", content: "", level: 0 }]);
-        setNextId(2);
-      }
+  // Initialize empty notes after fetch if none exist
+  useEffect(() => {
+    if (task.id && notes.length === 0 && hasNotesInStore && isExpanded) {
+      // Only initialize if we've checked the database and found no notes
+      dispatch(setNotes({ taskId: task.id, notes: [{ id: "1", type: "text", content: "", level: 0 }] }));
     }
-  }, [task.id, isExpanded]);
+  }, [task.id, notes.length, hasNotesInStore, isExpanded, dispatch]);
 
-  // Save notes to global state with debouncing
-  // TODO: Replace with proper persistence - currently saves to local state only
-  const saveNotes = (newItems: NoteItem[]) => {
+  // Update nextId when notes change
+  useEffect(() => {
+    if (notes.length > 0) {
+      const maxId = Math.max(...notes.map((item) => parseInt(item.id)), 0);
+      setNextId(maxId + 1);
+    }
+  }, [notes]);
+
+  // Save notes to database
+  const saveNotesToDB = () => {
     if (!task.id) return;
-
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for debounced save
-    saveTimeoutRef.current = setTimeout(() => {
-      // Update global notes map
-      if (typeof window !== "undefined") {
-        const windowWithNotes = window as Window & { notesMap?: Record<string, NoteItem[]> };
-        if (!windowWithNotes.notesMap) {
-          windowWithNotes.notesMap = {};
-        }
-        windowWithNotes.notesMap[task.id] = newItems;
-      }
-    }, 500); // 500ms debounce
+    dispatch(saveNotesThunk({ taskId: task.id, notes }));
   };
 
   // Auto-resize textarea
@@ -186,9 +184,8 @@ function SortableTask({
 
   // Handle content changes in notes
   const handleContentChange = (id: string, value: string) => {
-    const newItems = items.map((item) => (item.id === id ? { ...item, content: value } : item));
-    setItems(newItems);
-    saveNotes(newItems);
+    if (!task.id) return;
+    dispatch(updateNote({ taskId: task.id, noteId: id, updates: { content: value } }));
 
     // Auto-resize
     const textarea = inputRefs.current[id];
@@ -199,16 +196,15 @@ function SortableTask({
 
   // Toggle checkbox
   const toggleCheckbox = (id: string) => {
-    const newItems = items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item));
-    setItems(newItems);
-    saveNotes(newItems);
+    if (!task.id) return;
+    dispatch(toggleCheckboxAction({ taskId: task.id, noteId: id }));
   };
 
   // Get numbered list number
   const getNumberedIndex = (currentIndex: number): number => {
     let count = 1;
     for (let i = 0; i < currentIndex; i++) {
-      if (items[i].type === "number" && items[i].level === items[currentIndex].level) {
+      if (notes[i].type === "number" && notes[i].level === notes[currentIndex].level) {
         count++;
       }
     }
@@ -222,8 +218,8 @@ function SortableTask({
       e.stopPropagation();
     }
 
-    const currentIndex = items.findIndex((item) => item.id === id);
-    const currentItem = items[currentIndex];
+    const currentIndex = notes.findIndex((item) => item.id === id);
+    const currentItem = notes[currentIndex];
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -240,11 +236,8 @@ function SortableTask({
       }
       // If current item is empty and formatted, convert it to text first
       if (["checkbox", "bullet", "number"].includes(currentItem.type) && currentItem.content.length === 0) {
-        const updatedItems = items.map((item) =>
-          item.id === id ? { ...item, type: "text" as const, completed: false } : item
-        );
-        setItems(updatedItems);
-        saveNotes(updatedItems);
+        if (!task.id) return;
+        dispatch(updateNote({ taskId: task.id, noteId: id, updates: { type: "text", completed: false } }));
         return;
       }
       const newItem: NoteItem = {
@@ -254,10 +247,8 @@ function SortableTask({
         level: newLevel,
       };
 
-      const newItems = [...items];
-      newItems.splice(currentIndex + 1, 0, newItem);
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!task.id) return;
+      dispatch(addNote({ taskId: task.id, note: newItem }));
 
       // Focus new item after render
       setTimeout(() => {
@@ -268,15 +259,13 @@ function SortableTask({
       }, 0);
     }
 
-    if (e.key === "Backspace" && currentItem.content === "" && items.length > 1) {
+    if (e.key === "Backspace" && currentItem.content === "" && notes.length > 1) {
       e.preventDefault();
-
-      const newItems = items.filter((item) => item.id !== id);
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!task.id) return;
+      dispatch(removeNote({ taskId: task.id, noteId: id }));
 
       if (currentIndex > 0) {
-        const prevId = newItems[currentIndex - 1].id;
+        const prevId = notes[currentIndex - 1].id;
 
         setTimeout(() => {
           const prevTextarea = inputRefs.current[prevId];
@@ -288,38 +277,36 @@ function SortableTask({
       }
     }
 
-    if (e.key === "Backspace" && currentItem.content === "" && items.length === 1 && currentItem.type !== "text") {
+    if (e.key === "Backspace" && currentItem.content === "" && notes.length === 1 && currentItem.type !== "text") {
       e.preventDefault();
-      const newItems: NoteItem[] = [{ ...currentItem, type: "text" as const, completed: false }];
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!task.id) return;
+      dispatch(updateNote({ taskId: task.id, noteId: currentItem.id, updates: { type: "text", completed: false } }));
     }
 
     if (e.key === "Tab") {
       e.preventDefault();
       const newLevel = e.shiftKey ? Math.max(0, currentItem.level - 1) : Math.min(3, currentItem.level + 1);
-      const newItems = items.map((item) => (item.id === id ? { ...item, level: newLevel } : item));
-      setItems(newItems);
-      saveNotes(newItems);
+      if (!task.id) return;
+      dispatch(updateNote({ taskId: task.id, noteId: id, updates: { level: newLevel } }));
     }
 
     if (e.key === "ArrowUp" && currentIndex > 0) {
       e.preventDefault();
-      const prevId = items[currentIndex - 1].id;
+      const prevId = notes[currentIndex - 1].id;
       inputRefs.current[prevId]?.focus();
     }
 
-    if (e.key === "ArrowDown" && currentIndex < items.length - 1) {
+    if (e.key === "ArrowDown" && currentIndex < notes.length - 1) {
       e.preventDefault();
-      const nextId = items[currentIndex + 1].id;
+      const nextId = notes[currentIndex + 1].id;
       inputRefs.current[nextId]?.focus();
     }
   };
 
   // Handle input for auto-formatting
   const handleInput = (id: string, value: string) => {
-    const item = items.find((item) => item.id === id);
-    if (!item) return;
+    const item = notes.find((item) => item.id === id);
+    if (!item || !task.id) return;
 
     let newType = item.type;
     let newContent = value;
@@ -332,11 +319,11 @@ function SortableTask({
       } else if (value === "[x] " || value === "[X] ") {
         newType = "checkbox";
         newContent = "";
-        const newItems = items.map((item) =>
-          item.id === id ? { ...item, type: newType, content: newContent, completed: true } : item
-        );
-        setItems(newItems);
-        saveNotes(newItems);
+        dispatch(updateNote({ 
+          taskId: task.id, 
+          noteId: id, 
+          updates: { type: newType, content: newContent, completed: true } 
+        }));
         return;
       } else if (value === "- ") {
         newType = "bullet";
@@ -348,15 +335,17 @@ function SortableTask({
     }
 
     if (newType !== item.type || newContent !== value) {
-      const newItems = items.map((item) => (item.id === id ? { ...item, type: newType, content: newContent } : item));
-      setItems(newItems);
-      saveNotes(newItems);
+      dispatch(updateNote({ 
+        taskId: task.id, 
+        noteId: id, 
+        updates: { type: newType, content: newContent } 
+      }));
     }
   };
 
   // Drag handlers for notes
   const handleNoteDragStart = (e: React.DragEvent, id: string) => {
-    const item = items.find((item) => item.id === id);
+    const item = notes.find((item) => item.id === id);
     if (item?.type !== "checkbox") {
       e.preventDefault();
       return;
@@ -367,7 +356,7 @@ function SortableTask({
   };
 
   const handleNoteDragOver = (e: React.DragEvent, id: string) => {
-    const item = items.find((item) => item.id === id);
+    const item = notes.find((item) => item.id === id);
     if (item?.type !== "checkbox") {
       return;
     }
@@ -382,7 +371,7 @@ function SortableTask({
   };
 
   const handleNoteDrop = (e: React.DragEvent, targetId: string) => {
-    const targetItem = items.find((item) => item.id === targetId);
+    const targetItem = notes.find((item) => item.id === targetId);
     if (targetItem?.type !== "checkbox") {
       return;
     }
@@ -396,8 +385,8 @@ function SortableTask({
       return;
     }
 
-    const draggedIndex = items.findIndex((item) => item.id === draggedId);
-    const targetIndex = items.findIndex((item) => item.id === targetId);
+    const draggedIndex = notes.findIndex((item) => item.id === draggedId);
+    const targetIndex = notes.findIndex((item) => item.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) {
       setDraggedId(null);
@@ -405,12 +394,12 @@ function SortableTask({
       return;
     }
 
-    const newItems = [...items];
+    const newItems = [...notes];
     const [draggedItem] = newItems.splice(draggedIndex, 1);
     newItems.splice(targetIndex, 0, draggedItem);
 
-    setItems(newItems);
-    saveNotes(newItems);
+    if (!task.id) return;
+    dispatch(reorderNotes({ taskId: task.id, notes: newItems }));
     setDraggedId(null);
     setDragOverId(null);
   };
@@ -746,10 +735,28 @@ function SortableTask({
         {isExpanded && (
           <div className="animate-in slide-in-from-top-2 duration-200">
             <div className="bg-[#0A0E1A] rounded-xl border border-gray-800/50 overflow-hidden">
+              {/* Notes Header with Save Button */}
+              <div className="px-6 py-3 bg-gray-800/30 border-b border-gray-800/50 flex items-center justify-between">
+                <div className="text-sm text-gray-400">
+                  Notes for this task
+                </div>
+                <button
+                  onClick={saveNotesToDB}
+                  disabled={isSavingNotes}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    isSavingNotes
+                      ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                      : "bg-[#FFAA00] hover:bg-[#FF9900] text-black"
+                  }`}
+                >
+                  {isSavingNotes ? "Saving..." : "Save Notes"}
+                </button>
+              </div>
+              
               {/* Notes Content */}
               <div className="p-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
                 <div className="space-y-2">
-                  {items.map((item, index) => (
+                  {notes.map((item, index) => (
                     <div
                       key={item.id}
                       className={`flex items-start gap-3 group transition-all duration-200 ${
@@ -847,7 +854,7 @@ function SortableTask({
               </div>
 
               {/* Footer with shortcuts - only show when no content */}
-              {items.length === 1 && items[0].content === "" && (
+              {notes.length === 1 && notes[0].content === "" && (
                 <div className="px-6 py-4 border-t border-gray-800/50 bg-gray-900/30">
                   <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
                     <div className="flex items-center gap-6">
