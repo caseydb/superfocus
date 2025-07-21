@@ -453,7 +453,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => k + 1);
+    setTimerResetKey((k) => {
+      console.log("[ROOMSHELL] Incrementing timerResetKey from", k, "to", k + 1);
+      return k + 1;
+    });
     setInputLocked(false);
     setHasStarted(false);
     // Clear Firebase timer state when clearing
@@ -571,9 +574,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         dispatch(setActiveTask(null));
       }
     }
+    console.log("[ROOMSHELL-QUIT] Resetting all state after quit");
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => k + 1);
+    setTimerResetKey((k) => {
+      console.log("[ROOMSHELL] Incrementing timerResetKey from", k, "to", k + 1);
+      return k + 1;
+    });
     setInputLocked(false);
     setHasStarted(false);
     setShowQuitModal(false);
@@ -592,9 +599,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Complete handler: reset timer, clear input, set inactive
   const handleComplete = (duration: string) => {
+    console.log("[ROOMSHELL-COMPLETE] Task completed - resetting state");
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => k + 1);
+    setTimerResetKey((k) => {
+      console.log("[ROOMSHELL] Incrementing timerResetKey from", k, "to", k + 1);
+      return k + 1;
+    });
     setInputLocked(false);
     setHasStarted(false);
     // Clear Firebase timer state when completing
