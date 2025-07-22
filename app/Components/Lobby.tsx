@@ -7,9 +7,10 @@ import SignOut from "./SignOut";
 import SignIn from "./SignIn";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
+import { getAvailablePublicRoom } from "@/app/utils/publicRooms";
 
 export default function Lobby() {
-  const { instances, currentInstance, createInstance, leaveInstance, user, userReady } = useInstance();
+  const { instances, currentInstance, createInstance, joinInstance, leaveInstance, user, userReady } = useInstance();
   const router = useRouter();
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showPrivateRoomModal, setShowPrivateRoomModal] = useState(false);
@@ -27,7 +28,9 @@ export default function Lobby() {
 
   // Redirect to room URL when joining a room
   useEffect(() => {
+    console.log("[LOBBY] currentInstance changed:", currentInstance);
     if (currentInstance) {
+      console.log("[LOBBY] Navigating to room URL:", currentInstance.url);
       router.push(`/${currentInstance.url}`);
     }
   }, [currentInstance, router]);
@@ -130,16 +133,31 @@ export default function Lobby() {
           style={{ borderColor: "#FFAA00" }}
           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
-          onClick={() => {
-            // Temporary redirect to /GSD instead of lobby logic
-            window.location.href = "/GSD";
-            // Original logic (kept for reference):
-            // const available = instances.find((i) => i.users.length < 5 && i.type === "public");
-            // if (available) {
-            //   joinInstance(available.id);
-            // } else {
-            //   createInstance("public");
-            // }
+          onClick={async () => {
+            console.log("[LOBBY] Quick Join clicked");
+            
+            // First check legacy instances
+            const availableLegacy = instances.find((i) => i.users.length < 5 && i.type === "public");
+            console.log("[LOBBY] Available legacy instance:", availableLegacy);
+            if (availableLegacy) {
+              console.log("[LOBBY] Joining legacy instance");
+              joinInstance(availableLegacy.id);
+              return;
+            }
+            
+            // Then check new PublicRooms
+            console.log("[LOBBY] Checking for available PublicRooms...");
+            const availablePublic = await getAvailablePublicRoom();
+            console.log("[LOBBY] Available PublicRoom:", availablePublic);
+            if (availablePublic) {
+              // Navigate directly to the room URL
+              console.log("[LOBBY] Navigating to PublicRoom URL:", availablePublic.url);
+              router.push(`/${availablePublic.url}`);
+            } else {
+              // Create new public room
+              console.log("[LOBBY] No available rooms, creating new public room");
+              createInstance("public");
+            }
           }}
         >
           🚀 Quick Join

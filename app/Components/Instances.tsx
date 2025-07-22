@@ -6,6 +6,7 @@ import type { DataSnapshot } from "firebase/database";
 import type { Instance, InstanceType, User } from "../types";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { createPublicRoom } from "@/app/utils/publicRooms";
 
 type InstanceFromDB = Omit<Instance, "id" | "users"> & { users?: Record<string, User> };
 
@@ -17,6 +18,7 @@ const InstanceContext = createContext<{
   leaveInstance: () => void;
   user: User;
   userReady: boolean;
+  setPublicRoomInstance: (instance: Instance) => void;
 }>({
   instances: [],
   currentInstance: null,
@@ -25,6 +27,7 @@ const InstanceContext = createContext<{
   leaveInstance: () => {},
   user: { id: "", displayName: "", isPremium: false },
   userReady: false,
+  setPublicRoomInstance: () => {},
 });
 
 export const useInstance = () => useContext(InstanceContext);
@@ -122,20 +125,49 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Create a new instance and join it
   const createInstance = useCallback(
-    (type: InstanceType, customUrl?: string) => {
-      if (!userReady) return;
-      const instancesRef = ref(rtdb, "instances");
-      const newInstanceRef = push(instancesRef);
-      const roomUrl = customUrl || generateRoomUrl();
-      const newInstance: Omit<Instance, "id" | "users"> & { users: { [id: string]: User } } = {
-        type,
-        users: { [user.id]: user },
-        createdBy: user.id,
-        url: roomUrl,
-      };
-      set(newInstanceRef, newInstance);
-      // NOTE: Disconnect handling is now managed by RoomShell component with tab counting
-      setCurrentInstance({ ...newInstance, id: newInstanceRef.key!, users: [user] });
+    async (type: InstanceType, customUrl?: string) => {
+      console.log("[INSTANCES] createInstance called", { type, customUrl, userReady, user });
+      if (!userReady) {
+        console.log("[INSTANCES] User not ready, aborting");
+        return;
+      }
+      
+      if (type === "public") {
+        // Use new PublicRooms system for public rooms
+        try {
+          console.log("[INSTANCES] Creating PublicRoom...");
+          const publicRoom = await createPublicRoom(user.id, customUrl);
+          console.log("[INSTANCES] PublicRoom created:", publicRoom);
+          
+          // Create a temporary Instance object for compatibility
+          const tempInstance: Instance = {
+            id: publicRoom.id,
+            type: "public",
+            users: [user],
+            createdBy: publicRoom.createdBy,
+            url: publicRoom.url,
+          };
+          console.log("[INSTANCES] Setting currentInstance to:", tempInstance);
+          setCurrentInstance(tempInstance);
+          console.log("[INSTANCES] currentInstance set successfully");
+        } catch (error) {
+          console.error("[INSTANCES] Failed to create public room:", error);
+        }
+      } else {
+        // Keep legacy behavior for private rooms
+        const instancesRef = ref(rtdb, "instances");
+        const newInstanceRef = push(instancesRef);
+        const roomUrl = customUrl || generateRoomUrl();
+        const newInstance: Omit<Instance, "id" | "users"> & { users: { [id: string]: User } } = {
+          type,
+          users: { [user.id]: user },
+          createdBy: user.id,
+          url: roomUrl,
+        };
+        set(newInstanceRef, newInstance);
+        // NOTE: Disconnect handling is now managed by RoomShell component with tab counting
+        setCurrentInstance({ ...newInstance, id: newInstanceRef.key!, users: [user] });
+      }
     },
     [user, userReady]
   );
@@ -176,9 +208,14 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [currentInstance, user]);
 
+  // Set a PublicRoom as the current instance (for new PublicRooms system)
+  const setPublicRoomInstance = useCallback((instance: Instance) => {
+    setCurrentInstance(instance);
+  }, []);
+
   return (
     <InstanceContext.Provider
-      value={{ instances, currentInstance, joinInstance, createInstance, leaveInstance, user, userReady }}
+      value={{ instances, currentInstance, joinInstance, createInstance, leaveInstance, user, userReady, setPublicRoomInstance }}
     >
       {children}
     </InstanceContext.Provider>

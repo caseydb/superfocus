@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
+import type { Instance } from "../../types";
 import { ref, onValue, off, set, remove, push, runTransaction, get } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
@@ -25,11 +26,16 @@ import SignIn from "../SignIn";
 import Preferences from "./Preferences";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
+import { getPublicRoomByUrl } from "@/app/utils/publicRooms";
+import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
+import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
-  const { instances, currentInstance, joinInstance, user, userReady } = useInstance();
+  const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
+  const [publicRoomId, setPublicRoomId] = useState<string | null>(null);
+  const [publicRoomPresence, setPublicRoomPresence] = useState<PublicRoomPresence | null>(null);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -144,18 +150,141 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   }, [localVolume]);
 
   useEffect(() => {
-    if (instances.length === 0) return;
-    const targetRoom = instances.find((instance) => instance.url === roomUrl);
-    if (targetRoom) {
-      setRoomFound(true);
-      if (!currentInstance || currentInstance.id !== targetRoom.id) {
-        joinInstance(targetRoom.id);
+    const checkRoom = async () => {
+      console.log("[ROOMSHELL] checkRoom called", {
+        roomUrl,
+        currentInstance: currentInstance ? { id: currentInstance.id, url: currentInstance.url } : null,
+        publicRoomId,
+        userReady
+      });
+      
+      // If we already have a currentInstance that matches this room URL, we're good
+      if (currentInstance && currentInstance.url === roomUrl) {
+        console.log("[ROOMSHELL] Already in correct room, no need to search");
+        setRoomFound(true);
+        setLoading(false);
+        // If this is a public room, store its ID and init presence
+        if (currentInstance.type === "public" && !publicRoomId) {
+          console.log("[ROOMSHELL] Setting publicRoomId to:", currentInstance.id);
+          setPublicRoomId(currentInstance.id);
+          
+          // Initialize presence if not already done
+          if (!publicRoomPresence) {
+            console.log("[ROOMSHELL] Initializing presence for existing public room");
+            const presence = new PublicRoomPresence(currentInstance.id, user.id);
+            const joined = await presence.join();
+            if (joined) {
+              setPublicRoomPresence(presence);
+              console.log("[ROOMSHELL] Presence initialized successfully");
+              
+              // Add user to PublicRoom users list (like legacy system)
+              const publicRoomUserRef = ref(rtdb, `PublicRooms/${currentInstance.id}/users/${user.id}`);
+              await set(publicRoomUserRef, {
+                id: user.id,
+                displayName: user.displayName
+              });
+              console.log("[ROOMSHELL] Added user to PublicRoom users list");
+              
+              // Start cleanup scheduler to ensure orphaned rooms are cleaned
+              startCleanupScheduler();
+            }
+          }
+        }
+        return;
       }
-    } else {
+      
+      // First check legacy instances
+      console.log("[ROOMSHELL] Checking legacy instances", instances.length);
+      const targetRoom = instances.find((instance) => instance.url === roomUrl);
+      if (targetRoom) {
+        console.log("[ROOMSHELL] Found in legacy instances:", targetRoom);
+        setRoomFound(true);
+        if (!currentInstance || currentInstance.id !== targetRoom.id) {
+          joinInstance(targetRoom.id);
+        }
+        setLoading(false);
+        return;
+      }
+      console.log("[ROOMSHELL] Not found in legacy instances")
+      
+      // If not found in legacy instances, check PublicRooms
+      console.log("[ROOMSHELL] Checking PublicRooms...");
+      try {
+        const publicRoom = await getPublicRoomByUrl(roomUrl);
+        console.log("[ROOMSHELL] PublicRoom search result:", publicRoom);
+        if (publicRoom) {
+          // Only join if we're not already in this room
+          if (!publicRoomId || publicRoomId !== publicRoom.id) {
+            // Create presence manager
+            const presence = new PublicRoomPresence(publicRoom.id, user.id);
+            const joined = await presence.join();
+            
+            if (!joined) {
+              // Room is full
+              console.log("[ROOMSHELL] Room is full");
+              setRoomFound(false);
+              setLoading(false);
+              return;
+            }
+            
+            // Store presence manager
+            setPublicRoomPresence(presence);
+            
+            // Add user to PublicRoom users list (like legacy system)
+            const publicRoomUserRef = ref(rtdb, `PublicRooms/${publicRoom.id}/users/${user.id}`);
+            await set(publicRoomUserRef, {
+              id: user.id,
+              displayName: user.displayName
+            });
+            console.log("[ROOMSHELL] Added user to PublicRoom users list");
+            
+            // Start cleanup scheduler to ensure orphaned rooms are cleaned
+            startCleanupScheduler();
+          }
+          
+          setRoomFound(true);
+          // Store the public room ID for cleanup later
+          setPublicRoomId(publicRoom.id);
+          
+          // Create a temporary Instance object for compatibility with the rest of the app
+          // This allows PublicRooms to work with the existing UI
+          const tempInstance: Instance = {
+            id: publicRoom.id,
+            type: "public",
+            users: [user], // Just show current user for now
+            createdBy: publicRoom.createdBy,
+            url: publicRoom.url,
+          };
+          
+          // Set this as the current instance in the context
+          setPublicRoomInstance(tempInstance);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking public room:", error);
+      }
+      
+      console.log("[ROOMSHELL] Room not found anywhere");
       setRoomFound(false);
+      setLoading(false);
+    };
+    
+    console.log("[ROOMSHELL] useEffect triggered, userReady:", userReady);
+    if (userReady) {
+      // Small delay to ensure Firebase writes are propagated
+      console.log("[ROOMSHELL] Setting timeout to check room...");
+      const timer = setTimeout(() => {
+        console.log("[ROOMSHELL] Timeout expired, calling checkRoom");
+        checkRoom();
+      }, 100);
+      
+      return () => {
+        console.log("[ROOMSHELL] Cleanup: clearing timeout");
+        clearTimeout(timer);
+      };
     }
-    setLoading(false);
-  }, [instances, roomUrl, currentInstance, joinInstance]);
+  }, [instances, roomUrl, currentInstance, joinInstance, userReady, publicRoomId, setPublicRoomInstance, user, publicRoomPresence]);
 
   // Track user tab count to handle multi-tab scenarios
   const userTabCountRef = React.useRef(0);
@@ -189,7 +318,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     });
 
     // Add beforeunload listener to track page navigation/refresh
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = async () => {
       // Decrement tab count immediately on beforeunload for reliability
       runTransaction(tabCountRef, (currentData) => {
         const currentCount = currentData?.count || 0;
@@ -201,6 +330,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           const usersRef = ref(rtdb, `rooms/${currentInstance.id}/users/${user.id}`);
           remove(activeRef);
           remove(usersRef); // Also remove from main users list
+          
+          // Also remove from PublicRooms if this is a public room
+          if (currentInstance.type === "public") {
+            const publicRoomUserRef = ref(rtdb, `PublicRooms/${currentInstance.id}/users/${user.id}`);
+            remove(publicRoomUserRef);
+          }
+          
           return null; // Remove the entire node
         } else {
           // Just decrement the count - user still has other tabs open
@@ -211,6 +347,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           };
         }
       });
+      
+      // PublicRoom cleanup is now handled by presence system
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -231,6 +369,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             const usersRef = ref(rtdb, `rooms/${currentInstance.id}/users/${user.id}`);
             remove(activeRef);
             remove(usersRef);
+            
+            // Also remove from PublicRooms if this is a public room
+            if (currentInstance.type === "public") {
+              const publicRoomUserRef = ref(rtdb, `PublicRooms/${currentInstance.id}/users/${user.id}`);
+              remove(publicRoomUserRef);
+            }
+            
             return null;
           } else {
             return {
@@ -240,11 +385,38 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             };
           }
         });
+        
+        // PublicRoom cleanup is now handled by presence system
       }
 
       off(tabCountRef, "value", handle);
     };
   }, [currentInstance, user]);
+
+  // Clean up PublicRoom presence when leaving
+  useEffect(() => {
+    if (!publicRoomPresence) return;
+    
+    // Add beforeunload handler for immediate cleanup
+    const handleBeforeUnload = () => {
+      console.log("[ROOMSHELL] beforeunload - cleaning up PublicRoom presence");
+      // Can't use async in beforeunload, so we'll do a sync cleanup attempt
+      if (publicRoomPresence) {
+        // Use navigator.sendBeacon to make a cleanup request
+        // For now, we'll rely on the cleanup effect and onDisconnect
+      }
+    };
+    
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (publicRoomPresence) {
+        console.log("[ROOMSHELL] Cleaning up PublicRoom presence");
+        publicRoomPresence.leave();
+      }
+    };
+  }, [publicRoomPresence]);
 
   // Track active user status in Firebase RTDB
   const handleActiveChange = (isActive: boolean) => {

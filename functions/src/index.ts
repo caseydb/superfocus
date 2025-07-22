@@ -51,3 +51,28 @@ export const cleanUpEmptyPublicRooms = functions.database
     }
     return null;
   });
+
+// Clean up empty PublicRooms when users node is deleted
+export const cleanUpEmptyPublicRoomsNew = functions.database
+  .ref("/PublicRooms/{roomId}/users")
+  .onDelete(async (snapshot, context) => {
+    const roomId = context.params.roomId;
+    const roomRef = admin.database().ref(`/PublicRooms/${roomId}`);
+
+    // Get the room data
+    const roomSnap = await roomRef.once("value");
+    const room = roomSnap.val();
+
+    if (room) {
+      // Check if users node is now empty or missing
+      if (!room.users || Object.keys(room.users).length === 0) {
+        // Also clean up any presence data
+        const presenceRef = admin.database().ref(`/PublicRoomPresence/${roomId}`);
+        await presenceRef.remove();
+        
+        // Delete the room
+        await roomRef.remove();
+      }
+    }
+    return null;
+  });
