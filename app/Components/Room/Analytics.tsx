@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "@/lib/firebase";
-// import { ref, onValue, off } from "firebase/database";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import DateRangePicker from "../DateRangePicker";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
+import type { Task } from "../../store/taskSlice";
 
 interface AnalyticsProps {
   roomId: string;
@@ -15,24 +13,14 @@ interface AnalyticsProps {
   onClose: () => void;
 }
 
-interface TaskData {
-  task: string;
-  timestamp: number;
-  duration?: number | string;
-  completed?: boolean;
-  userId?: string;
-}
-
 interface DayActivity {
   date: string;
   count: number;
   totalSeconds: number;
 }
 
-const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onClose }) => {
-  const [taskHistory, setTaskHistory] = useState<TaskData[]>([]);
+const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [colorByTime, setColorByTime] = useState(false);
   const [clientDateRange, setClientDateRange] = useState<{ start: Date | null; end: Date | null }>({
     start: null,
@@ -40,43 +28,147 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   });
   const [mounted, setMounted] = useState(false);
   
-  // Get user data from Redux store
+  // Get data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
+  const userTimezone = useSelector((state: RootState) => state.user.timezone);
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const tasksLoading = useSelector((state: RootState) => state.tasks.loading);
+  
+  // Filter for completed tasks only - memoized to prevent infinite re-renders
+  const completedTasks = useMemo(
+    () => tasks.filter((task: Task) => task.status === "completed"),
+    [tasks]
+  );
 
   // Ensure component is mounted before rendering date-dependent content
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Get the "streak date" - which day a timestamp belongs to in the 4am local time system
+  const getStreakDate = useCallback((timestamp: number) => {
+    // Validate timestamp
+    if (!timestamp || isNaN(timestamp)) {
+      console.error("[ANALYTICS] Invalid timestamp:", timestamp);
+      return "1970-01-01";
+    }
+    
+    const date = new Date(timestamp);
+    
+    // Use user's timezone if available, otherwise fall back to local timezone
+    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    
+    // Create a proper date formatter for the timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    });
+    
+    // Get the parts
+    const parts = formatter.formatToParts(date);
+    const dateParts = parts.reduce((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {} as Record<string, string>);
+    
+    // Extract values
+    const year = dateParts.year;
+    const month = dateParts.month;
+    const day = dateParts.day;
+    const hour = parseInt(dateParts.hour);
+    
+    // If it's before 4am in the user's timezone, count as previous day
+    if (hour < 4) {
+      const adjustedDate = new Date(date);
+      adjustedDate.setDate(adjustedDate.getDate() - 1);
+      
+      const adjustedParts = formatter.formatToParts(adjustedDate);
+      const adjustedDateParts = adjustedParts.reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      return `${adjustedDateParts.year}-${adjustedDateParts.month}-${adjustedDateParts.day}`;
+    }
+
+    return `${year}-${month}-${day}`;
+  }, [userTimezone]);
+
+  // Filter tasks by date range - only on client side
+  const getFilteredTasks = useCallback((tasksToFilter: Task[]) => {
+    // If not mounted, return all tasks (server-side)
+    if (!mounted) return tasksToFilter;
+
+    // If no date range selected, return all tasks
+    if (!clientDateRange.start || !clientDateRange.end) return tasksToFilter;
+
+    // Client-side filtering
+    const startTime = clientDateRange.start.getTime();
+
+    // For single day selection (when start and end dates are the same day at midnight),
+    // we need to get the end of that day, not add 24 hours to midnight
+    const startDate = new Date(clientDateRange.start);
+    const endDate = new Date(clientDateRange.end);
+
+    let endTime: number;
+    if (
+      startDate.toDateString() === endDate.toDateString() &&
+      endDate.getHours() === 0 &&
+      endDate.getMinutes() === 0 &&
+      endDate.getSeconds() === 0
+    ) {
+      // Same day at midnight - get end of this day
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      endTime = endOfDay.getTime();
+    } else {
+      // Different days or custom time - add 24 hours to include full end day
+      endTime = clientDateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1);
+    }
+
+    return tasksToFilter.filter((task) => {
+      const timestamp = task.completedAt || task.createdAt;
+      return timestamp >= startTime && timestamp <= endTime;
+    });
+  }, [mounted, clientDateRange]);
+
   // Generate activity data for the current calendar year (GitHub-style)
-  const generateActivityData = (tasks: TaskData[], applyDateFilter: boolean = false) => {
+  const generateActivityData = useCallback((tasksToUse: Task[], applyDateFilter: boolean = false) => {
     const today = new Date();
-    const currentYear = today.getFullYear();
+    // Use the year from userTimezone to ensure consistency
+    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const todayInTimezone = new Date(today.toLocaleString("en-US", { timeZone: timezone }));
+    const currentYear = todayInTimezone.getFullYear();
     const data: DayActivity[] = [];
 
     // Filter tasks by date range if requested
-    const tasksToProcess = applyDateFilter ? getFilteredTasks() : tasks;
+    const tasksToProcess = applyDateFilter ? getFilteredTasks(tasksToUse) : tasksToUse;
 
     // Create maps for date to task count and total time
     const tasksByDate = new Map<string, number>();
     const timeByDate = new Map<string, number>();
 
     tasksToProcess.forEach((task) => {
-      // Skip quit tasks
-      if (!task.task.toLowerCase().includes("quit early")) {
-        const date = new Date(task.timestamp);
-        // Use local date string instead of ISO (UTC) date
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const day = date.getDate().toString().padStart(2, "0");
-        const dateStr = `${year}-${month}-${day}`;
-        tasksByDate.set(dateStr, (tasksByDate.get(dateStr) || 0) + 1);
+      // Get the streak date for proper day boundary handling
+      // Use completedAt for completed tasks, fall back to createdAt
+      const timestamp = task.completedAt || task.createdAt;
+      const dateStr = getStreakDate(timestamp);
+      tasksByDate.set(dateStr, (tasksByDate.get(dateStr) || 0) + 1);
 
-        // Add time for this task
-        const seconds = parseDuration(task.duration);
-        timeByDate.set(dateStr, (timeByDate.get(dateStr) || 0) + seconds);
-      }
+      // Add time for this task
+      const seconds = task.timeSpent || 0;
+      timeByDate.set(dateStr, (timeByDate.get(dateStr) || 0) + seconds);
     });
+
+    // Debug log
+    console.log("[ANALYTICS] Task dates mapped:", Array.from(tasksByDate.entries()));
+    console.log("[ANALYTICS] Calendar year:", currentYear);
+    console.log("[ANALYTICS] Today in timezone:", todayInTimezone.toISOString());
 
     // Start from January 1st of current year
     const startDate = new Date(currentYear, 0, 1);
@@ -108,7 +200,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
     // Continue until we've covered the last Saturday
     while (currentDate <= lastSaturday) {
-      // Create date string in local timezone
+      // Create date string for this calendar day (no timezone conversion needed here)
+      // The tasks are already mapped to the correct dates via getStreakDate
       const year = currentDate.getFullYear();
       const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
       const day = currentDate.getDate().toString().padStart(2, "0");
@@ -132,145 +225,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
     }
 
     return data;
-  };
+  }, [getFilteredTasks, getStreakDate, userTimezone]);
 
-  // Hardcoded sample data for demo
-  const generateSampleData = () => {
-    const sampleTasks: TaskData[] = [];
-    const today = new Date();
-    const currentYear = today.getFullYear();
 
-    // Generate random tasks throughout the current year
-    for (let i = 0; i < 500; i++) {
-      // Random date within the current year up to today
-      const startOfYear = new Date(currentYear, 0, 1);
-      const daysSinceStart = Math.floor((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-      const daysAgo = Math.floor(Math.random() * daysSinceStart);
-
-      const date = new Date(startOfYear);
-      date.setDate(date.getDate() + daysAgo);
-      date.setHours(Math.floor(Math.random() * 24));
-
-      const durationSeconds = Math.floor(Math.random() * 3600) + 300; // 5 min to 1 hour
-      const hours = Math.floor(durationSeconds / 3600);
-      const minutes = Math.floor((durationSeconds % 3600) / 60);
-      const seconds = durationSeconds % 60;
-
-      sampleTasks.push({
-        task: Math.random() > 0.9 ? `Task ${i + 1} - quit early` : `Task ${i + 1}`,
-        timestamp: date.getTime(),
-        duration: `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds
-          .toString()
-          .padStart(2, "0")}`,
-        userId: userId,
-      });
-    }
-
-    return sampleTasks;
-  };
-
-  // Re-generate activity data when date range changes
+  // Re-generate activity data when tasks or date range changes
   useEffect(() => {
-    if (taskHistory.length > 0) {
-      setActivityData(generateActivityData(taskHistory));
+    if (!tasksLoading) {
+      // Debug log to check task data
+      if (completedTasks.length > 0) {
+        console.log("[ANALYTICS] Sample completed task:", completedTasks[0]);
+        console.log("[ANALYTICS] Task timestamps:", completedTasks.map(t => ({
+          name: t.name,
+          createdAt: t.createdAt,
+          completedAt: t.completedAt,
+          dateStr: getStreakDate(t.completedAt || t.createdAt)
+        })));
+      }
+      setActivityData(generateActivityData(completedTasks));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientDateRange, taskHistory]);
-
-  // TODO: Replace with Firebase RTDB listener for task history
-  useEffect(() => {
-    // Try to fetch real data first
-    // const historyRef = ref(rtdb, `instances/${roomId}/history`);
-
-    // const unsubscribe = onValue(historyRef, (snapshot) => {
-    //   const data = snapshot.val();
-
-    //   if (data) {
-    //     const allTasks = Object.values(data as Record<string, TaskData>);
-    //     const userTasks = allTasks.filter((task: TaskData) => task.userId === userId);
-
-    //     setTaskHistory(userTasks);
-    //     setActivityData(generateActivityData(userTasks));
-    //   } else {
-    //     // Use sample data if no real data
-    //     const sampleTasks = generateSampleData();
-    //     setTaskHistory(sampleTasks);
-    //     setActivityData(generateActivityData(sampleTasks));
-    //   }
-    //   setIsLoading(false);
-    // });
-
-    // return () => off(historyRef, "value", unsubscribe);
-    
-    // Temporary: Use sample data
-    const sampleTasks = generateSampleData();
-    setTaskHistory(sampleTasks);
-    setActivityData(generateActivityData(sampleTasks));
-    setIsLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, userId]);
-
-  // Parse duration string "HH:MM:SS" or "MM:SS" to seconds
-  const parseDuration = (duration: string | number | undefined): number => {
-    if (typeof duration === "number") return duration;
-    if (!duration || typeof duration !== "string") return 0;
-
-    const parts = duration.split(":");
-    if (parts.length === 3) {
-      const hours = parseInt(parts[0]) || 0;
-      const minutes = parseInt(parts[1]) || 0;
-      const seconds = parseInt(parts[2]) || 0;
-      return hours * 3600 + minutes * 60 + seconds;
-    } else if (parts.length === 2) {
-      const minutes = parseInt(parts[0]) || 0;
-      const seconds = parseInt(parts[1]) || 0;
-      return minutes * 60 + seconds;
-    }
-    return 0;
-  };
-
-  // Filter tasks by date range - only on client side
-  const getFilteredTasks = () => {
-    // If not mounted, return all tasks (server-side)
-    if (!mounted) return taskHistory;
-
-    // If no date range selected, return all tasks
-    if (!clientDateRange.start || !clientDateRange.end) return taskHistory;
-
-    // Client-side filtering
-    const startTime = clientDateRange.start.getTime();
-
-    // For single day selection (when start and end dates are the same day at midnight),
-    // we need to get the end of that day, not add 24 hours to midnight
-    const startDate = new Date(clientDateRange.start);
-    const endDate = new Date(clientDateRange.end);
-
-    let endTime: number;
-    if (
-      startDate.toDateString() === endDate.toDateString() &&
-      endDate.getHours() === 0 &&
-      endDate.getMinutes() === 0 &&
-      endDate.getSeconds() === 0
-    ) {
-      // Same day at midnight - get end of this day
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      endTime = endOfDay.getTime();
-    } else {
-      // Different days or custom time - add 24 hours to include full end day
-      endTime = clientDateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1);
-    }
-
-    return taskHistory.filter((task) => {
-      return task.timestamp >= startTime && task.timestamp <= endTime;
-    });
-  };
+  }, [completedTasks, tasksLoading, generateActivityData, getStreakDate]);
 
   // Calculate analytics metrics
   const calculateMetrics = () => {
-    const filteredTasks = getFilteredTasks();
-    const completedTasks = filteredTasks.filter((t) => !t.task.toLowerCase().includes("quit early"));
-    const totalTasks = completedTasks.length;
+    const filteredTasks = getFilteredTasks(completedTasks);
+    const totalTasks = filteredTasks.length;
 
     if (totalTasks === 0) {
       return {
@@ -283,33 +261,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       };
     }
 
-    // Find the earliest task date in the user's history
-    let firstTaskDate: Date | null = null;
-    if (taskHistory.length > 0) {
-      const sortedTasks = [...taskHistory].sort((a, b) => a.timestamp - b.timestamp);
-      firstTaskDate = new Date(sortedTasks[0].timestamp);
-    }
 
-    // Calculate the actual number of days for averages - USING ALL TIME
-    let daysDiff = 1;
-    if (firstTaskDate) {
-      const today = new Date();
-      daysDiff = Math.ceil((today.getTime() - firstTaskDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      daysDiff = Math.max(1, daysDiff); // Ensure at least 1 day
-    } else if (taskHistory.length > 0) {
-      // Fallback: use number of unique days with tasks
-      const dates = completedTasks.map((t) => new Date(t.timestamp).toDateString());
-      const uniqueDates = new Set(dates).size;
-      daysDiff = Math.max(1, uniqueDates);
-    }
+    // Calculate the number of active days (days with at least one task)
+    const activeDates = filteredTasks.map((t) => {
+      const timestamp = t.completedAt || t.createdAt;
+      return getStreakDate(timestamp);
+    });
+    const uniqueActiveDays = new Set(activeDates).size;
+    const daysDiff = Math.max(1, uniqueActiveDays); // Use active days, ensure at least 1
 
     // Calculate total time
-    const totalTime = completedTasks.reduce((sum, task) => sum + parseDuration(task.duration), 0);
+    const totalTime = filteredTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
 
     // Calculate hourly distribution
     const hourlyCount = new Array(24).fill(0);
-    completedTasks.forEach((task) => {
-      const hour = new Date(task.timestamp).getHours();
+    filteredTasks.forEach((task) => {
+      const timestamp = task.completedAt || task.createdAt;
+      const hour = new Date(timestamp).getHours();
       hourlyCount[hour]++;
     });
     const mostProductiveHour = hourlyCount.indexOf(Math.max(...hourlyCount));
@@ -319,7 +287,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       avgTimePerDay: totalTime / daysDiff,
       avgTimePerTask: totalTime / totalTasks,
       totalTime,
-      completionRate: filteredTasks.length > 0 ? (completedTasks.length / filteredTasks.length) * 100 : 0,
+      completionRate: 100, // All tasks in filteredTasks are already completed
       mostProductiveHour,
     };
   };
@@ -338,9 +306,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
   // Get the earliest task date for display - only on client
   const getFirstTaskDate = () => {
-    if (!mounted || taskHistory.length === 0) return null;
-    const sortedTasks = [...taskHistory].sort((a, b) => a.timestamp - b.timestamp);
-    return new Date(sortedTasks[0].timestamp);
+    if (!mounted || completedTasks.length === 0) return null;
+    const sortedTasks = [...completedTasks].sort((a, b) => {
+      const aTime = a.completedAt || a.createdAt;
+      const bTime = b.completedAt || b.createdAt;
+      return aTime - bTime;
+    });
+    return new Date(sortedTasks[0].completedAt || sortedTasks[0].createdAt);
   };
 
   const firstTaskDate = getFirstTaskDate();
@@ -350,9 +322,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
   // Calculate streaks using all task history (not filtered by date range)
   const calculateStreaks = () => {
-    const allCompletedTasks = taskHistory.filter((t) => !t.task.toLowerCase().includes("quit early"));
-    const dates = allCompletedTasks.map((t) => new Date(t.timestamp).toDateString());
-    const uniqueDateStrings = Array.from(new Set(dates));
+    // Get unique streak dates (accounting for 4am cutoff)
+    const streakDates = completedTasks.map((t) => {
+      const timestamp = t.completedAt || t.createdAt;
+      return getStreakDate(timestamp);
+    });
+    const uniqueDateStrings = Array.from(new Set(streakDates));
     const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
     let longestStreak = 0;
@@ -378,30 +353,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
       }
 
       // Calculate current streak (working backwards from today)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toDateString();
-
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toDateString();
+      const todayStr = getStreakDate(Date.now());
+      const yesterdayStr = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
 
       const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
 
       // Check if the streak is current (task completed today or yesterday)
       if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
         currentStreak = 1;
-        let checkDate = new Date(lastTaskDate);
-
+        
         // Work backwards to count consecutive days
         for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
-          const prevDate = new Date(sortedDateStrings[i]);
-          const expectedDate = new Date(checkDate);
-          expectedDate.setDate(expectedDate.getDate() - 1);
-
-          if (prevDate.toDateString() === expectedDate.toDateString()) {
+          const prevDateStr = sortedDateStrings[i];
+          const currDateStr = sortedDateStrings[i + 1];
+          
+          // Parse dates and check if they're consecutive
+          const prevDate = new Date(prevDateStr);
+          const currDate = new Date(currDateStr);
+          const diffTime = currDate.getTime() - prevDate.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
             currentStreak++;
-            checkDate = expectedDate;
           } else {
             break;
           }
@@ -418,39 +391,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
   // Calculate all-time metrics (using current room data only, matching History component)
   const calculateAllTimeMetrics = () => {
     // Use filtered tasks based on date range
-    const filteredTasks = getFilteredTasks();
+    const filteredTasks = getFilteredTasks(completedTasks);
+    const totalTasks = filteredTasks.length;
 
-    // Filter out quit tasks using the same logic as History
-    const completedTasks = filteredTasks.filter((t) => !t.task.toLowerCase().includes("quit early"));
-    const totalTasks = completedTasks.length;
-
-    // Calculate total time using the same method as History component
-    let totalSeconds = 0;
-    completedTasks.forEach((task) => {
-      if (typeof task.duration === "string") {
-        const parts = task.duration.split(":").map(Number);
-        if (parts.length === 3) {
-          // HH:MM:SS format
-          const [hours, minutes, seconds] = parts;
-          if (!isNaN(hours) && !isNaN(minutes) && !isNaN(seconds)) {
-            totalSeconds += hours * 3600 + minutes * 60 + seconds;
-          }
-        } else if (parts.length === 2) {
-          // MM:SS format
-          const [minutes, seconds] = parts;
-          if (!isNaN(minutes) && !isNaN(seconds)) {
-            totalSeconds += minutes * 60 + seconds;
-          }
-        }
-      } else if (typeof task.duration === "number") {
-        totalSeconds += task.duration;
-      }
-    });
+    // Calculate total time
+    const totalSeconds = filteredTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
 
     return {
       totalTasks,
       totalTime: totalSeconds,
-      activeDays: new Set(completedTasks.map((t) => new Date(t.timestamp).toDateString())).size,
+      activeDays: new Set(filteredTasks.map((t) => {
+        const timestamp = t.completedAt || t.createdAt;
+        return getStreakDate(timestamp);
+      })).size,
     };
   };
 
@@ -462,6 +415,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
         totalTime: 0,
         activeDays: 0,
       };
+
+  // Get current year for display
+  const today = new Date();
+  const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const todayInTimezone = new Date(today.toLocaleString("en-US", { timeZone: timezone }));
+  const currentYear = todayInTimezone.getFullYear();
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -530,7 +489,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
           </button>
         </div>
 
-        {isLoading ? (
+        {tasksLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500"></div>
           </div>
@@ -539,7 +498,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
             {/* GitHub-style Activity Chart */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-bold text-white">2025 Overview</h3>
+                <h3 className="text-lg font-bold text-white">{currentYear} Overview</h3>
                 {/* Toggle switch */}
                 <button
                   onClick={() => setColorByTime(!colorByTime)}
@@ -568,11 +527,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
 
                     // Process each week to determine month boundaries
                     for (let i = 0; i < activityData.length; i += 7) {
-                      // Find the first day in this week that's actually in 2025
+                      // Find the first day in this week that's actually in the current year
                       let firstValidDay = null;
                       for (let j = i; j < Math.min(i + 7, activityData.length); j++) {
                         const date = new Date(activityData[j].date);
-                        if (date.getFullYear() === 2025) {
+                        if (date.getFullYear() === currentYear) {
                           firstValidDay = date;
                           break;
                         }
@@ -586,7 +545,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                           months.push({
                             month: weekMonth,
                             weekIndex: weekIndex,
-                            name: firstValidDay.toLocaleDateString("en-US", { month: "short" }),
+                            name: firstValidDay.toLocaleDateString("en-US", { month: "short", timeZone: userTimezone || undefined }),
                           });
                           currentMonth = weekMonth;
                         }
@@ -649,7 +608,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                           const hasJan1 = week.some((day) => {
                             if (day && day.date) {
                               const date = new Date(day.date);
-                              return date.getMonth() === 0 && date.getDate() === 1 && date.getFullYear() === 2025;
+                              return date.getMonth() === 0 && date.getDate() === 1 && date.getFullYear() === currentYear;
                             }
                             return false;
                           });
@@ -657,7 +616,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                           const hasDec31 = week.some((day) => {
                             if (day && day.date) {
                               const date = new Date(day.date);
-                              return date.getMonth() === 11 && date.getDate() === 31 && date.getFullYear() === 2025;
+                              return date.getMonth() === 11 && date.getDate() === 31 && date.getFullYear() === currentYear;
                             }
                             return false;
                           });
@@ -704,7 +663,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                                 );
                               }
 
-                              const date = new Date(day.date);
+                              // Parse date components to avoid timezone issues
+                              const [year, month, dayNum] = day.date.split("-").map(Number);
+                              const date = new Date(year, month - 1, dayNum);
+                              
                               return (
                                 <div key={dayIndex} className="relative group">
                                   <div
@@ -712,7 +674,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                                       day.count,
                                       day.totalSeconds
                                     )} hover:ring-2 hover:ring-white transition-all cursor-pointer`}
-                                    title={`${day.date}: ${day.count} tasks`}
                                   />
                                   {showDayLabel && (
                                     <div className="absolute right-full mr-2 top-0 h-[11px] flex items-center">
@@ -727,8 +688,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
                                       weekday: "short",
                                       month: "short",
                                       day: "numeric",
+                                      year: "numeric"
                                     })}
-                                    : {day.count} tasks
+                                    : {day.count} {day.count === 1 ? "task" : "tasks"}
                                     {day.totalSeconds > 0 ? ` | ${formatTime(day.totalSeconds)}` : ""}
                                   </div>
                                 </div>
@@ -771,7 +733,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ roomId, userId, displayName, onCl
               </div>
               {mounted && firstTaskDate && clientDateRange.start && firstTaskDate > clientDateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
-                  Calculated from your first task on {firstTaskDate.toLocaleDateString("en-US")}
+                  Calculated from your first task on {firstTaskDate.toLocaleDateString("en-US", { timeZone: userTimezone || undefined })}
                 </div>
               )}
             </div>

@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, onValue, off, set, get } from "firebase/database";
@@ -65,6 +67,7 @@ if (typeof window !== "undefined") {
 
 export default function PersonalStats() {
   const { user } = useInstance();
+  const userTimezone = useSelector((state: RootState) => state.user.timezone);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -73,20 +76,26 @@ export default function PersonalStats() {
   const [timeRemaining, setTimeRemaining] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // Get the "streak date" - which day a timestamp belongs to in the 4am UTC system
+  // Get the "streak date" - which day a timestamp belongs to in the 4am local time system
   const getStreakDate = (timestamp: number = Date.now()) => {
     const date = new Date(timestamp);
-    const utcHour = date.getUTCHours();
+    
+    // Use user's timezone if available, otherwise fall back to local timezone
+    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Get the local time in the user's timezone
+    const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
+    const localHour = localTime.getHours();
 
-    // If it's before 4am UTC, this counts as the previous day
-    if (utcHour < 4) {
-      date.setUTCDate(date.getUTCDate() - 1);
+    // If it's before 4am local time, this counts as the previous day
+    if (localHour < 4) {
+      localTime.setDate(localTime.getDate() - 1);
     }
 
-    // Use UTC date for consistency across all users
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
+    // Format as YYYY-MM-DD
+    const year = localTime.getFullYear();
+    const month = String(localTime.getMonth() + 1).padStart(2, "0");
+    const day = String(localTime.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
   };
@@ -139,20 +148,27 @@ export default function PersonalStats() {
     return currentStreak;
   };
 
-  // Calculate time remaining until 4am UTC tomorrow
+  // Calculate time remaining until 4am local time tomorrow
   const calculateTimeRemaining = () => {
     const now = new Date();
-    const tomorrow4amUTC = new Date();
-
-    // Set to 4am UTC tomorrow
-    if (now.getUTCHours() >= 4) {
-      // After 4am UTC today, so 4am UTC tomorrow
-      tomorrow4amUTC.setUTCDate(tomorrow4amUTC.getUTCDate() + 1);
+    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Get current time in user's timezone
+    const nowInTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+    
+    // Create a date for 4am today in user's timezone
+    const next4am = new Date(nowInTimezone);
+    next4am.setHours(4, 0, 0, 0);
+    
+    // If it's already past 4am, move to tomorrow
+    if (nowInTimezone >= next4am) {
+      next4am.setDate(next4am.getDate() + 1);
     }
-    // Before 4am UTC today, so 4am UTC today
-    tomorrow4amUTC.setUTCHours(4, 0, 0, 0);
-
-    const msRemaining = tomorrow4amUTC.getTime() - now.getTime();
+    
+    // Convert back to UTC for accurate time calculation
+    const next4amUTC = new Date(next4am.toLocaleString("en-US", { timeZone: "UTC" }));
+    const msRemaining = next4amUTC.getTime() - now.getTime();
+    
     const hours = Math.floor(msRemaining / (1000 * 60 * 60));
     const minutes = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((msRemaining % (1000 * 60)) / 1000);
@@ -178,7 +194,7 @@ export default function PersonalStats() {
     const interval = setInterval(updateTimer, 1000); // Update every second
 
     return () => clearInterval(interval);
-  }, []);
+  }, [calculateTimeRemaining]);
 
   // TODO: Replace with Firebase RTDB streak marking
   // Expose the markTodayComplete function globally so other components can call it
@@ -304,7 +320,7 @@ export default function PersonalStats() {
     return () => {
       window.removeEventListener("taskCompleted", handleTaskCompleted);
     };
-  }, [user?.id]);
+  }, [user?.id, getStreakDate]);
 
   if (loading || !user) return null;
 
@@ -360,7 +376,7 @@ export default function PersonalStats() {
           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 sm:bottom-auto sm:top-full sm:mt-2">
             <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
               <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
-                New streak period in: <span className="text-gray-100 font-medium">{timeRemaining} (UTC)</span>
+                New streak period in: <span className="text-gray-100 font-medium">{timeRemaining} (4am local)</span>
               </div>
               {/* Arrow */}
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 sm:bottom-full sm:top-auto border-4 border-transparent border-t-gray-700 sm:border-t-transparent sm:border-b-gray-700"></div>

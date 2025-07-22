@@ -3,8 +3,11 @@ import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 import Image from "next/image";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
+  const userTimezone = useSelector((state: RootState) => state.user.timezone);
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [userStreaks, setUserStreaks] = useState<Record<string, number>>({});
   const [userDailyTimes, setUserDailyTimes] = useState<Record<string, number>>({});
@@ -155,14 +158,28 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       return;
     }
 
-    // Get streak date for today (with 4AM UTC cutoff)
+    // Get streak date for today (with 4AM local time cutoff)
     const getStreakDate = (timestamp: number = Date.now()) => {
       const date = new Date(timestamp);
-      const utcHour = date.getUTCHours();
-      if (utcHour < 4) {
-        date.setUTCDate(date.getUTCDate() - 1);
+      
+      // Use user's timezone if available, otherwise fall back to local timezone
+      const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      // Get the local time in the user's timezone
+      const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
+      const localHour = localTime.getHours();
+
+      // If it's before 4am local time, this counts as the previous day
+      if (localHour < 4) {
+        localTime.setDate(localTime.getDate() - 1);
       }
-      return date.toISOString().split("T")[0];
+
+      // Format as YYYY-MM-DD
+      const year = localTime.getFullYear();
+      const month = String(localTime.getMonth() + 1).padStart(2, "0");
+      const day = String(localTime.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -208,7 +225,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       //   off(lastEventRef, "value", lastEventHandleFunc);
       // }
     };
-  }, [activeUsers, roomId]);
+  }, [activeUsers, roomId, userTimezone]);
 
   // TODO: Replace with Firebase RTDB listener for user timers
   // Listen to user timers to track who's actively running

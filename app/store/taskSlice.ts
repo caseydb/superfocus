@@ -9,6 +9,7 @@ export interface Task {
   timeSpent: number;
   lastActive?: number;
   createdAt: number;
+  completedAt?: number;
   status: "not_started" | "in_progress" | "paused" | "completed" | "quit";
   isOptimistic?: boolean; // Track if this is a temporary optimistic task
 }
@@ -497,12 +498,13 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
   const data = await response.json();
 
   // Transform database tasks to Redux format
-  const transformedTasks = data.map((task: { id: string; task_name: string; status: string; duration?: number; created_at: string; updated_at?: string }) => ({
+  const transformedTasks = data.map((task: { id: string; task_name: string; status: string; duration?: number; created_at: string; updated_at?: string; completed_at?: string }) => ({
     id: task.id,
     name: task.task_name, // Changed from task.name to task.task_name
     completed: task.status === "completed",
     timeSpent: task.duration || 0,
     createdAt: new Date(task.created_at).getTime(),
+    completedAt: task.completed_at ? new Date(task.completed_at).getTime() : undefined,
     lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
     status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
   }));
