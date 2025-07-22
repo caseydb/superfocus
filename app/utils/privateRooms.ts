@@ -1,5 +1,5 @@
 import { rtdb } from "@/lib/firebase";
-import { ref, set, get, remove, push } from "firebase/database";
+import { ref, set, get, remove, push, onDisconnect } from "firebase/database";
 import type { PrivateRoom, PrivateRoomFromDB } from "../types/privateRooms";
 
 // Check if a private room URL is already taken
@@ -111,6 +111,9 @@ export async function addUserToPrivateRoom(roomId: string, userId: string, displ
   // Add user to users list
   const userRef = ref(rtdb, `PrivateRooms/${roomId}/users/${userId}`);
   await set(userRef, { id: userId, displayName });
+  
+  // Set up onDisconnect to remove user when they disconnect
+  await onDisconnect(userRef).remove();
   
   // Update the userCount based on actual users
   const roomRef = ref(rtdb, `PrivateRooms/${roomId}`);
