@@ -26,7 +26,7 @@ import SignIn from "../SignIn";
 import Preferences from "./Preferences";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
-import { getPublicRoomByUrl } from "@/app/utils/publicRooms";
+import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
 import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
 import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
@@ -181,13 +181,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setPublicRoomPresence(presence);
               console.log("[ROOMSHELL] Presence initialized successfully");
               
-              // Add user to PublicRoom users list (like legacy system)
-              const publicRoomUserRef = ref(rtdb, `PublicRooms/${currentInstance.id}/users/${user.id}`);
-              await set(publicRoomUserRef, {
-                id: user.id,
-                displayName: user.displayName
-              });
-              console.log("[ROOMSHELL] Added user to PublicRoom users list");
+              // Add user to PublicRoom users list and update count
+              await addUserToPublicRoom(currentInstance.id, user.id, user.displayName);
+              console.log("[ROOMSHELL] Added user to PublicRoom");
               
               // Start cleanup scheduler to ensure orphaned rooms are cleaned
               startCleanupScheduler();
@@ -234,13 +230,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             // Store presence manager
             setPublicRoomPresence(presence);
             
-            // Add user to PublicRoom users list (like legacy system)
-            const publicRoomUserRef = ref(rtdb, `PublicRooms/${publicRoom.id}/users/${user.id}`);
-            await set(publicRoomUserRef, {
-              id: user.id,
-              displayName: user.displayName
-            });
-            console.log("[ROOMSHELL] Added user to PublicRoom users list");
+            // Add user to PublicRoom users list and update count
+            await addUserToPublicRoom(publicRoom.id, user.id, user.displayName);
+            console.log("[ROOMSHELL] Added user to PublicRoom");
             
             // Start cleanup scheduler to ensure orphaned rooms are cleaned
             startCleanupScheduler();
@@ -387,8 +379,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           
           // Also remove from PublicRooms if this is a public room
           if (currentInstance.type === "public" && publicRoomId) {
-            const publicRoomUserRef = ref(rtdb, `PublicRooms/${publicRoomId}/users/${user.id}`);
-            remove(publicRoomUserRef);
+            removeUserFromPublicRoom(publicRoomId, user.id);
           }
           
           // Also remove from PrivateRooms if this is a private room
@@ -431,8 +422,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             
             // Also remove from PublicRooms if this is a public room
             if (currentInstance.type === "public") {
-              const publicRoomUserRef = ref(rtdb, `PublicRooms/${currentInstance.id}/users/${user.id}`);
-              remove(publicRoomUserRef);
+              removeUserFromPublicRoom(currentInstance.id, user.id);
             }
             
             return null;

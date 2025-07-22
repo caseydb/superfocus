@@ -1,5 +1,5 @@
 import { rtdb } from "@/lib/firebase";
-import { ref, push, set, get, remove, runTransaction } from "firebase/database";
+import { ref, push, set, get, remove, runTransaction, onDisconnect } from "firebase/database";
 import type { PublicRoom, PublicRoomFromDB } from "@/app/types/publicRooms";
 
 function generateRoomUrl(): string {
@@ -143,30 +143,74 @@ export async function incrementUserCount(roomId: string): Promise<boolean> {
 }
 
 export async function decrementUserCount(roomId: string): Promise<void> {
-  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
+  const userCountRef = ref(rtdb, `PublicRooms/${roomId}/userCount`);
   
   try {
-    await runTransaction(roomRef, (currentData) => {
-      if (!currentData) {
+    await runTransaction(userCountRef, (currentCount) => {
+      if (currentCount === null || currentCount === undefined) {
         // Room doesn't exist
         return;
       }
       
-      const newCount = currentData.userCount - 1;
+      const newCount = Math.max(0, currentCount - 1);
+      console.log(`[PUBLICROOMS] Decrementing user count for room ${roomId}: ${currentCount} -> ${newCount}`);
       
-      if (newCount <= 0) {
-        // Remove the entire room when last user leaves
-        return null;
-      } else {
-        // Just update the count
-        return {
-          ...currentData,
-          userCount: newCount
-        };
-      }
+      // Always return the new count, let Cloud Function handle deletion when it reaches 0
+      return newCount;
     });
   } catch (error) {
     console.error("Error decrementing user count:", error);
+  }
+}
+
+// Add user to public room
+export async function addUserToPublicRoom(roomId: string, userId: string, displayName: string): Promise<void> {
+  console.log("[PUBLIC_ROOMS] Adding user to room:", { roomId, userId, displayName });
+  
+  // Add user to users list
+  const userRef = ref(rtdb, `PublicRooms/${roomId}/users/${userId}`);
+  await set(userRef, { id: userId, displayName });
+  
+  // Set up onDisconnect to remove user when they disconnect
+  await onDisconnect(userRef).remove();
+  
+  // Update the userCount based on actual users
+  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
+  const snapshot = await get(roomRef);
+  if (snapshot.exists()) {
+    const room = snapshot.val();
+    const userCount = room.users ? Object.keys(room.users).length : 0;
+    await set(ref(rtdb, `PublicRooms/${roomId}/userCount`), userCount);
+    console.log("[PUBLIC_ROOMS] Updated user count to:", userCount);
+  }
+}
+
+// Remove user from public room
+export async function removeUserFromPublicRoom(roomId: string, userId: string): Promise<void> {
+  console.log("[PUBLIC_ROOMS] Removing user from room:", { roomId, userId });
+  
+  // Remove user from users list
+  const userRef = ref(rtdb, `PublicRooms/${roomId}/users/${userId}`);
+  await remove(userRef);
+  
+  // Update the userCount based on actual users
+  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
+  const snapshot = await get(roomRef);
+  if (snapshot.exists()) {
+    const room = snapshot.val();
+    const userCount = room.users ? Object.keys(room.users).length : 0;
+    await set(ref(rtdb, `PublicRooms/${roomId}/userCount`), userCount);
+    console.log("[PUBLIC_ROOMS] Updated user count to:", userCount);
+    
+    // If no users left, delete the room
+    if (userCount === 0) {
+      console.log("[PUBLIC_ROOMS] No users left, deleting room:", roomId);
+      await deletePublicRoom(roomId);
+      
+      // Also clean up presence data
+      const presenceRef = ref(rtdb, `PublicRoomPresence/${roomId}`);
+      await remove(presenceRef);
+    }
   }
 }
 

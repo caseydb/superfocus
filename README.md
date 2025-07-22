@@ -10,6 +10,11 @@ pnpm dev
 bun dev
 ```
 
+## Commands
+
+- git reset --hard origin/dev
+- git clean -fd
+
 ## Run Prisma Migration
 
 - npx prisma migrate dev casey

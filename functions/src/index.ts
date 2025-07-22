@@ -69,7 +69,7 @@ export const cleanUpEmptyPublicRoomsNew = functions.database
         // Also clean up any presence data
         const presenceRef = admin.database().ref(`/PublicRoomPresence/${roomId}`);
         await presenceRef.remove();
-        
+
         // Delete the room
         await roomRef.remove();
       }
@@ -77,51 +77,84 @@ export const cleanUpEmptyPublicRoomsNew = functions.database
     return null;
   });
 
-// Clean up stale PrivateRoom presence data (runs every hour)
-export const cleanUpStalePrivateRoomPresence = functions.pubsub
-  .schedule("every 60 minutes")
-  .onRun(async (context) => {
-    console.log("Cleaning up stale PrivateRoom presence data...");
+// Update PublicRoom userCount when users change
+export const updatePublicRoomUserCount = functions.database
+  .ref("/PublicRooms/{roomId}/users/{userId}")
+  .onWrite(async (change, context) => {
+    const roomId = context.params.roomId;
+    console.log(`User change detected in PublicRoom ${roomId}`);
     
-    const now = Date.now();
-    const STALE_THRESHOLD = 60 * 60 * 1000; // 1 hour
+    // Get the room reference
+    const roomRef = admin.database().ref(`/PublicRooms/${roomId}`);
+    const roomSnapshot = await roomRef.once("value");
     
-    try {
-      const presenceRef = admin.database().ref("/PrivateRoomPresence");
-      const snapshot = await presenceRef.once("value");
+    if (!roomSnapshot.exists()) {
+      console.log(`PublicRoom ${roomId} no longer exists`);
+      return null;
+    }
+    
+    const room = roomSnapshot.val();
+    const userCount = room.users ? Object.keys(room.users).length : 0;
+    
+    console.log(`Updating PublicRoom ${roomId} userCount to ${userCount}`);
+    
+    // Update the user count
+    await roomRef.child("userCount").set(userCount);
+    
+    // If userCount is 0, delete the room
+    if (userCount === 0) {
+      console.log(`PublicRoom ${roomId} has 0 users, deleting...`);
+      await roomRef.remove();
       
-      if (!snapshot.exists()) {
-        console.log("No PrivateRoom presence data found");
-        return null;
-      }
-      
-      const rooms = snapshot.val();
-      const cleanupPromises: Promise<void>[] = [];
-      
-      for (const [roomId, users] of Object.entries(rooms)) {
-        let hasActiveUser = false;
-        
-        for (const [, data] of Object.entries(users as Record<string, any>)) {
-          if (now - data.lastSeen < STALE_THRESHOLD) {
-            hasActiveUser = true;
-            break;
-          }
-        }
-        
-        // If no active users in the last hour, clean up presence data
-        if (!hasActiveUser) {
-          console.log(`Cleaning up stale presence for PrivateRoom: ${roomId}`);
-          cleanupPromises.push(
-            admin.database().ref(`/PrivateRoomPresence/${roomId}`).remove()
-          );
-        }
-      }
-      
-      await Promise.all(cleanupPromises);
-      console.log(`Cleaned up ${cleanupPromises.length} stale PrivateRoom presence entries`);
-    } catch (error) {
-      console.error("Error cleaning up PrivateRoom presence:", error);
+      // Also clean up presence data
+      const presenceRef = admin.database().ref(`/PublicRoomPresence/${roomId}`);
+      await presenceRef.remove();
     }
     
     return null;
   });
+
+// Clean up stale PrivateRoom presence data (runs every hour)
+export const cleanUpStalePrivateRoomPresence = functions.pubsub.schedule("every 60 minutes").onRun(async (context) => {
+  console.log("Cleaning up stale PrivateRoom presence data...");
+
+  const now = Date.now();
+  const STALE_THRESHOLD = 60 * 60 * 1000; // 1 hour
+
+  try {
+    const presenceRef = admin.database().ref("/PrivateRoomPresence");
+    const snapshot = await presenceRef.once("value");
+
+    if (!snapshot.exists()) {
+      console.log("No PrivateRoom presence data found");
+      return null;
+    }
+
+    const rooms = snapshot.val();
+    const cleanupPromises: Promise<void>[] = [];
+
+    for (const [roomId, users] of Object.entries(rooms)) {
+      let hasActiveUser = false;
+
+      for (const [, data] of Object.entries(users as Record<string, any>)) {
+        if (now - data.lastSeen < STALE_THRESHOLD) {
+          hasActiveUser = true;
+          break;
+        }
+      }
+
+      // If no active users in the last hour, clean up presence data
+      if (!hasActiveUser) {
+        console.log(`Cleaning up stale presence for PrivateRoom: ${roomId}`);
+        cleanupPromises.push(admin.database().ref(`/PrivateRoomPresence/${roomId}`).remove());
+      }
+    }
+
+    await Promise.all(cleanupPromises);
+    console.log(`Cleaned up ${cleanupPromises.length} stale PrivateRoom presence entries`);
+  } catch (error) {
+    console.error("Error cleaning up PrivateRoom presence:", error);
+  }
+
+  return null;
+});
