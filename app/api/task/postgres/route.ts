@@ -48,12 +48,16 @@ export async function POST(req: NextRequest) {
       data: {
         id, // Use the client-provided UUID
         task_name: task_name.trim(),
-        user_id,
-        room_id: room.id, // Use the actual room ID from database
+        user: {
+          connect: { id: user_id }
+        },
+        room: {
+          connect: { id: room.id }
+        },
         status: status || "not_started",
         duration: duration || 0,
         completed_at: completed_at ? new Date(completed_at) : null,
-        timezone: timezone || null,
+        timezone: timezone || "UTC",
       },
     });
 

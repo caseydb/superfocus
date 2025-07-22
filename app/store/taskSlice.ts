@@ -797,15 +797,25 @@ const taskSlice = createSlice({
         // Task is being transferred
       })
       .addCase(transferTaskToPostgres.fulfilled, (state, action) => {
-        // Remove task from local state as it's now in Postgres
+        // Update task in local state with completion data
         const { savedTask, status } = action.payload;
-        if (status === "completed") {
-          // Only remove from Redux if completed (not quit)
-          state.tasks = state.tasks.filter((task) => task.id !== savedTask.id);
-          // Clear activeTaskId if the completed task was the active one
-          if (state.activeTaskId === savedTask.id) {
-            state.activeTaskId = null;
-          }
+        const taskIndex = state.tasks.findIndex((task) => task.id === savedTask.id);
+        
+        if (taskIndex !== -1) {
+          // Update the existing task with completion data
+          state.tasks[taskIndex] = {
+            ...state.tasks[taskIndex],
+            status: status,
+            completed: status === "completed",
+            completedAt: status === "completed" ? Date.now() : undefined,
+            timeSpent: savedTask.duration || state.tasks[taskIndex].timeSpent,
+            lastActive: Date.now()
+          };
+        }
+        
+        // Clear activeTaskId if the completed task was the active one
+        if (state.activeTaskId === savedTask.id) {
+          state.activeTaskId = null;
         }
       })
       .addCase(transferTaskToPostgres.rejected, (state, action) => {
