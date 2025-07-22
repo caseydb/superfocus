@@ -16,6 +16,7 @@ model user {
   profile_image     String?
   created_at        DateTime @default(now())
   last_active       DateTime
+  timezone          String @default("UTC")
 
   preferences       preference?
   tasks             task[]   @relation("UserTasks")
@@ -43,9 +44,10 @@ model task {
   task_name      String
   status         String   @default("not_started")
   duration       Int      @default(0)
-  completed_at   DateTime?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
+  completed_at   DateTime?
+  timezone       String
 
   user           user     @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
   room           room     @relation(fields: [room_id], references: [id])

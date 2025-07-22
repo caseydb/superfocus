@@ -21,7 +21,6 @@ export async function isPrivateRoomUrlTaken(url: string): Promise<boolean> {
 
 // Create a new private room with custom URL
 export async function createPrivateRoom(userId: string, customUrl: string): Promise<PrivateRoom> {
-  console.log("[PRIVATE_ROOMS] Creating private room:", { userId, customUrl });
   
   // Check if URL is already taken
   const urlTaken = await isPrivateRoomUrlTaken(customUrl);
@@ -42,7 +41,6 @@ export async function createPrivateRoom(userId: string, customUrl: string): Prom
   };
   
   await set(newRoomRef, roomData);
-  console.log("[PRIVATE_ROOMS] Private room created:", roomId);
   
   return {
     id: roomId,
@@ -52,20 +50,17 @@ export async function createPrivateRoom(userId: string, customUrl: string): Prom
 
 // Get a private room by URL
 export async function getPrivateRoomByUrl(url: string): Promise<PrivateRoom | null> {
-  console.log("[PRIVATE_ROOMS] Getting private room by URL:", url);
   
   const privateRoomsRef = ref(rtdb, "PrivateRooms");
   const snapshot = await get(privateRoomsRef);
   
   if (!snapshot.exists()) {
-    console.log("[PRIVATE_ROOMS] No private rooms found");
     return null;
   }
   
   const rooms = snapshot.val();
   for (const roomId in rooms) {
     if (rooms[roomId].url === url) {
-      console.log("[PRIVATE_ROOMS] Found private room:", roomId);
       const room = rooms[roomId];
       
       // Calculate actual user count from users object
@@ -79,7 +74,6 @@ export async function getPrivateRoomByUrl(url: string): Promise<PrivateRoom | nu
     }
   }
   
-  console.log("[PRIVATE_ROOMS] Private room not found for URL:", url);
   return null;
 }
 
@@ -106,7 +100,6 @@ export async function getPrivateRoomById(roomId: string): Promise<PrivateRoom | 
 
 // Add user to private room
 export async function addUserToPrivateRoom(roomId: string, userId: string, displayName: string): Promise<void> {
-  console.log("[PRIVATE_ROOMS] Adding user to room:", { roomId, userId, displayName });
   
   // Add user to users list
   const userRef = ref(rtdb, `PrivateRooms/${roomId}/users/${userId}`);
@@ -122,13 +115,11 @@ export async function addUserToPrivateRoom(roomId: string, userId: string, displ
     const room = snapshot.val();
     const userCount = room.users ? Object.keys(room.users).length : 0;
     await set(ref(rtdb, `PrivateRooms/${roomId}/userCount`), userCount);
-    console.log("[PRIVATE_ROOMS] Updated user count to:", userCount);
   }
 }
 
 // Remove user from private room
 export async function removeUserFromPrivateRoom(roomId: string, userId: string): Promise<void> {
-  console.log("[PRIVATE_ROOMS] Removing user from room:", { roomId, userId });
   
   // Remove user from users list
   const userRef = ref(rtdb, `PrivateRooms/${roomId}/users/${userId}`);
@@ -141,13 +132,11 @@ export async function removeUserFromPrivateRoom(roomId: string, userId: string):
     const room = snapshot.val();
     const userCount = room.users ? Object.keys(room.users).length : 0;
     await set(ref(rtdb, `PrivateRooms/${roomId}/userCount`), userCount);
-    console.log("[PRIVATE_ROOMS] Updated user count to:", userCount);
   }
 }
 
 // Delete a private room (only by creator)
 export async function deletePrivateRoom(roomId: string, userId: string): Promise<void> {
-  console.log("[PRIVATE_ROOMS] Attempting to delete room:", { roomId, userId });
   
   // Check if user is the creator
   const room = await getPrivateRoomById(roomId);
@@ -162,7 +151,5 @@ export async function deletePrivateRoom(roomId: string, userId: string): Promise
   // Delete the room
   const roomRef = ref(rtdb, `PrivateRooms/${roomId}`);
   await remove(roomRef);
-  
-  console.log("[PRIVATE_ROOMS] Private room deleted:", roomId);
 }
 

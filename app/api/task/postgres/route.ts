@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, task_name, user_id, room_id, status, duration, completed_at } = body;
+    const { id, task_name, user_id, room_id, status, duration, completed_at, timezone } = body;
 
     // Validate required fields
     if (!id || !task_name || !user_id || !room_id) {
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
         status: status || "not_started",
         duration: duration || 0,
         completed_at: completed_at ? new Date(completed_at) : null,
+        timezone: timezone || null,
       },
     });
 

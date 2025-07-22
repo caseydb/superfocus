@@ -155,35 +155,24 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
-      console.log("[ROOMSHELL] checkRoom called", {
-        roomUrl,
-        currentInstance: currentInstance ? { id: currentInstance.id, url: currentInstance.url } : null,
-        publicRoomId,
-        userReady
-      });
       
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
-        console.log("[ROOMSHELL] Already in correct room, no need to search");
         setRoomFound(true);
         setLoading(false);
         // If this is a public room, store its ID and init presence
         if (currentInstance.type === "public" && !publicRoomId) {
-          console.log("[ROOMSHELL] Setting publicRoomId to:", currentInstance.id);
           setPublicRoomId(currentInstance.id);
           
           // Initialize presence if not already done
           if (!publicRoomPresence) {
-            console.log("[ROOMSHELL] Initializing presence for existing public room");
             const presence = new PublicRoomPresence(currentInstance.id, user.id);
             const joined = await presence.join();
             if (joined) {
               setPublicRoomPresence(presence);
-              console.log("[ROOMSHELL] Presence initialized successfully");
               
               // Add user to PublicRoom users list and update count
               await addUserToPublicRoom(currentInstance.id, user.id, user.displayName);
-              console.log("[ROOMSHELL] Added user to PublicRoom");
               
               // Start cleanup scheduler to ensure orphaned rooms are cleaned
               startCleanupScheduler();
@@ -194,10 +183,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
       
       // First check legacy instances
-      console.log("[ROOMSHELL] Checking legacy instances", instances.length);
       const targetRoom = instances.find((instance) => instance.url === roomUrl);
       if (targetRoom) {
-        console.log("[ROOMSHELL] Found in legacy instances:", targetRoom);
         setRoomFound(true);
         if (!currentInstance || currentInstance.id !== targetRoom.id) {
           joinInstance(targetRoom.id);
@@ -205,13 +192,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         setLoading(false);
         return;
       }
-      console.log("[ROOMSHELL] Not found in legacy instances")
       
       // If not found in legacy instances, check PublicRooms
-      console.log("[ROOMSHELL] Checking PublicRooms...");
       try {
         const publicRoom = await getPublicRoomByUrl(roomUrl);
-        console.log("[ROOMSHELL] PublicRoom search result:", publicRoom);
         if (publicRoom) {
           // Only join if we're not already in this room
           if (!publicRoomId || publicRoomId !== publicRoom.id) {
@@ -221,7 +205,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             
             if (!joined) {
               // Room is full
-              console.log("[ROOMSHELL] Room is full");
               setRoomFound(false);
               setLoading(false);
               return;
@@ -232,7 +215,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             
             // Add user to PublicRoom users list and update count
             await addUserToPublicRoom(publicRoom.id, user.id, user.displayName);
-            console.log("[ROOMSHELL] Added user to PublicRoom");
             
             // Start cleanup scheduler to ensure orphaned rooms are cleaned
             startCleanupScheduler();
@@ -262,10 +244,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
       
       // If not found in PublicRooms, check PrivateRooms
-      console.log("[ROOMSHELL] Checking PrivateRooms...");
       try {
         const privateRoom = await getPrivateRoomByUrl(roomUrl);
-        console.log("[ROOMSHELL] PrivateRoom search result:", privateRoom);
         if (privateRoom) {
           // Only join if we're not already in this room
           if (!privateRoomId || privateRoomId !== privateRoom.id) {
@@ -275,7 +255,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             
             if (!joined) {
               // This shouldn't happen for private rooms, but handle it
-              console.log("[ROOMSHELL] Failed to join private room");
               setRoomFound(false);
               setLoading(false);
               return;
@@ -286,7 +265,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             
             // Add user to PrivateRoom users list and update count
             await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
-            console.log("[ROOMSHELL] Added user to PrivateRoom users list");
           }
           
           setRoomFound(true);
@@ -311,22 +289,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         console.error("Error checking private room:", error);
       }
       
-      console.log("[ROOMSHELL] Room not found anywhere");
       setRoomFound(false);
       setLoading(false);
     };
     
-    console.log("[ROOMSHELL] useEffect triggered, userReady:", userReady);
     if (userReady) {
       // Small delay to ensure Firebase writes are propagated
-      console.log("[ROOMSHELL] Setting timeout to check room...");
       const timer = setTimeout(() => {
-        console.log("[ROOMSHELL] Timeout expired, calling checkRoom");
         checkRoom();
       }, 100);
       
       return () => {
-        console.log("[ROOMSHELL] Cleanup: clearing timeout");
         clearTimeout(timer);
       };
     }
@@ -448,7 +421,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     
     // Add beforeunload handler for immediate cleanup
     const handleBeforeUnload = () => {
-      console.log("[ROOMSHELL] beforeunload - cleaning up room presence");
       // Can't use async in beforeunload, so we'll do a sync cleanup attempt
       if (publicRoomPresence) {
         // Use navigator.sendBeacon to make a cleanup request
@@ -465,11 +437,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (publicRoomPresence) {
-        console.log("[ROOMSHELL] Cleaning up PublicRoom presence");
         publicRoomPresence.leave();
       }
       if (privateRoomPresence) {
-        console.log("[ROOMSHELL] Cleaning up PrivateRoom presence");
         privateRoomPresence.leave();
       }
     };

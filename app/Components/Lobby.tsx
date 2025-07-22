@@ -28,9 +28,7 @@ export default function Lobby() {
 
   // Redirect to room URL when joining a room
   useEffect(() => {
-    console.log("[LOBBY] currentInstance changed:", currentInstance);
     if (currentInstance) {
-      console.log("[LOBBY] Navigating to room URL:", currentInstance.url);
       router.push(`/${currentInstance.url}`);
     }
   }, [currentInstance, router]);
@@ -134,28 +132,20 @@ export default function Lobby() {
           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
           onClick={async () => {
-            console.log("[LOBBY] Quick Join clicked");
-            
             // First check legacy instances
             const availableLegacy = instances.find((i) => i.users.length < 5 && i.type === "public");
-            console.log("[LOBBY] Available legacy instance:", availableLegacy);
             if (availableLegacy) {
-              console.log("[LOBBY] Joining legacy instance");
               joinInstance(availableLegacy.id);
               return;
             }
             
             // Then check new PublicRooms
-            console.log("[LOBBY] Checking for available PublicRooms...");
             const availablePublic = await getAvailablePublicRoom();
-            console.log("[LOBBY] Available PublicRoom:", availablePublic);
             if (availablePublic) {
               // Navigate directly to the room URL
-              console.log("[LOBBY] Navigating to PublicRoom URL:", availablePublic.url);
               router.push(`/${availablePublic.url}`);
             } else {
               // Create new public room
-              console.log("[LOBBY] No available rooms, creating new public room");
               createInstance("public");
             }
           }}

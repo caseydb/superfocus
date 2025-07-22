@@ -22,12 +22,13 @@ export async function PATCH(request: NextRequest) {
     const firebaseUid = decodedToken.uid;
 
     const body = await request.json();
-    const { first_name, last_name } = body;
+    const { first_name, last_name, timezone } = body;
 
     // Parse the display name into first and last name
-    const updateData: { first_name?: string; last_name?: string } = {};
+    const updateData: { first_name?: string; last_name?: string; timezone?: string } = {};
     if (first_name !== undefined) updateData.first_name = first_name;
     if (last_name !== undefined && last_name !== null) updateData.last_name = last_name;
+    if (timezone !== undefined) updateData.timezone = timezone;
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -40,6 +41,7 @@ export async function PATCH(request: NextRequest) {
         last_name: true,
         email: true,
         profile_image: true,
+        timezone: true,
       },
     });
 
@@ -49,6 +51,7 @@ export async function PATCH(request: NextRequest) {
       last_name: updatedUser.last_name,
       email: updatedUser.email,
       profile_image: updatedUser.profile_image,
+      timezone: updatedUser.timezone,
     });
   } catch (error) {
     console.error("Error updating user data:", error);
@@ -83,6 +86,7 @@ export async function GET(request: NextRequest) {
         last_name: true,
         email: true,
         profile_image: true,
+        timezone: true,
       },
     });
 
@@ -94,6 +98,7 @@ export async function GET(request: NextRequest) {
           last_name: null,
           email: null,
           profile_image: null,
+          timezone: null,
         },
         { status: 200 }
       );
@@ -105,6 +110,7 @@ export async function GET(request: NextRequest) {
       last_name: user.last_name,
       email: user.email,
       profile_image: user.profile_image,
+      timezone: user.timezone,
     });
   } catch (error) {
     console.error("Error fetching user data:", error);

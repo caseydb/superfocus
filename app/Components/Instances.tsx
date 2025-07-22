@@ -127,18 +127,14 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Create a new instance and join it
   const createInstance = useCallback(
     async (type: InstanceType, customUrl?: string) => {
-      console.log("[INSTANCES] createInstance called", { type, customUrl, userReady, user });
       if (!userReady) {
-        console.log("[INSTANCES] User not ready, aborting");
         return;
       }
       
       if (type === "public") {
         // Use new PublicRooms system for public rooms
         try {
-          console.log("[INSTANCES] Creating PublicRoom...");
           const publicRoom = await createPublicRoom(user.id, customUrl);
-          console.log("[INSTANCES] PublicRoom created:", publicRoom);
           
           // Create a temporary Instance object for compatibility
           const tempInstance: Instance = {
@@ -148,18 +144,14 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             createdBy: publicRoom.createdBy,
             url: publicRoom.url,
           };
-          console.log("[INSTANCES] Setting currentInstance to:", tempInstance);
           setCurrentInstance(tempInstance);
-          console.log("[INSTANCES] currentInstance set successfully");
         } catch (error) {
           console.error("[INSTANCES] Failed to create public room:", error);
         }
       } else {
         // Use new PrivateRooms system for private rooms
         try {
-          console.log("[INSTANCES] Creating PrivateRoom...");
           const privateRoom = await createPrivateRoom(user.id, customUrl || generateRoomUrl());
-          console.log("[INSTANCES] PrivateRoom created:", privateRoom);
           
           // Create a temporary Instance object for compatibility
           const tempInstance: Instance = {
@@ -169,9 +161,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             createdBy: privateRoom.createdBy,
             url: privateRoom.url,
           };
-          console.log("[INSTANCES] Setting currentInstance to:", tempInstance);
           setCurrentInstance(tempInstance);
-          console.log("[INSTANCES] currentInstance set successfully");
         } catch (error) {
           console.error("[INSTANCES] Failed to create private room:", error);
         }

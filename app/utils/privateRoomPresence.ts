@@ -27,7 +27,6 @@ export class PrivateRoomPresence {
 
   async join(): Promise<boolean> {
     try {
-      console.log("[PRIVATE_PRESENCE] Joining room:", this.roomId, "as user:", this.userId);
       
       // Private rooms don't have user limits
       
@@ -36,11 +35,9 @@ export class PrivateRoomPresence {
 
       // Set up onDisconnect to remove presence
       await onDisconnect(this.presenceRef).remove();
-      console.log("[PRIVATE_PRESENCE] Set up onDisconnect handler");
 
       // Start heartbeat
       this.startHeartbeat();
-      console.log("[PRIVATE_PRESENCE] Started heartbeat (updates every 30s)");
 
       return true;
     } catch (error) {
@@ -50,7 +47,6 @@ export class PrivateRoomPresence {
   }
 
   async leave(): Promise<void> {
-    console.log("[PRIVATE_PRESENCE] Leaving room:", this.roomId);
     
     // Stop heartbeat
     if (this.intervalId) {
@@ -68,7 +64,6 @@ export class PrivateRoomPresence {
     await remove(this.presenceRef);
     
     // Private rooms are permanent, no cleanup needed
-    console.log("[PRIVATE_PRESENCE] Presence removed from private room");
   }
 
   private async updatePresence(): Promise<void> {
@@ -77,7 +72,6 @@ export class PrivateRoomPresence {
     const tabCount = snapshot.val()?.count || 1;
 
     const now = Date.now();
-    console.log("[PRIVATE_PRESENCE] Updating presence - timestamp:", now, "tabCount:", tabCount);
     
     await set(this.presenceRef, {
       userId: this.userId,

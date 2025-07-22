@@ -904,7 +904,27 @@ export default function TaskList({
   const { user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+  const taskSliceState = useSelector((state: RootState) => state.tasks);
   const reduxUser = useSelector((state: RootState) => state.user);
+
+  // Console log the entire taskSlice state
+  useEffect(() => {
+    console.log("[TASK_SLICE] Current taskSlice state:", {
+      tasks: taskSliceState.tasks,
+      activeTaskId: taskSliceState.activeTaskId,
+      loading: taskSliceState.loading,
+      error: taskSliceState.error,
+      totalTasks: taskSliceState.tasks.length
+    });
+    console.log("[TASK_SLICE] Individual tasks:", taskSliceState.tasks.map(task => ({
+      id: task.id,
+      name: task.name,
+      status: task.status,
+      timeSpent: task.timeSpent,
+      completed: task.completed,
+      createdAt: new Date(task.createdAt).toLocaleString()
+    })));
+  }, [taskSliceState]);
 
   // Convert Redux tasks to the format expected by this component
   const tasks: Task[] = reduxTasks.map((task) => ({

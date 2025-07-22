@@ -31,14 +31,10 @@ export class PublicRoomPresence {
 
   async join(): Promise<boolean> {
     try {
-      console.log("[PRESENCE] Joining room:", this.roomId, "as user:", this.userId);
-      
       // Check if room is full
       const activeCount = await this.getActiveUserCount();
-      console.log("[PRESENCE] Current active users in room:", activeCount);
       
       if (activeCount >= 5) {
-        console.log("[PRESENCE] Room is full!");
         return false; // Room is full
       }
 
@@ -47,11 +43,9 @@ export class PublicRoomPresence {
 
       // Set up onDisconnect to remove presence
       await onDisconnect(this.presenceRef).remove();
-      console.log("[PRESENCE] Set up onDisconnect handler");
 
       // Start heartbeat
       this.startHeartbeat();
-      console.log("[PRESENCE] Started heartbeat (updates every 30s)");
 
       // Listen for room changes to detect when to clean up
       this.startCleanupListener();
@@ -64,7 +58,6 @@ export class PublicRoomPresence {
   }
 
   async leave(): Promise<void> {
-    console.log("[PRESENCE] Leaving room:", this.roomId);
     
     // Stop heartbeat
     if (this.intervalId) {
@@ -82,7 +75,6 @@ export class PublicRoomPresence {
     await remove(this.presenceRef);
     
     // The Cloud Function will handle room deletion when users node is empty
-    console.log("[PRESENCE] Presence removed, Cloud Function will handle room cleanup if needed");
   }
 
   private async updatePresence(): Promise<void> {
@@ -91,7 +83,6 @@ export class PublicRoomPresence {
     const tabCount = snapshot.val()?.count || 1;
 
     const now = Date.now();
-    console.log("[PRESENCE] Updating presence - timestamp:", now, "tabCount:", tabCount);
     
     await set(this.presenceRef, {
       userId: this.userId,
@@ -155,7 +146,6 @@ export class PublicRoomPresence {
       
       // If no active users, clean up the room
       if (!hasActiveUser) {
-        console.log("[PRESENCE] No active users detected, cleaning up room:", this.roomId);
         await deletePublicRoom(this.roomId);
         await remove(roomPresenceRef);
       }
@@ -170,17 +160,14 @@ export class PublicRoomPresence {
 
   private async checkRoomCleanup(): Promise<void> {
     const activeCount = await this.getActiveUserCount();
-    console.log("[PRESENCE] Checking room cleanup - active users:", activeCount);
     
     if (activeCount === 0) {
       // No active users, delete the room
-      console.log("[PRESENCE] No active users, deleting room:", this.roomId);
       await deletePublicRoom(this.roomId);
       
       // Also clean up presence data
       const roomPresenceRef = ref(rtdb, `PublicRoomPresence/${this.roomId}`);
       await remove(roomPresenceRef);
-      console.log("[PRESENCE] Room and presence data deleted");
     }
   }
 
@@ -209,7 +196,6 @@ export class PublicRoomPresence {
 
       // If no active users and room has been idle for 5+ minutes, clean it up
       if (!hasActiveUser && now - latestActivity > STALE_ROOM_THRESHOLD) {
-        console.log("[PRESENCE] Cleaning up stale room:", roomId);
         await deletePublicRoom(roomId);
         
         const roomPresenceRef = ref(rtdb, `PublicRoomPresence/${roomId}`);

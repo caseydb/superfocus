@@ -7,6 +7,7 @@ interface UserState {
   last_name: string | null;
   email: string | null;
   profile_image: string | null;
+  timezone: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -17,9 +18,12 @@ const initialState: UserState = {
   last_name: null,
   email: null,
   profile_image: null,
+  timezone: null,
   loading: false,
   error: null,
 };
+
+console.log("[USER_SLICE] Initial state created:", initialState);
 
 export const fetchUserData = createAsyncThunk(
   'user/fetchUserData',
@@ -47,7 +51,7 @@ export const fetchUserData = createAsyncThunk(
 
 export const updateUserData = createAsyncThunk(
   'user/updateUserData',
-  async (userData: { first_name?: string; last_name?: string }) => {
+  async (userData: { first_name?: string; last_name?: string; timezone?: string }) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error('No authenticated user');
@@ -94,12 +98,14 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUserData.fulfilled, (state, action) => {
+        console.log("[USER_SLICE] fetchUserData.fulfilled - Setting user state:", action.payload);
         state.loading = false;
         state.user_id = action.payload.user_id;
         state.first_name = action.payload.first_name;
         state.last_name = action.payload.last_name;
         state.email = action.payload.email;
         state.profile_image = action.payload.profile_image;
+        state.timezone = action.payload.timezone;
       })
       .addCase(fetchUserData.rejected, (state, action) => {
         state.loading = false;
@@ -116,6 +122,7 @@ const userSlice = createSlice({
         state.last_name = action.payload.last_name;
         state.email = action.payload.email;
         state.profile_image = action.payload.profile_image;
+        state.timezone = action.payload.timezone;
       })
       .addCase(updateUserData.rejected, (state, action) => {
         state.loading = false;

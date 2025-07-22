@@ -12,11 +12,9 @@ function generateRoomUrl(): string {
 }
 
 export async function createPublicRoom(userId: string, customUrl?: string): Promise<PublicRoom> {
-  console.log("[PUBLICROOMS] createPublicRoom called", { userId, customUrl });
   const publicRoomsRef = ref(rtdb, "PublicRooms");
   const newRoomRef = push(publicRoomsRef);
   const roomUrl = customUrl || generateRoomUrl();
-  console.log("[PUBLICROOMS] Generated room URL:", roomUrl, "ID:", newRoomRef.key);
   
   const newRoom: PublicRoomFromDB = {
     url: roomUrl,
@@ -25,41 +23,33 @@ export async function createPublicRoom(userId: string, customUrl?: string): Prom
     userCount: 0 // Will be tracked by presence system
   };
   
-  console.log("[PUBLICROOMS] Writing to Firebase:", newRoom);
   await set(newRoomRef, newRoom);
-  console.log("[PUBLICROOMS] Successfully written to Firebase");
   
   const result = {
     id: newRoomRef.key!,
     ...newRoom
   };
-  console.log("[PUBLICROOMS] Returning:", result);
   return result;
 }
 
 export async function getPublicRoomByUrl(url: string): Promise<PublicRoom | null> {
-  console.log("[PUBLICROOMS] getPublicRoomByUrl called with URL:", url);
   const publicRoomsRef = ref(rtdb, "PublicRooms");
   const snapshot = await get(publicRoomsRef);
   
   if (!snapshot.exists()) {
-    console.log("[PUBLICROOMS] No PublicRooms exist in Firebase");
     return null;
   }
   
   const rooms = snapshot.val();
-  console.log("[PUBLICROOMS] Found rooms in Firebase:", rooms);
   
   for (const [id, room] of Object.entries(rooms)) {
     const roomData = room as PublicRoomFromDB;
-    console.log("[PUBLICROOMS] Checking room:", { id, url: roomData.url, against: url, match: roomData.url === url });
     if (roomData.url === url) {
       // Check if this room has any presence data
       const presenceRef = ref(rtdb, `PublicRoomPresence/${id}`);
       const presenceSnapshot = await get(presenceRef);
       
       if (!presenceSnapshot.exists()) {
-        console.log("[PUBLICROOMS] Room found but has no presence data - it's orphaned, deleting it");
         await deletePublicRoom(id);
         continue; // Check next room
       }
@@ -68,12 +58,10 @@ export async function getPublicRoomByUrl(url: string): Promise<PublicRoom | null
         id,
         ...roomData
       };
-      console.log("[PUBLICROOMS] Found matching room with active presence:", result);
       return result;
     }
   }
   
-  console.log("[PUBLICROOMS] No matching room found for URL:", url);
   return null;
 }
 
@@ -153,7 +141,6 @@ export async function decrementUserCount(roomId: string): Promise<void> {
       }
       
       const newCount = Math.max(0, currentCount - 1);
-      console.log(`[PUBLICROOMS] Decrementing user count for room ${roomId}: ${currentCount} -> ${newCount}`);
       
       // Always return the new count, let Cloud Function handle deletion when it reaches 0
       return newCount;
@@ -165,7 +152,6 @@ export async function decrementUserCount(roomId: string): Promise<void> {
 
 // Add user to public room
 export async function addUserToPublicRoom(roomId: string, userId: string, displayName: string): Promise<void> {
-  console.log("[PUBLIC_ROOMS] Adding user to room:", { roomId, userId, displayName });
   
   // Add user to users list
   const userRef = ref(rtdb, `PublicRooms/${roomId}/users/${userId}`);
@@ -181,13 +167,11 @@ export async function addUserToPublicRoom(roomId: string, userId: string, displa
     const room = snapshot.val();
     const userCount = room.users ? Object.keys(room.users).length : 0;
     await set(ref(rtdb, `PublicRooms/${roomId}/userCount`), userCount);
-    console.log("[PUBLIC_ROOMS] Updated user count to:", userCount);
   }
 }
 
 // Remove user from public room
 export async function removeUserFromPublicRoom(roomId: string, userId: string): Promise<void> {
-  console.log("[PUBLIC_ROOMS] Removing user from room:", { roomId, userId });
   
   // Remove user from users list
   const userRef = ref(rtdb, `PublicRooms/${roomId}/users/${userId}`);
@@ -200,11 +184,9 @@ export async function removeUserFromPublicRoom(roomId: string, userId: string): 
     const room = snapshot.val();
     const userCount = room.users ? Object.keys(room.users).length : 0;
     await set(ref(rtdb, `PublicRooms/${roomId}/userCount`), userCount);
-    console.log("[PUBLIC_ROOMS] Updated user count to:", userCount);
     
     // If no users left, delete the room
     if (userCount === 0) {
-      console.log("[PUBLIC_ROOMS] No users left, deleting room:", roomId);
       await deletePublicRoom(roomId);
       
       // Also clean up presence data
