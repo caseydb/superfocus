@@ -1,12 +1,13 @@
 // app/InstanceContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { rtdb } from "../../lib/firebase";
-import { ref, onValue, push, set, off, remove, get } from "firebase/database";
+import { ref, onValue, set, off, remove, get } from "firebase/database";
 import type { DataSnapshot } from "firebase/database";
 import type { Instance, InstanceType, User } from "../types";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createPublicRoom } from "@/app/utils/publicRooms";
+import { createPrivateRoom } from "@/app/utils/privateRooms";
 
 type InstanceFromDB = Omit<Instance, "id" | "users"> & { users?: Record<string, User> };
 
@@ -154,19 +155,26 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           console.error("[INSTANCES] Failed to create public room:", error);
         }
       } else {
-        // Keep legacy behavior for private rooms
-        const instancesRef = ref(rtdb, "instances");
-        const newInstanceRef = push(instancesRef);
-        const roomUrl = customUrl || generateRoomUrl();
-        const newInstance: Omit<Instance, "id" | "users"> & { users: { [id: string]: User } } = {
-          type,
-          users: { [user.id]: user },
-          createdBy: user.id,
-          url: roomUrl,
-        };
-        set(newInstanceRef, newInstance);
-        // NOTE: Disconnect handling is now managed by RoomShell component with tab counting
-        setCurrentInstance({ ...newInstance, id: newInstanceRef.key!, users: [user] });
+        // Use new PrivateRooms system for private rooms
+        try {
+          console.log("[INSTANCES] Creating PrivateRoom...");
+          const privateRoom = await createPrivateRoom(user.id, customUrl || generateRoomUrl());
+          console.log("[INSTANCES] PrivateRoom created:", privateRoom);
+          
+          // Create a temporary Instance object for compatibility
+          const tempInstance: Instance = {
+            id: privateRoom.id,
+            type: "private",
+            users: [user],
+            createdBy: privateRoom.createdBy,
+            url: privateRoom.url,
+          };
+          console.log("[INSTANCES] Setting currentInstance to:", tempInstance);
+          setCurrentInstance(tempInstance);
+          console.log("[INSTANCES] currentInstance set successfully");
+        } catch (error) {
+          console.error("[INSTANCES] Failed to create private room:", error);
+        }
       }
     },
     [user, userReady]

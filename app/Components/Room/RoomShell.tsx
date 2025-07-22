@@ -29,6 +29,8 @@ import Image from "next/image";
 import { getPublicRoomByUrl } from "@/app/utils/publicRooms";
 import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
+import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
+import { PrivateRoomPresence } from "@/app/utils/privateRoomPresence";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
@@ -36,6 +38,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [roomFound, setRoomFound] = useState(false);
   const [publicRoomId, setPublicRoomId] = useState<string | null>(null);
   const [publicRoomPresence, setPublicRoomPresence] = useState<PublicRoomPresence | null>(null);
+  const [privateRoomId, setPrivateRoomId] = useState<string | null>(null);
+  const [privateRoomPresence, setPrivateRoomPresence] = useState<PrivateRoomPresence | null>(null);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -265,6 +269,56 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         console.error("Error checking public room:", error);
       }
       
+      // If not found in PublicRooms, check PrivateRooms
+      console.log("[ROOMSHELL] Checking PrivateRooms...");
+      try {
+        const privateRoom = await getPrivateRoomByUrl(roomUrl);
+        console.log("[ROOMSHELL] PrivateRoom search result:", privateRoom);
+        if (privateRoom) {
+          // Only join if we're not already in this room
+          if (!privateRoomId || privateRoomId !== privateRoom.id) {
+            // Create presence manager for private rooms
+            const presence = new PrivateRoomPresence(privateRoom.id, user.id);
+            const joined = await presence.join();
+            
+            if (!joined) {
+              // This shouldn't happen for private rooms, but handle it
+              console.log("[ROOMSHELL] Failed to join private room");
+              setRoomFound(false);
+              setLoading(false);
+              return;
+            }
+            
+            // Store presence manager
+            setPrivateRoomPresence(presence);
+            
+            // Add user to PrivateRoom users list and update count
+            await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
+            console.log("[ROOMSHELL] Added user to PrivateRoom users list");
+          }
+          
+          setRoomFound(true);
+          // Store the private room ID for cleanup later
+          setPrivateRoomId(privateRoom.id);
+          
+          // Create a temporary Instance object for compatibility with the rest of the app
+          const tempInstance: Instance = {
+            id: privateRoom.id,
+            type: "private",
+            users: [user], // Just show current user for now
+            createdBy: privateRoom.createdBy,
+            url: privateRoom.url,
+          };
+          
+          // Set this as the current instance in the context
+          setPublicRoomInstance(tempInstance);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking private room:", error);
+      }
+      
       console.log("[ROOMSHELL] Room not found anywhere");
       setRoomFound(false);
       setLoading(false);
@@ -284,7 +338,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         clearTimeout(timer);
       };
     }
-  }, [instances, roomUrl, currentInstance, joinInstance, userReady, publicRoomId, setPublicRoomInstance, user, publicRoomPresence]);
+  }, [instances, roomUrl, currentInstance, joinInstance, userReady, publicRoomId, privateRoomId, setPublicRoomInstance, user, publicRoomPresence, privateRoomPresence]);
 
   // Track user tab count to handle multi-tab scenarios
   const userTabCountRef = React.useRef(0);
@@ -332,9 +386,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           remove(usersRef); // Also remove from main users list
           
           // Also remove from PublicRooms if this is a public room
-          if (currentInstance.type === "public") {
-            const publicRoomUserRef = ref(rtdb, `PublicRooms/${currentInstance.id}/users/${user.id}`);
+          if (currentInstance.type === "public" && publicRoomId) {
+            const publicRoomUserRef = ref(rtdb, `PublicRooms/${publicRoomId}/users/${user.id}`);
             remove(publicRoomUserRef);
+          }
+          
+          // Also remove from PrivateRooms if this is a private room
+          if (currentInstance.type === "private" && privateRoomId) {
+            removeUserFromPrivateRoom(privateRoomId, user.id);
           }
           
           return null; // Remove the entire node
@@ -391,17 +450,21 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       off(tabCountRef, "value", handle);
     };
-  }, [currentInstance, user]);
+  }, [currentInstance, user, publicRoomId, privateRoomId]);
 
-  // Clean up PublicRoom presence when leaving
+  // Clean up room presence when leaving
   useEffect(() => {
-    if (!publicRoomPresence) return;
+    if (!publicRoomPresence && !privateRoomPresence) return;
     
     // Add beforeunload handler for immediate cleanup
     const handleBeforeUnload = () => {
-      console.log("[ROOMSHELL] beforeunload - cleaning up PublicRoom presence");
+      console.log("[ROOMSHELL] beforeunload - cleaning up room presence");
       // Can't use async in beforeunload, so we'll do a sync cleanup attempt
       if (publicRoomPresence) {
+        // Use navigator.sendBeacon to make a cleanup request
+        // For now, we'll rely on the cleanup effect and onDisconnect
+      }
+      if (privateRoomPresence) {
         // Use navigator.sendBeacon to make a cleanup request
         // For now, we'll rely on the cleanup effect and onDisconnect
       }
@@ -415,8 +478,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         console.log("[ROOMSHELL] Cleaning up PublicRoom presence");
         publicRoomPresence.leave();
       }
+      if (privateRoomPresence) {
+        console.log("[ROOMSHELL] Cleaning up PrivateRoom presence");
+        privateRoomPresence.leave();
+      }
     };
-  }, [publicRoomPresence]);
+  }, [publicRoomPresence, privateRoomPresence]);
 
   // Track active user status in Firebase RTDB
   const handleActiveChange = (isActive: boolean) => {
