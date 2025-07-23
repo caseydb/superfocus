@@ -1,0 +1,27 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - echo "No backend build needed"
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm
+        - pnpm install
+        # Print environment variables for debugging (remove in production)
+        - echo "Checking environment variables..."
+        - echo "DATABASE_URL exists:" && [ ! -z "$DATABASE_URL" ] && echo "Yes" || echo "No"
+        - echo "FIREBASE_PROJECT_ID exists:" && [ ! -z "$FIREBASE_PROJECT_ID" ] && echo "Yes" || echo "No"
+    build:
+      commands:
+        - pnpm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .pnpm-store/**/*
