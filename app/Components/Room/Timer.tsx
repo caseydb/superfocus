@@ -486,7 +486,8 @@ export default function Timer({
       saveTimerState(true, seconds);
     }, 50);
 
-    // Only play start sound if this is an initial start (not a resume)
+    // Only play start sound and notify if this is an initial start (not a resume from paused state)
+    // Check if seconds is 0 to ensure this is a fresh start, not resuming a paused timer
     if (seconds === 0) {
       // Always play start sound locally
       const startAudio = new Audio("/started.mp3");

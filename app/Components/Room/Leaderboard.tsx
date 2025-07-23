@@ -127,12 +127,46 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [currentSprint, setCurrentSprint] = useState(getCurrentSprintNumber());
+  const [postgresRoomId, setPostgresRoomId] = useState<string | null>(null);
 
-  // Fetch leaderboard data from API
+  // First, get the PostgreSQL room ID from the slug
+  useEffect(() => {
+    async function fetchRoomId() {
+      try {
+        // Get the slug from the current URL
+        const pathParts = window.location.pathname.split('/');
+        const slug = pathParts[pathParts.length - 1];
+        
+        if (!slug) {
+          console.error('[Leaderboard] No slug found in URL');
+          setLoading(false);
+          return;
+        }
+
+        // Fetch the PostgreSQL room ID using the slug
+        const roomResponse = await fetch(`/api/room/by-slug?slug=${slug}`);
+        const roomResult = await roomResponse.json();
+        
+        if (roomResult.success && roomResult.room) {
+          setPostgresRoomId(roomResult.room.id);
+        } else {
+          console.error('[Leaderboard] Failed to get room by slug:', roomResult.error);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('[Leaderboard] Failed to fetch room ID:', error);
+        setLoading(false);
+      }
+    }
+    
+    fetchRoomId();
+  }, []);
+
+  // Fetch leaderboard data from API using PostgreSQL room ID
   useEffect(() => {
     async function fetchLeaderboardData() {
       try {
-        const response = await fetch('/api/leaderboard');
+        const response = await fetch(`/api/leaderboard?roomId=${postgresRoomId}`);
         const result = await response.json();
         
         if (result.success) {
@@ -148,8 +182,10 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
       }
     }
     
-    fetchLeaderboardData();
-  }, []);
+    if (postgresRoomId) {
+      fetchLeaderboardData();
+    }
+  }, [postgresRoomId]);
 
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
