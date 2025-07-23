@@ -13,7 +13,9 @@ import {
   addTask,
   createTaskThunk,
   setActiveTask,
+  reorderTasks,
 } from "../../store/taskSlice";
+import { addHistoryEntry } from "../../store/historySlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set, remove, update, get, onDisconnect } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
@@ -60,10 +62,12 @@ export default function Timer({
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
   const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
-  const [inactivityTimeout] = useState(3600); // Default 1 hour
-  const inactivityDurationRef = useRef(3600); // Track timeout duration in ref to avoid effect re-runs
+  const inactivityDurationRef = useRef(120); // Track timeout duration in ref to avoid effect re-runs
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Get preferences from Redux
+  const preferences = useSelector((state: RootState) => state.preferences);
 
   // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
@@ -249,10 +253,10 @@ export default function Timer({
     localVolumeRef.current = localVolume;
   }, [localVolume]);
 
-  // Keep inactivityDurationRef in sync with inactivityTimeout state
+  // Keep inactivityDurationRef in sync with preferences focus_check_time (convert minutes to seconds)
   useEffect(() => {
-    inactivityDurationRef.current = inactivityTimeout;
-  }, [inactivityTimeout]);
+    inactivityDurationRef.current = preferences.focus_check_time * 60;
+  }, [preferences.focus_check_time]);
 
   // Update display every second when running (local only, no Firebase writes)
   useEffect(() => {
@@ -274,11 +278,6 @@ export default function Timer({
         clearTimeout(inactivityTimeoutRef.current);
         inactivityTimeoutRef.current = null;
       }
-      return;
-    }
-
-    // Don't start if set to "never"
-    if (inactivityDurationRef.current === Infinity) {
       return;
     }
 
@@ -499,12 +498,23 @@ export default function Timer({
     }
   }
 
-  // Helper to move task to position #1 in task list (removed - task list not in TaskBuffer)
+  // Helper to move task to position #1 in task list
   const moveTaskToTop = React.useCallback(async (): Promise<void> => {
-    // Task list operations should be handled through PostgreSQL
-    // This is a no-op for now
+    if (!task?.trim()) return;
+    
+    const taskName = task.trim();
+    const currentTaskIndex = reduxTasks.findIndex((t) => t.name === taskName);
+    
+    if (currentTaskIndex > 0) {
+      // Task exists but not at position 0, move it to the top
+      const reorderedTasks = [...reduxTasks];
+      const [taskToMove] = reorderedTasks.splice(currentTaskIndex, 1);
+      reorderedTasks.unshift(taskToMove);
+      dispatch(reorderTasks(reorderedTasks));
+    }
+    // If task is already at position 0 or doesn't exist yet, no need to reorder
     return Promise.resolve();
-  }, []);
+  }, [task, reduxTasks, dispatch]);
 
   // Helper to mark matching task as completed in task list (removed - task list not in TaskBuffer)
   const completeTaskInList = React.useCallback(async () => {
@@ -608,21 +618,19 @@ export default function Timer({
       clearTimeout(inactivityTimeoutRef.current);
     }
     // Start a new inactivity timer based on user preference
-    if (inactivityDurationRef.current !== Infinity) {
-      inactivityTimeoutRef.current = setTimeout(() => {
-        if (running) {
-          setShowStillWorkingModal(true);
-          setModalCountdown(300); // 5 minutes
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (running) {
+        setShowStillWorkingModal(true);
+        setModalCountdown(300); // 5 minutes
 
-          // Play inactive sound locally only if not muted (check current volume from ref)
-          if (localVolumeRef.current > 0) {
-            const inactiveAudio = new Audio("/inactive.mp3");
-            inactiveAudio.volume = localVolumeRef.current;
-            inactiveAudio.play();
-          }
+        // Play inactive sound locally only if not muted (check current volume from ref)
+        if (localVolumeRef.current > 0) {
+          const inactiveAudio = new Audio("/inactive.mp3");
+          inactiveAudio.volume = localVolumeRef.current;
+          inactiveAudio.play();
         }
-      }, inactivityDurationRef.current * 1000);
-    }
+      }
+    }, inactivityDurationRef.current * 1000);
   };
 
   // Handle "No, pause it" response
@@ -728,7 +736,7 @@ export default function Timer({
                     const token = localStorage.getItem("firebase_token") || "";
 
                     try {
-                      await dispatch(
+                      const result = await dispatch(
                         transferTaskToPostgres({
                           taskId: activeTaskForTransfer.id,
                           firebaseUserId: user.id,
@@ -738,6 +746,18 @@ export default function Timer({
                         })
                       ).unwrap();
 
+                      // Add optimistic update to history
+                      if (result && result.savedTask && reduxUser?.user_id) {
+                        dispatch(
+                          addHistoryEntry({
+                            taskId: result.savedTask.id,
+                            userId: reduxUser.user_id,
+                            displayName: `${reduxUser.first_name || ""} ${reduxUser.last_name || ""}`.trim() || "Anonymous",
+                            taskName: result.savedTask.task_name || task || "Unnamed Task",
+                            duration: seconds,
+                          })
+                        );
+                      }
 
                     } catch (error) {
                       // Show error message to user
@@ -821,12 +841,10 @@ export default function Timer({
             <h2 className="text-2xl font-bold text-white mb-4 text-center">Are you still working?</h2>
             <p className="text-gray-300 mb-6 text-center">
               Your timer has been going for{" "}
-              {inactivityTimeout < 60
-                ? `${inactivityTimeout} second${inactivityTimeout !== 1 ? "s" : ""}`
-                : inactivityTimeout < 3600
-                ? `${Math.floor(inactivityTimeout / 60)} minute${Math.floor(inactivityTimeout / 60) !== 1 ? "s" : ""}`
-                : `${Math.floor(inactivityTimeout / 3600)} hour${
-                    Math.floor(inactivityTimeout / 3600) !== 1 ? "s" : ""
+              {preferences.focus_check_time < 60
+                ? `${preferences.focus_check_time} minute${preferences.focus_check_time !== 1 ? "s" : ""}`
+                : `${Math.floor(preferences.focus_check_time / 60)} hour${
+                    Math.floor(preferences.focus_check_time / 60) !== 1 ? "s" : ""
                   }`}
               . Are you still working on &quot;{task}&quot;?
             </p>

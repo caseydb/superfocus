@@ -703,7 +703,7 @@ const taskSlice = createSlice({
         status: "not_started",
         isOptimistic: true,
       };
-      state.tasks.push(newTask);
+      state.tasks.unshift(newTask);
     },
     // Mark task as synced with database
     markTaskSynced: (state, action: PayloadAction<string>) => {

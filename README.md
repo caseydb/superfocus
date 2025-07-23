@@ -19,5 +19,6 @@ bun dev
 
 - npx prisma migrate dev casey
 - npx prisma generate
+- npx prisma db push
 
 - test....

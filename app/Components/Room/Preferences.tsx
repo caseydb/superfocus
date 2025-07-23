@@ -6,6 +6,7 @@ import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { updateUser, updateUserData } from "../../store/userSlice";
+import { updatePreferences } from "../../store/preferenceSlice";
 
 interface PreferencesProps {
   onClose: () => void;
@@ -15,12 +16,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
   const { user, currentInstance } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
   const reduxUser = useSelector((state: RootState) => state.user);
+  const preferences = useSelector((state: RootState) => state.preferences);
 
   // Preference states
-  const [inactivityTimeout, setInactivityTimeout] = useState("3600"); // Default 1 hour in seconds
   const [displayName, setDisplayName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
-  const [taskSelectionMode, setTaskSelectionMode] = useState("dropdown"); // "dropdown" or "sidebar"
 
   // Initialize display name from Redux user data
   useEffect(() => {
@@ -32,26 +32,6 @@ export default function Preferences({ onClose }: PreferencesProps) {
     }
   }, [reduxUser.first_name, reduxUser.last_name, user?.displayName]);
 
-  // TODO: Replace with Firebase RTDB listener for preferences
-  // Load preferences from Firebase on mount
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
-    // const handle = onValue(prefsRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data) {
-    //     setInactivityTimeout(data.inactivityTimeout ?? "3600");
-    //     setTaskSelectionMode(data.taskSelectionMode ?? "dropdown");
-    //   }
-    // });
-
-    // return () => off(prefsRef, "value", handle);
-
-    // Temporary: Use default values
-    setInactivityTimeout("3600");
-    setTaskSelectionMode("dropdown");
-  }, [user?.id]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
@@ -211,11 +191,21 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <p className="text-sm text-gray-400 mt-1">Choose how to select tasks when clicking the input field</p>
               </div>
               <select
-                value={taskSelectionMode}
-                onChange={(e) => {
+                value={preferences.task_selection_mode}
+                onChange={async (e) => {
                   const newValue = e.target.value;
-                  setTaskSelectionMode(newValue);
-                  // TODO: savePreferences({ taskSelectionMode: newValue });
+                  if (reduxUser.user_id) {
+                    try {
+                      await dispatch(
+                        updatePreferences({
+                          userId: reduxUser.user_id,
+                          updates: { task_selection_mode: newValue }
+                        })
+                      ).unwrap();
+                    } catch (error) {
+                      console.error("Failed to update task selection mode:", error);
+                    }
+                  }
                 }}
                 className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
               >
@@ -224,28 +214,36 @@ export default function Preferences({ onClose }: PreferencesProps) {
               </select>
             </div>
 
-            {/* Inactivity Timeout */}
+            {/* Focus Check */}
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-white font-medium">Focus Check</label>
                 <p className="text-sm text-gray-400 mt-1">Check if still working after this duration</p>
               </div>
               <select
-                value={inactivityTimeout}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setInactivityTimeout(newValue);
-                  // TODO: savePreferences({ inactivityTimeout: newValue });
+                value={preferences.focus_check_time}
+                onChange={async (e) => {
+                  const newValue = parseInt(e.target.value);
+                  if (reduxUser.user_id) {
+                    try {
+                      await dispatch(
+                        updatePreferences({
+                          userId: reduxUser.user_id,
+                          updates: { focus_check_time: newValue }
+                        })
+                      ).unwrap();
+                    } catch (error) {
+                      console.error("Failed to update focus check time:", error);
+                    }
+                  }
                 }}
                 className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
               >
-                <option value="900">15 minutes</option>
-                <option value="1800">30 minutes</option>
-                <option value="3600">1 hour</option>
-                <option value="7200">2 hours</option>
-                <option value="10800">3 hours</option>
-                <option value="14400">4 hours</option>
-                <option value="never">Never</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="120">2 hours</option>
               </select>
             </div>
           </div>

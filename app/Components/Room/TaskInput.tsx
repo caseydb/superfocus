@@ -3,9 +3,6 @@ import React from "react";
 import { useInstance } from "../Instances";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, onValue, off } from "firebase/database";
 
 const maxLen = 69;
 
@@ -29,20 +26,20 @@ export default function TaskInput({
   onStart?: () => void;
   setShowTaskList?: (show: boolean) => void;
 }) {
-  const { user } = useInstance();
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = React.useState(false);
   const [showLimitPopup, setShowLimitPopup] = React.useState(false);
   const [availableTasks, setAvailableTasks] = React.useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = React.useState<Task[]>([]);
   const [showTaskSuggestions, setShowTaskSuggestions] = React.useState(false);
   const [selectedTaskIndex, setSelectedTaskIndex] = React.useState(-1); // -1 means input is focused
   const suggestionsContainerRef = React.useRef<HTMLDivElement>(null);
-  const [taskSelectionMode, setTaskSelectionMode] = React.useState("dropdown"); // default to dropdown
 
-  // Get tasks from Redux store
+  // Get tasks and preferences from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+  const preferences = useSelector((state: RootState) => state.preferences);
   
   // Filter and sort available tasks from Redux
   React.useEffect(() => {
@@ -58,26 +55,27 @@ export default function TaskInput({
       }));
     
     setAvailableTasks(incompleteTasks);
+    // Initialize filtered tasks with all available tasks
+    setFilteredTasks(incompleteTasks);
   }, [reduxTasks]);
 
-  // TODO: Replace with Firebase RTDB listener for preferences
-  // Load user's task selection mode preference
+  // Filter tasks based on input text
   React.useEffect(() => {
-    if (!user?.id) return;
-    
-    // const prefsRef = ref(rtdb, `users/${user.id}/preferences`);
-    // const handle = onValue(prefsRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data && data.taskSelectionMode) {
-    //     setTaskSelectionMode(data.taskSelectionMode);
-    //   }
-    // });
-    
-    // Temporary: Use default dropdown mode
-    setTaskSelectionMode("dropdown");
-    
-    // return () => off(prefsRef, "value", handle);
-  }, [user?.id]);
+    if (task.trim()) {
+      // Filter tasks that contain the typed text (case-insensitive)
+      const filtered = availableTasks.filter((taskItem) =>
+        taskItem.text.toLowerCase().includes(task.toLowerCase().trim())
+      );
+      setFilteredTasks(filtered);
+      // Keep selection on input field, not on dropdown items
+      setSelectedTaskIndex(-1);
+    } else {
+      // Show all tasks when input is empty
+      setFilteredTasks(availableTasks);
+      setSelectedTaskIndex(-1);
+    }
+  }, [task, availableTasks]);
+
 
   const updateInputWidth = React.useCallback(() => {
     if (spanRef.current && typeof window !== "undefined") {
@@ -180,10 +178,9 @@ export default function TaskInput({
           }
           
           setTask(newValue.slice(0, maxLen));
-          // Hide suggestions when user starts typing
-          if (newValue.trim()) {
-            setShowTaskSuggestions(false);
-            setSelectedTaskIndex(-1);
+          // Show suggestions when typing in dropdown mode
+          if (preferences.task_selection_mode === "dropdown") {
+            setShowTaskSuggestions(true);
           }
         }}
         maxLength={maxLen}
@@ -191,35 +188,31 @@ export default function TaskInput({
           disabled ? "cursor-not-allowed" : "bg-transparent"
         }`}
         placeholder="What are you focusing on?"
-        autoFocus
         rows={1}
         style={{ width: inputWidth }}
         onFocus={() => {
           setIsFocused(true);
-          if (!task.trim() && availableTasks.length > 0) {
-            if (taskSelectionMode === "dropdown") {
-              setShowTaskSuggestions(true);
-            } else if (taskSelectionMode === "sidebar" && setShowTaskList) {
-              setShowTaskList(true);
-              // Keep focus on this input when opening sidebar
-              setTimeout(() => {
-                textareaRef.current?.focus();
-              }, 50);
-            }
+          // Show dropdown if in dropdown mode and there are tasks to show
+          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0) {
+            setShowTaskSuggestions(true);
+          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim()) {
+            setShowTaskList(true);
+            // Keep focus on this input when opening sidebar
+            setTimeout(() => {
+              textareaRef.current?.focus();
+            }, 50);
           }
         }}
         onClick={() => {
           // Show suggestions when clicking, even if already focused
-          if (!task.trim() && availableTasks.length > 0) {
-            if (taskSelectionMode === "dropdown") {
-              setShowTaskSuggestions(true);
-            } else if (taskSelectionMode === "sidebar" && setShowTaskList) {
-              setShowTaskList(true);
-              // Keep focus on this input when opening sidebar
-              setTimeout(() => {
-                textareaRef.current?.focus();
-              }, 50);
-            }
+          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0) {
+            setShowTaskSuggestions(true);
+          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim()) {
+            setShowTaskList(true);
+            // Keep focus on this input when opening sidebar
+            setTimeout(() => {
+              textareaRef.current?.focus();
+            }, 50);
           }
         }}
         onBlur={() => {
@@ -234,18 +227,16 @@ export default function TaskInput({
         onKeyDown={(e) => {
           if (e.key === "Enter" && !disabled) {
             e.preventDefault();
-            // If a task is selected from suggestions, use that task
-            if (showTaskSuggestions && selectedTaskIndex >= 0 && selectedTaskIndex < availableTasks.length) {
-              setTask(availableTasks[selectedTaskIndex].text);
-              setShowTaskSuggestions(false);
-              setSelectedTaskIndex(-1);
-            } else if (onStart) {
+            // Always start a new task on Enter, don't select from dropdown
+            if (onStart) {
               onStart();
             }
+            setShowTaskSuggestions(false);
+            setSelectedTaskIndex(-1);
           } else if (e.key === "ArrowDown" && showTaskSuggestions) {
             e.preventDefault();
             setSelectedTaskIndex((prev) => {
-              const newIndex = prev < availableTasks.length - 1 ? prev + 1 : prev;
+              const newIndex = prev < filteredTasks.length - 1 ? prev + 1 : prev;
               // Scroll to keep selected item in view
               if (newIndex !== prev) {
                 setTimeout(() => scrollToSelectedItem(newIndex), 0);
@@ -282,7 +273,7 @@ export default function TaskInput({
       />
 
       {/* Task Suggestions */}
-      {showTaskSuggestions && availableTasks.length > 0 && (
+      {showTaskSuggestions && filteredTasks.length > 0 && (
         <div
           ref={suggestionsContainerRef}
           className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
@@ -297,9 +288,11 @@ export default function TaskInput({
             overflowY: "auto",
           }}
         >
-          <div className="text-xs text-gray-400 mb-2 px-2 font-mono">Choose from existing tasks:</div>
+          <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
+            {task.trim() ? `Tasks matching "${task}":` : "Choose from existing tasks:"}
+          </div>
           <div className="space-y-1">
-            {availableTasks.map((taskItem, index) => (
+            {filteredTasks.map((taskItem, index) => (
               <button
                 key={taskItem.id}
                 onClick={() => {

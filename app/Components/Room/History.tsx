@@ -1,49 +1,34 @@
 //History
 
 import React, { useEffect, useState } from "react";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, onValue, off } from "firebase/database";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 
-interface HistoryEntry {
-  displayName: string;
-  task: string;
-  duration: string;
-  timestamp: number;
-  userId?: string;
-}
 
-interface User {
-  id: string;
-  displayName: string;
-}
-
-function formatDuration(duration: string): string {
-  // Parse the duration string (could be HH:MM:SS or MM:SS)
-  const parts = duration.split(":").map(Number);
-
-  if (parts.length === 3) {
-    // HH:MM:SS format
-    const [hours, minutes, seconds] = parts;
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    } else {
-      return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    }
-  } else if (parts.length === 2) {
-    // MM:SS format - check if minutes >= 60
-    const [minutes, seconds] = parts;
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      return `${hours}:${remainingMinutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    } else {
-      return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    }
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    // Today - show time
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  } else {
+    // Show date
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
   }
-
-  // Fallback - return as is
-  return duration;
 }
 
 // Truncate text to specified length
@@ -73,18 +58,17 @@ const calculatePageSize = (width: number, height: number) => {
 };
 
 export default function History({
-  roomId,
   userId,
   onClose,
 }: {
-  roomId: string;
   userId?: string;
   onClose?: () => void;
 }) {
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Get history from Redux
+  const history = useSelector((state: RootState) => state.history.entries);
+  const loading = useSelector((state: RootState) => state.history.loading);
+  
   const [page, setPage] = useState(1);
-  const [users, setUsers] = useState<Record<string, User>>({});
   const [pageSize, setPageSize] = useState(3); // Default to 3
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
   const [showOnlyMine, setShowOnlyMine] = useState(false);
@@ -98,16 +82,7 @@ export default function History({
     const tasksToCalculate = filteredHistory.filter((entry) => !entry.task.toLowerCase().includes("quit early"));
 
     tasksToCalculate.forEach((entry) => {
-      const parts = entry.duration.split(":").map(Number);
-      if (parts.length === 3) {
-        // HH:MM:SS format
-        const [hours, minutes, seconds] = parts;
-        totalSeconds += hours * 3600 + minutes * 60 + seconds;
-      } else if (parts.length === 2) {
-        // MM:SS format - check if minutes >= 60
-        const [minutes, seconds] = parts;
-        totalSeconds += minutes * 60 + seconds;
-      }
+      totalSeconds += entry.duration;
     });
 
     // Format total time
@@ -149,46 +124,6 @@ export default function History({
     setDynamicWidthClasses(calculateDynamicWidth());
   }, []);
 
-  // TODO: Replace with Firebase RTDB listener for users
-  useEffect(() => {
-    if (!roomId) return;
-    // const usersRef = ref(rtdb, `instances/${roomId}/users`);
-    // const handle = onValue(usersRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data) {
-    //     setUsers(data);
-    //   } else {
-    //     setUsers({});
-    //   }
-    // });
-    // return () => off(usersRef, "value", handle);
-
-    // Temporary: No users data
-    setUsers({});
-  }, [roomId]);
-
-  // TODO: Replace with Firebase RTDB listener for history
-  useEffect(() => {
-    if (!roomId) return;
-    // const historyRef = ref(rtdb, `instances/${roomId}/history`);
-    // const handle = onValue(historyRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data) {
-    //     // Convert to array and sort by timestamp desc
-    //     const arr = Object.values(data) as HistoryEntry[];
-    //     arr.sort((a, b) => b.timestamp - a.timestamp);
-    //     setHistory(arr);
-    //   } else {
-    //     setHistory([]);
-    //   }
-    //   setLoading(false);
-    // });
-    // return () => off(historyRef, "value", handle);
-
-    // Temporary: No history data
-    setHistory([]);
-    setLoading(false);
-  }, [roomId]);
 
   if (loading) {
     return <div className="text-white text-center mt-10">Loading history...</div>;
@@ -285,16 +220,14 @@ export default function History({
                     }`}
                     title={entry.displayName}
                   >
-                    {entry.userId && users[entry.userId]?.displayName
-                      ? users[entry.userId].displayName
-                      : entry.displayName}
+                    {entry.displayName}
                   </div>
                   <div
                     className={`font-mono text-base font-medium flex-shrink-0 ${
                       entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
                     }`}
                   >
-                    {formatDuration(entry.duration)}
+                    {entry.formattedDuration}
                   </div>
                 </div>
                 <div
@@ -305,6 +238,9 @@ export default function History({
                   <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
                   <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
                   <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {formatDate(entry.completedAt)}
                 </div>
               </div>
             ))}
@@ -329,9 +265,7 @@ export default function History({
                       }`}
                       title={entry.displayName}
                     >
-                      {entry.userId && users[entry.userId]?.displayName
-                        ? users[entry.userId].displayName
-                        : entry.displayName}
+                      {entry.displayName}
                     </td>
                     <td
                       className={`px-2 py-1 font-mono text-base ${
@@ -348,7 +282,7 @@ export default function History({
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
                       }`}
                     >
-                      {formatDuration(entry.duration)}
+                      {entry.formattedDuration}
                     </td>
                   </tr>
                 ))}

@@ -27,13 +27,12 @@ model user {
 
 model preference {
   user_id                  String   @id
-  toggle_notes             Boolean  @default(true)
-  toggle_pomodoro          Boolean  @default(true)
-  toggle_pomodoro_overtime Boolean  @default(false)
+  toggle_notes             Boolean  @default(false)
+  toggle_pomodoro          Boolean  @default(false)
+  toggle_pomodoro_overtime Boolean  @default(true)
   sound_volume             Int      @default(50)
-  task_selection_mode      String   @default("sidebar")
-  focus_check_time         Int      @default(15)
-  local_time               String
+  task_selection_mode      String   @default("dropdown")
+  focus_check_time         Int      @default(120)
 
   user                     user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

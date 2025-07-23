@@ -5,6 +5,8 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "./store/store";
 import { fetchUserData, updateUser, updateUserData } from "./store/userSlice";
 import { fetchTasks, checkForActiveTask } from "./store/taskSlice";
+import { fetchPreferences } from "./store/preferenceSlice";
+import { fetchHistory } from "./store/historySlice";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -47,9 +49,30 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         try {
           const userData = await dispatch(fetchUserData()).unwrap();
           
-          // If user data is fetched successfully, fetch tasks from PostgreSQL
+          // If user data is fetched successfully, fetch tasks and preferences from PostgreSQL
           if (userData && userData.user_id) {
+            // Fetch tasks
             await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
+
+            // Fetch user preferences
+            try {
+              await dispatch(fetchPreferences(userData.user_id)).unwrap();
+            } catch (error) {
+              console.error("[ReduxInitializer] Failed to fetch preferences:", error);
+            }
+
+            // Fetch history if we're on a room page
+            if (typeof window !== "undefined") {
+              const pathParts = window.location.pathname.split('/');
+              const slug = pathParts[pathParts.length - 1];
+              if (slug && slug !== '' && !slug.startsWith('_')) {
+                try {
+                  await dispatch(fetchHistory(slug)).unwrap();
+                } catch (error) {
+                  console.error("[ReduxInitializer] Failed to fetch history:", error);
+                }
+              }
+            }
 
             // Check for any active tasks in Firebase TaskBuffer
             await dispatch(
@@ -83,9 +106,30 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
             try {
               const userData = await dispatch(fetchUserData()).unwrap();
               
-              // If user data is fetched successfully, fetch tasks from PostgreSQL
+              // If user data is fetched successfully, fetch tasks and preferences from PostgreSQL
               if (userData && userData.user_id) {
+                // Fetch tasks
                 await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
+
+                // Fetch user preferences
+                try {
+                  await dispatch(fetchPreferences(userData.user_id)).unwrap();
+                } catch (error) {
+                  console.error("[ReduxInitializer] Failed to fetch preferences on retry:", error);
+                }
+
+                // Fetch history if we're on a room page
+                if (typeof window !== "undefined") {
+                  const pathParts = window.location.pathname.split('/');
+                  const slug = pathParts[pathParts.length - 1];
+                  if (slug && slug !== '' && !slug.startsWith('_')) {
+                    try {
+                      await dispatch(fetchHistory(slug)).unwrap();
+                    } catch (error) {
+                      console.error("[ReduxInitializer] Failed to fetch history on retry:", error);
+                    }
+                  }
+                }
 
                 // Check for any active tasks in Firebase TaskBuffer
                 await dispatch(
