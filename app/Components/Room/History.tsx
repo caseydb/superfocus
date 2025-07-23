@@ -162,7 +162,7 @@ export default function History({
     //   }
     // });
     // return () => off(usersRef, "value", handle);
-    
+
     // Temporary: No users data
     setUsers({});
   }, [roomId]);
@@ -184,7 +184,7 @@ export default function History({
     //   setLoading(false);
     // });
     // return () => off(historyRef, "value", handle);
-    
+
     // Temporary: No history data
     setHistory([]);
     setLoading(false);

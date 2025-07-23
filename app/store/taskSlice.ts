@@ -184,7 +184,7 @@ export const transferTaskToPostgres = createAsyncThunk(
       if (!snapshot.exists()) {
         // Check if user has any tasks
         const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
-        const userSnapshot = await get(userTasksRef);
+        await get(userTasksRef);
         throw new Error("Task not found in TaskBuffer - it may have already been completed");
       }
 
@@ -941,7 +941,7 @@ const taskSlice = createSlice({
           }
         }
       })
-      .addCase(checkForActiveTask.rejected, (state, action) => {
+      .addCase(checkForActiveTask.rejected, () => {
         // Silently fail - not critical if we can't restore active task
       })
       // Handle updateTaskStatusThunk

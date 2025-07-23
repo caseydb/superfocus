@@ -1,0 +1,165 @@
+{
+  "users": {
+    "g9EGwyPxjOZHLg3M8tS1yp1lMk42": {
+      "completionHistory": {
+        "-OUhNVQjF0bmf3S8TEFx": {
+          "displayName": "Marc Harrison",
+          "duration": "05:49",
+          "task": "a new task",
+          "timestamp": 1752034314013,
+          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
+        },
+        "-OUhfsPwWSz4tBBfbpIh": {
+          "displayName": "Marc Harrison",
+          "duration": "01:17:38",
+          "task": "get storybook working for list item views",
+          "timestamp": 1752039393071,
+          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
+        },
+        "-OUrQbdNu4FO95vWT6qI": {
+          "displayName": "Marc Harrison",
+          "duration": "05:24",
+          "task": "Talking about locked-in",
+          "timestamp": 1752202902227,
+          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-09": true,
+        "2025-07-10": true
+      },
+      "lastVisits": {
+        "-OUI3gKboWDQnE7K0B5J": 1752202606930,
+        "-OUhM-ANsUQwWsi4Z8Iy": 1752033920383
+      },
+      "notes": {
+        "-OUhLmJB4HWN6D-pOPKX": {
+          "id": "-OUhLmJB4HWN6D-pOPKX",
+          "items": [
+            {
+              "completed": true,
+              "content": "test",
+              "id": "1",
+              "level": 0,
+              "type": "checkbox"
+            },
+            {
+              "completed": true,
+              "content": "test",
+              "id": "2",
+              "level": 0,
+              "type": "checkbox"
+            }
+          ],
+          "lastUpdated": 1752033874161,
+          "taskId": "1752033739559",
+          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
+        },
+        "-OUhNUOYVSkAfexOlHfB": {
+          "id": "-OUhNUOYVSkAfexOlHfB",
+          "items": [
+            {
+              "completed": true,
+              "content": "test",
+              "id": "1",
+              "level": 0,
+              "type": "checkbox"
+            },
+            {
+              "completed": true,
+              "content": "test",
+              "id": "2",
+              "level": 0,
+              "type": "checkbox"
+            }
+          ],
+          "lastUpdated": 1752034309792,
+          "taskId": "1752034309790",
+          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
+        }
+      },
+      "preferences": {
+        "inactivityTimeout": "900",
+        "lastUpdated": 1752202564348,
+        "taskSelectionMode": "dropdown"
+      },
+      "tasks": {
+        "1752034245230": {
+          "completed": false,
+          "order": 5,
+          "text": "Fields heights in comparison view are still wrong. See official image"
+        },
+        "1752034255721": {
+          "completed": false,
+          "order": 6,
+          "text": "Changing slides in slide view is opening the right sidebar"
+        },
+        "1752034278693": {
+          "completed": true,
+          "order": 1,
+          "text": "get storybook working for list item views"
+        },
+        "1752034309790": {
+          "completed": true,
+          "order": 2,
+          "text": "a new task"
+        },
+        "1752034347781": {
+          "completed": false,
+          "order": 8,
+          "text": "feedback - can delete a task that is active/paused"
+        },
+        "1752034364665": {
+          "completed": false,
+          "order": 9,
+          "text": "feedback - allow cancelling a task instead of completing it?"
+        },
+        "1752034383380": {
+          "completed": false,
+          "order": 10,
+          "text": "feedback - maybe some dot journal type actions - carry forward, etc"
+        },
+        "1752034421372": {
+          "completed": false,
+          "order": 11,
+          "text": "feedback - would it be better as an app in the status bar?"
+        },
+        "1752034494229": {
+          "completed": false,
+          "order": 12,
+          "text": "feedback - maybe alerts to check that you are still working on task?"
+        },
+        "1752034632339": {
+          "completed": false,
+          "order": 13,
+          "text": "feedback - AI with screenshots to see if you are still on task?"
+        },
+        "1752034663290": {
+          "completed": false,
+          "order": 14,
+          "text": "feedback - notes list as well as task list, maybe ideas list?"
+        },
+        "1752034860663": {
+          "completed": false,
+          "order": 15,
+          "text": "feedback - stream of completion messages on left instead of noises"
+        },
+        "1752114905937": {
+          "completed": false,
+          "order": 16,
+          "text": "feature - toggle at the top to go into 'solo' mode"
+        },
+        "1752115079562": {
+          "completed": false,
+          "order": 17,
+          "text": "feature - csv output of time on tasks for use in invoicing clients"
+        },
+        "1752202575016": {
+          "completed": true,
+          "order": 0,
+          "text": "Talking about locked-in"
+        }
+      }
+    }
+  }
+}

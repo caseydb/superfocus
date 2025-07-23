@@ -145,8 +145,8 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             url: publicRoom.url,
           };
           setCurrentInstance(tempInstance);
-        } catch (error) {
-          // Silent error handling
+        } catch {
+          // Silent error handling - error details not needed
         }
       } else {
         // Use new PrivateRooms system for private rooms
@@ -162,8 +162,8 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             url: privateRoom.url,
           };
           setCurrentInstance(tempInstance);
-        } catch (error) {
-          // Silent error handling
+        } catch {
+          // Silent error handling - error details not needed
         }
       }
     },

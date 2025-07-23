@@ -35,10 +35,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const tasksLoading = useSelector((state: RootState) => state.tasks.loading);
   
   // Filter for completed tasks only - memoized to prevent infinite re-renders
-  const completedTasks = useMemo(
-    () => tasks.filter((task: Task) => task.status === "completed"),
-    [tasks]
-  );
+  const completedTasks = useMemo(() => {
+    console.log('[Analytics] All tasks from Redux:', tasks);
+    const completed = tasks.filter((task: Task) => task.status === "completed");
+    console.log('[Analytics] Completed tasks:', completed);
+    console.log('[Analytics] Completed tasks count:', completed.length);
+    
+    // Log sample of completed tasks with dates
+    if (completed.length > 0) {
+      console.log('[Analytics] Sample completed tasks with dates:');
+      completed.slice(0, 5).forEach((task, index) => {
+        console.log(`  Task ${index + 1}:`, {
+          name: task.name,
+          completedAt: task.completedAt,
+          completedAtDate: task.completedAt ? new Date(task.completedAt).toISOString() : 'null',
+          createdAt: task.createdAt,
+          createdAtDate: task.createdAt ? new Date(task.createdAt).toISOString() : 'null',
+        });
+      });
+    }
+    
+    return completed;
+  }, [tasks]);
 
   // Ensure component is mounted before rendering date-dependent content
   useEffect(() => {
@@ -56,6 +74,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     
     // Use user's timezone if available, otherwise fall back to local timezone
     const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Debug log for first few calls
+    if (Math.random() < 0.01) { // Log 1% of calls to avoid spam
+      console.log('[Analytics] getStreakDate debug:', {
+        timestamp,
+        date: date.toISOString(),
+        timezone
+      });
+    }
     
     
     // Create a proper date formatter for the timezone
@@ -98,6 +125,20 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     return `${year}-${month}-${day}`;
   }, [userTimezone]);
 
+  // Helper to convert date values to timestamps
+  const toTimestamp = (dateValue: string | number | Date): number => {
+    if (typeof dateValue === 'string') {
+      return new Date(dateValue).getTime();
+    }
+    if (typeof dateValue === 'number') {
+      return dateValue;
+    }
+    if (dateValue instanceof Date) {
+      return dateValue.getTime();
+    }
+    return 0;
+  };
+
   // Filter tasks by date range - only on client side
   const getFilteredTasks = useCallback((tasksToFilter: Task[]) => {
     // If not mounted, return all tasks (server-side)
@@ -131,7 +172,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     }
 
     return tasksToFilter.filter((task) => {
-      const timestamp = task.completedAt || task.createdAt;
+      const timestamp = toTimestamp(task.completedAt || task.createdAt);
       return timestamp >= startTime && timestamp <= endTime;
     });
   }, [mounted, clientDateRange]);
@@ -155,7 +196,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     tasksToProcess.forEach((task) => {
       // Get the streak date for proper day boundary handling
       // Use completedAt for completed tasks, fall back to createdAt
-      const timestamp = task.completedAt || task.createdAt;
+      const timestamp = toTimestamp(task.completedAt || task.createdAt);
       const dateStr = getStreakDate(timestamp);
       tasksByDate.set(dateStr, (tasksByDate.get(dateStr) || 0) + 1);
 
@@ -251,7 +292,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
     // Calculate the number of active days (days with at least one task)
     const activeDates = filteredTasks.map((t) => {
-      const timestamp = t.completedAt || t.createdAt;
+      const timestamp = toTimestamp(t.completedAt || t.createdAt);
       return getStreakDate(timestamp);
     });
     const uniqueActiveDays = new Set(activeDates).size;
@@ -263,7 +304,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     // Calculate hourly distribution
     const hourlyCount = new Array(24).fill(0);
     filteredTasks.forEach((task) => {
-      const timestamp = task.completedAt || task.createdAt;
+      const timestamp = toTimestamp(task.completedAt || task.createdAt);
       const hour = new Date(timestamp).getHours();
       hourlyCount[hour]++;
     });
@@ -295,8 +336,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const getFirstTaskDate = () => {
     if (!mounted || completedTasks.length === 0) return null;
     const sortedTasks = [...completedTasks].sort((a, b) => {
-      const aTime = a.completedAt || a.createdAt;
-      const bTime = b.completedAt || b.createdAt;
+      const aTime = toTimestamp(a.completedAt || a.createdAt);
+      const bTime = toTimestamp(b.completedAt || b.createdAt);
       return aTime - bTime;
     });
     return new Date(sortedTasks[0].completedAt || sortedTasks[0].createdAt);
@@ -309,13 +350,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   // Calculate streaks using all task history (not filtered by date range)
   const calculateStreaks = () => {
+    console.log('[Analytics] Calculating streaks...');
+    console.log('[Analytics] Total completed tasks for streak calc:', completedTasks.length);
+    
     // Get unique streak dates (accounting for 4am cutoff)
     const streakDates = completedTasks.map((t) => {
-      const timestamp = t.completedAt || t.createdAt;
-      return getStreakDate(timestamp);
+      const timestamp = toTimestamp(t.completedAt || t.createdAt);
+      const streakDate = getStreakDate(timestamp);
+      return streakDate;
     });
+    
+    console.log('[Analytics] All streak dates:', streakDates);
+    
     const uniqueDateStrings = Array.from(new Set(streakDates));
     const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    
+    console.log('[Analytics] Unique sorted streak dates:', sortedDateStrings);
+    console.log('[Analytics] Number of unique days with tasks:', sortedDateStrings.length);
 
     let longestStreak = 0;
     let currentStreak = 0;
@@ -340,14 +391,32 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       }
 
       // Calculate current streak (working backwards from today)
-      const todayStr = getStreakDate(Date.now());
-      const yesterdayStr = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
+      const now = Date.now();
+      const todayStr = getStreakDate(now);
+      const yesterdayStr = getStreakDate(now - 24 * 60 * 60 * 1000);
+      
+      // Also check tomorrow in case we're in the early morning hours (before 4am)
+      // and today's tasks are being counted as tomorrow
+      const tomorrowStr = getStreakDate(now + 24 * 60 * 60 * 1000);
 
       const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
+      
+      console.log('[Analytics] Current streak check:', {
+        todayStr,
+        yesterdayStr,
+        tomorrowStr,
+        lastTaskDate,
+        isToday: lastTaskDate === todayStr,
+        isYesterday: lastTaskDate === yesterdayStr,
+        isTomorrow: lastTaskDate === tomorrowStr,
+        timezone: userTimezone || 'default',
+        now: new Date().toISOString()
+      });
 
-      // Check if the streak is current (task completed today or yesterday)
-      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
+      // Check if the streak is current (task completed today, yesterday, or "tomorrow" due to 4am cutoff)
+      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr || lastTaskDate === tomorrowStr) {
         currentStreak = 1;
+        console.log('[Analytics] Current streak is active! Starting count...');
         
         // Work backwards to count consecutive days
         for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
@@ -360,14 +429,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           const diffTime = currDate.getTime() - prevDate.getTime();
           const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
           
+          console.log(`[Analytics] Checking consecutive days ${i}:`, {
+            prevDateStr,
+            currDateStr,
+            diffDays,
+            isConsecutive: diffDays === 1
+          });
+          
           if (diffDays === 1) {
             currentStreak++;
           } else {
             break;
           }
         }
+      } else {
+        console.log('[Analytics] Current streak is NOT active - last task too old');
       }
     }
+
+    console.log('[Analytics] Final streak calculation:', {
+      currentStreak,
+      longestStreak
+    });
 
     return { currentStreak, longestStreak };
   };
@@ -388,7 +471,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       totalTasks,
       totalTime: totalSeconds,
       activeDays: new Set(filteredTasks.map((t) => {
-        const timestamp = t.completedAt || t.createdAt;
+        const timestamp = toTimestamp(t.completedAt || t.createdAt);
         return getStreakDate(timestamp);
       })).size,
     };

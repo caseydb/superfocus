@@ -1,0 +1,121 @@
+{
+  "users": {
+    "TxZFUuKUXxX06KCJHB3zYQe5cls1": {
+      "completionHistory": {
+        "-OV9xTWitrTPXaciXINF": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "01:08:23",
+          "task": "Learning egraphs",
+          "timestamp": 1752530544696,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OV9zylaqcYwZRzuFbDA": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "10:46",
+          "task": "File revival doc",
+          "timestamp": 1752531201073,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OVA8aR6L-AgrJLGVaaQ": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "11:48",
+          "task": "respond to Hassaan",
+          "timestamp": 1752533722834,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OVB4meE5up6MjUHmY-K": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "06:55",
+          "task": "export atuh0 users",
+          "timestamp": 1752549501539,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OVBLcg8bBgb31NgP0Uj": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "01:13:20",
+          "task": "Send an email to our BF launch users thanking them",
+          "timestamp": 1752553917148,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OVBO-iRN6GS3THhK-r6": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "00:01",
+          "task": "post on YC slack about the sweaters",
+          "timestamp": 1752554539887,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OVBVMmRzZuq_0N_NFoJ": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "23:49",
+          "task": "Write an email to the head of product at mistral",
+          "timestamp": 1752556469360,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        },
+        "-OVFRRgmu67j81YYunTn": {
+          "completed": true,
+          "displayName": "Jacob Stevens",
+          "duration": "01:08:20",
+          "task": "DMing the list of people that liked my slack message",
+          "timestamp": 1752622549764,
+          "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-14": true,
+        "2025-07-15": true
+      },
+      "lastVisits": {
+        "-OUI3gKboWDQnE7K0B5J": 1752614282852
+      },
+      "tasks": {
+        "1752443847890": {
+          "completed": true,
+          "order": 8,
+          "text": "Learning egraphs"
+        },
+        "1752530554372": {
+          "completed": true,
+          "order": 7,
+          "text": "File revival doc"
+        },
+        "1752533014170": {
+          "completed": true,
+          "order": 6,
+          "text": "respond to Hassaan"
+        },
+        "1752549085798": {
+          "completed": true,
+          "order": 5,
+          "text": "export atuh0 users"
+        },
+        "1752549516441": {
+          "completed": true,
+          "order": 4,
+          "text": "Send an email to our BF launch users thanking them"
+        },
+        "1752554538346": {
+          "completed": true,
+          "order": 3,
+          "text": "post on YC slack about the sweaters"
+        },
+        "1752555040143": {
+          "completed": true,
+          "order": 2,
+          "text": "Write an email to the head of product at mistral"
+        },
+        "1752614297543": {
+          "completed": true,
+          "order": 0,
+          "text": "DMing the list of people that liked my slack message"
+        }
+      }
+    }
+  }
+}

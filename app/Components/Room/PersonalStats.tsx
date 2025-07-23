@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useInstance } from "../Instances";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
@@ -7,25 +7,22 @@ import type { Task } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set } from "firebase/database";
 
-interface HistoryEntry {
-  displayName: string;
-  task: string;
-  duration: string;
-  timestamp: number;
-  userId?: string;
-}
+// Types kept for reference
+// interface HistoryEntry {
+//   displayName: string;
+//   task: string;
+//   duration: string;
+//   timestamp: number;
+//   userId?: string;
+// }
+//
+// interface User {
+//   id: string;
+//   displayName: string;
+//   isPremium: boolean;
+// }
 
-interface User {
-  id: string;
-  displayName: string;
-  isPremium: boolean;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface InstanceData {
-  history?: Record<string, HistoryEntry>;
-  users?: Record<string, User>;
-}
+// Removed unused interface - kept for reference if needed later
 
 function formatTime(totalSeconds: number) {
   // Handle invalid input
@@ -78,7 +75,7 @@ export default function PersonalStats() {
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Get the "streak date" - which day a timestamp belongs to in the 4am local time system
-  const getStreakDate = (timestamp: number = Date.now()) => {
+  const getStreakDate = useCallback((timestamp: number = Date.now()) => {
     const date = new Date(timestamp);
     
     // Use user's timezone if available, otherwise fall back to local timezone
@@ -99,58 +96,58 @@ export default function PersonalStats() {
     const day = String(localTime.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
-  };
+  }, [userTimezone]);
 
   // Calculate streak from actual task history (matching Analytics exactly)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const calculateStreakFromHistory = (taskDates: Date[]) => {
-    if (!taskDates || taskDates.length === 0) return 0;
-
-    // Get unique date strings and sort them
-    const dates = taskDates.map((d) => d.toDateString());
-    const uniqueDateStrings = Array.from(new Set(dates));
-    const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-
-    let currentStreak = 0;
-
-    if (sortedDateStrings.length > 0) {
-      // Calculate current streak (working backwards from today)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toDateString();
-
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toDateString();
-
-      const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
-
-      // Check if the streak is current (task completed today or yesterday)
-      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
-        currentStreak = 1;
-        let checkDate = new Date(lastTaskDate);
-
-        // Work backwards to count consecutive days
-        for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
-          const prevDate = new Date(sortedDateStrings[i]);
-          const expectedDate = new Date(checkDate);
-          expectedDate.setDate(expectedDate.getDate() - 1);
-
-          if (prevDate.toDateString() === expectedDate.toDateString()) {
-            currentStreak++;
-            checkDate = expectedDate;
-          } else {
-            break;
-          }
-        }
-      }
-    }
-
-    return currentStreak;
-  };
+  // Keep for potential future use
+  // const calculateStreakFromHistory = (taskDates: Date[]) => {
+  //   if (!taskDates || taskDates.length === 0) return 0;
+  //
+  //   // Get unique date strings and sort them
+  //   const dates = taskDates.map((d) => d.toDateString());
+  //   const uniqueDateStrings = Array.from(new Set(dates));
+  //   const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+  //
+  //   let currentStreak = 0;
+  //
+  //   if (sortedDateStrings.length > 0) {
+  //     // Calculate current streak (working backwards from today)
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+  //     const todayStr = today.toDateString();
+  //
+  //     const yesterday = new Date(today);
+  //     yesterday.setDate(yesterday.getDate() - 1);
+  //     const yesterdayStr = yesterday.toDateString();
+  //
+  //     const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
+  //
+  //     // Check if the streak is current (task completed today or yesterday)
+  //     if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
+  //       currentStreak = 1;
+  //       let checkDate = new Date(lastTaskDate);
+  //
+  //       // Work backwards to count consecutive days
+  //       for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
+  //         const prevDate = new Date(sortedDateStrings[i]);
+  //         const expectedDate = new Date(checkDate);
+  //         expectedDate.setDate(expectedDate.getDate() - 1);
+  //
+  //         if (prevDate.toDateString() === expectedDate.toDateString()) {
+  //           currentStreak++;
+  //           checkDate = expectedDate;
+  //         } else {
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   }
+  //
+  //   return currentStreak;
+  // };
 
   // Calculate time remaining until 4am local time tomorrow
-  const calculateTimeRemaining = () => {
+  const calculateTimeRemaining = useCallback(() => {
     const now = new Date();
     const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     
@@ -181,7 +178,7 @@ export default function PersonalStats() {
     } else {
       return `${seconds}s`;
     }
-  };
+  }, [userTimezone]);
 
   // Remove old daily completions tracking - we now calculate from actual task history
 
@@ -228,6 +225,25 @@ export default function PersonalStats() {
       return;
     }
 
+    // Helper function to convert various date formats to timestamp
+    const toTimestamp = (dateValue: string | number | Date): number => {
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue).getTime();
+      } else if (typeof dateValue === 'number') {
+        // Check if it's a future timestamp (likely a mistake)
+        const now = Date.now();
+        const oneYearFromNow = now + (365 * 24 * 60 * 60 * 1000);
+        if (dateValue > oneYearFromNow) {
+          // Likely seconds instead of milliseconds
+          return dateValue * 1000;
+        }
+        return dateValue;
+      } else if (dateValue instanceof Date) {
+        return dateValue.getTime();
+      }
+      return Date.now();
+    };
+
     // Calculate stats from Redux tasks
     const calculateStats = () => {
       // Filter for completed tasks only
@@ -235,7 +251,7 @@ export default function PersonalStats() {
       
       // Get unique streak dates (accounting for 4am cutoff)
       const streakDates = completedTasks.map((t) => {
-        const timestamp = t.completedAt || t.createdAt;
+        const timestamp = toTimestamp(t.completedAt || t.createdAt);
         return getStreakDate(timestamp);
       });
       const uniqueDateStrings = Array.from(new Set(streakDates));
@@ -247,11 +263,12 @@ export default function PersonalStats() {
         // Calculate current streak (working backwards from today)
         const todayStr = getStreakDate(Date.now());
         const yesterdayStr = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
+        const tomorrowStr = getStreakDate(Date.now() + 24 * 60 * 60 * 1000);
 
         const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
 
-        // Check if the streak is current (task completed today or yesterday)
-        if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
+        // Check if the streak is current (task completed today, yesterday, or tomorrow for 4am edge case)
+        if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr || lastTaskDate === tomorrowStr) {
           currentStreak = 1;
           
           // Work backwards to count consecutive days
@@ -277,7 +294,8 @@ export default function PersonalStats() {
       // Calculate today's stats
       const currentStreakDate = getStreakDate();
       const todayTasks = completedTasks.filter((task) => {
-        const taskStreakDate = getStreakDate(task.completedAt || task.createdAt);
+        const timestamp = toTimestamp(task.completedAt || task.createdAt);
+        const taskStreakDate = getStreakDate(timestamp);
         return taskStreakDate === currentStreakDate;
       });
 
@@ -318,8 +336,8 @@ export default function PersonalStats() {
       try {
         const streakRef = ref(rtdb, `Streaks/${user.id}`);
         await set(streakRef, streak);
-      } catch (error) {
-        // Silent error handling
+      } catch {
+        // Silent error handling - error details not needed
       }
     };
     

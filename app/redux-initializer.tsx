@@ -14,8 +14,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   const hasCheckedTimezone = useRef(false);
 
   useEffect(() => {
-    // Log user's local timezone on page load
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // User auth state change listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser && !hasAttemptedFetch.current) {
         hasAttemptedFetch.current = true;
@@ -72,13 +71,13 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 // Update database
                 try {
                   await dispatch(updateUserData({ timezone: localTimezone })).unwrap();
-                } catch (error) {
-                  // Silent error handling
+                } catch {
+                  // Silent error handling - error details not needed
                 }
               }
             }
           }
-        } catch (error) {
+        } catch {
           // Retry once after another delay
           setTimeout(async () => {
             try {
@@ -108,14 +107,14 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                     // Update database
                     try {
                       await dispatch(updateUserData({ timezone: localTimezone })).unwrap();
-                    } catch (error) {
-                      // Silent error handling
+                    } catch {
+                      // Silent error handling - error details not needed
                     }
                   }
                 }
               }
-            } catch (retryError) {
-              // Silent error handling
+            } catch {
+              // Silent error handling - error details not needed
             }
           }, 3000);
         }

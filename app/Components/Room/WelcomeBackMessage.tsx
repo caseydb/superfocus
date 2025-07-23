@@ -84,8 +84,8 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
         // Update last visit timestamp
         set(lastVisitRef, now);
-      } catch (error) {
-        // Silent error handling
+      } catch {
+        // Silent error handling - error details not needed
       }
     };
 

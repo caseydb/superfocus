@@ -227,7 +227,7 @@ export default function Timer({
       }
       
       isInitializedRef.current = true;
-    }).catch((error) => {
+    }).catch(() => {
       isInitializedRef.current = true;
     });
     }, 1000); // Wait 1 second for Redux to load
@@ -750,9 +750,10 @@ export default function Timer({
                       ).unwrap();
 
 
-                    } catch (error: unknown) {
+                    } catch (error) {
                       // Show error message to user
-                      alert(`Failed to save task completion: ${(error as Error).message || "Unknown error"}`);
+                      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+                      alert(`Failed to save task completion: ${errorMessage}`);
                     }
                   }
                 }

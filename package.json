@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "import-test-data": "npx tsx migration/import-test-data.ts",
+    "import-casey-bell-data": "npx tsx migration/import-casey-bell-data.ts"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.8.0",

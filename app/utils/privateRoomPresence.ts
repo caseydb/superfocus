@@ -40,7 +40,7 @@ export class PrivateRoomPresence {
       this.startHeartbeat();
 
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

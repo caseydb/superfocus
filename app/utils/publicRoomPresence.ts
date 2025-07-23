@@ -51,7 +51,7 @@ export class PublicRoomPresence {
       this.startCleanupListener();
 
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

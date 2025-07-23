@@ -124,7 +124,7 @@ export async function incrementUserCount(roomId: string): Promise<boolean> {
     });
     
     return canJoin;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -144,8 +144,8 @@ export async function decrementUserCount(roomId: string): Promise<void> {
       // Always return the new count, let Cloud Function handle deletion when it reaches 0
       return newCount;
     });
-  } catch (error) {
-    // Silent error handling
+  } catch {
+    // Silent error handling - error details not needed
   }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off, get } from "firebase/database";
+import { ref, onValue, off } from "firebase/database";
 import Image from "next/image";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
@@ -158,7 +158,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     activeUsers.forEach((user) => {
       console.log('[ActiveWorkers] Setting up streak listener for user:', user.id);
       const streakRef = ref(rtdb, `Streaks/${user.id}`);
-      const unsubscribe = onValue(streakRef, (snapshot) => {
+      onValue(streakRef, (snapshot) => {
         const streak = snapshot.val();
         console.log('[ActiveWorkers] Streak data for user', user.id, ':', streak);
         

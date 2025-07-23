@@ -167,7 +167,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                               last_name: lastName || undefined,
                             })
                           ).unwrap();
-                        } catch (error) {
+                        } catch {
                           // The Redux state will be updated with the server response
                           // If it fails, the optimistic update will be overwritten
                         }

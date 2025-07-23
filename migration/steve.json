@@ -1,0 +1,992 @@
+{
+  "users": {
+    "o3iY1rSZKcRg4eisNBQXdZYDcqx1": {
+      "completionHistory": {
+        "-OUakVE896ks3rIN4dWJ": {
+          "displayName": "Steve Baker",
+          "duration": "10:14",
+          "task": "Map 10 Auror Subs",
+          "timestamp": 1751923164033,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUakoLFMa8qB6dSry-e": {
+          "displayName": "Steve Baker",
+          "duration": "00:04",
+          "task": "onboard michael to GSD",
+          "timestamp": 1751923246415,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUb-_DuM98GyHxVSq4D": {
+          "displayName": "Steve Baker",
+          "duration": "56:57",
+          "task": "Linkedin Post",
+          "timestamp": 1751927378747,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUbOCDRSf0Uly9jGEVc": {
+          "displayName": "Steve Baker",
+          "duration": "01:46:16",
+          "task": "Response for Pendo",
+          "timestamp": 1751933834104,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUbhKMxc9g6M627shMK": {
+          "displayName": "Steve Baker",
+          "duration": "48:37",
+          "task": "Get pendo response out",
+          "timestamp": 1751939110362,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUbk6Uw7nEEi28Bxhi6": {
+          "displayName": "Steve Baker",
+          "duration": "00:01:09",
+          "task": "Match 20 Auror Subscriptions (Quit Early)",
+          "timestamp": 1751939839925,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUc8AGhNrcXgaeIb1GF": {
+          "displayName": "Steve Baker",
+          "duration": "01:12:03",
+          "task": "Match 20 Auror Subscriptions (Quit Early)",
+          "timestamp": 1751946409165,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUcMfsxdt5s_0Xsdjh6": {
+          "displayName": "Steve Baker",
+          "duration": "54:27",
+          "task": "Create sprint task for onboarding",
+          "timestamp": 1751950212726,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUcNohG2RmVWw215IoP": {
+          "displayName": "Steve Baker",
+          "duration": "04:48",
+          "task": "Pay Cycle",
+          "timestamp": 1751950510987,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUcQ6H9-xS5NvmcuB60": {
+          "displayName": "Steve Baker",
+          "duration": "09:51",
+          "task": "Respond SF Toby",
+          "timestamp": 1751951111363,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUcURMM-mTXLyRim5r-": {
+          "displayName": "Steve Baker",
+          "duration": "18:50",
+          "task": "Respond Zoominfo Toby",
+          "timestamp": 1751952246288,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUcVLf55TbVMxl6Vnit": {
+          "displayName": "Steve Baker",
+          "duration": "00:01",
+          "task": "Jason Invoice",
+          "timestamp": 1751952485120,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUfFxbIuHqHg8N_RVIm": {
+          "displayName": "Steve Baker",
+          "duration": "00:14:35",
+          "task": "Invoice myhr (Quit Early)",
+          "timestamp": 1751998781893,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUfGNx79CxXfLLPEvsf": {
+          "displayName": "Steve Baker",
+          "duration": "00:01:09",
+          "task": "Timescapes invoice (Quit Early)",
+          "timestamp": 1751998893883,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUfVY7_Cf9bJPkF2ThA": {
+          "displayName": "Steve Baker",
+          "duration": "01:05:08",
+          "task": "Respond to Rob for Aircall",
+          "timestamp": 1752002867736,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUfuHnjCydVUuOTwd0g": {
+          "displayName": "Steve Baker",
+          "duration": "15:25",
+          "task": "Respond Melissa Firth",
+          "timestamp": 1752009616617,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUg1ofkfHbE9lMINQl2": {
+          "displayName": "Steve Baker",
+          "duration": "34:52",
+          "task": "Invoice myhr",
+          "timestamp": 1752011852523,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUg1yRGKtgp7p6vbodH": {
+          "displayName": "Steve Baker",
+          "duration": "00:03",
+          "task": "Timescapes invoice",
+          "timestamp": 1752011892492,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUg7pse_ESij2-mPgV_": {
+          "displayName": "Steve Baker",
+          "duration": "24:55",
+          "task": "Respond to Em on mongodb",
+          "timestamp": 1752013430309,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUgN-bKoRfzCHGJ0k55": {
+          "displayName": "Steve Baker",
+          "duration": "01:05:12",
+          "task": "Respond Jewel",
+          "timestamp": 1752017406391,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUgYOax2UtcowcvbDHl": {
+          "displayName": "Steve Baker",
+          "duration": "00:01",
+          "task": "Respond to Zak",
+          "timestamp": 1752020392352,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUgcgPWRFzyhU1n6vse": {
+          "displayName": "Steve Baker",
+          "duration": "22:17",
+          "task": "Contract MyHR",
+          "timestamp": 1752021780098,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUgd3sCo7z-N66jocuO": {
+          "displayName": "Steve Baker",
+          "duration": "00:01",
+          "task": "Linkedin post",
+          "timestamp": 1752021880304,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUh9bW8xofBgP9NfcoL": {
+          "displayName": "Steve Baker",
+          "duration": "02:23:39",
+          "task": "Timescapes - Chargebee + Glean (Quit Early)",
+          "timestamp": 1752030672939,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUhRaURz4v_CZJWz9aj": {
+          "displayName": "Steve Baker",
+          "duration": "48:50",
+          "task": "Respond Fileinvite",
+          "timestamp": 1752035387326,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUi3RCcNg4BFjuivg7H": {
+          "displayName": "Steve Baker",
+          "duration": "02:51:44",
+          "task": "Auror slides",
+          "timestamp": 1752045830987,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUi7V7E7DeQsPB0UHqk": {
+          "displayName": "Steve Baker",
+          "duration": "17:32",
+          "task": "Josh - Tax response",
+          "timestamp": 1752046895602,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUi7Ybta-N0f5K_OdF_": {
+          "displayName": "Steve Baker",
+          "duration": "00:04",
+          "task": "Timescapes - Chargebee + Glean",
+          "timestamp": 1752046909916,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUiJny13itP5_VBtajJ": {
+          "displayName": "Steve Baker",
+          "duration": "00:02",
+          "task": "Pass michaels feedback on",
+          "timestamp": 1752050122597,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUlV65UFRu_TtlTutdz": {
+          "displayName": "Steve Baker",
+          "duration": "03:28:43",
+          "task": "Auror Slides",
+          "timestamp": 1752103416137,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUq7q5noO_KUhLrSOY9": {
+          "displayName": "Steve Baker",
+          "duration": "15:11",
+          "task": "response jono & scott",
+          "timestamp": 1752181203498,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUq7t_ERHlghD79jgve": {
+          "displayName": "Steve Baker",
+          "duration": "00:07",
+          "task": "respone sahil",
+          "timestamp": 1752181217735,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OUq9t2SyeP5d9c76l95": {
+          "displayName": "Steve Baker",
+          "duration": "04:09",
+          "task": "response Josh Pay",
+          "timestamp": 1752181739861,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OV4U64HGS83ZCw9DY0N": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "02:15:46",
+          "task": "Response for LMS",
+          "timestamp": 1752438698292,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OV4UAmoNR3JcM7Os1vU": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:00",
+          "task": "Apply startup+",
+          "timestamp": 1752438717592,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OV4Yd-4_rrlgv-GR65C": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:00",
+          "task": "linkedin post",
+          "timestamp": 1752439885801,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OV9o-JCM8NinLnS0-6H": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "08:21",
+          "task": "Get response out for Nooks",
+          "timestamp": 1752528061717,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVARK5kUCW1aV5mGdjs": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "01:09:53",
+          "task": "Clay response",
+          "timestamp": 1752538632568,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBT9eBIAZOcCvldU1D": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "12:46",
+          "task": "Outcomes Draft for michael",
+          "timestamp": 1752555891193,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBmLEGUA68TFcQjBNJ": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:04",
+          "task": "Prep for meeting with Jono & Scott",
+          "timestamp": 1752561181695,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBn4Hz2-DaCk5o5aQX": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "02:21",
+          "task": "chase nooks",
+          "timestamp": 1752561374445,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBnB0rLLiHRhu_-bW8": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:03",
+          "task": "Finish prep for VeVe (Dan)",
+          "timestamp": 1752561402020,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBoeATxhl0dwJtXM8J": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "06:11",
+          "task": "Zoominfo response complypro",
+          "timestamp": 1752561787661,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBolQgL8SqRw19HMVp": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:05",
+          "task": "look at VeVe sf invoice",
+          "timestamp": 1752561817370,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVBusjLqAdeqroY8GjZ": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "20:05",
+          "task": "Respond Halter team with billing summary",
+          "timestamp": 1752563420163,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVCVqAJiQEtghhIp286": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "53:58",
+          "task": "respond inbound lead",
+          "timestamp": 1752573371150,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVCVufxWGAaOe1wAbDC": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:00",
+          "task": "Get michael on chatgpt",
+          "timestamp": 1752573389623,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVKGnOfznpeotJIpaIi": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "01:09:44",
+          "task": "respond Hema",
+          "timestamp": 1752703645238,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVKT6vldhbo7pU3dmIa": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "51:36",
+          "task": "clear inbox",
+          "timestamp": 1752706875109,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVL3BUGXZP_TB5EZgLm": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "01:31:51",
+          "task": "respond Nooks",
+          "timestamp": 1752716855291,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVOQmTgxO2J6_-lL3FK": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "02:19:20",
+          "task": "respond pendo",
+          "timestamp": 1752773371820,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVd0ZHuR5kwacokPidc": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "12:43",
+          "task": "Respond Dino",
+          "timestamp": 1753034933403,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVdAeIput86kcFy105H": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "02:30",
+          "task": "Tracksuit Clay",
+          "timestamp": 1753037579480,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVdFuCAfv-8ERaABMsu": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "22:52",
+          "task": "Auror",
+          "timestamp": 1753038955310,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVdRpqDGvZ66Z-rOUgA": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "11:51",
+          "task": "Respond Emma VeVe",
+          "timestamp": 1753042083184,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVe837F9dd5Wb4fjpV3": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:02",
+          "task": "Get Tracksuit success story done",
+          "timestamp": 1753053676018,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVe8Nx0QbFDHaVNqnMD": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:02",
+          "task": "fix billing timescapes",
+          "timestamp": 1753053761314,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVjcElH8nmZER-Y1kzz": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "33:41",
+          "task": "timescapes opportunities",
+          "timestamp": 1753145736267,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVoIklbhW8-XU8SqtDj": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "01:09:30",
+          "task": "MyHR slides",
+          "timestamp": 1753224252445,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVou89ruGJgPi-2H9L6": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "01:09:51",
+          "task": "send notion follow up to Hema",
+          "timestamp": 1753234313839,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVou9mJ3rcQ4SqCLg1f": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "00:00",
+          "task": "respond cortex",
+          "timestamp": 1753234320460,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        },
+        "-OVozDRbmsvhe8xuBB1Y": {
+          "completed": true,
+          "displayName": "Steve Baker",
+          "duration": "04:22",
+          "task": "Response for wiebke",
+          "timestamp": 1753235646173,
+          "userId": "o3iY1rSZKcRg4eisNBQXdZYDcqx1"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-06": true,
+        "2025-07-08": true,
+        "2025-07-09": true,
+        "2025-07-10": true,
+        "2025-07-13": true,
+        "2025-07-14": true,
+        "2025-07-15": true,
+        "2025-07-16": true,
+        "2025-07-17": true,
+        "2025-07-20": true,
+        "2025-07-21": true,
+        "2025-07-22": true
+      },
+      "lastVisits": {
+        "-OUI3gKboWDQnE7K0B5J": 1753224243164,
+        "-OUakcohRKUy8wDmRJ5D": 1753224249960,
+        "-OUduqpswBNFNuhqrwu8": 1752181773348
+      },
+      "tasks": {
+        "1751828258766": {
+          "completed": true,
+          "order": 82,
+          "text": "Response for Dino"
+        },
+        "1751830083840": {
+          "completed": true,
+          "order": 81,
+          "text": "Listing for fintech expo"
+        },
+        "1751830835932": {
+          "completed": true,
+          "order": 80,
+          "text": "Clearing 20 slack tasks"
+        },
+        "1751837533011": {
+          "completed": true,
+          "order": 79,
+          "text": "Linkedin Post"
+        },
+        "1751841445893": {
+          "completed": true,
+          "order": 78,
+          "text": "Reconnect with 2 x prospects"
+        },
+        "1751842020908": {
+          "completed": true,
+          "order": 77,
+          "text": "Response out for chamleon c"
+        },
+        "1751842551565": {
+          "completed": true,
+          "order": 76,
+          "text": "Halter / One session"
+        },
+        "1751922161966": {
+          "completed": true,
+          "order": 74,
+          "text": "Map 10 Auror Subs"
+        },
+        "1751922640887": {
+          "completed": true,
+          "order": 72,
+          "text": "Linkedin Post"
+        },
+        "1751922658577": {
+          "completed": true,
+          "order": 8,
+          "text": "Get Tracksuit success story done"
+        },
+        "1751923241785": {
+          "completed": true,
+          "order": 73,
+          "text": "onboard michael to GSD"
+        },
+        "1751927396259": {
+          "completed": true,
+          "order": 71,
+          "text": "Response for Pendo"
+        },
+        "1751936162232": {
+          "completed": true,
+          "order": 70,
+          "text": "Get pendo response out"
+        },
+        "1751939820535": {
+          "completed": true,
+          "order": 51,
+          "text": "Respond to Zak"
+        },
+        "1751945009279": {
+          "completed": true,
+          "order": 53,
+          "text": "Respond to Em on mongodb"
+        },
+        "1751946423223": {
+          "completed": true,
+          "order": 63,
+          "text": "Pay Cycle"
+        },
+        "1751946438791": {
+          "completed": true,
+          "order": 57,
+          "text": "Respond to Rob for Aircall"
+        },
+        "1751946456707": {
+          "completed": true,
+          "order": 64,
+          "text": "Create sprint task for onboarding"
+        },
+        "1751947926224": {
+          "completed": true,
+          "order": 62,
+          "text": "Respond SF Toby"
+        },
+        "1751947930715": {
+          "completed": true,
+          "order": 61,
+          "text": "Respond Zoominfo Toby"
+        },
+        "1751950343762": {
+          "completed": true,
+          "order": 60,
+          "text": "Jason Invoice"
+        },
+        "1751950350700": {
+          "completed": true,
+          "order": 54,
+          "text": "Timescapes invoice"
+        },
+        "1751950708820": {
+          "completed": true,
+          "order": 43,
+          "text": "Pass michaels feedback on"
+        },
+        "1751952339913": {
+          "completed": true,
+          "order": 28,
+          "text": "Prep for meeting with Jono & Scott"
+        },
+        "1751997905750": {
+          "completed": true,
+          "order": 55,
+          "text": "Invoice myhr"
+        },
+        "1751998249543": {
+          "completed": false,
+          "order": 95,
+          "text": "Utilisation tracking for INdebted"
+        },
+        "1751999041825": {
+          "completed": true,
+          "order": 52,
+          "text": "Respond Jewel"
+        },
+        "1751999610053": {
+          "completed": false,
+          "order": 97,
+          "text": "Reach out to Toby about TrustPilot"
+        },
+        "1751999646386": {
+          "completed": false,
+          "order": 98,
+          "text": "Warn Jason about Loopio"
+        },
+        "1751999665311": {
+          "completed": false,
+          "order": 99,
+          "text": "Let Alan know about Jetbrains"
+        },
+        "1751999703364": {
+          "completed": false,
+          "order": 100,
+          "text": "Reach out to mynah about pitch"
+        },
+        "1751999718457": {
+          "completed": false,
+          "order": 101,
+          "text": "VeVe survey monkey"
+        },
+        "1751999748693": {
+          "completed": false,
+          "order": 102,
+          "text": "Halter Grammarly"
+        },
+        "1751999850795": {
+          "completed": false,
+          "order": 104,
+          "text": "Savings opportunities Tracksuit"
+        },
+        "1751999857346": {
+          "completed": false,
+          "order": 105,
+          "text": "Savings opportunities Partly"
+        },
+        "1752000273464": {
+          "completed": true,
+          "order": 44,
+          "text": "Timescapes - Chargebee + Glean"
+        },
+        "1752000440888": {
+          "completed": false,
+          "order": 107,
+          "text": "Tracksuit Cancel Bitwarden"
+        },
+        "1752000782902": {
+          "completed": false,
+          "order": 108,
+          "text": "Follow up halter - Notion / CGPT"
+        },
+        "1752006786177": {
+          "completed": true,
+          "order": 45,
+          "text": "Josh - Tax response"
+        },
+        "1752007601299": {
+          "completed": true,
+          "order": 26,
+          "text": "Finish prep for VeVe (Dan)"
+        },
+        "1752007828773": {
+          "completed": true,
+          "order": 46,
+          "text": "Auror slides"
+        },
+        "1752007907064": {
+          "completed": true,
+          "order": 56,
+          "text": "Respond Melissa Firth"
+        },
+        "1752011883374": {
+          "completed": true,
+          "order": 50,
+          "text": "Contract MyHR"
+        },
+        "1752016118503": {
+          "completed": true,
+          "order": 49,
+          "text": "Linkedin post"
+        },
+        "1752018156906": {
+          "completed": false,
+          "order": 114,
+          "text": "Find where articulate is for Halter"
+        },
+        "1752020415748": {
+          "completed": true,
+          "order": 36,
+          "text": "Response for LMS"
+        },
+        "1752032435531": {
+          "completed": true,
+          "order": 47,
+          "text": "Respond Fileinvite"
+        },
+        "1752083022050": {
+          "completed": true,
+          "order": 42,
+          "text": "Auror Slides"
+        },
+        "1752083424076": {
+          "completed": false,
+          "order": 116,
+          "text": "respond pawel"
+        },
+        "1752180290813": {
+          "completed": true,
+          "order": 41,
+          "text": "response jono & scott"
+        },
+        "1752180419893": {
+          "completed": true,
+          "order": 40,
+          "text": "respone sahil"
+        },
+        "1752180429728": {
+          "completed": true,
+          "order": 39,
+          "text": "response Josh Pay"
+        },
+        "1752181268867": {
+          "completed": false,
+          "order": 117,
+          "text": "response to mongodb"
+        },
+        "1752181280928": {
+          "completed": false,
+          "order": 118,
+          "text": "response to modica"
+        },
+        "1752181343860": {
+          "completed": true,
+          "order": 25,
+          "text": "Zoominfo response complypro"
+        },
+        "1752181355967": {
+          "completed": false,
+          "order": 120,
+          "text": "maxio response"
+        },
+        "1752181854143": {
+          "completed": false,
+          "order": 123,
+          "text": "Level set Ideally"
+        },
+        "1752181858789": {
+          "completed": false,
+          "order": 124,
+          "text": "Level set Partly"
+        },
+        "1752181867853": {
+          "completed": false,
+          "order": 125,
+          "text": "Level set Indebted"
+        },
+        "1752182178141": {
+          "completed": false,
+          "order": 126,
+          "text": "Fileinvite response"
+        },
+        "1752182437013": {
+          "completed": false,
+          "order": 127,
+          "text": "fix payroll"
+        },
+        "1752182500327": {
+          "completed": true,
+          "order": 24,
+          "text": "look at VeVe sf invoice"
+        },
+        "1752218656651": {
+          "completed": false,
+          "order": 130,
+          "text": "Send email sig"
+        },
+        "1752218666531": {
+          "completed": true,
+          "order": 21,
+          "text": "Get michael on chatgpt"
+        },
+        "1752218800269": {
+          "completed": true,
+          "order": 27,
+          "text": "chase nooks"
+        },
+        "1752381562629": {
+          "completed": false,
+          "order": 133,
+          "text": "Aircall Rob"
+        },
+        "1752381575485": {
+          "completed": false,
+          "order": 134,
+          "text": "Josh Finance"
+        },
+        "1752438716237": {
+          "completed": true,
+          "order": 35,
+          "text": "Apply startup+"
+        },
+        "1752439884313": {
+          "completed": true,
+          "order": 34,
+          "text": "linkedin post"
+        },
+        "1752461041572": {
+          "completed": false,
+          "order": 135,
+          "text": "Start Halter Case Study"
+        },
+        "1752461053771": {
+          "completed": true,
+          "order": 23,
+          "text": "Respond Halter team with billing summary"
+        },
+        "1752461132391": {
+          "completed": false,
+          "order": 137,
+          "text": "Get sprint locked in"
+        },
+        "1752527560015": {
+          "completed": true,
+          "order": 33,
+          "text": "Get response out for Nooks"
+        },
+        "1752530002315": {
+          "completed": true,
+          "order": 31,
+          "text": "Clay response"
+        },
+        "1752538641454": {
+          "completed": true,
+          "order": 29,
+          "text": "Outcomes Draft for michael"
+        },
+        "1752561227449": {
+          "completed": false,
+          "order": 138,
+          "text": "respond Jewel"
+        },
+        "1752570084762": {
+          "completed": true,
+          "order": 22,
+          "text": "respond inbound lead"
+        },
+        "1752573021665": {
+          "completed": false,
+          "order": 139,
+          "text": "Kiwibank thing"
+        },
+        "1752698750223": {
+          "completed": true,
+          "order": 19,
+          "text": "respond Hema"
+        },
+        "1752703778338": {
+          "completed": true,
+          "order": 18,
+          "text": "clear inbox"
+        },
+        "1752706640984": {
+          "completed": false,
+          "order": 141,
+          "text": "Follow up Halter - LMS"
+        },
+        "1752706653200": {
+          "completed": false,
+          "order": 142,
+          "text": "Follow up Halter - Dialer"
+        },
+        "1752706665100": {
+          "completed": false,
+          "order": 143,
+          "text": "Follow up Halter - AI"
+        },
+        "1752706740085": {
+          "completed": false,
+          "order": 145,
+          "text": "respond Darren"
+        },
+        "1752710402718": {
+          "completed": true,
+          "order": 17,
+          "text": "respond Nooks"
+        },
+        "1752711030374": {
+          "completed": false,
+          "order": 146,
+          "text": "Send through questions for cat"
+        },
+        "1752716860217": {
+          "completed": true,
+          "order": 13,
+          "text": "respond pendo"
+        },
+        "1753034128097": {
+          "completed": true,
+          "order": 12,
+          "text": "Respond Dino"
+        },
+        "1753037428899": {
+          "completed": true,
+          "order": 11,
+          "text": "Tracksuit Clay"
+        },
+        "1753037440050": {
+          "completed": true,
+          "order": 10,
+          "text": "Auror"
+        },
+        "1753041366515": {
+          "completed": true,
+          "order": 9,
+          "text": "Respond Emma VeVe"
+        },
+        "1753041408993": {
+          "completed": true,
+          "order": 7,
+          "text": "fix billing timescapes"
+        },
+        "1753143699767": {
+          "completed": true,
+          "order": 6,
+          "text": "timescapes opportunities"
+        },
+        "1753166174605": {
+          "completed": false,
+          "order": 148,
+          "text": "send salesforce follow up to dino"
+        },
+        "1753166185189": {
+          "completed": true,
+          "order": 2,
+          "text": "send notion follow up to Hema"
+        },
+        "1753166194747": {
+          "completed": false,
+          "order": 150,
+          "text": "Send Pump intro to Dino"
+        },
+        "1753166244251": {
+          "completed": false,
+          "order": 151,
+          "text": "Send browser extension comms"
+        },
+        "1753169835638": {
+          "completed": true,
+          "order": 1,
+          "text": "respond cortex"
+        },
+        "1753219506725": {
+          "completed": true,
+          "order": 4,
+          "text": "MyHR slides"
+        },
+        "1753235382723": {
+          "completed": true,
+          "order": 0,
+          "text": "Response for wiebke"
+        }
+      }
+    }
+  }
+}

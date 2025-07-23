@@ -40,8 +40,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       const settingsRef = ref(rtdb, "adminSettings/leaderboardEnabled");
       await set(settingsRef, newValue);
       setLeaderboardEnabled(newValue);
-    } catch (error) {
-      // Revert on error
+    } catch {
+      // Revert on error - error details not needed
       setLeaderboardEnabled(!newValue);
     } finally {
       setSaving(false);

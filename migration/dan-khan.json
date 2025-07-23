@@ -1,0 +1,40 @@
+{
+  "users": {
+    "h2fcXssrK8UDQc7esPhKbzOwddg2": {
+      "completionHistory": {
+        "-OVkDV_1cbWS9v92BTET": {
+          "completed": true,
+          "displayName": "Dan Khan",
+          "duration": "01:08:10",
+          "task": "New fields to evidence form and backend",
+          "timestamp": 1753155766674,
+          "userId": "h2fcXssrK8UDQc7esPhKbzOwddg2"
+        },
+        "-OVoZ4EZznUDGsMzitgt": {
+          "completed": true,
+          "displayName": "Dan Khan",
+          "duration": "01:08:56",
+          "task": "Add migrations",
+          "timestamp": 1753228530781,
+          "userId": "h2fcXssrK8UDQc7esPhKbzOwddg2"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-21": true,
+        "2025-07-22": true
+      },
+      "tasks": {
+        "1753151676230": {
+          "completed": true,
+          "order": 2,
+          "text": "New fields to evidence form and backend"
+        },
+        "1753216944848": {
+          "completed": true,
+          "order": 0,
+          "text": "Add migrations"
+        }
+      }
+    }
+  }
+}

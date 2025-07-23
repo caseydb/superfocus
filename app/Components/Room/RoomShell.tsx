@@ -239,7 +239,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           setLoading(false);
           return;
         }
-      } catch (error) {
+      } catch {
         // Silent error handling
       }
       
@@ -285,7 +285,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           setLoading(false);
           return;
         }
-      } catch (error) {
+      } catch {
         // Silent error handling
       }
       
@@ -541,7 +541,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         } else {
           setHasTaskInBuffer(false);
         }
-      } catch (error) {
+      } catch {
         setHasTaskInBuffer(false);
       }
     };

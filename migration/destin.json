@@ -1,0 +1,53 @@
+{
+  "users": {
+    "NsIFAhE2akMMrUZsAL8UQwAWXAj1": {
+      "completionHistory": {
+        "-OUkjJgopejkfZOoEk4H": {
+          "displayName": "Destin George Bell",
+          "duration": "08:04",
+          "task": "Finishing investor documents",
+          "timestamp": 1752090626897,
+          "userId": "NsIFAhE2akMMrUZsAL8UQwAWXAj1"
+        },
+        "-OUkuqhrMtdLSjOf17D1": {
+          "displayName": "Destin George Bell",
+          "duration": "09:20",
+          "task": "Filling out an interview request",
+          "timestamp": 1752093649813,
+          "userId": "NsIFAhE2akMMrUZsAL8UQwAWXAj1"
+        },
+        "-OUopRxOLviR8--EHElm": {
+          "displayName": "Destin George Bell",
+          "duration": "09:21",
+          "task": "Filling out an interview request",
+          "timestamp": 1752159342221,
+          "userId": "NsIFAhE2akMMrUZsAL8UQwAWXAj1"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-09": true,
+        "2025-07-10": true
+      },
+      "lastVisits": {
+        "-OUI3gKboWDQnE7K0B5J": 1752183366765
+      },
+      "tasks": {
+        "1752090063451": {
+          "completed": true,
+          "order": 2,
+          "text": "Finishing investor documents"
+        },
+        "1752093038995": {
+          "completed": true,
+          "order": 1,
+          "text": "Filling out an interview request"
+        },
+        "1752159340878": {
+          "completed": true,
+          "order": 0,
+          "text": "Filling out an interview request"
+        }
+      }
+    }
+  }
+}

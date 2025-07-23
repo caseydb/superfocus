@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
       profile_image: updatedUser.profile_image,
       timezone: updatedUser.timezone,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       profile_image: user.profile_image,
       timezone: user.timezone,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

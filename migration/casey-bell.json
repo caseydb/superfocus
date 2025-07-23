@@ -1,0 +1,797 @@
+{
+  "users": {
+    "9KrR8xhQ1jStpSsJFSNdXSoEDNE2": {
+      "task table ids": {
+        "user_id": "df3aed2a-ad51-457f-b0cd-f7d4225143d4",
+        "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+      },
+      "completionHistory": {
+        "-OUY7CJMFWaUiPRlW5UJ": {
+          "displayName": "Casey Bell",
+          "duration": "18:22",
+          "task": "Tasks / Time tracked should be global",
+          "timestamp": 1751862269224,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUYDUgNs0VKvLOJbiGj": {
+          "displayName": "Casey Bell",
+          "duration": "09:04",
+          "task": "Looking into flying message not working",
+          "timestamp": 1751863917363,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_3Fv1q8WAY_xWlkIB": {
+          "displayName": "Casey Bell",
+          "duration": "01:21",
+          "task": "New tasks should always go to last place if created on task list",
+          "timestamp": 1751894789766,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_3JD1afzMU_QPpaXw": {
+          "displayName": "Casey Bell",
+          "duration": "00:02",
+          "task": "Remove done column on tasks",
+          "timestamp": 1751894803269,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_5O0ESm7ZzO4xjI9X": {
+          "displayName": "Casey Bell",
+          "duration": "00:04",
+          "task": "Remove done column",
+          "timestamp": 1751895347220,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_UvU3ZoSaCg_mHteH": {
+          "displayName": "Casey Bell",
+          "duration": "07:50",
+          "task": "arrow keys and cursor for drop down input select",
+          "timestamp": 1751902042078,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_WtUbeFdcHf9BluyC": {
+          "displayName": "Casey Bell",
+          "duration": "00:41",
+          "task": "Mobile history doesn't scroll",
+          "timestamp": 1751902558215,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_Z8pOtZsqZ5AMZonr": {
+          "displayName": "Casey Bell",
+          "duration": "01:11",
+          "task": "Drop down input enhancements",
+          "timestamp": 1751903149431,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OU_s4aMsIiPfewzVfQV": {
+          "displayName": "Casey Bell",
+          "duration": "16:07",
+          "task": "Welcome back flying message",
+          "timestamp": 1751908374845,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUaO7FGTi1-dcGbdofO": {
+          "displayName": "Casey Bell",
+          "duration": "03:27",
+          "task": "hello testing to see what I can do here lol to see if its a big task",
+          "timestamp": 1751917036548,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUaaGf1gh_MYQrQisUv": {
+          "displayName": "Casey Bell",
+          "duration": "02:41:12",
+          "task": "Go / pause button on task lists",
+          "timestamp": 1751920483024,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUagQNbT_4IkZcIFMHh": {
+          "displayName": "Casey Bell",
+          "duration": "12:40",
+          "task": "Enhance welcome message to feel less 'gamey'",
+          "timestamp": 1751922095644,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUazFb4fAg0ITgUdB4U": {
+          "displayName": "Casey Bell",
+          "duration": "43:31",
+          "task": "View rooms you have joined/created",
+          "timestamp": 1751927032189,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUbDnb4j1lXDBxH7txr": {
+          "displayName": "Casey Bell",
+          "duration": "45:07",
+          "task": "Investor updates",
+          "timestamp": 1751931107708,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUbKqrLT2jo22IaE03d": {
+          "displayName": "Casey Bell",
+          "duration": "30:31",
+          "task": "LinkedIn Post",
+          "timestamp": 1751932956045,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUc41sj53hnj0XNn9yE": {
+          "displayName": "Casey Bell",
+          "duration": "15:57",
+          "task": "fix streaks",
+          "timestamp": 1751945326138,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUcBhxoODDAa5MSEGqa": {
+          "displayName": "Casey Bell",
+          "duration": "03:45",
+          "task": "UI tweaks",
+          "timestamp": 1751947337614,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUcGWKPegyv0Nv_8tIL": {
+          "displayName": "Casey Bell",
+          "duration": "17:36",
+          "task": "Hover on streak reveals time to reset",
+          "timestamp": 1751948596608,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUcVr55HsBn4o-J9n0h": {
+          "displayName": "Casey Bell",
+          "duration": "01:05:37",
+          "task": "Notes + subtasks on tasks",
+          "timestamp": 1751952617788,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUgCXsE_8CgISlAic3Z": {
+          "displayName": "Casey Bell",
+          "duration": "34:57",
+          "task": "Solve Nexus bug for reclaimed profiles",
+          "timestamp": 1752014663164,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUggoq-NWCEGSOVZf7G": {
+          "displayName": "Casey Bell",
+          "duration": "17:19",
+          "task": "All tasks can have notes",
+          "timestamp": 1752022863227,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUh6uLyhjiX4Nkf1Yq7": {
+          "displayName": "Casey Bell",
+          "duration": "54:41",
+          "task": "Task notes on Task List layout",
+          "timestamp": 1752029963666,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUhGmii4uwqCtkl4dP3": {
+          "displayName": "Casey Bell",
+          "duration": "31:49",
+          "task": "Task notes on Task List layout",
+          "timestamp": 1752032553858,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUhKrYpwbHHIQ31SrZf": {
+          "displayName": "Casey Bell",
+          "duration": "17:31",
+          "task": "Task notes on Task List layout continued",
+          "timestamp": 1752033622218,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUhjdCGtE0OM_vnf0ah": {
+          "displayName": "Casey Bell",
+          "duration": "01:37:07",
+          "task": "Persistant notes across all tasks",
+          "timestamp": 1752040379186,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUkeRuFfCBtoh1lFGCM": {
+          "displayName": "Casey Bell",
+          "duration": "00:44",
+          "task": "fix task bar",
+          "timestamp": 1752089349686,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUkhJ9ViYPwNiMOdRJV": {
+          "displayName": "Casey Bell",
+          "duration": "11:17",
+          "task": "Set up claude opus",
+          "timestamp": 1752090100295,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUlyIptitjH2zhkwJeE": {
+          "displayName": "Casey Bell",
+          "duration": "14:07",
+          "task": "New build + note system live",
+          "timestamp": 1752111332707,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUm4CCivAYiAlIPVIkO": {
+          "displayName": "Casey Bell",
+          "duration": "22:39",
+          "task": "new version continued",
+          "timestamp": 1752113140568,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUm9Buja7VTdPot9Wmw": {
+          "displayName": "Casey Bell",
+          "duration": "21:00",
+          "task": "Fix history util issue",
+          "timestamp": 1752114450074,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUmS9zzB1W4LeTDBBLc": {
+          "displayName": "Casey Bell",
+          "duration": "01:13:46",
+          "task": "Cool downs",
+          "timestamp": 1752119422954,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUopeXHMTnUDw-A9xc-": {
+          "displayName": "Casey Bell",
+          "duration": "01:06:25",
+          "task": "New version live and bug free in prod",
+          "timestamp": 1752159398028,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUp51fF0fP49wEf4bhW": {
+          "displayName": "Casey Bell",
+          "duration": "00:01",
+          "task": "History css + time format",
+          "timestamp": 1752163691248,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUp58adBn1aUKiwJaIy": {
+          "displayName": "Casey Bell",
+          "duration": "00:01",
+          "task": "All tasks now have notes",
+          "timestamp": 1752163719625,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUpsOMqbnsQ6kTHjBvM": {
+          "displayName": "Casey Bell",
+          "duration": "41:50",
+          "task": "pause ppl 2 hour timer",
+          "timestamp": 1752176891301,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUpwrLyDteAFGXzW5If": {
+          "displayName": "Casey Bell",
+          "duration": "00:01",
+          "task": "Ryan preferences for task bar vs drop down",
+          "timestamp": 1752178062668,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUqH_5TMxU1-YJHOprl": {
+          "displayName": "Casey Bell",
+          "duration": "18:18",
+          "task": "Fix double sound bug",
+          "timestamp": 1752183755114,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUqexPczElAE7AuvIxP": {
+          "displayName": "Casey Bell",
+          "duration": "32:18",
+          "task": "Active workers stack ranked by daily tasks completed",
+          "timestamp": 1752190146216,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUqr0foRZXFOYP12a0a": {
+          "displayName": "Casey Bell",
+          "duration": "31:42",
+          "task": "testing",
+          "timestamp": 1752193309390,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUqxPmdTABAcxEueoxB": {
+          "displayName": "Casey Bell",
+          "duration": "00:03",
+          "task": "clean up function to stop multiple windows open i.e leaderboard task",
+          "timestamp": 1752194985079,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUqxQpB1R668or3ok22": {
+          "displayName": "Casey Bell",
+          "duration": "00:03",
+          "task": "esc should close all modals",
+          "timestamp": 1752194989338,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUqxUpbWOOl9O9NBPfV": {
+          "displayName": "Casey Bell",
+          "duration": "00:03",
+          "task": "hot keys for all actions",
+          "timestamp": 1752195005749,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUr6qIWRrnb3w3ab9U3": {
+          "displayName": "Casey Bell",
+          "duration": "39:13",
+          "task": "Consistent background theme for leaderboard, invite + task bar",
+          "timestamp": 1752197719214,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUr9lL0yxsO0hHLsxdc": {
+          "displayName": "Casey Bell",
+          "duration": "00:01",
+          "task": "Consistent background theme for leaderboard, invite + task bar",
+          "timestamp": 1752198485315,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUrBQv2PxA4B-jbZKee": {
+          "displayName": "Casey Bell",
+          "duration": "07:07",
+          "task": "Add forgot pass functionality",
+          "timestamp": 1752198921892,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUrBVOmUHsS_ugIDAs3": {
+          "displayName": "Casey Bell",
+          "duration": "00:01",
+          "task": "(Luke Campbell) login feels like phishing + add pass reset",
+          "timestamp": 1752198940243,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUrmsfBpwsZZm8Ee2_B": {
+          "displayName": "Casey Bell",
+          "duration": "01:20:01",
+          "task": "browser tab facivon goes red on task start + pause and other states",
+          "timestamp": 1752209001163,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUuMj6T1ma8ZGCvsdZw": {
+          "displayName": "Casey Bell",
+          "duration": "00:03",
+          "task": "Fix timer memory leak",
+          "timestamp": 1752252215719,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUuOy-4qoO04NRYou0e": {
+          "displayName": "Casey Bell",
+          "duration": "05:38",
+          "task": "Remove 7 day trial from Stripe link",
+          "timestamp": 1752252800974,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUwYE-aCE92wMHuetpv": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "21:14",
+          "task": "Github styled activity chart",
+          "timestamp": 1752288784439,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OUwnzo-6j9TZu4VWGMq": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "00:03",
+          "task": "Updating streaks to be retroactive",
+          "timestamp": 1752293178596,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OV04jLcGZ_Xfq6l9p2j": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:56:06",
+          "task": "Analytics enhancements based on Ryan's feedback",
+          "timestamp": 1752364938663,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OV4eDcCazDVMFAbyR4f": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "00:08",
+          "task": "set up admin panel",
+          "timestamp": 1752441612812,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVB0kg1M0SCRcZEFmJE": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "03:31",
+          "task": "admin settings",
+          "timestamp": 1752548444890,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVDotqAzSQYpDRLiI0O": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:45:17",
+          "task": "Solve  date bug",
+          "timestamp": 1752595406184,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVE7wt6DVcrFcuxIaVN": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "05:01",
+          "task": "diable cmd a when input field to prevent closing task list",
+          "timestamp": 1752600661592,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVEUbfCcV0tbrSxh_XD": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "04:25",
+          "task": "Fix leaderboard",
+          "timestamp": 1752606603935,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVF8_Bt5poFi7b8otRt": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "20:29",
+          "task": "Goals for next sprint",
+          "timestamp": 1752617603860,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVJ2XMz8F-F0dYcbdyP": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "02:52:53",
+          "task": "Supabase for all non real time",
+          "timestamp": 1752683128183,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVJKUQ8SyGRj_DVmPHM": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:17:06",
+          "task": "Supabase for all non real time",
+          "timestamp": 1752687834840,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVLLrROHVchITaoT02u": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "04:38:07",
+          "task": "Migrate data & API calls",
+          "timestamp": 1752721749864,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVLaJQmwLwmyGtRJbbU": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:05:59",
+          "task": "Optimistic redux for users table replacing RTDB",
+          "timestamp": 1752725800594,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVNocCixy6kr-R4GKdr": {
+          "completed": true,
+          "displayName": "KC bell",
+          "duration": "01:00:59",
+          "task": "testing",
+          "timestamp": 1752763106111,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVPecbbzv2n3mHU1XCQ": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "03:19:52",
+          "task": "Redux for tasks",
+          "timestamp": 1752794040791,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVQeupH3bbIgFh16nWI": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "03:26:49",
+          "task": "Redux for real time states",
+          "timestamp": 1752810892561,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVQpok38efyKNAoaCEC": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "00:14",
+          "task": "Redux continued",
+          "timestamp": 1752813751264,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVVCmW9OP9OI9Pnp70z": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "02:17:26",
+          "task": "Redux & RTDB continued",
+          "timestamp": 1752887142446,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OV_QmFcOExabbdQIev7": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "04:07:56",
+          "task": "Database migration continued",
+          "timestamp": 1752974697505,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVcbdZvnJUnFDaUYFjO": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:12:25",
+          "task": "Data migration continued",
+          "timestamp": 1753028139271,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVdY2oAg9s-MC9Xut1w": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "02:08:44",
+          "task": "Allow switching between tasks but preserve timers",
+          "timestamp": 1753043713239,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVeiOamDe_s2eQ3SiLV": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "04:33:42",
+          "task": "RTDB for active users",
+          "timestamp": 1753063463331,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVf-6titTTcXIU1VR9H": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:14:09",
+          "task": "Solve time flickering issue",
+          "timestamp": 1753068109389,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVf2hG1Qb0ZSEEm8FPW": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "13:58",
+          "task": "Enforce global sound effects",
+          "timestamp": 1753069048864,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVio5yeNLtSbNJLTPyy": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "02:08:56",
+          "task": "Testing",
+          "timestamp": 1753132068720,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVjpotOo3oxFdNPz0Xz": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "04:07:27",
+          "task": "Migrate Data",
+          "timestamp": 1753149296203,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVmEM8boNqBn5_nvUqK": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "02:06:38",
+          "task": "Migration continued",
+          "timestamp": 1753189544527,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVmT6p0FAymg_GIRLFd": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:00:04",
+          "task": "Ensure lobby rooms destruct if 0 ppl",
+          "timestamp": 1753193413928,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVm_SBDjwNKgmT2nFq9": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "15:22",
+          "task": "prep nexus matches",
+          "timestamp": 1753195336437,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVmn-IVQVjsKUnxc1d2": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "39:47",
+          "task": "New private room obj",
+          "timestamp": 1753198888135,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVo3fd0pOkMnymkogMR": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "03:00:17",
+          "task": "Analytics to pull through globally from PG",
+          "timestamp": 1753220299303,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVoiN7aft-OU5n_ha_l": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:00:54",
+          "task": "Streak data working",
+          "timestamp": 1753231229291,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        },
+        "-OVoytsifuBhZ9VZR4jW": {
+          "completed": true,
+          "displayName": "Casey Bell",
+          "duration": "01:10:09",
+          "task": "Get leaderboard working",
+          "timestamp": 1753235561843,
+          "userId": "9KrR8xhQ1jStpSsJFSNdXSoEDNE2"
+        }
+      },
+      "tasks": {
+        "1751821988485": {
+          "completed": false,
+          "order": 299,
+          "text": "In public instance, 'history not available' popup in wrong place"
+        },
+        "1751822134631": {
+          "completed": false,
+          "order": 298,
+          "text": "Global leaderboard on lobby"
+        },
+        "1751822249613": {
+          "completed": false,
+          "order": 305,
+          "text": "Upgrade popup at X tasks or Y time"
+        },
+        "1751822260018": {
+          "completed": false,
+          "order": 306,
+          "text": "Invite others at X tasks or Y hours"
+        },
+        "1751851247097": {
+          "completed": false,
+          "order": 307,
+          "text": "Global sound for milestone streaks. 5, 10, multiples of 5."
+        },
+        "1751853726689": {
+          "completed": false,
+          "order": 308,
+          "text": "Ability to switch tasks which makes it blue when finished"
+        },
+        "1751863996146": {
+          "completed": false,
+          "order": 300,
+          "text": "room count not cleaning up"
+        },
+        "1751864317793": {
+          "completed": false,
+          "order": 309,
+          "text": "Clean up padding on input selector scroll bar not being flush"
+        },
+        "1751864648869": {
+          "completed": false,
+          "order": 310,
+          "text": "Light mode"
+        },
+        "1751864665407": {
+          "completed": false,
+          "order": 311,
+          "text": "(STEVE) Ability to turn a slack message or email into a task or add it to my list."
+        },
+        "1751910753574": {
+          "completed": false,
+          "order": 314,
+          "text": "Slack notifications for build + new users + total daily time/tasks"
+        },
+        "1752027558892": {
+          "completed": false,
+          "order": 316,
+          "text": "Chrome extension: add tasks"
+        },
+        "1752039031974": {
+          "completed": false,
+          "order": 318,
+          "text": "Email log of the day"
+        },
+        "1752039428050": {
+          "completed": false,
+          "order": 317,
+          "text": "View rooms should show even if no activity"
+        },
+        "1752096064250": {
+          "completed": false,
+          "order": 319,
+          "text": "If folding, flying message should be in same line as completed task"
+        },
+        "1752123351093": {
+          "completed": false,
+          "order": 320,
+          "text": "Hardcore mode that blocks certain apps"
+        },
+        "1752196527941": {
+          "completed": false,
+          "order": 321,
+          "text": "fix history css for unused space"
+        },
+        "1752197712228": {
+          "completed": false,
+          "order": 322,
+          "text": "tab \"your task will be paused in (x) time"
+        },
+        "1752199433656": {
+          "completed": false,
+          "order": 323,
+          "text": "browser tab facivon goes red on task start + pause and other states"
+        },
+        "1752203556597": {
+          "completed": false,
+          "order": 324,
+          "text": "Can create list categories. color coded. can move tasks between"
+        },
+        "1752292659340": {
+          "completed": false,
+          "order": 325,
+          "text": "Analytics filters by room or all"
+        },
+        "1752377574200": {
+          "completed": false,
+          "order": 297,
+          "text": "Make all times local 4am except streak utc"
+        },
+        "1752377730607": {
+          "completed": false,
+          "order": 296,
+          "text": "3rd task complete trigger popup for feedback"
+        },
+        "1752591095633": {
+          "completed": false,
+          "order": 326,
+          "text": "Estimate or goal for task time"
+        },
+        "1752604663255": {
+          "completed": false,
+          "order": 327,
+          "text": "admin sets sprint timezone - has tool tip countdown"
+        },
+        "1752604689103": {
+          "completed": false,
+          "order": 328,
+          "text": "ui for creating long tasks to have 2 lines"
+        },
+        "1752613649581": {
+          "completed": false,
+          "order": 75,
+          "text": "Landing page"
+        },
+        "1752683090733": {
+          "completed": false,
+          "order": 329,
+          "text": "Add feature base"
+        },
+        "1752684656465": {
+          "completed": false,
+          "order": 330,
+          "text": "- [ ] Solve flight issue where someone loses streaks"
+        },
+        "1752700797753": {
+          "completed": false,
+          "order": 71,
+          "text": "global ding ding if returning to task after 1 hr but dont hear locall"
+        },
+        "1752700810295": {
+          "completed": false,
+          "order": 70,
+          "text": "Increase char limit to 100"
+        },
+        "1752713953807": {
+          "completed": false,
+          "order": 331,
+          "text": "If you click on your daily stats, open analytics"
+        },
+        "1752713963878": {
+          "completed": false,
+          "order": 332,
+          "text": "In the time drop down in analytics add (This week, This Month,)"
+        },
+        "1752794195762": {
+          "completed": false,
+          "order": 333,
+          "text": "Fix notes to allow CMD+A + less gap between checklists"
+        },
+
+        "1753235908291": {
+          "completed": false,
+          "order": 0,
+          "text": "Migration time! FR FR"
+        }
+      }
+    }
+  }
+}

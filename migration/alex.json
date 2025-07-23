@@ -1,0 +1,304 @@
+{
+  "users": {
+    "pGHGDrSTxMTjpC2I1BhmiCD48hm1": {
+      "completionHistory": {
+        "-OUm9Fg49lPItp_BNvMM": {
+          "displayName": "Alexthomsonnz",
+          "duration": "00:36",
+          "task": "Fixing a load of bugs",
+          "timestamp": 1752114465597,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OUmSlNZ2Ct8xBQ053Ya": {
+          "displayName": "Alex Thomson",
+          "duration": "01:21:21",
+          "task": "Getting the sub-cent data migration merged",
+          "timestamp": 1752119580150,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OUmfgb86YFwg4R8zIfY": {
+          "displayName": "Alex Thomson",
+          "duration": "01:00:01",
+          "task": "Allow multiple FX settlements",
+          "timestamp": 1752123230683,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OUmgEVPMnDM4yniFtWq": {
+          "displayName": "Alex Thomson",
+          "duration": "02:05",
+          "task": "Run ledger update",
+          "timestamp": 1752123373612,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OV5aays83xWX4sknVNs": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "58:09",
+          "task": "Review Natalie's work",
+          "timestamp": 1752457441178,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OV5d9dNf-C37Lg9smvm": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "11:00",
+          "task": "Write SAv2 RFC",
+          "timestamp": 1752458111546,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OV5t5h-eqmKN9IaWGUO": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "30:04",
+          "task": "Publish SAv2 RFC",
+          "timestamp": 1752462289696,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OV6I-no37DjpbTFJZlJ": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "01:22:34",
+          "task": "Test wrapping up the NZX:MNW fund",
+          "timestamp": 1752469081269,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVAxtY5tkgxwgc8qs4E": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "02:03:30",
+          "task": "cancel some old pending sell orders",
+          "timestamp": 1752547432529,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVB3eZuS1I3bVP1CqaL": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "29:10",
+          "task": "review multicurrent settlement",
+          "timestamp": 1752549206213,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVGOQKJPwdjS-gbtD7E": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "31:03",
+          "task": "Build fund state change tool",
+          "timestamp": 1752638534948,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVMDwBe4O7sW6KD69bg": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "01:00:33",
+          "task": "KiwiSkips needs their recurring jobs fixed",
+          "timestamp": 1752736449434,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVMDxfAb0m4cagCH-3k": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "00:00",
+          "task": "KiwiSkips needs jobs organised",
+          "timestamp": 1752736455482,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OViyyKVLx0VH5CGQ-Z3": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "22:10",
+          "task": "Post MNW selldown stats",
+          "timestamp": 1753134916942,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVjPm0dYxY-KsQmOhAN": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "01:11:04",
+          "task": "why is settlement out",
+          "timestamp": 1753142206550,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVjpCF9XeiL6LZ_Yrzn": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "01:40:47",
+          "task": "hourly prices",
+          "timestamp": 1753149133873,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVkAbLPQWbeJNv3PTuj": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "51:08",
+          "task": "Response to price update cron review",
+          "timestamp": 1753155007843,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        },
+        "-OVkQ_otb3sG37kTzKoF": {
+          "completed": true,
+          "displayName": "Alex Thomson",
+          "duration": "36:06",
+          "task": "Remove fund from investment plans too",
+          "timestamp": 1753159196029,
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-09": true,
+        "2025-07-10": true,
+        "2025-07-13": true,
+        "2025-07-14": true,
+        "2025-07-16": true,
+        "2025-07-17": true,
+        "2025-07-21": true,
+        "2025-07-22": true
+      },
+      "lastVisits": {
+        "-OUI3gKboWDQnE7K0B5J": 1753159119090,
+        "-OUduqpswBNFNuhqrwu8": 1752114362718
+      },
+      "notes": {
+        "-OUmAhMmlVbOxPQvdv4o": {
+          "id": "-OUmAhMmlVbOxPQvdv4o",
+          "items": [
+            {
+              "completed": true,
+              "content": "Need to find the client-trade-settlement discrepancy",
+              "id": "1",
+              "level": 0,
+              "type": "checkbox"
+            },
+            {
+              "content": "",
+              "id": "2",
+              "level": 0,
+              "type": "checkbox"
+            }
+          ],
+          "lastUpdated": 1752115035502,
+          "taskId": "1752114627909",
+          "taskText": "Getting the sub-cent data migration merged",
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        }
+      },
+      "preferences": {
+        "inactivityTimeout": "3600",
+        "lastUpdated": 1752554822753,
+        "taskSelectionMode": "dropdown"
+      },
+      "taskNotes": {
+        "1753142210836": {
+          "items": [
+            {
+              "content": "I'd like to ",
+              "id": "1",
+              "level": 0,
+              "type": "text"
+            }
+          ],
+          "lastUpdated": 1753142246949,
+          "taskId": "1753142210836",
+          "taskText": "hourly prices",
+          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
+        }
+      },
+      "tasks": {
+        "1752114428863": {
+          "completed": true,
+          "order": 31,
+          "text": "Fixing a load of bugs"
+        },
+        "1752114627909": {
+          "completed": true,
+          "order": 26,
+          "text": "Getting the sub-cent data migration merged"
+        },
+        "1752116894125": {
+          "completed": true,
+          "order": 8,
+          "text": "KiwiSkips needs jobs organised"
+        },
+        "1752116922694": {
+          "completed": false,
+          "order": 29,
+          "text": "KiwiSkips needs hire fees backfilled this month"
+        },
+        "1752119608344": {
+          "completed": true,
+          "order": 24,
+          "text": "Allow multiple FX settlements"
+        },
+        "1752123248175": {
+          "completed": true,
+          "order": 23,
+          "text": "Run ledger update"
+        },
+        "1752453937157": {
+          "completed": true,
+          "order": 22,
+          "text": "Review Natalie's work"
+        },
+        "1752457450747": {
+          "completed": true,
+          "order": 21,
+          "text": "Write SAv2 RFC"
+        },
+        "1752460447196": {
+          "completed": true,
+          "order": 17,
+          "text": "Publish SAv2 RFC"
+        },
+        "1752462327267": {
+          "completed": true,
+          "order": 15,
+          "text": "Test wrapping up the NZX:MNW fund"
+        },
+        "1752530691937": {
+          "completed": true,
+          "order": 13,
+          "text": "cancel some old pending sell orders"
+        },
+        "1752547455527": {
+          "completed": true,
+          "order": 12,
+          "text": "review multicurrent settlement"
+        },
+        "1752636669053": {
+          "completed": true,
+          "order": 10,
+          "text": "Build fund state change tool"
+        },
+        "1752732807560": {
+          "completed": true,
+          "order": 9,
+          "text": "KiwiSkips needs their recurring jobs fixed"
+        },
+        "1753133586012": {
+          "completed": true,
+          "order": 7,
+          "text": "Post MNW selldown stats"
+        },
+        "1753134925316": {
+          "completed": true,
+          "order": 5,
+          "text": "why is settlement out"
+        },
+        "1753142210836": {
+          "completed": true,
+          "order": 2,
+          "text": "hourly prices"
+        },
+        "1753151885820": {
+          "completed": true,
+          "order": 1,
+          "text": "Response to price update cron review"
+        },
+        "1753157029327": {
+          "completed": true,
+          "order": 0,
+          "text": "Remove fund from investment plans too"
+        }
+      }
+    }
+  }
+}

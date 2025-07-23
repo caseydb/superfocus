@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         tasks
       });
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch tasks from Firebase" },
       { status: 500 }
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       message: "Task created in TaskBuffer"
     });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to create task in Firebase" },
       { status: 500 }
@@ -149,7 +149,7 @@ export async function PATCH(req: NextRequest) {
       message: "Task updated in TaskBuffer"
     });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to update task in Firebase" },
       { status: 500 }
@@ -179,7 +179,7 @@ export async function DELETE(req: NextRequest) {
       message: "Task removed from TaskBuffer"
     });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to delete task from Firebase" },
       { status: 500 }

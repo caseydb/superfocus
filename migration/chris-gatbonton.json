@@ -1,0 +1,65 @@
+{
+  "users": {
+    "HRlTk0ykqidJSGf5m1FbsKT3EvA3": {
+      "completionHistory": {
+        "-OUhKAL-eCycP3P-w4Et": {
+          "displayName": "Chris Gatbonton",
+          "duration": "58:52",
+          "task": "Fix word unlocking system",
+          "timestamp": 1752033441223,
+          "userId": "HRlTk0ykqidJSGf5m1FbsKT3EvA3"
+        },
+        "-OUhXU24c0Am30Xc0uMj": {
+          "displayName": "Chris Gatbonton",
+          "duration": "51:52",
+          "task": "Fix word progression localization",
+          "timestamp": 1752036929719,
+          "userId": "HRlTk0ykqidJSGf5m1FbsKT3EvA3"
+        },
+        "-OUkBjCNy1LlpeT4_pEw": {
+          "displayName": "Chris Gatbonton",
+          "duration": "34:20",
+          "task": "Fix final bugs before building APK for Lingoro",
+          "timestamp": 1752081560360,
+          "userId": "HRlTk0ykqidJSGf5m1FbsKT3EvA3"
+        },
+        "-OUkBw_8mc-3AEllgfyx": {
+          "displayName": "Chris Gatbonton",
+          "duration": "00:49",
+          "task": "Launch on Android",
+          "timestamp": 1752081615130,
+          "userId": "HRlTk0ykqidJSGf5m1FbsKT3EvA3"
+        }
+      },
+      "dailyCompletions": {
+        "2025-07-08": true,
+        "2025-07-09": true
+      },
+      "lastVisits": {
+        "-OUI3gKboWDQnE7K0B5J": 1752081555646
+      },
+      "tasks": {
+        "1752030017220": {
+          "completed": true,
+          "order": 2,
+          "text": "Fix final bugs before building APK for Lingoro"
+        },
+        "1752031999330": {
+          "completed": true,
+          "order": 5,
+          "text": "Fix word unlocking system"
+        },
+        "1752032047188": {
+          "completed": true,
+          "order": 4,
+          "text": "Fix word progression localization"
+        },
+        "1752081586154": {
+          "completed": true,
+          "order": 0,
+          "text": "Launch on Android"
+        }
+      }
+    }
+  }
+}

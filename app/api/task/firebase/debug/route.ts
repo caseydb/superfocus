@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
         data: allData
       });
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to check TaskBuffer" },
       { status: 500 }

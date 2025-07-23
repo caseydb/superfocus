@@ -24,6 +24,15 @@ interface User {
   displayName: string;
 }
 
+interface LeaderboardAPIData {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  profile_image: string | null;
+  total_tasks: number;
+  total_duration: number;
+}
+
 // Sprint period calculations - 2 week sprints starting from anchor date
 const SPRINT_ANCHOR_DATE = new Date("2024-12-30"); // Monday Dec 30, 2024
 const SPRINT_DURATION_DAYS = 14; // 2 weeks
@@ -52,48 +61,48 @@ function getCurrentSprintNumber(): number {
   return Math.floor(diffDays / SPRINT_DURATION_DAYS);
 }
 
-// Format sprint date range label
-function formatSprintLabel(sprintNumber: number): string {
-  const start = getSprintStart(sprintNumber);
-  const end = getSprintEnd(sprintNumber);
+// Format sprint date range label - kept for future use
+// function formatSprintLabel(sprintNumber: number): string {
+//   const start = getSprintStart(sprintNumber);
+//   const end = getSprintEnd(sprintNumber);
+//
+//   const months = [
+//     "January",
+//     "February",
+//     "March",
+//     "April",
+//     "May",
+//     "June",
+//     "July",
+//     "August",
+//     "September",
+//     "October",
+//     "November",
+//     "December",
+//   ];
+//   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+//
+//   const formatDate = (date: Date) => {
+//     const day = date.getDate();
+//     const suffix =
+//       day % 10 === 1 && day !== 11
+//         ? "st"
+//         : day % 10 === 2 && day !== 12
+//         ? "nd"
+//         : day % 10 === 3 && day !== 13
+//         ? "rd"
+//         : "th";
+//     return `${days[date.getDay()]} ${day}${suffix} ${months[date.getMonth()]}`;
+//   };
+//
+//   return `${formatDate(start)} – ${formatDate(end)}`;
+// }
 
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-  const formatDate = (date: Date) => {
-    const day = date.getDate();
-    const suffix =
-      day % 10 === 1 && day !== 11
-        ? "st"
-        : day % 10 === 2 && day !== 12
-        ? "nd"
-        : day % 10 === 3 && day !== 13
-        ? "rd"
-        : "th";
-    return `${days[date.getDay()]} ${day}${suffix} ${months[date.getMonth()]}`;
-  };
-
-  return `${formatDate(start)} – ${formatDate(end)}`;
-}
-
-// Check if a sprint has ended
-function hasSprintEnded(sprintNumber: number): boolean {
-  const end = getSprintEnd(sprintNumber);
-  return new Date() > end;
-}
+// Check if a sprint has ended - kept for future use
+// function hasSprintEnded(sprintNumber: number): boolean {
+//   const end = getSprintEnd(sprintNumber);
+//   return new Date() > end;
+// }
 
 function formatTime(totalSeconds: number) {
   // Handle invalid input
@@ -114,9 +123,35 @@ function formatTime(totalSeconds: number) {
 
 export default function Leaderboard({ roomId, onClose }: { roomId: string; onClose: () => void }) {
   const [allHistory, setAllHistory] = useState<HistoryEntry[]>([]);
+  const [apiData, setApiData] = useState<LeaderboardAPIData[]>([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [currentSprint, setCurrentSprint] = useState(getCurrentSprintNumber());
+
+  // Fetch leaderboard data from API
+  useEffect(() => {
+    async function fetchLeaderboardData() {
+      try {
+        console.log('[Leaderboard] Fetching data from API');
+        const response = await fetch('/api/leaderboard');
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('[Leaderboard] API data received:', result.data);
+          setApiData(result.data);
+          setLoading(false);
+        } else {
+          console.error('[Leaderboard] API error:', result.error);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('[Leaderboard] Failed to fetch leaderboard data:', error);
+        setLoading(false);
+      }
+    }
+    
+    fetchLeaderboardData();
+  }, []);
 
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
@@ -157,8 +192,19 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
     setLoading(false);
   }, [roomId]);
 
-  // Calculate entries for current sprint
+  // Calculate entries from API data (all-time for now, sprint filtering can be added later)
   const entries = useMemo(() => {
+    // For now, use API data directly without sprint filtering
+    return apiData.map(user => ({
+      displayName: `${user.first_name} ${user.last_name}`,
+      tasksCompleted: user.total_tasks,
+      totalSeconds: user.total_duration
+    })).sort((a, b) => b.totalSeconds - a.totalSeconds);
+  }, [apiData]);
+
+  // Original sprint-based calculation (kept for reference but not used)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _entriesOld = useMemo(() => {
     const userMap: Record<string, LeaderboardEntry> = {};
     const sprintStart = getSprintStart(currentSprint).getTime();
     const sprintEnd = getSprintEnd(currentSprint).getTime();
@@ -217,8 +263,9 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
     );
   }, [allHistory, users, currentSprint]);
 
-  // Determine which sprints have data
-  const sprintsWithData = useMemo(() => {
+  // Determine which sprints have data - kept for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _sprintsWithData = useMemo(() => {
     const sprints = new Set<number>();
     allHistory.forEach((entry) => {
       const timestamp = entry.timestamp;
@@ -232,10 +279,10 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
     return Array.from(sprints).sort((a, b) => a - b);
   }, [allHistory]);
 
-  // Navigation helpers
-  const canGoBack = currentSprint > 0 && sprintsWithData.includes(currentSprint - 1);
-  const canGoForward = sprintsWithData.includes(currentSprint + 1);
-  const sprintHasEnded = hasSprintEnded(currentSprint);
+  // Navigation helpers (disabled for now since we're showing all-time data)
+  const canGoBack = false; // currentSprint > 0 && sprintsWithData.includes(currentSprint - 1);
+  const canGoForward = false; // sprintsWithData.includes(currentSprint + 1);
+  const sprintHasEnded = false; // hasSprintEnded(currentSprint);
 
   if (loading) {
     return <div className="text-white text-center mt-10">Loading leaderboard...</div>;
@@ -273,7 +320,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
             ←
           </button>
           <div className="text-white text-sm sm:text-lg md:text-xl font-bold select-none text-center px-2">
-            {formatSprintLabel(currentSprint)}
+            All Time
           </div>
           <button
             className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl transition-colors ${
