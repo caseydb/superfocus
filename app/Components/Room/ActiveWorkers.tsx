@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue, off, get } from "firebase/database";
 import Image from "next/image";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
@@ -83,70 +83,115 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   // Listen to ActiveWorker for users actively running timers
   useEffect(() => {
     if (!roomId) return;
+    console.log('[ActiveWorkers] Setting up ActiveWorker listener for room:', roomId);
 
     // Listen to all ActiveWorker entries
     const activeWorkerRef = ref(rtdb, `ActiveWorker`);
     const handle = onValue(activeWorkerRef, (snapshot) => {
       const data = snapshot.val();
+      console.log('[ActiveWorkers] ActiveWorker snapshot received:', {
+        hasData: !!data,
+        entriesCount: data ? Object.keys(data).length : 0,
+        data: data
+      });
+      
       if (data) {
-        const now = Date.now();
-        const STALE_THRESHOLD = 30000; // 30 seconds - if lastSeen is older than this, consider stale
+        console.log('[ActiveWorkers] Processing workers');
         
-        // Filter workers in this room who are actively working and not stale
+        // Filter workers in this room who are actively working
+        // Never filter based on staleness - if timer is running, they're working
         const workersInRoom = Object.entries(data as Record<string, { roomId: string; isActive: boolean; lastSeen?: number; displayName?: string }>)
-          .filter(([, worker]) => {
-            // Check if worker is in this room and active
-            if (worker.roomId !== roomId || !worker.isActive) return false;
+          .filter(([userId, worker]) => {
+            const isInRoom = worker.roomId === roomId;
+            const isActive = worker.isActive;
             
-            // Check if worker is stale (hasn't updated lastSeen recently)
-            if (worker.lastSeen && (now - worker.lastSeen) > STALE_THRESHOLD) {
-              // Worker is stale, they probably closed their browser without cleanup
-              return false;
-            }
+            console.log('[ActiveWorkers] Worker filter check:', {
+              userId,
+              roomId: worker.roomId,
+              isInRoom,
+              isActive,
+              lastSeen: worker.lastSeen,
+              lastSeenDate: worker.lastSeen ? new Date(worker.lastSeen).toISOString() : null,
+              willInclude: isInRoom && isActive
+            });
             
-            return true;
+            // Only check if worker is in this room and active
+            // Do NOT filter based on lastSeen age
+            return isInRoom && isActive;
           })
           .map(([userId, worker]) => ({
             id: userId,
             displayName: worker.displayName || "Anonymous"
           }));
+        
+        console.log('[ActiveWorkers] Final active workers:', {
+          count: workersInRoom.length,
+          users: workersInRoom
+        });
+        
         setActiveUsers(workersInRoom);
       } else {
+        console.log('[ActiveWorkers] No data, setting empty users');
         setActiveUsers([]);
       }
     });
     
-    return () => off(activeWorkerRef, "value", handle);
+    return () => {
+      console.log('[ActiveWorkers] Cleaning up ActiveWorker listener');
+      off(activeWorkerRef, "value", handle);
+    };
   }, [roomId]);
 
-  // TODO: Replace with Firebase RTDB listener for user streaks
-  // Load streaks for active users from task history
+  // Load streaks from Firebase RTDB
   useEffect(() => {
+    console.log('[ActiveWorkers] Streak effect triggered, activeUsers:', activeUsers);
+    
     if (activeUsers.length === 0) {
+      console.log('[ActiveWorkers] No active users, clearing streaks');
       setUserStreaks({});
       return;
     }
 
-    const loadStreaksFromHistory = () => {
-      // TODO: Replace with Firebase RTDB query
-      // const instancesRef = ref(rtdb, "instances");
-      // onValue(instancesRef, (snapshot) => { ... }, { onlyOnce: true });
-
-      // Temporary: Set empty streaks
-      const streaks: Record<string, number> = {};
-      activeUsers.forEach((user) => {
-        streaks[user.id] = 0;
+    // Set up listeners for each active user's streak
+    const unsubscribes: (() => void)[] = [];
+    
+    activeUsers.forEach((user) => {
+      console.log('[ActiveWorkers] Setting up streak listener for user:', user.id);
+      const streakRef = ref(rtdb, `Streaks/${user.id}`);
+      const unsubscribe = onValue(streakRef, (snapshot) => {
+        const streak = snapshot.val();
+        console.log('[ActiveWorkers] Streak data for user', user.id, ':', streak);
+        
+        if (streak && typeof streak === 'number' && streak >= 1) {
+          setUserStreaks(prev => {
+            const newStreaks = {
+              ...prev,
+              [user.id]: streak
+            };
+            console.log('[ActiveWorkers] Updated streaks state:', newStreaks);
+            return newStreaks;
+          });
+        } else {
+          // No streak or invalid data
+          setUserStreaks(prev => {
+            const newStreaks = {
+              ...prev,
+              [user.id]: 0
+            };
+            console.log('[ActiveWorkers] Updated streaks state (no streak):', newStreaks);
+            return newStreaks;
+          });
+        }
       });
-      setUserStreaks(streaks);
+      
+      unsubscribes.push(() => off(streakRef, "value"));
+    });
+
+    // Cleanup function
+    return () => {
+      console.log('[ActiveWorkers] Cleaning up streak listeners');
+      unsubscribes.forEach(unsub => unsub());
     };
-
-    // Load immediately
-    loadStreaksFromHistory();
-
-    // Refresh every minute
-    const interval = setInterval(loadStreaksFromHistory, 60000);
-
-    return () => clearInterval(interval);
   }, [activeUsers]);
 
   // TODO: Replace with Firebase RTDB listener for daily stats

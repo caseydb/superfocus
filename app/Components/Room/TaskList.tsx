@@ -909,21 +909,7 @@ export default function TaskList({
 
   // Console log the entire taskSlice state
   useEffect(() => {
-    console.log("[TASK_SLICE] Current taskSlice state:", {
-      tasks: taskSliceState.tasks,
-      activeTaskId: taskSliceState.activeTaskId,
-      loading: taskSliceState.loading,
-      error: taskSliceState.error,
-      totalTasks: taskSliceState.tasks.length
-    });
-    console.log("[TASK_SLICE] Individual tasks:", taskSliceState.tasks.map(task => ({
-      id: task.id,
-      name: task.name,
-      status: task.status,
-      timeSpent: task.timeSpent,
-      completed: task.completed,
-      createdAt: new Date(task.createdAt).toLocaleString()
-    })));
+    // State monitoring removed
   }, [taskSliceState]);
 
   // Convert Redux tasks to the format expected by this component

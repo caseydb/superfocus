@@ -41,7 +41,6 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       await set(settingsRef, newValue);
       setLeaderboardEnabled(newValue);
     } catch (error) {
-      console.error("Failed to save admin settings:", error);
       // Revert on error
       setLeaderboardEnabled(!newValue);
     } finally {

@@ -85,7 +85,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
         // Update last visit timestamp
         set(lastVisitRef, now);
       } catch (error) {
-        console.error("Error checking welcome back status:", error);
+        // Silent error handling
       }
     };
 

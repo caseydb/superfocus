@@ -23,8 +23,6 @@ const initialState: UserState = {
   error: null,
 };
 
-console.log("[USER_SLICE] Initial state created:", initialState);
-
 export const fetchUserData = createAsyncThunk(
   'user/fetchUserData',
   async () => {
@@ -98,7 +96,6 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUserData.fulfilled, (state, action) => {
-        console.log("[USER_SLICE] fetchUserData.fulfilled - Setting user state:", action.payload);
         state.loading = false;
         state.user_id = action.payload.user_id;
         state.first_name = action.payload.first_name;

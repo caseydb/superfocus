@@ -49,7 +49,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const getStreakDate = useCallback((timestamp: number) => {
     // Validate timestamp
     if (!timestamp || isNaN(timestamp)) {
-      console.error("[ANALYTICS] Invalid timestamp:", timestamp);
       return "1970-01-01";
     }
     
@@ -165,10 +164,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       timeByDate.set(dateStr, (timeByDate.get(dateStr) || 0) + seconds);
     });
 
-    // Debug log
-    console.log("[ANALYTICS] Task dates mapped:", Array.from(tasksByDate.entries()));
-    console.log("[ANALYTICS] Calendar year:", currentYear);
-    console.log("[ANALYTICS] Today in timezone:", todayInTimezone.toISOString());
+    // Debug log removed
 
     // Start from January 1st of current year
     const startDate = new Date(currentYear, 0, 1);
@@ -231,16 +227,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   // Re-generate activity data when tasks or date range changes
   useEffect(() => {
     if (!tasksLoading) {
-      // Debug log to check task data
-      if (completedTasks.length > 0) {
-        console.log("[ANALYTICS] Sample completed task:", completedTasks[0]);
-        console.log("[ANALYTICS] Task timestamps:", completedTasks.map(t => ({
-          name: t.name,
-          createdAt: t.createdAt,
-          completedAt: t.completedAt,
-          dateStr: getStreakDate(t.completedAt || t.createdAt)
-        })));
-      }
+      // Debug log removed
       setActivityData(generateActivityData(completedTasks));
     }
   }, [completedTasks, tasksLoading, generateActivityData, getStreakDate]);

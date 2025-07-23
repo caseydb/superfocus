@@ -54,7 +54,6 @@ export async function PATCH(request: NextRequest) {
       timezone: updatedUser.timezone,
     });
   } catch (error) {
-    console.error("Error updating user data:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -113,7 +112,6 @@ export async function GET(request: NextRequest) {
       timezone: user.timezone,
     });
   } catch (error) {
-    console.error("Error fetching user data:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

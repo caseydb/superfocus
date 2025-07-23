@@ -59,7 +59,6 @@ export async function GET(req: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Error fetching from TaskBuffer:", error);
     return NextResponse.json(
       { error: "Failed to fetch tasks from Firebase" },
       { status: 500 }
@@ -114,7 +113,6 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error creating task in TaskBuffer:", error);
     return NextResponse.json(
       { error: "Failed to create task in Firebase" },
       { status: 500 }
@@ -152,7 +150,6 @@ export async function PATCH(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error updating task in TaskBuffer:", error);
     return NextResponse.json(
       { error: "Failed to update task in Firebase" },
       { status: 500 }
@@ -183,7 +180,6 @@ export async function DELETE(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error deleting task from TaskBuffer:", error);
     return NextResponse.json(
       { error: "Failed to delete task from Firebase" },
       { status: 500 }

@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, onValue, off, set, get } from "firebase/database";
+import type { Task } from "../../store/taskSlice";
+import { rtdb } from "../../../lib/firebase";
+import { ref, set } from "firebase/database";
 
 interface HistoryEntry {
   displayName: string;
@@ -68,6 +68,7 @@ if (typeof window !== "undefined") {
 export default function PersonalStats() {
   const { user } = useInstance();
   const userTimezone = useSelector((state: RootState) => state.user.timezone);
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -227,70 +228,44 @@ export default function PersonalStats() {
       return;
     }
 
-    // Calculate stats from global completed tasks
+    // Calculate stats from Redux tasks
     const calculateStats = () => {
-      const currentStreakDate = getStreakDate();
-      // Filter tasks for current user and today
-      const userTasks = globalCompletedTasks.filter(
-        (task) =>
-          task.userId === user.id &&
-          !task.task.toLowerCase().includes("quit early") &&
-          getStreakDate(task.timestamp) === currentStreakDate
-      );
-
-      // Calculate today's stats
-      const userTasksCompleted = userTasks.length;
-      let userTotalSeconds = 0;
-
-      userTasks.forEach((task) => {
-        // Parse duration
-        let seconds = 0;
-        if (task.duration && typeof task.duration === "string") {
-          const parts = task.duration.split(":").map(Number);
-          if (parts.length === 3) {
-            // hh:mm:ss format
-            const [h, m, s] = parts;
-            if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
-              seconds = h * 3600 + m * 60 + s;
-            }
-          } else if (parts.length === 2) {
-            // mm:ss format
-            const [m, s] = parts;
-            if (!isNaN(m) && !isNaN(s)) {
-              seconds = m * 60 + s;
-            }
-          }
-        }
-        userTotalSeconds += seconds;
+      // Filter for completed tasks only
+      const completedTasks = tasks.filter((task: Task) => task.status === "completed");
+      
+      // Get unique streak dates (accounting for 4am cutoff)
+      const streakDates = completedTasks.map((t) => {
+        const timestamp = t.completedAt || t.createdAt;
+        return getStreakDate(timestamp);
       });
+      const uniqueDateStrings = Array.from(new Set(streakDates));
+      const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
-      // Calculate streak (consecutive days)
-      const allUserTasks = globalCompletedTasks.filter(
-        (task) => task.userId === user.id && !task.task.toLowerCase().includes("quit early")
-      );
-
-      // Get unique dates
-      const uniqueDates = new Set(allUserTasks.map((task) => getStreakDate(task.timestamp)));
-      const sortedDates = Array.from(uniqueDates).sort();
-
-      // Calculate current streak
       let currentStreak = 0;
-      if (sortedDates.length > 0) {
-        const today = getStreakDate();
-        const yesterday = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
 
-        if (sortedDates.includes(today) || sortedDates.includes(yesterday)) {
+      if (sortedDateStrings.length > 0) {
+        // Calculate current streak (working backwards from today)
+        const todayStr = getStreakDate(Date.now());
+        const yesterdayStr = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
+
+        const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
+
+        // Check if the streak is current (task completed today or yesterday)
+        if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
           currentStreak = 1;
-          // Count backwards from most recent date
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const lastDate = sortedDates[sortedDates.length - 1];
-          for (let i = sortedDates.length - 2; i >= 0; i--) {
-            const prevDate = new Date(sortedDates[i]);
-            const currentDate = new Date(sortedDates[i + 1]);
-            const dayDiff = (currentDate.getTime() - prevDate.getTime()) / (24 * 60 * 60 * 1000);
-
-            if (Math.abs(dayDiff - 1) < 0.1) {
-              // Allow for small time differences
+          
+          // Work backwards to count consecutive days
+          for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
+            const prevDateStr = sortedDateStrings[i];
+            const currDateStr = sortedDateStrings[i + 1];
+            
+            // Parse dates and check if they're consecutive
+            const prevDate = new Date(prevDateStr);
+            const currDate = new Date(currDateStr);
+            const diffTime = currDate.getTime() - prevDate.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 1) {
               currentStreak++;
             } else {
               break;
@@ -299,11 +274,23 @@ export default function PersonalStats() {
         }
       }
 
-      // Update state
-      setTasksCompleted(userTasksCompleted);
+      // Calculate today's stats
+      const currentStreakDate = getStreakDate();
+      const todayTasks = completedTasks.filter((task) => {
+        const taskStreakDate = getStreakDate(task.completedAt || task.createdAt);
+        return taskStreakDate === currentStreakDate;
+      });
+
+      const hasCompleted = todayTasks.length > 0;
+      setHasCompletedToday(hasCompleted);
+
+      // Calculate today's totals
+      const userTaskCount = todayTasks.length;
+      const userTotalSeconds = todayTasks.reduce((sum, task) => sum + (task.timeSpent || 0), 0);
+
+      setTasksCompleted(userTaskCount);
       setTotalSeconds(userTotalSeconds);
       setStreak(currentStreak);
-      setHasCompletedToday(userTasksCompleted > 0);
       setLoading(false);
     };
 
@@ -320,7 +307,24 @@ export default function PersonalStats() {
     return () => {
       window.removeEventListener("taskCompleted", handleTaskCompleted);
     };
-  }, [user?.id, getStreakDate]);
+  }, [user?.id, getStreakDate, tasks]);
+
+  // Sync streak to Firebase RTDB whenever it changes
+  useEffect(() => {
+    if (!user?.id || streak === 0) return;
+    
+    // Only sync streaks >= 1 to Firebase
+    const syncStreak = async () => {
+      try {
+        const streakRef = ref(rtdb, `Streaks/${user.id}`);
+        await set(streakRef, streak);
+      } catch (error) {
+        // Silent error handling
+      }
+    };
+    
+    syncStreak();
+  }, [streak, user?.id]);
 
   if (loading || !user) return null;
 

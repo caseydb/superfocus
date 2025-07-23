@@ -146,7 +146,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           };
           setCurrentInstance(tempInstance);
         } catch (error) {
-          console.error("[INSTANCES] Failed to create public room:", error);
+          // Silent error handling
         }
       } else {
         // Use new PrivateRooms system for private rooms
@@ -163,7 +163,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           };
           setCurrentInstance(tempInstance);
         } catch (error) {
-          console.error("[INSTANCES] Failed to create private room:", error);
+          // Silent error handling
         }
       }
     },

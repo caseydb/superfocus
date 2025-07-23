@@ -94,7 +94,6 @@ export async function GET(req: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Error checking TaskBuffer:", error);
     return NextResponse.json(
       { error: "Failed to check TaskBuffer" },
       { status: 500 }

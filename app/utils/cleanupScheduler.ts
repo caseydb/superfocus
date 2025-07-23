@@ -22,7 +22,7 @@ async function runCleanup() {
     // Check for stale rooms (as a backup to Cloud Functions)
     await PublicRoomPresence.cleanupStaleRooms();
   } catch (error) {
-    console.error("[CLEANUP] Error during cleanup:", error);
+    // Silent error handling
   }
 }
 

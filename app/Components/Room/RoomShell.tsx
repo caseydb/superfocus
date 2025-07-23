@@ -240,7 +240,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           return;
         }
       } catch (error) {
-        console.error("Error checking public room:", error);
+        // Silent error handling
       }
       
       // If not found in PublicRooms, check PrivateRooms
@@ -286,7 +286,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           return;
         }
       } catch (error) {
-        console.error("Error checking private room:", error);
+        // Silent error handling
       }
       
       setRoomFound(false);
@@ -542,7 +542,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           setHasTaskInBuffer(false);
         }
       } catch (error) {
-        console.error("Error checking TaskBuffer:", error);
         setHasTaskInBuffer(false);
       }
     };

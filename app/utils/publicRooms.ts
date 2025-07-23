@@ -125,7 +125,6 @@ export async function incrementUserCount(roomId: string): Promise<boolean> {
     
     return canJoin;
   } catch (error) {
-    console.error("Error incrementing user count:", error);
     return false;
   }
 }
@@ -146,7 +145,7 @@ export async function decrementUserCount(roomId: string): Promise<void> {
       return newCount;
     });
   } catch (error) {
-    console.error("Error decrementing user count:", error);
+    // Silent error handling
   }
 }
 

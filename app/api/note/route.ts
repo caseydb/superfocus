@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Notes saved successfully' });
   } catch (error) {
-    console.error('Error saving notes:', error);
     return NextResponse.json(
       { error: 'Failed to save notes' },
       { status: 500 }
@@ -67,7 +66,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.error('Error fetching notes:', error);
     return NextResponse.json(
       { error: 'Failed to fetch notes' },
       { status: 500 }

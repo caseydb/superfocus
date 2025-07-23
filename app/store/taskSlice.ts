@@ -182,17 +182,9 @@ export const transferTaskToPostgres = createAsyncThunk(
       const snapshot = await get(taskRef);
 
       if (!snapshot.exists()) {
-        console.error("[transferTaskToPostgres] Task not found in TaskBuffer");
-        console.error("[transferTaskToPostgres] Looking for path:", `TaskBuffer/${firebaseUserId}/${taskId}`);
         // Check if user has any tasks
         const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
         const userSnapshot = await get(userTasksRef);
-        if (userSnapshot.exists()) {
-          const userData = userSnapshot.val();
-          console.error("[transferTaskToPostgres] User data exists, keys:", Object.keys(userData));
-        } else {
-          console.error("[transferTaskToPostgres] No user data found in TaskBuffer");
-        }
         throw new Error("Task not found in TaskBuffer - it may have already been completed");
       }
 
@@ -234,7 +226,6 @@ export const transferTaskToPostgres = createAsyncThunk(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[transferTaskToPostgres] PATCH failed:", response.status, errorText);
 
         // Try to parse error details
         let errorMessage = `Failed to update task in Postgres: ${response.status}`;
@@ -491,7 +482,6 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
   const response = await fetch(`/api/task/postgres?user_id=${userId}`);
 
   if (!response.ok) {
-    console.error("[fetchTasks] Failed to fetch tasks:", response.status);
     throw new Error("Failed to fetch tasks");
   }
 
@@ -521,7 +511,6 @@ export const startTimeSegment = createAsyncThunk(
     // Get current task data
     const snapshot = await get(taskRef);
     if (!snapshot.exists()) {
-      console.error("[startTimeSegment] Task not found in TaskBuffer");
       throw new Error("Task not found in TaskBuffer");
     }
 
@@ -554,7 +543,6 @@ export const endTimeSegment = createAsyncThunk(
     // Get current task data
     const snapshot = await get(taskRef);
     if (!snapshot.exists()) {
-      console.error("[endTimeSegment] Task not found in TaskBuffer");
       throw new Error("Task not found in TaskBuffer");
     }
 
@@ -955,7 +943,6 @@ const taskSlice = createSlice({
       })
       .addCase(checkForActiveTask.rejected, (state, action) => {
         // Silently fail - not critical if we can't restore active task
-        console.error("Failed to check for active task:", action.error);
       })
       // Handle updateTaskStatusThunk
       .addCase(updateTaskStatusThunk.pending, (state, action) => {

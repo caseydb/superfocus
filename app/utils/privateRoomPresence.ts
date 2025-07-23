@@ -41,7 +41,6 @@ export class PrivateRoomPresence {
 
       return true;
     } catch (error) {
-      console.error("[PRIVATE_PRESENCE] Error joining room:", error);
       return false;
     }
   }

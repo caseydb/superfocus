@@ -65,8 +65,6 @@ export async function PATCH(req: NextRequest) {
       updated_at: task.updated_at
     });
   } catch (error) {
-    console.error("Error updating task status:", error);
-    
     // Handle specific Prisma errors
     if (error instanceof Error && error.message.includes("Record to update not found")) {
       return NextResponse.json(

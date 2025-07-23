@@ -52,7 +52,6 @@ export class PublicRoomPresence {
 
       return true;
     } catch (error) {
-      console.error("[PRESENCE] Error joining room:", error);
       return false;
     }
   }
