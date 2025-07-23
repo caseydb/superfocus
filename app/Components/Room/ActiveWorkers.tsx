@@ -83,20 +83,13 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   // Listen to ActiveWorker for users actively running timers
   useEffect(() => {
     if (!roomId) return;
-    console.log('[ActiveWorkers] Setting up ActiveWorker listener for room:', roomId);
 
     // Listen to all ActiveWorker entries
     const activeWorkerRef = ref(rtdb, `ActiveWorker`);
     const handle = onValue(activeWorkerRef, (snapshot) => {
       const data = snapshot.val();
-      console.log('[ActiveWorkers] ActiveWorker snapshot received:', {
-        hasData: !!data,
-        entriesCount: data ? Object.keys(data).length : 0,
-        data: data
-      });
       
       if (data) {
-        console.log('[ActiveWorkers] Processing workers');
         
         // Filter workers in this room who are actively working
         // Never filter based on staleness - if timer is running, they're working
@@ -105,15 +98,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             const isInRoom = worker.roomId === roomId;
             const isActive = worker.isActive;
             
-            console.log('[ActiveWorkers] Worker filter check:', {
-              userId,
-              roomId: worker.roomId,
-              isInRoom,
-              isActive,
-              lastSeen: worker.lastSeen,
-              lastSeenDate: worker.lastSeen ? new Date(worker.lastSeen).toISOString() : null,
-              willInclude: isInRoom && isActive
-            });
             
             // Only check if worker is in this room and active
             // Do NOT filter based on lastSeen age
@@ -124,30 +108,22 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             displayName: worker.displayName || "Anonymous"
           }));
         
-        console.log('[ActiveWorkers] Final active workers:', {
-          count: workersInRoom.length,
-          users: workersInRoom
-        });
         
         setActiveUsers(workersInRoom);
       } else {
-        console.log('[ActiveWorkers] No data, setting empty users');
         setActiveUsers([]);
       }
     });
     
     return () => {
-      console.log('[ActiveWorkers] Cleaning up ActiveWorker listener');
       off(activeWorkerRef, "value", handle);
     };
   }, [roomId]);
 
   // Load streaks from Firebase RTDB
   useEffect(() => {
-    console.log('[ActiveWorkers] Streak effect triggered, activeUsers:', activeUsers);
     
     if (activeUsers.length === 0) {
-      console.log('[ActiveWorkers] No active users, clearing streaks');
       setUserStreaks({});
       return;
     }
@@ -156,11 +132,9 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     const unsubscribes: (() => void)[] = [];
     
     activeUsers.forEach((user) => {
-      console.log('[ActiveWorkers] Setting up streak listener for user:', user.id);
       const streakRef = ref(rtdb, `Streaks/${user.id}`);
       onValue(streakRef, (snapshot) => {
         const streak = snapshot.val();
-        console.log('[ActiveWorkers] Streak data for user', user.id, ':', streak);
         
         if (streak && typeof streak === 'number' && streak >= 1) {
           setUserStreaks(prev => {
@@ -168,7 +142,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               ...prev,
               [user.id]: streak
             };
-            console.log('[ActiveWorkers] Updated streaks state:', newStreaks);
             return newStreaks;
           });
         } else {
@@ -178,7 +151,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               ...prev,
               [user.id]: 0
             };
-            console.log('[ActiveWorkers] Updated streaks state (no streak):', newStreaks);
             return newStreaks;
           });
         }
@@ -189,7 +161,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
 
     // Cleanup function
     return () => {
-      console.log('[ActiveWorkers] Cleaning up streak listeners');
       unsubscribes.forEach(unsub => unsub());
     };
   }, [activeUsers]);

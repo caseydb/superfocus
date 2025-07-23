@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    console.log("[Leaderboard API] Fetching leaderboard data");
 
     // Get all users with their task statistics
     const leaderboardData = await prisma.$queryRaw`
@@ -26,7 +25,6 @@ export async function GET() {
         COALESCE(SUM(t.duration), 0) DESC
     `;
 
-    console.log("[Leaderboard API] Query results:", leaderboardData);
 
     // Transform the data to ensure proper types
     const formattedData = (leaderboardData as Array<{
@@ -45,7 +43,6 @@ export async function GET() {
       total_duration: Number(entry.total_duration)
     }));
 
-    console.log("[Leaderboard API] Returning data for", formattedData.length, "users");
 
     return NextResponse.json({ 
       success: true, 

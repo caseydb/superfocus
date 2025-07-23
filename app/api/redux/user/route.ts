@@ -51,8 +51,9 @@ export async function PATCH(request: NextRequest) {
       profile_image: updatedUser.profile_image,
       timezone: updatedUser.timezone,
     });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    console.error('PATCH /api/redux/user error:', error);
+    return NextResponse.json({ error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -109,7 +110,8 @@ export async function GET(request: NextRequest) {
       profile_image: user.profile_image,
       timezone: user.timezone,
     });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    console.error('GET /api/redux/user error:', error);
+    return NextResponse.json({ error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

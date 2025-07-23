@@ -97,14 +97,12 @@ export default function Timer({
               lastSeen: now,
               displayName: user.displayName || "Anonymous"
             };
-            console.log('[Timer] Setting ActiveWorker:', activeWorkerData, 'timestamp:', new Date(now).toISOString());
             set(activeWorkerRef, activeWorkerData);
             
             // Set up onDisconnect to remove ActiveWorker if user disconnects
             onDisconnect(activeWorkerRef).remove();
           } else {
             // Remove ActiveWorker when not running
-            console.log('[Timer] Removing ActiveWorker for user:', user.id);
             remove(activeWorkerRef);
             
             // Cancel onDisconnect since we're manually removing
@@ -124,7 +122,6 @@ export default function Timer({
       
       // Also remove ActiveWorker
       const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-      console.log('[Timer] Clearing ActiveWorker on timer clear for user:', user.id);
       remove(activeWorkerRef);
       onDisconnect(activeWorkerRef).cancel();
     }
@@ -332,7 +329,6 @@ export default function Timer({
         // Remove ActiveWorker immediately on page unload
         if (user?.id) {
           const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-          console.log('[Timer] Emergency removing ActiveWorker on page unload for user:', user.id);
           remove(activeWorkerRef);
         }
       }
@@ -445,7 +441,6 @@ export default function Timer({
           lastSeen: now,
           displayName: user.displayName || "Anonymous"
         };
-        console.log('[Timer] Creating ActiveWorker on start:', activeWorkerData, 'timestamp:', new Date(now).toISOString());
         set(activeWorkerRef, activeWorkerData);
         
         // Set up onDisconnect to remove ActiveWorker if user disconnects
@@ -459,17 +454,13 @@ export default function Timer({
 
       heartbeatIntervalRef.current = setInterval(() => {
         const now = Date.now();
-        console.log('[Timer] Heartbeat update for user:', user.id, 'at:', now);
         
         // Update both heartbeat and ActiveWorker with error handling
         Promise.all([
           update(heartbeatRef, { last_seen: now }).catch(err => 
-            console.error('[Timer] Failed to update heartbeat:', err)
           ),
           currentInstance ? update(ref(rtdb, `ActiveWorker/${user.id}`), { lastSeen: now }).then(() => {
-            console.log('[Timer] Successfully updated ActiveWorker lastSeen:', now);
           }).catch(err => {
-            console.error('[Timer] Failed to update ActiveWorker lastSeen:', err);
             // Try to recreate the ActiveWorker entry if update failed
             const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
             set(activeWorkerRef, {
@@ -479,7 +470,7 @@ export default function Timer({
               isActive: true,
               lastSeen: now,
               displayName: user.displayName || "Anonymous"
-            }).catch(err2 => console.error('[Timer] Failed to recreate ActiveWorker:', err2));
+            }).catch(err2 => {});
           }) : Promise.resolve()
         ]);
       }, 5000); // Update every 5 seconds for better reliability
@@ -577,7 +568,6 @@ export default function Timer({
         
         // Remove ActiveWorker when pausing
         const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        console.log('[Timer] Removing ActiveWorker on pause for user:', user.id);
         remove(activeWorkerRef);
         onDisconnect(activeWorkerRef).cancel();
       }
@@ -661,16 +651,13 @@ export default function Timer({
   // Cleanup heartbeat and ActiveWorker on unmount
   React.useEffect(() => {
     return () => {
-      console.log('[Timer] Component unmounting, running:', running, 'user:', user?.id);
       if (heartbeatIntervalRef.current) {
-        console.log('[Timer] Clearing heartbeat interval on unmount');
         clearInterval(heartbeatIntervalRef.current);
       }
       
       // Remove ActiveWorker on unmount if timer is running
       if (running && user?.id) {
         const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        console.log('[Timer] Removing ActiveWorker on unmount for running timer, user:', user.id);
         remove(activeWorkerRef);
       }
     };
@@ -769,7 +756,6 @@ export default function Timer({
                 // Remove ActiveWorker on completion
                 if (user?.id) {
                   const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-                  console.log('[Timer] Removing ActiveWorker on task completion for user:', user.id);
                   remove(activeWorkerRef);
                   onDisconnect(activeWorkerRef).cancel();
                 }

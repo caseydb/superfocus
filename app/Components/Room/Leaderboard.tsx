@@ -132,12 +132,10 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   useEffect(() => {
     async function fetchLeaderboardData() {
       try {
-        console.log('[Leaderboard] Fetching data from API');
         const response = await fetch('/api/leaderboard');
         const result = await response.json();
         
         if (result.success) {
-          console.log('[Leaderboard] API data received:', result.data);
           setApiData(result.data);
           setLoading(false);
         } else {
