@@ -5,6 +5,7 @@ import realtimeReducer from './realtimeSlice';
 import notesReducer from './notesSlice';
 import preferenceReducer from './preferenceSlice';
 import historyReducer from './historySlice';
+import leaderboardReducer from './leaderboardSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     notes: notesReducer,
     preferences: preferenceReducer,
     history: historyReducer,
+    leaderboard: leaderboardReducer,
   },
 });
 

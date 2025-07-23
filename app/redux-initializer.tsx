@@ -7,6 +7,7 @@ import { fetchUserData, updateUser, updateUserData } from "./store/userSlice";
 import { fetchTasks, checkForActiveTask } from "./store/taskSlice";
 import { fetchPreferences } from "./store/preferenceSlice";
 import { fetchHistory } from "./store/historySlice";
+import { fetchLeaderboard } from "./store/leaderboardSlice";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -61,7 +62,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               console.error("[ReduxInitializer] Failed to fetch preferences:", error);
             }
 
-            // Fetch history if we're on a room page
+            // Fetch history and leaderboard if we're on a room page
             if (typeof window !== "undefined") {
               const pathParts = window.location.pathname.split('/');
               const slug = pathParts[pathParts.length - 1];
@@ -70,6 +71,18 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                   await dispatch(fetchHistory(slug)).unwrap();
                 } catch (error) {
                   console.error("[ReduxInitializer] Failed to fetch history:", error);
+                }
+                
+                // Fetch room ID and then leaderboard
+                try {
+                  const roomResponse = await fetch(`/api/room/by-slug?slug=${slug}`);
+                  const roomResult = await roomResponse.json();
+                  
+                  if (roomResult.success && roomResult.room) {
+                    await dispatch(fetchLeaderboard({ roomId: roomResult.room.id })).unwrap();
+                  }
+                } catch (error) {
+                  console.error("[ReduxInitializer] Failed to fetch leaderboard:", error);
                 }
               }
             }
@@ -118,7 +131,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                   console.error("[ReduxInitializer] Failed to fetch preferences on retry:", error);
                 }
 
-                // Fetch history if we're on a room page
+                // Fetch history and leaderboard if we're on a room page
                 if (typeof window !== "undefined") {
                   const pathParts = window.location.pathname.split('/');
                   const slug = pathParts[pathParts.length - 1];
@@ -127,6 +140,18 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                       await dispatch(fetchHistory(slug)).unwrap();
                     } catch (error) {
                       console.error("[ReduxInitializer] Failed to fetch history on retry:", error);
+                    }
+                    
+                    // Fetch room ID and then leaderboard
+                    try {
+                      const roomResponse = await fetch(`/api/room/by-slug?slug=${slug}`);
+                      const roomResult = await roomResponse.json();
+                      
+                      if (roomResult.success && roomResult.room) {
+                        await dispatch(fetchLeaderboard({ roomId: roomResult.room.id })).unwrap();
+                      }
+                    } catch (error) {
+                      console.error("[ReduxInitializer] Failed to fetch leaderboard on retry:", error);
                     }
                   }
                 }

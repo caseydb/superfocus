@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
+import { useAppSelector } from "../../store/hooks";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, onValue, off } from "firebase/database";
@@ -26,14 +27,6 @@ interface User {
   displayName: string;
 }
 
-interface LeaderboardAPIData {
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  profile_image: string | null;
-  total_tasks: number;
-  total_duration: number;
-}
 
 // Sprint period calculations - 2 week sprints starting from anchor date
 const SPRINT_ANCHOR_DATE = new Date("2024-12-30"); // Monday Dec 30, 2024
@@ -124,70 +117,10 @@ function formatTime(totalSeconds: number) {
 }
 
 export default function Leaderboard({ roomId, onClose }: { roomId: string; onClose: () => void }) {
+  const { entries: apiData, loading } = useAppSelector((state) => state.leaderboard);
   const [allHistory, setAllHistory] = useState<HistoryEntry[]>([]);
-  const [apiData, setApiData] = useState<LeaderboardAPIData[]>([]);
-  const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [currentSprint, setCurrentSprint] = useState(getCurrentSprintNumber());
-  const [postgresRoomId, setPostgresRoomId] = useState<string | null>(null);
-
-  // First, get the PostgreSQL room ID from the slug
-  useEffect(() => {
-    async function fetchRoomId() {
-      try {
-        // Get the slug from the current URL
-        const pathParts = window.location.pathname.split('/');
-        const slug = pathParts[pathParts.length - 1];
-        
-        if (!slug) {
-          console.error('[Leaderboard] No slug found in URL');
-          setLoading(false);
-          return;
-        }
-
-        // Fetch the PostgreSQL room ID using the slug
-        const roomResponse = await fetch(`/api/room/by-slug?slug=${slug}`);
-        const roomResult = await roomResponse.json();
-        
-        if (roomResult.success && roomResult.room) {
-          setPostgresRoomId(roomResult.room.id);
-        } else {
-          console.error('[Leaderboard] Failed to get room by slug:', roomResult.error);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('[Leaderboard] Failed to fetch room ID:', error);
-        setLoading(false);
-      }
-    }
-    
-    fetchRoomId();
-  }, []);
-
-  // Fetch leaderboard data from API using PostgreSQL room ID
-  useEffect(() => {
-    async function fetchLeaderboardData() {
-      try {
-        const response = await fetch(`/api/leaderboard?roomId=${postgresRoomId}`);
-        const result = await response.json();
-        
-        if (result.success) {
-          setApiData(result.data);
-          setLoading(false);
-        } else {
-          console.error('[Leaderboard] API error:', result.error);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('[Leaderboard] Failed to fetch leaderboard data:', error);
-        setLoading(false);
-      }
-    }
-    
-    if (postgresRoomId) {
-      fetchLeaderboardData();
-    }
-  }, [postgresRoomId]);
 
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
@@ -225,7 +158,6 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
     
     // Temporary: No history data
     setAllHistory([]);
-    setLoading(false);
   }, [roomId]);
 
   // Calculate entries from API data (all-time for now, sprint filtering can be added later)

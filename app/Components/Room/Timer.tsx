@@ -16,6 +16,7 @@ import {
   reorderTasks,
 } from "../../store/taskSlice";
 import { addHistoryEntry } from "../../store/historySlice";
+import { updateLeaderboardOptimistically, refreshLeaderboard } from "../../store/leaderboardSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set, remove, update, get, onDisconnect } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
@@ -509,9 +510,9 @@ export default function Timer({
       // Task exists but not at position 0, move it to the top
       const reorderedTasks = [...reduxTasks];
       const [taskToMove] = reorderedTasks.splice(currentTaskIndex, 1);
-      // Set order to -1 for the moved task
-      taskToMove.order = -1;
-      reorderedTasks.unshift(taskToMove);
+      // Create a new task object with updated order (to avoid mutating Redux state)
+      const updatedTask = { ...taskToMove, order: -1 };
+      reorderedTasks.unshift(updatedTask);
       dispatch(reorderTasks(reorderedTasks));
     }
     // If task is already at position 0 or doesn't exist yet, no need to reorder
@@ -759,6 +760,20 @@ export default function Timer({
                             duration: seconds,
                           })
                         );
+                        
+                        // Update leaderboard optimistically and refresh from server
+                        dispatch(
+                          updateLeaderboardOptimistically({
+                            userId: reduxUser.user_id,
+                            firstName: reduxUser.first_name || "",
+                            lastName: reduxUser.last_name || "",
+                            profileImage: reduxUser.profile_image || null,
+                            taskDuration: seconds,
+                          })
+                        );
+                        
+                        // Refresh leaderboard from server to get accurate totals
+                        dispatch(refreshLeaderboard());
                       }
 
                     } catch (error) {
