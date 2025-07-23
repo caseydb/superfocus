@@ -7,6 +7,7 @@ import { adminAuth } from "@/lib/firebase-admin";
 export const POST = async (req: NextRequest) => {
   // Check if Firebase Admin is properly configured
   if (!adminAuth) {
+    console.error("Firebase Admin not configured. Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables.");
     return NextResponse.json({ error: "Firebase Admin not configured" }, { status: 503 });
   }
 
@@ -37,6 +38,8 @@ export const POST = async (req: NextRequest) => {
         },
       });
     } catch (dbError) {
+      console.error("Database error in firebase-user-sync:", dbError);
+      console.error("DATABASE_URL exists:", !!process.env.DATABASE_URL);
       throw dbError;
     }
 
