@@ -1,19 +1,16 @@
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - echo "No backend build needed"
 frontend:
   phases:
     preBuild:
       commands:
         - npm install -g pnpm
         - pnpm install
-        # Print environment variables for debugging (remove in production)
-        - echo "Checking environment variables..."
-        - echo "DATABASE_URL exists:" && [ ! -z "$DATABASE_URL" ] && echo "Yes" || echo "No"
-        - echo "FIREBASE_PROJECT_ID exists:" && [ ! -z "$FIREBASE_PROJECT_ID" ] && echo "Yes" || echo "No"
+        # Print environment variables for debugging
+        - echo "=== Environment Variable Check ==="
+        - printenv | grep -E "DATABASE_URL|FIREBASE" || echo "No matching env vars found"
+        - echo "DATABASE_URL length:" && echo ${#DATABASE_URL}
+        - echo "FIREBASE_PROJECT_ID:" $FIREBASE_PROJECT_ID
+        - echo "================================="
     build:
       commands:
         - pnpm run build
