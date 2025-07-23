@@ -457,11 +457,11 @@ export default function Timer({
         
         // Update both heartbeat and ActiveWorker with error handling
         Promise.all([
-          update(heartbeatRef, { last_seen: now }).catch(err => {
+          update(heartbeatRef, { last_seen: now }).catch(() => {
             // Ignore heartbeat update errors
           }),
           currentInstance ? update(ref(rtdb, `ActiveWorker/${user.id}`), { lastSeen: now }).then(() => {
-          }).catch(err => {
+          }).catch(() => {
             // Try to recreate the ActiveWorker entry if update failed
             const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
             set(activeWorkerRef, {
@@ -471,7 +471,7 @@ export default function Timer({
               isActive: true,
               lastSeen: now,
               displayName: user.displayName || "Anonymous"
-            }).catch(err2 => {});
+            }).catch(() => {});
           }) : Promise.resolve()
         ]);
       }, 5000); // Update every 5 seconds for better reliability

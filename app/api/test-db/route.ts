@@ -20,7 +20,7 @@ export async function GET() {
       details: error instanceof Error ? error.message : 'Unknown error',
       errorType: error?.constructor?.name,
       // Include more details for debugging
-      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }

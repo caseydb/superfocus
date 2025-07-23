@@ -40,7 +40,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     
     // Log sample of completed tasks with dates
     if (completed.length > 0) {
-      completed.slice(0, 5).forEach((task, index) => {
+      completed.slice(0, 5).forEach(() => {
       });
     }
     

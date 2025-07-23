@@ -94,7 +94,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         // Filter workers in this room who are actively working
         // Never filter based on staleness - if timer is running, they're working
         const workersInRoom = Object.entries(data as Record<string, { roomId: string; isActive: boolean; lastSeen?: number; displayName?: string }>)
-          .filter(([userId, worker]) => {
+          .filter(([, worker]) => {
             const isInRoom = worker.roomId === roomId;
             const isActive = worker.isActive;
             
