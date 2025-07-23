@@ -509,6 +509,8 @@ export default function Timer({
       // Task exists but not at position 0, move it to the top
       const reorderedTasks = [...reduxTasks];
       const [taskToMove] = reorderedTasks.splice(currentTaskIndex, 1);
+      // Set order to -1 for the moved task
+      taskToMove.order = -1;
       reorderedTasks.unshift(taskToMove);
       dispatch(reorderTasks(reorderedTasks));
     }

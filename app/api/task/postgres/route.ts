@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
         duration: duration || 0,
         completed_at: completed_at ? new Date(completed_at) : null,
         timezone: timezone || "UTC",
+        order: -1, // New tasks go to the top
       },
     });
 
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
         user_id: userId,
       },
       orderBy: {
-        created_at: "desc",
+        order: "asc",
       },
     });
 

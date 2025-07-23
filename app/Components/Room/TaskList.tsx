@@ -29,6 +29,7 @@ import {
   reorderTasks,
   createTaskThunk,
   deleteTaskThunk,
+  updateTaskOrder,
 } from "../../store/taskSlice";
 import { 
   setNotes, 
@@ -1146,7 +1147,30 @@ export default function TaskList({
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedTasks = arrayMove([...reduxTasks], oldIndex, newIndex);
+        
+        // Update Redux state optimistically
         dispatch(reorderTasks(reorderedTasks));
+        
+        // Persist the new order to database
+        if (typeof window !== "undefined") {
+          const token = localStorage.getItem("firebase_token") || "";
+          
+          // Calculate which tasks need order updates
+          const updates = reorderedTasks
+            .map((task, index) => ({
+              taskId: task.id,
+              order: index
+            }))
+            .filter((update, index) => {
+              // Only send updates for tasks whose order changed
+              const originalTask = reduxTasks.find(t => t.id === update.taskId);
+              return originalTask && originalTask.order !== index;
+            });
+          
+          if (updates.length > 0) {
+            dispatch(updateTaskOrder({ updates, token }));
+          }
+        }
       }
     }
 

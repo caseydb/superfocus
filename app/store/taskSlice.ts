@@ -12,6 +12,7 @@ export interface Task {
   completedAt?: number;
   status: "not_started" | "in_progress" | "paused" | "completed" | "quit";
   isOptimistic?: boolean; // Track if this is a temporary optimistic task
+  order: number; // Position in the task list
 }
 
 interface TaskState {
@@ -488,7 +489,7 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
   const data = await response.json();
 
   // Transform database tasks to Redux format
-  const transformedTasks = data.map((task: { id: string; task_name: string; status: string; duration?: number; created_at: string; updated_at?: string; completed_at?: string }) => ({
+  const transformedTasks = data.map((task: { id: string; task_name: string; status: string; duration?: number; created_at: string; updated_at?: string; completed_at?: string; order: number }) => ({
     id: task.id,
     name: task.task_name, // Changed from task.name to task.task_name
     completed: task.status === "completed",
@@ -497,6 +498,7 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
     completedAt: task.completed_at ? new Date(task.completed_at).getTime() : undefined,
     lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
     status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
+    order: task.order,
   }));
 
   return transformedTasks;
@@ -688,6 +690,28 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
   }
 );
 
+// Thunk for updating task order in database
+export const updateTaskOrder = createAsyncThunk(
+  "tasks/updateOrder",
+  async ({ updates, token }: { updates: Array<{ taskId: string; order: number }>; token: string }) => {
+    const response = await fetch("/api/task/reorder", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ updates }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update task order");
+    }
+
+    const data = await response.json();
+    return { updates, ...data };
+  }
+);
+
 const taskSlice = createSlice({
   name: "tasks",
   initialState,
@@ -702,6 +726,7 @@ const taskSlice = createSlice({
         createdAt: Date.now(),
         status: "not_started",
         isOptimistic: true,
+        order: -1, // New tasks go to the top
       };
       state.tasks.unshift(newTask);
     },
@@ -742,7 +767,11 @@ const taskSlice = createSlice({
       }
     },
     reorderTasks: (state, action: PayloadAction<Task[]>) => {
-      state.tasks = action.payload;
+      // Update tasks with new order values
+      state.tasks = action.payload.map((task, index) => ({
+        ...task,
+        order: index
+      }));
     },
     removeOptimisticTask: (state, action: PayloadAction<string>) => {
       // Remove optimistic task if API call fails
@@ -916,7 +945,8 @@ const taskSlice = createSlice({
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.tasks = action.payload;
+        // Sort tasks by order (ascending, with -1 values first)
+        state.tasks = action.payload.sort((a, b) => a.order - b.order);
       })
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;
@@ -964,6 +994,17 @@ const taskSlice = createSlice({
         // Revert optimistic update on failure
         state.error = action.error.message || "Failed to update task status";
         // Could implement rollback logic here if needed
+      })
+      // Handle updateTaskOrder
+      .addCase(updateTaskOrder.pending, () => {
+        // Order update in progress
+      })
+      .addCase(updateTaskOrder.fulfilled, (state) => {
+        // Order already updated optimistically via reorderTasks
+        state.error = null;
+      })
+      .addCase(updateTaskOrder.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to update task order";
       });
   },
   // extraReducers: (builder) => {

@@ -48,10 +48,13 @@ model task {
   updated_at     DateTime @updatedAt
   completed_at   DateTime?
   timezone       String
+  order          Int      @default(0)
 
   user           user     @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
   room           room     @relation(fields: [room_id], references: [id])
   notes          note[]   @relation("TaskNotes")
+
+  @@index([user_id, room_id, order])
 }
 
 model note {
