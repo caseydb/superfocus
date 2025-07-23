@@ -457,8 +457,9 @@ export default function Timer({
         
         // Update both heartbeat and ActiveWorker with error handling
         Promise.all([
-          update(heartbeatRef, { last_seen: now }).catch(err => 
-          ),
+          update(heartbeatRef, { last_seen: now }).catch(err => {
+            // Ignore heartbeat update errors
+          }),
           currentInstance ? update(ref(rtdb, `ActiveWorker/${user.id}`), { lastSeen: now }).then(() => {
           }).catch(err => {
             // Try to recreate the ActiveWorker entry if update failed
