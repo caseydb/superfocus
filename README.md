@@ -19,3 +19,5 @@ bun dev
 
 - npx prisma migrate dev casey
 - npx prisma generate
+
+- testing
