@@ -97,13 +97,9 @@ async function importCaseyBellData() {
       const userId = userData["task table ids"].user_id;
       const roomId = userData["task table ids"].room_id;
       
-      console.log(`\nProcessing Firebase user: ${firebaseUserId}`);
-      console.log(`Using user_id: ${userId}`);
-      console.log(`Using room_id: ${roomId}`);
       
       // Import completion history (completed tasks)
       if (userData.completionHistory) {
-        console.log('\nImporting completion history...');
         
         for (const [historyId, entry] of Object.entries(userData.completionHistory)) {
           try {
@@ -125,7 +121,6 @@ async function importCaseyBellData() {
             });
             
             completedTasksImported++;
-            console.log(`✓ Imported completed task: "${entry.task}" (${entry.duration} = ${durationSeconds}s)`);
             
           } catch (error) {
             console.error(`✗ Error importing completion history ${historyId}:`, error);
@@ -135,7 +130,6 @@ async function importCaseyBellData() {
       
       // Import tasks (not started)
       if (userData.tasks) {
-        console.log('\nImporting not started tasks...');
         
         const nowAuckland = new Date();
         
@@ -143,7 +137,6 @@ async function importCaseyBellData() {
           try {
             // Skip completed tasks in the tasks list
             if (task.completed) {
-              console.log(`⚠️  Skipping task "${task.text}" - marked as completed in tasks list`);
               continue;
             }
             
@@ -162,7 +155,6 @@ async function importCaseyBellData() {
             });
             
             notStartedTasksImported++;
-            console.log(`✓ Imported not started task: "${task.text}"`);
             
           } catch (error) {
             console.error(`✗ Error importing task ${taskId}:`, error);
@@ -171,12 +163,6 @@ async function importCaseyBellData() {
       }
     }
     
-    console.log('\n========================================');
-    console.log('Import Summary for casey-bell.json:');
-    console.log(`✓ Completed tasks imported: ${completedTasksImported}`);
-    console.log(`✓ Not started tasks imported: ${notStartedTasksImported}`);
-    console.log(`✓ Total tasks imported: ${completedTasksImported + notStartedTasksImported}`);
-    console.log('========================================\n');
     
   } catch (error) {
     console.error('Fatal error:', error);

@@ -42,7 +42,6 @@ async function importCompletionHistory() {
   try {
     // Connect to database
     await client.connect();
-    console.log('Connected to database');
 
     // Get room_id and user_id mapping from the test data
     const defaultUserId = testData["task table"].user_id;
@@ -53,7 +52,6 @@ async function importCompletionHistory() {
     // Process each user's completion history
     for (const [firebaseUserId, userData] of Object.entries(testData.users)) {
       if (userData.completionHistory) {
-        console.log(`\nProcessing user: ${firebaseUserId}`);
         
         for (const [historyId, entry] of Object.entries(userData.completionHistory)) {
           try {
@@ -98,7 +96,6 @@ async function importCompletionHistory() {
             await client.query(query, values);
             totalImported++;
             
-            console.log(`Imported: ${entry.task} (${entry.duration} = ${durationSeconds}s)`);
             
           } catch (error) {
             console.error(`Error importing entry ${historyId}:`, error.message);
@@ -107,13 +104,11 @@ async function importCompletionHistory() {
       }
     }
     
-    console.log(`\nTotal tasks imported: ${totalImported}`);
     
   } catch (error) {
     console.error('Error:', error);
   } finally {
     await client.end();
-    console.log('Database connection closed');
   }
 }
 

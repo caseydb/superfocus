@@ -19,7 +19,7 @@ interface TaskEntry {
 }
 
 interface TestData {
-  "task table": {
+  "task table ids": {
     user_id: string;
     room_id: string;
   };
@@ -89,22 +89,60 @@ async function importTestData() {
     const testDataPath = path.join(__dirname, 'test.json');
     const testData: TestData = JSON.parse(fs.readFileSync(testDataPath, 'utf8'));
     
-    const userId = testData["task table"].user_id;
-    const roomId = testData["task table"].room_id;
+    const userId = testData["task table ids"].user_id;
+    const roomId = testData["task table ids"].room_id;
     
-    console.log(`Using user_id: ${userId}`);
-    console.log(`Using room_id: ${roomId}`);
+    
+    // Check if user exists
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    
+    if (!userExists) {
+      console.error(`\n❌ ERROR: User with id ${userId} does not exist in the database!`);
+      console.error(`Please make sure this user exists before running the import.`);
+      console.error(`\nYou may need to:`);
+      console.error(`1. Update the user_id in test.json to match an existing user`);
+      console.error(`2. Or create the user first in the database`);
+      
+      // Show available users
+      const users = await prisma.user.findMany({
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          email: true
+        },
+        take: 10
+      });
+      
+      users.forEach(user => {
+      });
+      
+      return;
+    }
+    
+    
+    // Check if room exists
+    const roomExists = await prisma.room.findUnique({
+      where: { id: roomId }
+    });
+    
+    if (!roomExists) {
+      console.error(`\n❌ ERROR: Room with id ${roomId} does not exist in the database!`);
+      console.error(`Please make sure this room exists before running the import.`);
+      return;
+    }
+    
     
     let completedTasksImported = 0;
     let notStartedTasksImported = 0;
     
     // Process each user's data
     for (const [firebaseUserId, userData] of Object.entries(testData.users)) {
-      console.log(`\nProcessing Firebase user: ${firebaseUserId}`);
       
       // Import completion history (completed tasks)
       if (userData.completionHistory) {
-        console.log('\nImporting completion history...');
         
         for (const [historyId, entry] of Object.entries(userData.completionHistory)) {
           try {
@@ -126,7 +164,6 @@ async function importTestData() {
             });
             
             completedTasksImported++;
-            console.log(`✓ Imported completed task: "${entry.task}" (${entry.duration} = ${durationSeconds}s)`);
             
           } catch (error) {
             console.error(`✗ Error importing completion history ${historyId}:`, error);
@@ -136,7 +173,6 @@ async function importTestData() {
       
       // Import tasks (not started)
       if (userData.tasks) {
-        console.log('\nImporting not started tasks...');
         
         const nowAuckland = new Date();
         
@@ -144,7 +180,6 @@ async function importTestData() {
           try {
             // Skip completed tasks in the tasks list
             if (task.completed) {
-              console.log(`⚠️  Skipping task "${task.text}" - marked as completed in tasks list`);
               continue;
             }
             
@@ -163,7 +198,6 @@ async function importTestData() {
             });
             
             notStartedTasksImported++;
-            console.log(`✓ Imported not started task: "${task.text}"`);
             
           } catch (error) {
             console.error(`✗ Error importing task ${taskId}:`, error);
@@ -172,12 +206,6 @@ async function importTestData() {
       }
     }
     
-    console.log('\n========================================');
-    console.log('Import Summary:');
-    console.log(`✓ Completed tasks imported: ${completedTasksImported}`);
-    console.log(`✓ Not started tasks imported: ${notStartedTasksImported}`);
-    console.log(`✓ Total tasks imported: ${completedTasksImported + notStartedTasksImported}`);
-    console.log('========================================\n');
     
   } catch (error) {
     console.error('Fatal error:', error);
