@@ -28,6 +28,8 @@ import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
 import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
 import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
 import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
 import { PrivateRoomPresence } from "@/app/utils/privateRoomPresence";
@@ -1029,7 +1031,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     );
   }
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <DotSpinner size="40" speed="0.9" color="#FFAA00" />
+      </div>
+    );
   }
   if (!roomFound) {
     return (

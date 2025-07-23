@@ -1,6 +1,8 @@
 //Leaderboard
 
 import React, { useEffect, useState, useMemo } from "react";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, onValue, off } from "firebase/database";
@@ -319,7 +321,11 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
   const sprintHasEnded = false; // hasSprintEnded(currentSprint);
 
   if (loading) {
-    return <div className="text-white text-center mt-10">Loading leaderboard...</div>;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+        <DotSpinner size="40" speed="0.9" color="#FFAA00" />
+      </div>
+    );
   }
 
   return (

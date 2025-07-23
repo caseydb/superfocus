@@ -3,6 +3,8 @@ import { useInstance } from "../Instances";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 import { useRouter } from "next/navigation";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 
 interface Room {
   id: string;
@@ -181,8 +183,7 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
         <div className="p-6 overflow-y-auto max-h-[50vh] custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFAA00]"></div>
-              <span className="ml-3 text-gray-400 font-mono">Loading rooms...</span>
+              <DotSpinner size="40" speed="0.9" color="#FFAA00" />
             </div>
           ) : rooms.length === 0 ? (
             <div className="text-center py-12">

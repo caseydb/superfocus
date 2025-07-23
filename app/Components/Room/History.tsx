@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 
 
 function formatDate(dateString: string): string {
@@ -126,7 +128,11 @@ export default function History({
 
 
   if (loading) {
-    return <div className="text-white text-center mt-10">Loading history...</div>;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <DotSpinner size="40" speed="0.9" color="#FFAA00" />
+      </div>
+    );
   }
 
   if (history.length === 0) {

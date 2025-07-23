@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, onValue, off } from "firebase/database";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -80,7 +82,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         {/* Content */}
         {loading ? (
           <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#FFAA00]"></div>
+            <DotSpinner size="40" speed="0.9" color="#FFAA00" />
           </div>
         ) : (
           <div className="space-y-6">
