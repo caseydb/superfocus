@@ -584,10 +584,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     const eventsRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events`);
     let timeout: NodeJS.Timeout | null = null;
     const processedEvents = new Set<string>();
+    let isInitialLoad = true;
     
     const handle = onValue(eventsRef, (snap) => {
       const events = snap.val();
       if (!events) return;
+      
+      // On initial load, mark all existing events as processed to ignore them
+      if (isInitialLoad) {
+        Object.keys(events).forEach(eventId => processedEvents.add(eventId));
+        isInitialLoad = false;
+        return;
+      }
       
       // Find new events we haven't processed yet
       Object.entries(events as Record<string, { displayName?: string; type?: string }>).forEach(([eventId, event]) => {
@@ -1245,7 +1253,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             </div>
           )}
           {showLeaderboard && currentInstance && (
-            <Leaderboard roomId={currentInstance.id} onClose={() => setShowLeaderboard(false)} />
+            <Leaderboard onClose={() => setShowLeaderboard(false)} />
           )}
           {showHistory && currentInstance && (
             <History userId={user?.id} onClose={() => setShowHistory(false)} />

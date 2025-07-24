@@ -49,9 +49,15 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
 
   // Initialize from saved preference - only run once
   useEffect(() => {
+    // Only initialize if we don't already have a value passed from parent
     if (mounted && savedDatePicker && savedDatePicker !== "custom" && !hasInitialized.current) {
-      hasInitialized.current = true;
+      // If parent has already provided a value with actual dates, don't override it
+      if (value && value.start && value.end) {
+        hasInitialized.current = true;
+        return;
+      }
       
+      hasInitialized.current = true;
       // Apply the saved range - reuse the internal function logic
       handleRangeChangeInternal(savedDatePicker as DateRangeValue);
     }

@@ -116,7 +116,7 @@ function formatTime(totalSeconds: number) {
   }
 }
 
-export default function Leaderboard({ roomId, onClose }: { roomId: string; onClose: () => void }) {
+export default function Leaderboard({ onClose }: { onClose: () => void }) {
   const { entries: apiData, loading } = useAppSelector((state) => state.leaderboard);
   const [allHistory, setAllHistory] = useState<HistoryEntry[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
@@ -124,41 +124,15 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
 
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
-    if (!roomId) return;
-    // const usersRef = ref(rtdb, `instances/${roomId}/users`);
-    // const handle = onValue(usersRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data) {
-    //     setUsers(data);
-    //   } else {
-    //     setUsers({});
-    //   }
-    // });
-    // return () => off(usersRef, "value", handle);
-    
     // Temporary: No users data
     setUsers({});
-  }, [roomId]);
+  }, []);
 
   // TODO: Replace with Firebase RTDB listener for history
   useEffect(() => {
-    if (!roomId) return;
-    // const historyRef = ref(rtdb, `instances/${roomId}/history`);
-    // const handle = onValue(historyRef, (snapshot) => {
-    //   const data = snapshot.val();
-    //   if (data) {
-    //     const historyArray = Object.values(data as Record<string, HistoryEntry>);
-    //     setAllHistory(historyArray);
-    //   } else {
-    //     setAllHistory([]);
-    //   }
-    //   setLoading(false);
-    // });
-    // return () => off(historyRef, "value", handle);
-    
     // Temporary: No history data
     setAllHistory([]);
-  }, [roomId]);
+  }, []);
 
   // Calculate entries from API data (all-time for now, sprint filtering can be added later)
   const entries = useMemo(() => {
@@ -306,7 +280,7 @@ export default function Leaderboard({ roomId, onClose }: { roomId: string; onClo
         </div>
         {/* Header with title */}
         <div className="w-full text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Leaderboard</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Global Leaderboard</h2>
         </div>
         {/* Show winners for ended sprints, regular table for active sprint */}
         {sprintHasEnded && entries.length > 0 ? (

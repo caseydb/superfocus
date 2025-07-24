@@ -5,6 +5,8 @@ import DateRangePicker from "../DateRangePicker";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 import type { Task } from "../../store/taskSlice";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 
 interface AnalyticsProps {
   roomId: string;
@@ -22,17 +24,13 @@ interface DayActivity {
 const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
   const [colorByTime, setColorByTime] = useState(false);
-  const [clientDateRange, setClientDateRange] = useState<{ start: Date | null; end: Date | null }>({
-    start: null,
-    end: null,
-  });
-  const [mounted, setMounted] = useState(false);
   
   // Get data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
   const userTimezone = useSelector((state: RootState) => state.user.timezone);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const tasksLoading = useSelector((state: RootState) => state.tasks.loading);
+  const savedDatePicker = useSelector((state: RootState) => state.preferences.date_picker);
   
   // Filter for completed tasks only - memoized to prevent infinite re-renders
   const completedTasks = useMemo(() => {
@@ -47,10 +45,118 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     return completed;
   }, [tasks]);
 
+  // Helper function to get first task date early
+  const getFirstTaskDateEarly = useCallback(() => {
+    if (completedTasks.length === 0) return null;
+    const sortedTasks = [...completedTasks].sort((a, b) => {
+      const aTime = a.completedAt || a.createdAt;
+      const bTime = b.completedAt || b.createdAt;
+      return aTime - bTime;
+    });
+    return new Date(sortedTasks[0].completedAt || sortedTasks[0].createdAt);
+  }, [completedTasks]);
+
+  // Helper to get date range based on saved preference
+  const getInitialDateRange = useCallback((preference: string, firstTaskDate: Date | null): { start: Date | null; end: Date | null } => {
+    const getTodayDate = () => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const getDateNDaysAgo = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n + 1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const getThisWeekStart = () => {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      d.setDate(d.getDate() - diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const getThisMonthStart = () => {
+      const d = new Date();
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    switch (preference) {
+      case "today":
+        const today = getTodayDate();
+        return { start: today, end: today };
+      case "this_week":
+        const weekStart = getThisWeekStart();
+        return {
+          start: firstTaskDate && firstTaskDate > weekStart ? firstTaskDate : weekStart,
+          end: getTodayDate()
+        };
+      case "this_month":
+        const monthStart = getThisMonthStart();
+        return {
+          start: firstTaskDate && firstTaskDate > monthStart ? firstTaskDate : monthStart,
+          end: getTodayDate()
+        };
+      case "7_days":
+      case "14_days":
+      case "30_days":
+      case "90_days":
+      case "365_days":
+        const daysMatch = preference.match(/^(\d+)_days$/);
+        if (daysMatch) {
+          const days = Number(daysMatch[1]);
+          const startDate = getDateNDaysAgo(days);
+          return {
+            start: firstTaskDate && firstTaskDate > startDate ? firstTaskDate : startDate,
+            end: getTodayDate()
+          };
+        }
+        return { start: null, end: null };
+      case "all_time":
+      default:
+        return {
+          start: firstTaskDate || new Date("2020-01-01"),
+          end: getTodayDate()
+        };
+    }
+  }, []);
+
+  // Initialize clientDateRange based on saved preference
+  const [clientDateRange, setClientDateRange] = useState<{ start: Date | null; end: Date | null }>(() => {
+    const firstTaskDate = getFirstTaskDateEarly();
+    return getInitialDateRange(savedDatePicker || "all_time", firstTaskDate);
+  });
+  
+  const [mounted, setMounted] = useState(false);
+
   // Ensure component is mounted before rendering date-dependent content
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Update date range when tasks or saved preference changes
+  useEffect(() => {
+    if (mounted && completedTasks.length > 0 && savedDatePicker) {
+      const firstTaskDate = getFirstTaskDateEarly();
+      const newRange = getInitialDateRange(savedDatePicker, firstTaskDate);
+      setClientDateRange((prevRange) => {
+        // Only update if the range has actually changed to avoid unnecessary re-renders
+        if (
+          prevRange.start?.getTime() !== newRange.start?.getTime() ||
+          prevRange.end?.getTime() !== newRange.end?.getTime()
+        ) {
+          return newRange;
+        }
+        return prevRange;
+      });
+    }
+  }, [mounted, savedDatePicker, completedTasks.length, getFirstTaskDateEarly, getInitialDateRange]);
 
   // Get the "streak date" - which day a timestamp belongs to (midnight to midnight)
   const getStreakDate = useCallback((timestamp: number) => {
@@ -490,7 +596,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
         {tasksLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500"></div>
+            <DotSpinner size="40" speed="0.9" color="#FFAA00" />
           </div>
         ) : (
           <div>

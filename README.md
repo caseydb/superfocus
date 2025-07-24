@@ -17,8 +17,9 @@ bun dev
 
 ## Run Prisma Migration
 
-- npx prisma migrate dev casey
-- npx prisma generate
-- npx prisma db push
+npx prisma migrate dev casey
+npx prisma generate
+npx prisma db push
 
-- test....
+git reset --hard origin/dev
+git clean -fd

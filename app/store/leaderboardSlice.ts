@@ -28,8 +28,8 @@ const initialState: LeaderboardState = {
 // Async thunk to fetch leaderboard data
 export const fetchLeaderboard = createAsyncThunk(
   "leaderboard/fetch",
-  async ({ roomId }: { roomId: string }) => {
-    const response = await fetch(`/api/leaderboard?roomId=${roomId}`);
+  async () => {
+    const response = await fetch(`/api/leaderboard`);
     const data = await response.json();
     
     if (!response.ok) {
@@ -37,22 +37,15 @@ export const fetchLeaderboard = createAsyncThunk(
     }
     
     console.log("[LeaderboardSlice] Leaderboard loaded:", data.data);
-    return { entries: data.data, roomId };
+    return { entries: data.data };
   }
 );
 
 // Async thunk to refresh leaderboard after task completion
 export const refreshLeaderboard = createAsyncThunk(
   "leaderboard/refresh",
-  async (_, { getState }) => {
-    const state = getState() as { leaderboard: LeaderboardState };
-    const { roomId } = state.leaderboard;
-    
-    if (!roomId) {
-      throw new Error("No room ID available for refresh");
-    }
-    
-    const response = await fetch(`/api/leaderboard?roomId=${roomId}`);
+  async () => {
+    const response = await fetch(`/api/leaderboard`);
     const data = await response.json();
     
     if (!response.ok) {
@@ -116,7 +109,7 @@ const leaderboardSlice = createSlice({
       .addCase(fetchLeaderboard.fulfilled, (state, action) => {
         state.loading = false;
         state.entries = action.payload.entries;
-        state.roomId = action.payload.roomId;
+        state.roomId = null; // No longer tracking roomId
         state.lastFetched = Date.now();
       })
       .addCase(fetchLeaderboard.rejected, (state, action) => {

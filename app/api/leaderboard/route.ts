@@ -1,38 +1,9 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Get room_id from query params
-    const searchParams = request.nextUrl.searchParams;
-    const roomId = searchParams.get('roomId');
-
-    if (!roomId) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Room ID is required" 
-        },
-        { status: 400 }
-      );
-    }
-
-    // Verify the room exists
-    const room = await prisma.room.findUnique({
-      where: { id: roomId }
-    });
-
-    if (!room) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Room not found" 
-        },
-        { status: 404 }
-      );
-    }
-
-    // Get all users with their task statistics filtered by room_id
+    // Get all users with their task statistics globally (no room filtering)
     const leaderboardData = await prisma.$queryRaw`
       SELECT 
         u.id as user_id,
@@ -45,8 +16,7 @@ export async function GET(request: NextRequest) {
         "user" u
       LEFT JOIN 
         "task" t ON u.id = t.user_id 
-          AND t.status = 'completed' 
-          AND t.room_id = ${roomId}
+          AND t.status = 'completed'
       GROUP BY 
         u.id, u.first_name, u.last_name, u.profile_image
       HAVING 
