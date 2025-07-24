@@ -7,7 +7,7 @@ import { RootState, AppDispatch } from "../../store/store";
 import { endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
-import { ref, onValue, off, set, remove, push, runTransaction, get } from "firebase/database";
+import { ref, onValue, off, set, remove, push, runTransaction, get, query, orderByChild, limitToLast } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
@@ -581,12 +581,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Listen for event notifications (🥊🏆💀) from GlobalEffects
   useEffect(() => {
     if (!currentInstance) return;
-    const eventsRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events`);
+    // Only fetch recent events to avoid processing old ones
+    const eventsQuery = query(
+      ref(rtdb, `GlobalEffects/${currentInstance.id}/events`),
+      orderByChild('timestamp'),
+      limitToLast(20) // Only fetch the 20 most recent events
+    );
     let timeout: NodeJS.Timeout | null = null;
     const processedEvents = new Set<string>();
     let isInitialLoad = true;
     
-    const handle = onValue(eventsRef, (snap) => {
+    const handle = onValue(eventsQuery, (snap) => {
       const events = snap.val();
       if (!events) return;
       
@@ -622,16 +627,27 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           }
         }
       });
-      
-      // Clean up old event IDs from our set
-      if (processedEvents.size > 100) {
-        processedEvents.clear();
-      }
     });
     
+    // Clean up old processed events periodically
+    const cleanupInterval = setInterval(() => {
+      const cutoff = Date.now() - 60000; // 1 minute old
+      processedEvents.forEach(eventId => {
+        // Event IDs are in format: userId-type-timestamp
+        const parts = eventId.split('-');
+        if (parts.length >= 3) {
+          const timestamp = parseInt(parts[parts.length - 1]);
+          if (!isNaN(timestamp) && timestamp < cutoff) {
+            processedEvents.delete(eventId);
+          }
+        }
+      });
+    }, 30000); // Run cleanup every 30 seconds
+    
     return () => {
-      off(eventsRef, "value", handle);
+      off(eventsQuery, "value", handle);
       if (timeout) clearTimeout(timeout);
+      clearInterval(cleanupInterval);
     };
   }, [currentInstance, timerRunning]);
 
@@ -704,10 +720,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       
       set(eventRef, eventData);
       
-      // Auto-cleanup old events after 30 seconds
+      // Auto-cleanup old events after 10 seconds
       setTimeout(() => {
         remove(eventRef);
-      }, 30000);
+      }, 10000);
     }
   }
 

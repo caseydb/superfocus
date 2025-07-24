@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue, off, query, orderByChild, limitToLast } from "firebase/database";
 
 export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { roomId: string; localVolume?: number; currentUserId?: string }) {
   const completeRef = useRef<HTMLAudioElement>(null);
@@ -14,11 +14,33 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
   const COOLDOWN_MS = 5 * 60 * 1000;  // 5 minutes in milliseconds for start sounds
   const MIN_DURATION_MS = 5 * 60 * 1000;  // 5 minutes minimum for complete/quit sounds
 
+  // Cleanup old cooldown entries to prevent memory leaks
+  useEffect(() => {
+    const cleanupCooldowns = () => {
+      const cutoff = Date.now() - (6 * 60 * 1000); // 6 minutes (1 minute after cooldown expires)
+      Object.keys(userStartCooldowns.current).forEach(userId => {
+        if (userStartCooldowns.current[userId] < cutoff) {
+          delete userStartCooldowns.current[userId];
+        }
+      });
+    };
+
+    // Run cleanup every minute
+    const cleanupInterval = setInterval(cleanupCooldowns, 60000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
   useEffect(() => {
     if (!roomId) return;
-    // Listen to GlobalEffects events for this room
-    const eventsRef = ref(rtdb, `GlobalEffects/${roomId}/events`);
-    const handle = onValue(eventsRef, (snap) => {
+    // Listen to GlobalEffects events for this room - only get recent events
+    const eventsQuery = query(
+      ref(rtdb, `GlobalEffects/${roomId}/events`),
+      orderByChild('timestamp'),
+      limitToLast(20) // Only fetch the 20 most recent events
+    );
+    
+    const handle = onValue(eventsQuery, (snap) => {
       const events = snap.val();
       if (!events) return;
       
@@ -71,7 +93,7 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
         }
       }
     });
-    return () => off(eventsRef, "value", handle);
+    return () => off(eventsQuery, "value", handle);
   }, [roomId, currentUserId, COOLDOWN_MS, MIN_DURATION_MS]);
 
   useEffect(() => {

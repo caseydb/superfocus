@@ -546,10 +546,10 @@ export default function Timer({
       
       set(eventRef, eventData);
       
-      // Auto-cleanup old events after 30 seconds
+      // Auto-cleanup old events after 10 seconds
       setTimeout(() => {
         remove(eventRef);
-      }, 30000);
+      }, 10000);
     }
   }
 
