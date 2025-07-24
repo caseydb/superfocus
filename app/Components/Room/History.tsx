@@ -217,36 +217,40 @@ export default function History({
             {displayEntries.map((entry, i) => (
               <div
                 key={i}
-                className="bg-gray-800 rounded-lg px-4 py-1 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
+                className="bg-gray-800 rounded-lg px-4 py-2 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
               >
-                <div className="flex justify-between items-center mb-0.5 gap-3">
-                  <div
-                    className={`font-mono text-base font-medium flex-1 ${
-                      entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
-                    }`}
-                    title={entry.displayName}
-                  >
-                    {entry.displayName}
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1">
+                    <div
+                      className={`font-mono text-base font-medium ${
+                        entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
+                      }`}
+                      title={entry.displayName}
+                    >
+                      {entry.displayName}
+                    </div>
+                    <div
+                      className={`font-mono text-base leading-snug ${
+                        entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
+                      }`}
+                    >
+                      <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
+                      <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
+                      <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
+                    </div>
                   </div>
-                  <div
-                    className={`font-mono text-base font-medium flex-shrink-0 ${
-                      entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
-                    }`}
-                  >
-                    {entry.formattedDuration}
+                  <div className="flex flex-col items-end flex-shrink-0">
+                    <div
+                      className={`font-mono text-base font-medium ${
+                        entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
+                      }`}
+                    >
+                      {entry.formattedDuration}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatDate(entry.completedAt)}
+                    </div>
                   </div>
-                </div>
-                <div
-                  className={`font-mono text-base leading-snug ${
-                    entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
-                  }`}
-                >
-                  <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
-                  <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
-                  <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {formatDate(entry.completedAt)}
                 </div>
               </div>
             ))}

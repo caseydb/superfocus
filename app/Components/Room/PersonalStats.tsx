@@ -77,19 +77,34 @@ export default function PersonalStats() {
   // Get the "streak date" - which day a timestamp belongs to (midnight to midnight)
   const getStreakDate = useCallback(
     (timestamp: number = Date.now()) => {
+      // Validate timestamp
+      if (!timestamp || isNaN(timestamp)) {
+        return "1970-01-01";
+      }
+      
       const date = new Date(timestamp);
-
-      // Use user's timezone if available, otherwise fall back to local timezone
       const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      // Get the local time in the user's timezone
-      const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
-
-      // Format as YYYY-MM-DD
-      const year = localTime.getFullYear();
-      const month = String(localTime.getMonth() + 1).padStart(2, "0");
-      const day = String(localTime.getDate()).padStart(2, "0");
-
+      
+      // Create a proper date formatter for the timezone
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      
+      // Get the parts
+      const parts = formatter.formatToParts(date);
+      const dateParts = parts.reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      // Extract values
+      const year = dateParts.year;
+      const month = dateParts.month;
+      const day = dateParts.day;
+      
       return `${year}-${month}-${day}`;
     },
     [userTimezone]
@@ -266,13 +281,25 @@ export default function PersonalStats() {
             const prevDateStr = sortedDateStrings[i];
             const currDateStr = sortedDateStrings[i + 1];
 
-            // Parse dates and check if they're consecutive
-            const prevDate = new Date(prevDateStr);
-            const currDate = new Date(currDateStr);
-            const diffTime = currDate.getTime() - prevDate.getTime();
-            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            // Parse the date strings to get year, month, day
+            const [prevYear, prevMonth, prevDay] = prevDateStr.split('-').map(Number);
+            const [currYear, currMonth, currDay] = currDateStr.split('-').map(Number);
+            
+            // Create dates at noon to avoid any timezone edge cases
+            const prevDate = new Date(prevYear, prevMonth - 1, prevDay, 12, 0, 0);
+            const currDate = new Date(currYear, currMonth - 1, currDay, 12, 0, 0);
+            
+            // Check if dates are consecutive calendar days
+            const nextDay = new Date(prevDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            
+            const isConsecutive = (
+              nextDay.getFullYear() === currDate.getFullYear() &&
+              nextDay.getMonth() === currDate.getMonth() &&
+              nextDay.getDate() === currDate.getDate()
+            );
 
-            if (diffDays === 1) {
+            if (isConsecutive) {
               currentStreak++;
             } else {
               break;
