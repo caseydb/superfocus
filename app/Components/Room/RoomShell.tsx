@@ -91,6 +91,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [previousVolume, setPreviousVolume] = useState(0.2);
   
   // Local quit cooldown state
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [localQuitCooldown, setLocalQuitCooldown] = useState(0);
   const quitCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const MIN_DURATION_MS = 5 * 60 * 1000; // 5 minutes

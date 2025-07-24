@@ -33,6 +33,7 @@ export default function Timer({
   localVolume = 0.2,
   onTaskRestore,
   onNewTaskStart,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   startCooldown = 0,
   lastStartTime = 0,
 }: {
@@ -75,6 +76,7 @@ export default function Timer({
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Local cooldown state (start cooldown now comes from props)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [localCompleteCooldown, setLocalCompleteCooldown] = useState(0);
   const localCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes for start
