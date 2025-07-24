@@ -66,6 +66,7 @@ export default function Timer({
   const reduxUser = useSelector((state: RootState) => state.user);
   const [isStarting, setIsStarting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [showCompleteFeedback, setShowCompleteFeedback] = useState(false);
   const isInitializedRef = useRef(false);
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -752,11 +753,15 @@ export default function Timer({
             </button>
             <div className="flex flex-col items-center gap-2">
               <button
-                className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
-                disabled={isCompleting}
+                className={`${showCompleteFeedback ? 'bg-green-600' : 'bg-green-500'} text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 cursor-pointer`}
                 onClick={async () => {
                 // Prevent multiple clicks
-                if (isCompleting) return;
+                if (isCompleting) {
+                  // Show feedback that button is on cooldown
+                  setShowCompleteFeedback(true);
+                  setTimeout(() => setShowCompleteFeedback(false), 300);
+                  return;
+                }
                 setIsCompleting(true);
                 
                 // Play completion sound immediately for instant feedback
@@ -876,13 +881,13 @@ export default function Timer({
                   onComplete(completionTime);
                 }
                 
-                // Reset completing state after a short delay
+                // Reset completing state after 2 seconds
                 setTimeout(() => {
                   setIsCompleting(false);
-                }, 1000);
+                }, 2000);
               }}
             >
-                Complete
+                {showCompleteFeedback ? 'Wait...' : 'Complete'}
               </button>
             </div>
           </>
