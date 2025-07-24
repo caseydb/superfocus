@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import DateRangePicker from "../DateRangePicker";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 import type { Task } from "../../store/taskSlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
+import { auth } from '@/lib/firebase';
 
 interface AnalyticsProps {
   roomId: string;
@@ -21,9 +22,24 @@ interface DayActivity {
   totalSeconds: number;
 }
 
+interface SuperadminUser {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  completed_tasks_count: number;
+  display_name: string;
+  timezone?: string;
+  tasks?: Task[];
+}
+
 const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
   const [colorByTime, setColorByTime] = useState(false);
+  const [superadminUsers, setSuperadminUsers] = useState<SuperadminUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>("personal");
+  const hasLoadedUsers = useRef(false);
   
   // Get data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
@@ -33,17 +49,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const savedDatePicker = useSelector((state: RootState) => state.preferences.date_picker);
   
   // Filter for completed tasks only - memoized to prevent infinite re-renders
+  // Get selected user data when viewing another user
+  const selectedUserData = useMemo(() => {
+    if (selectedUserId === "personal" || !superadminUsers.length) return null;
+    return superadminUsers.find(user => user.id === selectedUserId);
+  }, [selectedUserId, superadminUsers]);
+
+  // Determine which tasks and user info to use
+  const isViewingOtherUser = selectedUserId !== "personal" && selectedUserData;
+  // const displayUser = isViewingOtherUser ? selectedUserData : reduxUser;
+  const displayTimezone = isViewingOtherUser ? selectedUserData.timezone : userTimezone;
+
+  // Get tasks based on viewing mode
   const completedTasks = useMemo(() => {
-    const completed = tasks.filter((task: Task) => task.status === "completed");
-    
-    // Log sample of completed tasks with dates
-    if (completed.length > 0) {
-      completed.slice(0, 5).forEach(() => {
-      });
+    if (isViewingOtherUser && selectedUserData) {
+      // Use selected user's tasks - they're already filtered for completed status
+      return selectedUserData.tasks || [];
+    } else {
+      // Use Redux store tasks for personal view
+      const completed = tasks.filter((task: Task) => task.status === "completed");
+      
+      
+      return completed;
     }
-    
-    return completed;
-  }, [tasks]);
+  }, [tasks, isViewingOtherUser, selectedUserData]);
 
   // Helper function to get first task date early
   const getFirstTaskDateEarly = useCallback(() => {
@@ -140,6 +169,44 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     setMounted(true);
   }, []);
 
+  // Fetch superadmin users when dropdown is clicked
+  const fetchSuperadminUsers = useCallback(async () => {
+    if (hasLoadedUsers.current || isLoadingUsers) {
+      return;
+    }
+    
+    setIsLoadingUsers(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.error("No authenticated user");
+        return;
+      }
+
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch('/api/superadmin/analytics', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch superadmin users - Status:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      
+      setSuperadminUsers(data.users || []);
+      hasLoadedUsers.current = true;
+    } catch (error) {
+      console.error("Error fetching superadmin users:", error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [isLoadingUsers]);
+
   // Update date range when tasks or saved preference changes
   useEffect(() => {
     if (mounted && completedTasks.length > 0 && savedDatePicker) {
@@ -165,10 +232,20 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       return "1970-01-01";
     }
     
-    const date = new Date(timestamp);
+    // IMPORTANT: For superadmin viewing other users, timestamps are already in the user's local timezone
+    // They should NOT be converted again. Only convert for personal view.
+    if (isViewingOtherUser && selectedUserData) {
+      // Timestamps are already in the user's timezone, just extract the date
+      const date = new Date(timestamp);
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
     
-    // Use user's timezone if available, otherwise fall back to local timezone
-    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // For personal view, do timezone conversion
+    const date = new Date(timestamp);
+    const timezone = displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     
     // Create a proper date formatter for the timezone
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -189,9 +266,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     const year = dateParts.year;
     const month = dateParts.month;
     const day = dateParts.day;
-
-    return `${year}-${month}-${day}`;
-  }, [userTimezone]);
+    
+    const result = `${year}-${month}-${day}`;
+    
+    return result;
+  }, [displayTimezone, isViewingOtherUser, selectedUserData]);
 
   // Helper to convert date values to timestamps
   const toTimestamp = (dateValue: string | number | Date): number => {
@@ -249,7 +328,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const generateActivityData = useCallback((tasksToUse: Task[], applyDateFilter: boolean = false) => {
     const today = new Date();
     // Use the year from userTimezone to ensure consistency
-    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezone = displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const todayInTimezone = new Date(today.toLocaleString("en-US", { timeZone: timezone }));
     const currentYear = todayInTimezone.getFullYear();
     const data: DayActivity[] = [];
@@ -265,6 +344,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       // Get the streak date for proper day boundary handling
       // Use completedAt for completed tasks, fall back to createdAt
       const timestamp = toTimestamp(task.completedAt || task.createdAt);
+      
+      
       const dateStr = getStreakDate(timestamp);
       tasksByDate.set(dateStr, (tasksByDate.get(dateStr) || 0) + 1);
 
@@ -330,7 +411,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     }
 
     return data;
-  }, [getFilteredTasks, getStreakDate, userTimezone]);
+  }, [getFilteredTasks, getStreakDate, displayTimezone]);
 
 
   // Re-generate activity data when tasks or date range changes
@@ -430,6 +511,92 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     const uniqueDateStrings = Array.from(new Set(streakDates));
     const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
     
+    // Calculate last 30 days and check for streaks
+    if (selectedUserId !== "personal" && selectedUserData) {
+      const now = Date.now();
+      // const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+      
+      console.log("Last 30 days:");
+      console.log(`User timezone: ${displayTimezone}`);
+      
+      // Debug: Show what's happening with specific tasks
+      console.log("\n=== TIMEZONE DEBUGGING ===");
+      
+      // Find tasks that should be on July 21st based on your database
+      const suspectTasks = completedTasks.filter(t => {
+        const taskName = t.name.toLowerCase();
+        return taskName.includes('adjust instance') || 
+               taskName.includes('add icons') || 
+               taskName.includes('cover images') ||
+               taskName.includes('assign task to email');
+      });
+      
+      if (suspectTasks.length > 0) {
+        console.log(`\nAnalyzing tasks that should be on July 21st:`);
+        suspectTasks.forEach(task => {
+          const timestamp = toTimestamp(task.completedAt || task.createdAt);
+          const date = new Date(timestamp);
+          const streakDate = getStreakDate(timestamp);
+          
+          // Show what the date would be in Pacific/Auckland
+          const aucklandDate = date.toLocaleString('en-US', { 
+            timeZone: 'Pacific/Auckland',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+          
+          console.log(`\nTask: "${task.name}"`);
+          console.log(`  Raw completedAt: ${task.completedAt}`);
+          console.log(`  Timestamp: ${timestamp}`);
+          console.log(`  As UTC: ${date.toISOString()}`);
+          console.log(`  In Auckland: ${aucklandDate}`);
+          console.log(`  Streak date calculated: ${streakDate}`);
+          console.log(`  Task timezone field: ${(task as { timezone?: string }).timezone || 'Not set'}`);
+        });
+      }
+      
+      console.log(`\nAll unique task dates: ${sortedDateStrings.join(', ')}`);
+      
+      // Check if any tasks might be showing on July 20th or 22nd instead
+      const nearbyDates = ['2025-07-20', '2025-07-21', '2025-07-22'];
+      nearbyDates.forEach(dateStr => {
+        const tasksOnDate = completedTasks.filter(t => {
+          const timestamp = toTimestamp(t.completedAt || t.createdAt);
+          const taskDate = getStreakDate(timestamp);
+          return taskDate === dateStr;
+        });
+        if (tasksOnDate.length > 0) {
+          console.log(`\nTasks on ${dateStr}: ${tasksOnDate.length} tasks`);
+          tasksOnDate.slice(0, 2).forEach(task => {
+            const timestamp = toTimestamp(task.completedAt || task.createdAt);
+            const date = new Date(timestamp);
+            console.log(`  - "${task.name}" at ${date.toISOString()}`);
+          });
+        }
+      });
+      
+      // Create array of all dates in last 30 days
+      const last30Days = [];
+      for (let i = 29; i >= 0; i--) {
+        const dayTimestamp = now - (i * 24 * 60 * 60 * 1000);
+        const dayStr = getStreakDate(dayTimestamp);
+        const hasTask = uniqueDateStrings.includes(dayStr);
+        last30Days.push({ date: dayStr, hasTask });
+      }
+      
+      // Log each day and whether it counts towards a streak
+      console.log("\nDay by day breakdown:");
+      last30Days.forEach((day) => {
+        console.log(`${day.date}: ${day.hasTask}`);
+      });
+    }
+    
+    
 
     let longestStreak = 0;
     let currentStreak = 0;
@@ -438,20 +605,39 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       let tempStreak = 1;
       longestStreak = 1;
 
-      // Calculate longest streak
+      // Calculate longest streak by checking consecutive calendar days
+      
       for (let i = 1; i < sortedDateStrings.length; i++) {
-        const prevDate = new Date(sortedDateStrings[i - 1]);
-        const currDate = new Date(sortedDateStrings[i]);
-        const diffTime = currDate.getTime() - prevDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        const prevDateStr = sortedDateStrings[i - 1];
+        const currDateStr = sortedDateStrings[i];
+        
+        // Parse the date strings to get year, month, day
+        const [prevYear, prevMonth, prevDay] = prevDateStr.split('-').map(Number);
+        const [currYear, currMonth, currDay] = currDateStr.split('-').map(Number);
+        
+        // Create dates at noon to avoid any timezone edge cases
+        const prevDate = new Date(prevYear, prevMonth - 1, prevDay, 12, 0, 0);
+        const currDate = new Date(currYear, currMonth - 1, currDay, 12, 0, 0);
+        
+        // Check if dates are consecutive calendar days
+        const nextDay = new Date(prevDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        const isConsecutive = (
+          nextDay.getFullYear() === currDate.getFullYear() &&
+          nextDay.getMonth() === currDate.getMonth() &&
+          nextDay.getDate() === currDate.getDate()
+        );
 
-        if (diffDays === 1) {
+
+        if (isConsecutive) {
           tempStreak++;
           longestStreak = Math.max(longestStreak, tempStreak);
         } else {
           tempStreak = 1;
         }
       }
+      
 
       // Calculate current streak (working backwards from today)
       const now = Date.now();
@@ -464,27 +650,41 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
         currentStreak = 1;
         
+        
         // Work backwards to count consecutive days
         for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
           const prevDateStr = sortedDateStrings[i];
           const currDateStr = sortedDateStrings[i + 1];
           
-          // Parse dates and check if they're consecutive
-          const prevDate = new Date(prevDateStr);
-          const currDate = new Date(currDateStr);
-          const diffTime = currDate.getTime() - prevDate.getTime();
-          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          // Parse the date strings to get year, month, day
+          const [prevYear, prevMonth, prevDay] = prevDateStr.split('-').map(Number);
+          const [currYear, currMonth, currDay] = currDateStr.split('-').map(Number);
+          
+          // Create dates at noon to avoid any timezone edge cases
+          const prevDate = new Date(prevYear, prevMonth - 1, prevDay, 12, 0, 0);
+          const currDate = new Date(currYear, currMonth - 1, currDay, 12, 0, 0);
+          
+          // Check if dates are consecutive calendar days
+          const nextDay = new Date(prevDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+          
+          const isConsecutive = (
+            nextDay.getFullYear() === currDate.getFullYear() &&
+            nextDay.getMonth() === currDate.getMonth() &&
+            nextDay.getDate() === currDate.getDate()
+          );
           
           
-          if (diffDays === 1) {
+          if (isConsecutive) {
             currentStreak++;
           } else {
             break;
           }
         }
-      } else {
+        
       }
     }
+    
 
 
     return { currentStreak, longestStreak };
@@ -523,7 +723,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   // Get current year for display
   const today = new Date();
-  const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timezone = displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const todayInTimezone = new Date(today.toLocaleString("en-US", { timeZone: timezone }));
   const currentYear = todayInTimezone.getFullYear();
 
@@ -576,7 +776,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
         {/* Header with gradient */}
         <div className="mb-2 text-center relative">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
-            {reduxUser.first_name ? `${reduxUser.first_name}'s Analytics` : displayName ? `${displayName.split(" ")[0]}'s Analytics` : "Analytics Dashboard"}
+            {isViewingOtherUser && selectedUserData 
+              ? `${selectedUserData.first_name}'s Analytics`
+              : reduxUser.first_name 
+                ? `${reduxUser.first_name}'s Analytics` 
+                : displayName 
+                  ? `${displayName.split(" ")[0]}'s Analytics` 
+                  : "Analytics Dashboard"}
           </h2>
           {/* Close button */}
           <button
@@ -604,6 +810,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-bold text-white">{currentYear} Overview</h3>
+                
+                {/* Special dropdown for specific user */}
+                {reduxUser.user_id === "df3aed2a-ad51-457f-b0cd-f7d4225143d4" && (
+                  <div className="flex items-center gap-4">
+                    <select 
+                      className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1.5 border border-gray-700 hover:border-gray-600 focus:border-[#FFAA00] focus:outline-none transition-colors cursor-pointer"
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
+                      onFocus={fetchSuperadminUsers}
+                      onClick={fetchSuperadminUsers}
+                    >
+                      <option value="personal">Analytics</option>
+                      {isLoadingUsers && superadminUsers.length === 0 && (
+                        <option disabled>Loading users...</option>
+                      )}
+                      {superadminUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.display_name} ({user.completed_tasks_count})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
                 {/* Toggle switch */}
                 <button
                   onClick={() => setColorByTime(!colorByTime)}
@@ -838,7 +1068,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div>
               {mounted && firstTaskDate && clientDateRange.start && firstTaskDate > clientDateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
-                  Calculated from your first task on {firstTaskDate.toLocaleDateString("en-US", { timeZone: userTimezone || undefined })}
+                  Calculated from {isViewingOtherUser ? "their" : "your"} first task on {firstTaskDate.toLocaleDateString("en-US", { timeZone: displayTimezone || undefined })}
                 </div>
               )}
             </div>
