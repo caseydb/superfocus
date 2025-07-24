@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
@@ -89,6 +89,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Track previous volume for mute/unmute functionality
   const [previousVolume, setPreviousVolume] = useState(0.2);
+  
+  // Local quit cooldown state
+  const [localQuitCooldown, setLocalQuitCooldown] = useState(0);
+  const quitCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const MIN_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+  
+  // Start cooldown state (persists across task completions)
+  const [localStartCooldown, setLocalStartCooldown] = useState(0);
+  const lastStartTimeRef = useRef<number>(0);
+  const startCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const START_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
   // Helper function to close all modals
   const closeAllModals = React.useCallback(() => {
@@ -143,6 +154,58 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Timer state is now stored with the task - removed separate timer state listener
 
   // Timer seconds tracking removed - handled by Timer component
+  
+  // Update local quit cooldown every second
+  useEffect(() => {
+    const updateQuitCooldown = () => {
+      if (timerRunning && currentTimerSeconds > 0) {
+        const remainingDuration = Math.max(0, MIN_DURATION_MS / 1000 - currentTimerSeconds);
+        setLocalQuitCooldown(Math.ceil(remainingDuration));
+      } else {
+        setLocalQuitCooldown(0);
+      }
+    };
+    
+    // Update immediately
+    updateQuitCooldown();
+    
+    // Then update every second
+    const interval = setInterval(updateQuitCooldown, 1000);
+    quitCooldownIntervalRef.current = interval;
+    
+    return () => {
+      if (quitCooldownIntervalRef.current) {
+        clearInterval(quitCooldownIntervalRef.current);
+      }
+    };
+  }, [timerRunning, currentTimerSeconds, MIN_DURATION_MS]);
+  
+  // Update start cooldown independently
+  useEffect(() => {
+    const updateStartCooldown = () => {
+      const now = Date.now();
+      if (lastStartTimeRef.current > 0) {
+        const timeSinceLastStart = now - lastStartTimeRef.current;
+        const remainingCooldown = Math.max(0, START_COOLDOWN_MS - timeSinceLastStart);
+        setLocalStartCooldown(Math.ceil(remainingCooldown / 1000)); // Convert to seconds
+      } else {
+        setLocalStartCooldown(0);
+      }
+    };
+    
+    // Update immediately
+    updateStartCooldown();
+    
+    // Then update every second
+    const interval = setInterval(updateStartCooldown, 1000);
+    startCooldownIntervalRef.current = interval;
+    
+    return () => {
+      if (startCooldownIntervalRef.current) {
+        clearInterval(startCooldownIntervalRef.current);
+      }
+    };
+  }, [START_COOLDOWN_MS]);
 
   // Persist volume to localStorage whenever it changes
   useEffect(() => {
@@ -763,12 +826,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       quitAudio.volume = localVolume;
       quitAudio.play();
 
-      // Notify quit with duration
-      if (user?.id && currentInstance) {
+      // Only notify quit to RTDB if minimum duration is met
+      if (user?.id && currentInstance && timerSecondsRef.current >= MIN_DURATION_MS / 1000) {
         notifyEvent("quit", timerSecondsRef.current);
       }
 
-      // Add flying message for quit to GlobalEffects
+      // Always add flying message for quit to GlobalEffects
       const flyingMessageId = `${user.id}-quit-${Date.now()}`;
       const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
       set(flyingMessageRef, {
@@ -1122,6 +1185,29 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           >
             Analytics
           </button>
+          {/* TEMP: Recalculate Streaks Button - REMOVE BEFORE PRODUCTION */}
+          <button
+            className="fixed top-20 right-4 z-[60] text-white bg-red-600 hover:bg-red-700 font-mono font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/admin/recalculate-streaks', {
+                  method: 'POST',
+                });
+                const data = await response.json();
+                if (data.success) {
+                  alert(`Successfully recalculated streaks for ${data.processed} users`);
+                  console.log('Streak recalculation results:', data.results);
+                } else {
+                  alert(`Error: ${data.error}`);
+                }
+              } catch (error) {
+                alert('Failed to recalculate streaks');
+                console.error(error);
+              }
+            }}
+          >
+            RECALC STREAKS
+          </button>
           {/* Tasks - desktop only: bottom right corner */}
           <button
             className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
@@ -1189,6 +1275,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 setInputLocked(true);
                 setHasStarted(true);
               }}
+              onNewTaskStart={() => {
+                lastStartTimeRef.current = Date.now();
+              }}
+              startCooldown={localStartCooldown}
+              lastStartTime={lastStartTimeRef.current}
             />
             {task.trim() && (
               <div className="flex justify-center w-full gap-6">

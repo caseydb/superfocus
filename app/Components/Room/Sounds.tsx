@@ -10,26 +10,7 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
   const quitRef = useRef<HTMLAudioElement>(null);
   const lastEventTimestamp = useRef<number>(Date.now());  // Initialize to current time to ignore existing events
   const [audioInitialized, setAudioInitialized] = useState(false);
-  const userStartCooldowns = useRef<Record<string, number>>({});  // Track last start sound time per user
-  const COOLDOWN_MS = 5 * 60 * 1000;  // 5 minutes in milliseconds for start sounds
-  const MIN_DURATION_MS = 5 * 60 * 1000;  // 5 minutes minimum for complete/quit sounds
 
-  // Cleanup old cooldown entries to prevent memory leaks
-  useEffect(() => {
-    const cleanupCooldowns = () => {
-      const cutoff = Date.now() - (6 * 60 * 1000); // 6 minutes (1 minute after cooldown expires)
-      Object.keys(userStartCooldowns.current).forEach(userId => {
-        if (userStartCooldowns.current[userId] < cutoff) {
-          delete userStartCooldowns.current[userId];
-        }
-      });
-    };
-
-    // Run cleanup every minute
-    const cleanupInterval = setInterval(cleanupCooldowns, 60000);
-    
-    return () => clearInterval(cleanupInterval);
-  }, []);
 
   useEffect(() => {
     if (!roomId) return;
@@ -64,37 +45,21 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
           return;
         }
         
-        // Play the appropriate sound based on event type
+        // Play the appropriate sound based on event type - no cooldowns or duration checks
         if (mostRecentEvent.type === "complete" && completeRef.current) {
-          // Play complete sound only if task duration exceeds 10 seconds
-          const duration = mostRecentEvent.duration || 0;
-          if (duration * 1000 > MIN_DURATION_MS) {  // duration is in seconds, convert to ms
-            completeRef.current.currentTime = 0;
-            completeRef.current.play();
-          }
-        } else if (mostRecentEvent.type === "start" && startedRef.current && mostRecentEvent.userId) {
-          // Check per-user cooldown for start sounds (5 minutes)
-          const lastStartTime = userStartCooldowns.current[mostRecentEvent.userId] || 0;
-          const timeSinceLastStart = mostRecentEvent.timestamp - lastStartTime;
-          
-          // Play start sound if first time for this user or 5+ minutes since their last start
-          if (lastStartTime === 0 || timeSinceLastStart >= COOLDOWN_MS) {
-            startedRef.current.currentTime = 0;
-            startedRef.current.play();
-            userStartCooldowns.current[mostRecentEvent.userId] = mostRecentEvent.timestamp;
-          }
+          completeRef.current.currentTime = 0;
+          completeRef.current.play();
+        } else if (mostRecentEvent.type === "start" && startedRef.current) {
+          startedRef.current.currentTime = 0;
+          startedRef.current.play();
         } else if (mostRecentEvent.type === "quit" && quitRef.current) {
-          // Play quit sound only if task duration exceeds 10 seconds
-          const duration = mostRecentEvent.duration || 0;
-          if (duration * 1000 > MIN_DURATION_MS) {  // duration is in seconds, convert to ms
-            quitRef.current.currentTime = 0;
-            quitRef.current.play();
-          }
+          quitRef.current.currentTime = 0;
+          quitRef.current.play();
         }
       }
     });
     return () => off(eventsQuery, "value", handle);
-  }, [roomId, currentUserId, COOLDOWN_MS, MIN_DURATION_MS]);
+  }, [roomId, currentUserId]);
 
   useEffect(() => {
     if (completeRef.current) completeRef.current.volume = localVolume;

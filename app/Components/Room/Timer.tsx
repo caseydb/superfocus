@@ -32,6 +32,9 @@ export default function Timer({
   task,
   localVolume = 0.2,
   onTaskRestore,
+  onNewTaskStart,
+  startCooldown = 0,
+  lastStartTime = 0,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
@@ -43,6 +46,9 @@ export default function Timer({
   task?: string;
   localVolume?: number;
   onTaskRestore?: (taskName: string) => void;
+  onNewTaskStart?: () => void;
+  startCooldown?: number;
+  lastStartTime?: number;
 }) {
   const { currentInstance, user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
@@ -68,8 +74,40 @@ export default function Timer({
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Local cooldown state (start cooldown now comes from props)
+  const [localCompleteCooldown, setLocalCompleteCooldown] = useState(0);
+  const localCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes for start
+  const MIN_DURATION_MS = 5 * 60 * 1000; // 5 minutes for complete/quit
+  
   // Get preferences from Redux
   const preferences = useSelector((state: RootState) => state.preferences);
+  
+  // Update local cooldowns every second (only complete cooldown now)
+  useEffect(() => {
+    const updateCooldowns = () => {
+      // Update complete/quit cooldown based on current timer duration
+      if (running && seconds > 0) {
+        const remainingDuration = Math.max(0, MIN_DURATION_MS / 1000 - seconds);
+        setLocalCompleteCooldown(Math.ceil(remainingDuration));
+      } else {
+        setLocalCompleteCooldown(0);
+      }
+    };
+    
+    // Update immediately
+    updateCooldowns();
+    
+    // Then update every second
+    const interval = setInterval(updateCooldowns, 1000);
+    localCooldownIntervalRef.current = interval;
+    
+    return () => {
+      if (localCooldownIntervalRef.current) {
+        clearInterval(localCooldownIntervalRef.current);
+      }
+    };
+  }, [running, seconds, MIN_DURATION_MS]);
 
   // Helper to save timer state to Firebase (only on state changes, not every second)
   const saveTimerState = React.useCallback(
@@ -495,8 +533,19 @@ export default function Timer({
       startAudio.volume = localVolume;
       startAudio.play();
 
-      // Always send start event - cooldown is handled by Sounds component per user
-      notifyEvent("start");
+      // Notify parent that a new task is starting
+      if (onNewTaskStart) {
+        onNewTaskStart();
+      }
+      
+      // Check cooldown using prop value
+      const now = Date.now();
+      const timeSinceLastStart = lastStartTime > 0 ? (now - lastStartTime) : COOLDOWN_MS;
+      
+      // Only send start event to RTDB if cooldown has passed
+      if (timeSinceLastStart >= COOLDOWN_MS) {
+        notifyEvent("start");
+      }
     }
   }
 
@@ -682,13 +731,15 @@ export default function Timer({
       <div className="text-3xl sm:text-4xl mb-2 font-mono">{formatTime(seconds)}</div>
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none">
         {!running && !isStarting ? (
-          <button
-            className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
-            onClick={handleStart}
-            disabled={disabled || !requiredTask}
-          >
-            {seconds > 0 ? "Resume" : "Start"}
-          </button>
+          <div className="flex flex-col items-center gap-2">
+            <button
+              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
+              onClick={handleStart}
+              disabled={disabled || !requiredTask}
+            >
+              {seconds > 0 ? "Resume" : "Start"}
+            </button>
+          </div>
         ) : (
           <>
             <button
@@ -697,10 +748,11 @@ export default function Timer({
             >
               Pause
             </button>
-            <button
-              className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
-              disabled={isCompleting}
-              onClick={async () => {
+            <div className="flex flex-col items-center gap-2">
+              <button
+                className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+                disabled={isCompleting}
+                onClick={async () => {
                 // Prevent multiple clicks
                 if (isCompleting) return;
                 setIsCompleting(true);
@@ -723,6 +775,11 @@ export default function Timer({
                   if (windowWithStreak.markStreakComplete) {
                     windowWithStreak.markStreakComplete();
                   }
+                }
+                
+                // Only send complete event to RTDB if minimum duration is met
+                if (seconds >= MIN_DURATION_MS / 1000) {
+                  notifyEvent("complete", seconds);
                 }
 
                 // Optimistically update task status to completed
@@ -813,11 +870,6 @@ export default function Timer({
                 clearTimerState(); // Clear Firebase state when completing
                 dispatch(setIsActive(false)); // Update Redux state
 
-                // Notify completion with duration (for other users)
-                if (user?.id && currentInstance) {
-                  notifyEvent("complete", seconds);
-                }
-
                 if (onComplete) {
                   onComplete(completionTime);
                 }
@@ -828,8 +880,9 @@ export default function Timer({
                 }, 1000);
               }}
             >
-              Complete
-            </button>
+                Complete
+              </button>
+            </div>
           </>
         )}
       </div>
