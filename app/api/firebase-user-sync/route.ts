@@ -24,14 +24,7 @@ export const POST = async (req: NextRequest) => {
     const { uid, email, name, picture } = decoded;
 
     let user;
-    let isNewUser = false;
     try {
-      // Check if user exists first
-      const existingUser = await prisma.user.findUnique({
-        where: { auth_id: uid },
-      });
-
-      isNewUser = !existingUser;
 
       user = await prisma.user.upsert({
         where: { auth_id: uid },

@@ -7,6 +7,7 @@ interface PreferenceState {
   sound_volume: number;
   task_selection_mode: string;
   focus_check_time: number;
+  date_picker: string;
   loading: boolean;
   error: string | null;
 }
@@ -18,6 +19,7 @@ const initialState: PreferenceState = {
   sound_volume: 50,
   task_selection_mode: "sidebar",
   focus_check_time: 120,
+  date_picker: "all_time",
   loading: false,
   error: null,
 };
@@ -69,10 +71,14 @@ const preferenceSlice = createSlice({
   initialState,
   reducers: {
     // Local state updates (optimistic updates)
-    setPreference: (state, action: PayloadAction<{ key: keyof PreferenceState; value: any }>) => {
+    setPreference: <K extends keyof PreferenceState>(
+      state: PreferenceState,
+      action: PayloadAction<{ key: K; value: PreferenceState[K] }>
+    ) => {
       const { key, value } = action.payload;
       if (key in state && key !== "loading" && key !== "error") {
-        (state as any)[key] = value;
+        // Type-safe assignment
+        Object.assign(state, { [key]: value });
       }
     },
     resetPreferences: () => initialState,

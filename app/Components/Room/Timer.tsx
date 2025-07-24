@@ -58,6 +58,7 @@ export default function Timer({
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const reduxUser = useSelector((state: RootState) => state.user);
   const [isStarting, setIsStarting] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const isInitializedRef = useRef(false);
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -698,7 +699,11 @@ export default function Timer({
             </button>
             <button
               className="bg-green-500 text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+              disabled={isCompleting}
               onClick={async () => {
+                // Prevent multiple clicks
+                if (isCompleting) return;
+                setIsCompleting(true);
                 const completionTime = formatTime(seconds);
 
                 // Mark matching task as completed in task list
@@ -815,6 +820,11 @@ export default function Timer({
                 if (onComplete) {
                   onComplete(completionTime);
                 }
+                
+                // Reset completing state after a short delay
+                setTimeout(() => {
+                  setIsCompleting(false);
+                }, 1000);
               }}
             >
               Complete

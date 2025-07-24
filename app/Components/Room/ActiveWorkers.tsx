@@ -174,7 +174,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       return;
     }
 
-    // Get streak date for today (with 4AM local time cutoff)
+    // Get streak date for today (midnight to midnight)
     const getStreakDate = (timestamp: number = Date.now()) => {
       const date = new Date(timestamp);
       
@@ -183,12 +183,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       
       // Get the local time in the user's timezone
       const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
-      const localHour = localTime.getHours();
-
-      // If it's before 4am local time, this counts as the previous day
-      if (localHour < 4) {
-        localTime.setDate(localTime.getDate() - 1);
-      }
 
       // Format as YYYY-MM-DD
       const year = localTime.getFullYear();

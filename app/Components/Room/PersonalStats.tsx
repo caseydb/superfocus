@@ -74,29 +74,26 @@ export default function PersonalStats() {
   const [timeRemaining, setTimeRemaining] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // Get the "streak date" - which day a timestamp belongs to in the 4am local time system
-  const getStreakDate = useCallback((timestamp: number = Date.now()) => {
-    const date = new Date(timestamp);
-    
-    // Use user's timezone if available, otherwise fall back to local timezone
-    const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    
-    // Get the local time in the user's timezone
-    const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
-    const localHour = localTime.getHours();
+  // Get the "streak date" - which day a timestamp belongs to (midnight to midnight)
+  const getStreakDate = useCallback(
+    (timestamp: number = Date.now()) => {
+      const date = new Date(timestamp);
 
-    // If it's before 4am local time, this counts as the previous day
-    if (localHour < 4) {
-      localTime.setDate(localTime.getDate() - 1);
-    }
+      // Use user's timezone if available, otherwise fall back to local timezone
+      const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // Format as YYYY-MM-DD
-    const year = localTime.getFullYear();
-    const month = String(localTime.getMonth() + 1).padStart(2, "0");
-    const day = String(localTime.getDate()).padStart(2, "0");
+      // Get the local time in the user's timezone
+      const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
 
-    return `${year}-${month}-${day}`;
-  }, [userTimezone]);
+      // Format as YYYY-MM-DD
+      const year = localTime.getFullYear();
+      const month = String(localTime.getMonth() + 1).padStart(2, "0");
+      const day = String(localTime.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    },
+    [userTimezone]
+  );
 
   // Calculate streak from actual task history (matching Analytics exactly)
   // Keep for potential future use
@@ -146,27 +143,21 @@ export default function PersonalStats() {
   //   return currentStreak;
   // };
 
-  // Calculate time remaining until 4am local time tomorrow
+  // Calculate time remaining until midnight local time
   const calculateTimeRemaining = useCallback(() => {
     const now = new Date();
     const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    
+
     // Get current time in user's timezone
     const nowInTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
-    
-    // Create a date for 4am today in user's timezone
-    const next4am = new Date(nowInTimezone);
-    next4am.setHours(4, 0, 0, 0);
-    
-    // If it's already past 4am, move to tomorrow
-    if (nowInTimezone >= next4am) {
-      next4am.setDate(next4am.getDate() + 1);
-    }
-    
-    // Convert back to UTC for accurate time calculation
-    const next4amUTC = new Date(next4am.toLocaleString("en-US", { timeZone: "UTC" }));
-    const msRemaining = next4amUTC.getTime() - now.getTime();
-    
+
+    // Create a date for midnight tonight in user's timezone
+    const midnight = new Date(nowInTimezone);
+    midnight.setHours(24, 0, 0, 0); // This will automatically roll over to next day at 00:00:00
+
+    // Calculate milliseconds remaining until midnight
+    const msRemaining = midnight.getTime() - nowInTimezone.getTime();
+
     const hours = Math.floor(msRemaining / (1000 * 60 * 60));
     const minutes = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((msRemaining % (1000 * 60)) / 1000);
@@ -200,7 +191,7 @@ export default function PersonalStats() {
     const markTodayCompleteWrapper = async () => {
       if (!user?.id) return;
 
-      // const currentStreakDate = getStreakDate(); // Use 4am UTC window
+      // const currentStreakDate = getStreakDate(); // Use midnight-to-midnight window
       // const dailyCompletionRef = ref(rtdb, `users/${user.id}/dailyCompletions/${currentStreakDate}`);
 
       // // Check if already marked for this streak day
@@ -227,12 +218,12 @@ export default function PersonalStats() {
 
     // Helper function to convert various date formats to timestamp
     const toTimestamp = (dateValue: string | number | Date): number => {
-      if (typeof dateValue === 'string') {
+      if (typeof dateValue === "string") {
         return new Date(dateValue).getTime();
-      } else if (typeof dateValue === 'number') {
+      } else if (typeof dateValue === "number") {
         // Check if it's a future timestamp (likely a mistake)
         const now = Date.now();
-        const oneYearFromNow = now + (365 * 24 * 60 * 60 * 1000);
+        const oneYearFromNow = now + 365 * 24 * 60 * 60 * 1000;
         if (dateValue > oneYearFromNow) {
           // Likely seconds instead of milliseconds
           return dateValue * 1000;
@@ -248,8 +239,8 @@ export default function PersonalStats() {
     const calculateStats = () => {
       // Filter for completed tasks only
       const completedTasks = tasks.filter((task: Task) => task.status === "completed");
-      
-      // Get unique streak dates (accounting for 4am cutoff)
+
+      // Get unique streak dates
       const streakDates = completedTasks.map((t) => {
         const timestamp = toTimestamp(t.completedAt || t.createdAt);
         return getStreakDate(timestamp);
@@ -263,25 +254,24 @@ export default function PersonalStats() {
         // Calculate current streak (working backwards from today)
         const todayStr = getStreakDate(Date.now());
         const yesterdayStr = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
-        const tomorrowStr = getStreakDate(Date.now() + 24 * 60 * 60 * 1000);
 
         const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
 
-        // Check if the streak is current (task completed today, yesterday, or tomorrow for 4am edge case)
-        if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr || lastTaskDate === tomorrowStr) {
+        // Check if the streak is current (task completed today or yesterday)
+        if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
           currentStreak = 1;
-          
+
           // Work backwards to count consecutive days
           for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
             const prevDateStr = sortedDateStrings[i];
             const currDateStr = sortedDateStrings[i + 1];
-            
+
             // Parse dates and check if they're consecutive
             const prevDate = new Date(prevDateStr);
             const currDate = new Date(currDateStr);
             const diffTime = currDate.getTime() - prevDate.getTime();
             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-            
+
             if (diffDays === 1) {
               currentStreak++;
             } else {
@@ -330,7 +320,7 @@ export default function PersonalStats() {
   // Sync streak to Firebase RTDB whenever it changes
   useEffect(() => {
     if (!user?.id || streak === 0) return;
-    
+
     // Only sync streaks >= 1 to Firebase
     const syncStreak = async () => {
       try {
@@ -340,7 +330,7 @@ export default function PersonalStats() {
         // Silent error handling - error details not needed
       }
     };
-    
+
     syncStreak();
   }, [streak, user?.id]);
 
@@ -398,7 +388,7 @@ export default function PersonalStats() {
           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 sm:bottom-auto sm:top-full sm:mt-2">
             <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
               <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
-                New streak period in: <span className="text-gray-100 font-medium">{timeRemaining} (4am local)</span>
+                New streak period in: <span className="text-gray-100 font-medium">{timeRemaining}</span>
               </div>
               {/* Arrow */}
               <div className="absolute top-full left-1/2 transform -translate-x-1/2 sm:bottom-full sm:top-auto border-4 border-transparent border-t-gray-700 sm:border-t-transparent sm:border-b-gray-700"></div>

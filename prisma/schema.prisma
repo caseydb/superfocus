@@ -33,6 +33,7 @@ model preference {
   sound_volume             Int      @default(50)
   task_selection_mode      String   @default("dropdown")
   focus_check_time         Int      @default(120)
+  date_picker              String   @default("this_week")
 
   user                     user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

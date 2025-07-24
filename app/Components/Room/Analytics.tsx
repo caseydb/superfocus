@@ -52,7 +52,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     setMounted(true);
   }, []);
 
-  // Get the "streak date" - which day a timestamp belongs to in the 4am local time system
+  // Get the "streak date" - which day a timestamp belongs to (midnight to midnight)
   const getStreakDate = useCallback((timestamp: number) => {
     // Validate timestamp
     if (!timestamp || isNaN(timestamp)) {
@@ -64,19 +64,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     // Use user's timezone if available, otherwise fall back to local timezone
     const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    // Debug log for first few calls
-    if (Math.random() < 0.01) { // Log 1% of calls to avoid spam
-    }
-    
-    
     // Create a proper date formatter for the timezone
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      hour12: false
+      day: '2-digit'
     });
     
     // Get the parts
@@ -90,21 +83,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     const year = dateParts.year;
     const month = dateParts.month;
     const day = dateParts.day;
-    const hour = parseInt(dateParts.hour);
-    
-    // If it's before 4am in the user's timezone, count as previous day
-    if (hour < 4) {
-      const adjustedDate = new Date(date);
-      adjustedDate.setDate(adjustedDate.getDate() - 1);
-      
-      const adjustedParts = formatter.formatToParts(adjustedDate);
-      const adjustedDateParts = adjustedParts.reduce((acc, part) => {
-        acc[part.type] = part.value;
-        return acc;
-      }, {} as Record<string, string>);
-      
-      return `${adjustedDateParts.year}-${adjustedDateParts.month}-${adjustedDateParts.day}`;
-    }
 
     return `${year}-${month}-${day}`;
   }, [userTimezone]);
@@ -335,7 +313,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   // Calculate streaks using all task history (not filtered by date range)
   const calculateStreaks = () => {
     
-    // Get unique streak dates (accounting for 4am cutoff)
+    // Get unique streak dates
     const streakDates = completedTasks.map((t) => {
       const timestamp = toTimestamp(t.completedAt || t.createdAt);
       const streakDate = getStreakDate(timestamp);
@@ -374,15 +352,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       const todayStr = getStreakDate(now);
       const yesterdayStr = getStreakDate(now - 24 * 60 * 60 * 1000);
       
-      // Also check tomorrow in case we're in the early morning hours (before 4am)
-      // and today's tasks are being counted as tomorrow
-      const tomorrowStr = getStreakDate(now + 24 * 60 * 60 * 1000);
-
       const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
       
-
-      // Check if the streak is current (task completed today, yesterday, or "tomorrow" due to 4am cutoff)
-      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr || lastTaskDate === tomorrowStr) {
+      // Check if the streak is current (task completed today or yesterday)
+      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
         currentStreak = 1;
         
         // Work backwards to count consecutive days

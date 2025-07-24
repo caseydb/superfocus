@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         sound_volume: true,
         task_selection_mode: true,
         focus_check_time: true,
+        date_picker: true,
       }
     });
 
@@ -70,6 +71,7 @@ export async function PATCH(request: NextRequest) {
         sound_volume: true,
         task_selection_mode: true,
         focus_check_time: true,
+        date_picker: true,
       }
     });
 

@@ -406,6 +406,7 @@ export const fetchTasksFromBuffer = createAsyncThunk(
         createdAt: task.created_at || Date.now(),
         lastActive: task.updated_at,
         status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
+        order: 0, // Default order for tasks from buffer
       };
     });
 
@@ -946,7 +947,7 @@ const taskSlice = createSlice({
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.loading = false;
         // Sort tasks by order (ascending, with -1 values first)
-        state.tasks = action.payload.sort((a, b) => a.order - b.order);
+        state.tasks = action.payload.sort((a: Task, b: Task) => a.order - b.order);
       })
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;
