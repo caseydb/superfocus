@@ -704,6 +704,12 @@ export default function Timer({
                 // Prevent multiple clicks
                 if (isCompleting) return;
                 setIsCompleting(true);
+                
+                // Play completion sound immediately for instant feedback
+                const completeAudio = new Audio("/complete.mp3");
+                completeAudio.volume = localVolume;
+                completeAudio.play();
+                
                 const completionTime = formatTime(seconds);
 
                 // Mark matching task as completed in task list
@@ -807,12 +813,7 @@ export default function Timer({
                 clearTimerState(); // Clear Firebase state when completing
                 dispatch(setIsActive(false)); // Update Redux state
 
-                // Always play completion sound locally
-                const completeAudio = new Audio("/complete.mp3");
-                completeAudio.volume = localVolume;
-                completeAudio.play();
-
-                // Notify completion with duration
+                // Notify completion with duration (for other users)
                 if (user?.id && currentInstance) {
                   notifyEvent("complete", seconds);
                 }
