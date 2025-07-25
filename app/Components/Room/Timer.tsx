@@ -851,40 +851,49 @@ export default function Timer({
                         dispatch(refreshLeaderboard());
                       }
 
+                      // Only cleanup and reset UI on success
+                      // Heartbeat gets cleared when task is removed from TaskBuffer
+
+                      // Clear heartbeat interval
+                      if (heartbeatIntervalRef.current) {
+                        clearInterval(heartbeatIntervalRef.current);
+                        heartbeatIntervalRef.current = null;
+                      }
+                      
+                      // Remove ActiveWorker on completion
+                      if (user?.id) {
+                        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+                        remove(activeWorkerRef);
+                        onDisconnect(activeWorkerRef).cancel();
+                      }
+
+                      clearTimerState(); // Clear Firebase state when completing
+                      dispatch(setIsActive(false)); // Update Redux state
+
+                      if (onComplete) {
+                        onComplete(completionTime);
+                      }
+                      
+                      // Reset completing state after 2 seconds
+                      setTimeout(() => {
+                        setIsCompleting(false);
+                      }, 2000);
                     } catch (error) {
                       // Show error message to user
                       const errorMessage = error instanceof Error ? error.message : "Unknown error";
                       alert(`Failed to save task completion: ${errorMessage}`);
+                      
+                      // Reset completing state immediately on error so user can retry
+                      setIsCompleting(false);
+                      
+                      // Keep the timer paused but don't clear the UI
+                      setRunning(false);
+                      
+                      // Save the paused state to Firebase
+                      saveTimerState(false, seconds);
                     }
                   }
                 }
-
-                // Heartbeat gets cleared when task is removed from TaskBuffer
-
-                // Clear heartbeat interval
-                if (heartbeatIntervalRef.current) {
-                  clearInterval(heartbeatIntervalRef.current);
-                  heartbeatIntervalRef.current = null;
-                }
-                
-                // Remove ActiveWorker on completion
-                if (user?.id) {
-                  const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-                  remove(activeWorkerRef);
-                  onDisconnect(activeWorkerRef).cancel();
-                }
-
-                clearTimerState(); // Clear Firebase state when completing
-                dispatch(setIsActive(false)); // Update Redux state
-
-                if (onComplete) {
-                  onComplete(completionTime);
-                }
-                
-                // Reset completing state after 2 seconds
-                setTimeout(() => {
-                  setIsCompleting(false);
-                }, 2000);
               }}
             >
                 {showCompleteFeedback ? 'Wait...' : 'Complete'}

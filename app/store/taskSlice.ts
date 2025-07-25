@@ -176,7 +176,6 @@ export const transferTaskToPostgres = createAsyncThunk(
     token: string;
     duration?: number; // Optional duration in seconds to override Firebase calculation
   }) => {
-
     try {
       // 1. Get task data from TaskBuffer
       const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
@@ -385,7 +384,7 @@ export const fetchTasksFromBuffer = createAsyncThunk(
       created_at?: number;
       updated_at?: number;
     }
-    
+
     const tasks = Object.values(tasksData as Record<string, FirebaseTaskData>).map((task) => {
       // Calculate current total time including any open segment
       let currentTotalTime = task.total_time || 0;
@@ -490,17 +489,28 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
   const data = await response.json();
 
   // Transform database tasks to Redux format
-  const transformedTasks = data.map((task: { id: string; task_name: string; status: string; duration?: number; created_at: string; updated_at?: string; completed_at?: string; order: number }) => ({
-    id: task.id,
-    name: task.task_name, // Changed from task.name to task.task_name
-    completed: task.status === "completed",
-    timeSpent: task.duration || 0,
-    createdAt: new Date(task.created_at).getTime(),
-    completedAt: task.completed_at ? new Date(task.completed_at).getTime() : undefined,
-    lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
-    status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
-    order: task.order,
-  }));
+  const transformedTasks = data.map(
+    (task: {
+      id: string;
+      task_name: string;
+      status: string;
+      duration?: number;
+      created_at: string;
+      updated_at?: string;
+      completed_at?: string;
+      order: number;
+    }) => ({
+      id: task.id,
+      name: task.task_name, // Changed from task.name to task.task_name
+      completed: task.status === "completed",
+      timeSpent: task.duration || 0,
+      createdAt: new Date(task.created_at).getTime(),
+      completedAt: task.completed_at ? new Date(task.completed_at).getTime() : undefined,
+      lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
+      status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
+      order: task.order,
+    })
+  );
 
   return transformedTasks;
 });
@@ -659,13 +669,13 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
   async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
     // Remove task from TaskBuffer if it exists
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
-    
+
     // Check if task exists before trying to remove
     const snapshot = await get(taskRef);
     if (snapshot.exists()) {
       await remove(taskRef);
     }
-    
+
     // Also clear any timer state if it exists
     const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
     const timerSnapshot = await get(timerRef);
@@ -676,7 +686,7 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
         await remove(timerRef);
       }
     }
-    
+
     // Clear heartbeat if it exists and matches this task
     const heartbeatRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/heartbeat`);
     const heartbeatSnapshot = await get(heartbeatRef);
@@ -686,7 +696,7 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
         await remove(heartbeatRef);
       }
     }
-    
+
     return { taskId };
   }
 );
@@ -771,7 +781,7 @@ const taskSlice = createSlice({
       // Update tasks with new order values
       state.tasks = action.payload.map((task, index) => ({
         ...task,
-        order: index
+        order: index,
       }));
     },
     removeOptimisticTask: (state, action: PayloadAction<string>) => {
@@ -818,7 +828,7 @@ const taskSlice = createSlice({
         // Update task in local state with completion data
         const { savedTask, status } = action.payload;
         const taskIndex = state.tasks.findIndex((task) => task.id === savedTask.id);
-        
+
         if (taskIndex !== -1) {
           // Update the existing task with completion data
           state.tasks[taskIndex] = {
@@ -827,10 +837,10 @@ const taskSlice = createSlice({
             completed: status === "completed",
             completedAt: status === "completed" ? Date.now() : undefined,
             timeSpent: savedTask.duration || state.tasks[taskIndex].timeSpent,
-            lastActive: Date.now()
+            lastActive: Date.now(),
           };
         }
-        
+
         // Clear activeTaskId if the completed task was the active one
         if (state.activeTaskId === savedTask.id) {
           state.activeTaskId = null;
