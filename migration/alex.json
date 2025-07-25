@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "ecabe321-d0fe-42db-a437-191d83c1c293",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "pGHGDrSTxMTjpC2I1BhmiCD48hm1": {
       "completionHistory": {
@@ -143,160 +147,11 @@
           "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
         }
       },
-      "dailyCompletions": {
-        "2025-07-09": true,
-        "2025-07-10": true,
-        "2025-07-13": true,
-        "2025-07-14": true,
-        "2025-07-16": true,
-        "2025-07-17": true,
-        "2025-07-21": true,
-        "2025-07-22": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1753159119090,
-        "-OUduqpswBNFNuhqrwu8": 1752114362718
-      },
-      "notes": {
-        "-OUmAhMmlVbOxPQvdv4o": {
-          "id": "-OUmAhMmlVbOxPQvdv4o",
-          "items": [
-            {
-              "completed": true,
-              "content": "Need to find the client-trade-settlement discrepancy",
-              "id": "1",
-              "level": 0,
-              "type": "checkbox"
-            },
-            {
-              "content": "",
-              "id": "2",
-              "level": 0,
-              "type": "checkbox"
-            }
-          ],
-          "lastUpdated": 1752115035502,
-          "taskId": "1752114627909",
-          "taskText": "Getting the sub-cent data migration merged",
-          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
-        }
-      },
-      "preferences": {
-        "inactivityTimeout": "3600",
-        "lastUpdated": 1752554822753,
-        "taskSelectionMode": "dropdown"
-      },
-      "taskNotes": {
-        "1753142210836": {
-          "items": [
-            {
-              "content": "I'd like to ",
-              "id": "1",
-              "level": 0,
-              "type": "text"
-            }
-          ],
-          "lastUpdated": 1753142246949,
-          "taskId": "1753142210836",
-          "taskText": "hourly prices",
-          "userId": "pGHGDrSTxMTjpC2I1BhmiCD48hm1"
-        }
-      },
       "tasks": {
-        "1752114428863": {
-          "completed": true,
-          "order": 31,
-          "text": "Fixing a load of bugs"
-        },
-        "1752114627909": {
-          "completed": true,
-          "order": 26,
-          "text": "Getting the sub-cent data migration merged"
-        },
-        "1752116894125": {
-          "completed": true,
-          "order": 8,
-          "text": "KiwiSkips needs jobs organised"
-        },
         "1752116922694": {
           "completed": false,
           "order": 29,
           "text": "KiwiSkips needs hire fees backfilled this month"
-        },
-        "1752119608344": {
-          "completed": true,
-          "order": 24,
-          "text": "Allow multiple FX settlements"
-        },
-        "1752123248175": {
-          "completed": true,
-          "order": 23,
-          "text": "Run ledger update"
-        },
-        "1752453937157": {
-          "completed": true,
-          "order": 22,
-          "text": "Review Natalie's work"
-        },
-        "1752457450747": {
-          "completed": true,
-          "order": 21,
-          "text": "Write SAv2 RFC"
-        },
-        "1752460447196": {
-          "completed": true,
-          "order": 17,
-          "text": "Publish SAv2 RFC"
-        },
-        "1752462327267": {
-          "completed": true,
-          "order": 15,
-          "text": "Test wrapping up the NZX:MNW fund"
-        },
-        "1752530691937": {
-          "completed": true,
-          "order": 13,
-          "text": "cancel some old pending sell orders"
-        },
-        "1752547455527": {
-          "completed": true,
-          "order": 12,
-          "text": "review multicurrent settlement"
-        },
-        "1752636669053": {
-          "completed": true,
-          "order": 10,
-          "text": "Build fund state change tool"
-        },
-        "1752732807560": {
-          "completed": true,
-          "order": 9,
-          "text": "KiwiSkips needs their recurring jobs fixed"
-        },
-        "1753133586012": {
-          "completed": true,
-          "order": 7,
-          "text": "Post MNW selldown stats"
-        },
-        "1753134925316": {
-          "completed": true,
-          "order": 5,
-          "text": "why is settlement out"
-        },
-        "1753142210836": {
-          "completed": true,
-          "order": 2,
-          "text": "hourly prices"
-        },
-        "1753151885820": {
-          "completed": true,
-          "order": 1,
-          "text": "Response to price update cron review"
-        },
-        "1753157029327": {
-          "completed": true,
-          "order": 0,
-          "text": "Remove fund from investment plans too"
         }
       }
     }

@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "2805d228-1aa3-40df-89f2-8e934e44c6eb",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "HRlTk0ykqidJSGf5m1FbsKT3EvA3": {
       "completionHistory": {
@@ -31,35 +35,7 @@
           "userId": "HRlTk0ykqidJSGf5m1FbsKT3EvA3"
         }
       },
-      "dailyCompletions": {
-        "2025-07-08": true,
-        "2025-07-09": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1752081555646
-      },
-      "tasks": {
-        "1752030017220": {
-          "completed": true,
-          "order": 2,
-          "text": "Fix final bugs before building APK for Lingoro"
-        },
-        "1752031999330": {
-          "completed": true,
-          "order": 5,
-          "text": "Fix word unlocking system"
-        },
-        "1752032047188": {
-          "completed": true,
-          "order": 4,
-          "text": "Fix word progression localization"
-        },
-        "1752081586154": {
-          "completed": true,
-          "order": 0,
-          "text": "Launch on Android"
-        }
-      }
+      "tasks": {}
     }
   }
 }

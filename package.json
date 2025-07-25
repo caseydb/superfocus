@@ -9,6 +9,17 @@
     "lint": "next lint",
     "import-test-data": "npx tsx migration/import-test-data.ts",
     "import-casey-bell-data": "npx tsx migration/import-casey-bell-data.ts",
+    "import-jono": "cp migration/jono.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-dan-khan": "cp migration/dan-khan.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-alex": "cp migration/alex.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-angus-pauley": "cp migration/angus-pauley.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-chris-gatbonton": "cp migration/chris-gatbonton.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-destin": "cp migration/destin.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-emily": "cp migration/emily.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-jake-stevens": "cp migration/jake-stevens.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-marc": "cp migration/marc.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-michael-chang": "cp migration/michael-chang.json migration/test.json && npx tsx migration/import-test-data.ts",
+    "import-steve": "cp migration/steve.json migration/test.json && npx tsx migration/import-test-data.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -1,14 +1,11 @@
 {
+  "task table ids": {
+    "user_id": "cd6367ea-5df4-4665-8cdf-84dba401b870",
+    "room_id": "33477916-5b06-4334-b4ba-cfbeab861c5a"
+  },
   "users": {
     "1as1AeOflnZ0QXIsLs71wIaL65F3": {
       "completionHistory": {
-        "-OUcCGSIiJgwM51kn90x": {
-          "displayName": "Michael Chang",
-          "duration": "00:39:52",
-          "task": "VeVe Top 30 Presentation (Quit Early)",
-          "timestamp": 1751947482951,
-          "userId": "1as1AeOflnZ0QXIsLs71wIaL65F3"
-        },
         "-OUcMrc2cbWisANlP69B": {
           "displayName": "Michael Chang",
           "duration": "45:33",
@@ -53,46 +50,7 @@
           "userId": "1as1AeOflnZ0QXIsLs71wIaL65F3"
         }
       },
-      "dailyCompletions": {
-        "2025-07-08": true,
-        "2025-07-09": true,
-        "2025-07-17": true
-      },
-      "lastVisits": {
-        "-OUakcohRKUy8wDmRJ5D": 1752784651029
-      },
-      "tasks": {
-        "1751940344800": {
-          "completed": true,
-          "order": 7,
-          "text": "VeVe Top 30 Presentation"
-        },
-        "1751941023210": {
-          "completed": true,
-          "order": 9,
-          "text": "Map Auror vendors 31 - 50"
-        },
-        "1752009820099": {
-          "completed": true,
-          "order": 5,
-          "text": "Auror top 30 subs"
-        },
-        "1752021922055": {
-          "completed": true,
-          "order": 2,
-          "text": "Halter Top 30 Presentation"
-        },
-        "1752021926047": {
-          "completed": true,
-          "order": 4,
-          "text": "MyHR Contract Upload"
-        },
-        "1752784673194": {
-          "completed": true,
-          "order": 0,
-          "text": "Timescapes Top 30 Mapping"
-        }
-      }
+      "tasks": {}
     }
   }
 }

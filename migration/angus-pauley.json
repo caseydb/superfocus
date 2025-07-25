@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "cd61b78d-c4da-41b6-8b21-4a53c56fe4b8",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "8bKpbDS5lLZ3CNZGA60eaaYwU8t1": {
       "completionHistory": {
@@ -25,38 +29,9 @@
           "task": "Write pre day three email",
           "timestamp": 1753194378435,
           "userId": "8bKpbDS5lLZ3CNZGA60eaaYwU8t1"
-        },
-        "-OVmup3MG54EudfdRWXp": {
-          "completed": false,
-          "displayName": "AP",
-          "duration": "01:43:25",
-          "task": "Day Four Slides (Quit Early)",
-          "timestamp": 1753200946407,
-          "userId": "8bKpbDS5lLZ3CNZGA60eaaYwU8t1"
         }
       },
-      "dailyCompletions": {
-        "2025-07-22": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1753184757426
-      },
       "tasks": {
-        "1753184808281": {
-          "completed": true,
-          "order": 5,
-          "text": "Convert All Value Prop Content"
-        },
-        "1753189605948": {
-          "completed": true,
-          "order": 3,
-          "text": "Finish Day Three Slides"
-        },
-        "1753191715544": {
-          "completed": true,
-          "order": 1,
-          "text": "Write pre day three email"
-        },
         "1753194391981": {
           "completed": false,
           "order": 0,

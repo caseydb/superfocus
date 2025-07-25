@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "a1afe616-73ff-4316-9d91-2ec7210a417c",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "QKQwxpoFRmfRGaUdXSwLT0mauZ93": {
       "completionHistory": {
@@ -85,14 +89,6 @@
           "timestamp": 1752702477814,
           "userId": "QKQwxpoFRmfRGaUdXSwLT0mauZ93"
         },
-        "-OVKUc_U7l59-Fm1jeIT": {
-          "completed": false,
-          "displayName": "Jono Matla",
-          "duration": "00:35:37",
-          "task": "User testing setup HPA (Quit Early)",
-          "timestamp": 1752707270977,
-          "userId": "QKQwxpoFRmfRGaUdXSwLT0mauZ93"
-        },
         "-OVodnr49w3LaJUfRqWZ": {
           "completed": true,
           "displayName": "Jono Matla",
@@ -102,95 +98,7 @@
           "userId": "QKQwxpoFRmfRGaUdXSwLT0mauZ93"
         }
       },
-      "dailyCompletions": {
-        "2025-07-09": true,
-        "2025-07-10": true,
-        "2025-07-13": true,
-        "2025-07-14": true,
-        "2025-07-16": true,
-        "2025-07-22": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1753233781510
-      },
-      "notes": {
-        "-OUqiRmc9llNfnJr7nIr": {
-          "id": "-OUqiRmc9llNfnJr7nIr",
-          "items": [
-            {
-              "content": "Bloody apple mouses charging port",
-              "id": "1",
-              "level": 0,
-              "type": "text"
-            }
-          ],
-          "lastUpdated": 1752191070203,
-          "taskId": "1752186679809",
-          "taskText": "Kiwikit Homepage Redesign",
-          "userId": "QKQwxpoFRmfRGaUdXSwLT0mauZ93"
-        }
-      },
-      "preferences": {
-        "inactivityTimeout": "10800",
-        "lastUpdated": 1752552854229,
-        "taskSelectionMode": "dropdown"
-      },
       "tasks": {
-        "1752111242071": {
-          "completed": true,
-          "order": 16,
-          "text": "ATA New Creative"
-        },
-        "1752113179771": {
-          "completed": true,
-          "order": 15,
-          "text": "KK ads setup"
-        },
-        "1752123291251": {
-          "completed": true,
-          "order": 14,
-          "text": "Content Ideas"
-        },
-        "1752184657789": {
-          "completed": true,
-          "order": 13,
-          "text": "Loveqt category setup"
-        },
-        "1752186679809": {
-          "completed": true,
-          "order": 12,
-          "text": "Kiwikit Homepage Redesign"
-        },
-        "1752447374263": {
-          "completed": true,
-          "order": 11,
-          "text": "HPA Survey setup"
-        },
-        "1752448324438": {
-          "completed": true,
-          "order": 10,
-          "text": "Get back to mauro"
-        },
-        "1752448501848": {
-          "completed": true,
-          "order": 9,
-          "text": "ATA Email"
-        },
-        "1752527774153": {
-          "completed": true,
-          "order": 8,
-          "text": "KK Landing page fix"
-        },
-        "1752535176747": {
-          "completed": true,
-          "order": 6,
-          "text": "KK Call"
-        },
-        "1752545187965": {
-          "completed": true,
-          "order": 3,
-          "text": "Linked in post"
-        },
         "1752702490900": {
           "completed": false,
           "order": 0,

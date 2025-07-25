@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "058e5083-d4ca-4d04-9d58-f36ea5877fb7",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "g9EGwyPxjOZHLg3M8tS1yp1lMk42": {
       "completionHistory": {
@@ -24,65 +28,6 @@
           "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
         }
       },
-      "dailyCompletions": {
-        "2025-07-09": true,
-        "2025-07-10": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1752202606930,
-        "-OUhM-ANsUQwWsi4Z8Iy": 1752033920383
-      },
-      "notes": {
-        "-OUhLmJB4HWN6D-pOPKX": {
-          "id": "-OUhLmJB4HWN6D-pOPKX",
-          "items": [
-            {
-              "completed": true,
-              "content": "test",
-              "id": "1",
-              "level": 0,
-              "type": "checkbox"
-            },
-            {
-              "completed": true,
-              "content": "test",
-              "id": "2",
-              "level": 0,
-              "type": "checkbox"
-            }
-          ],
-          "lastUpdated": 1752033874161,
-          "taskId": "1752033739559",
-          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
-        },
-        "-OUhNUOYVSkAfexOlHfB": {
-          "id": "-OUhNUOYVSkAfexOlHfB",
-          "items": [
-            {
-              "completed": true,
-              "content": "test",
-              "id": "1",
-              "level": 0,
-              "type": "checkbox"
-            },
-            {
-              "completed": true,
-              "content": "test",
-              "id": "2",
-              "level": 0,
-              "type": "checkbox"
-            }
-          ],
-          "lastUpdated": 1752034309792,
-          "taskId": "1752034309790",
-          "userId": "g9EGwyPxjOZHLg3M8tS1yp1lMk42"
-        }
-      },
-      "preferences": {
-        "inactivityTimeout": "900",
-        "lastUpdated": 1752202564348,
-        "taskSelectionMode": "dropdown"
-      },
       "tasks": {
         "1752034245230": {
           "completed": false,
@@ -93,16 +38,6 @@
           "completed": false,
           "order": 6,
           "text": "Changing slides in slide view is opening the right sidebar"
-        },
-        "1752034278693": {
-          "completed": true,
-          "order": 1,
-          "text": "get storybook working for list item views"
-        },
-        "1752034309790": {
-          "completed": true,
-          "order": 2,
-          "text": "a new task"
         },
         "1752034347781": {
           "completed": false,
@@ -153,11 +88,6 @@
           "completed": false,
           "order": 17,
           "text": "feature - csv output of time on tasks for use in invoicing clients"
-        },
-        "1752202575016": {
-          "completed": true,
-          "order": 0,
-          "text": "Talking about locked-in"
         }
       }
     }

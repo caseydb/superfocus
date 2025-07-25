@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "101341e2-733c-4904-98e7-3f07d3e6d26b",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "NsIFAhE2akMMrUZsAL8UQwAWXAj1": {
       "completionHistory": {
@@ -22,30 +26,6 @@
           "task": "Filling out an interview request",
           "timestamp": 1752159342221,
           "userId": "NsIFAhE2akMMrUZsAL8UQwAWXAj1"
-        }
-      },
-      "dailyCompletions": {
-        "2025-07-09": true,
-        "2025-07-10": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1752183366765
-      },
-      "tasks": {
-        "1752090063451": {
-          "completed": true,
-          "order": 2,
-          "text": "Finishing investor documents"
-        },
-        "1752093038995": {
-          "completed": true,
-          "order": 1,
-          "text": "Filling out an interview request"
-        },
-        "1752159340878": {
-          "completed": true,
-          "order": 0,
-          "text": "Filling out an interview request"
         }
       }
     }

@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "c6cb322a-c03e-4360-a35c-a5cd85a23828",
+    "room_id": "33477916-5b06-4334-b4ba-cfbeab861c5a"
+  },
   "users": {
     "cvHbs3ImSKN22PzWDGSxOXQKFko2": {
       "completionHistory": {
@@ -22,38 +26,9 @@
           "task": "Finishup UI mock up",
           "timestamp": 1752099465283,
           "userId": "cvHbs3ImSKN22PzWDGSxOXQKFko2"
-        },
-        "-OV4c9nIuFB0jjfdDWzG": {
-          "completed": false,
-          "displayName": "Emily Aung",
-          "duration": "02:25:06",
-          "task": "Dashboard prototype (Quit Early)",
-          "timestamp": 1752441072865,
-          "userId": "cvHbs3ImSKN22PzWDGSxOXQKFko2"
         }
       },
-      "dailyCompletions": {
-        "2025-07-09": true
-      },
-      "lastVisits": {
-        "-OUakcohRKUy8wDmRJ5D": 1752619542515
-      },
       "tasks": {
-        "1752017566958": {
-          "completed": true,
-          "order": 4,
-          "text": "Planning for Deal Room + BAU"
-        },
-        "1752086839274": {
-          "completed": true,
-          "order": 3,
-          "text": "Change infra setting for Auror Demo"
-        },
-        "1752088999213": {
-          "completed": true,
-          "order": 2,
-          "text": "Finishup UI mock up"
-        },
         "1752181837512": {
           "completed": false,
           "order": 0,

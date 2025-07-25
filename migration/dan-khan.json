@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "77556150-38a4-441a-b653-44f34572fd69",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "h2fcXssrK8UDQc7esPhKbzOwddg2": {
       "completionHistory": {
@@ -19,22 +23,7 @@
           "userId": "h2fcXssrK8UDQc7esPhKbzOwddg2"
         }
       },
-      "dailyCompletions": {
-        "2025-07-21": true,
-        "2025-07-22": true
-      },
-      "tasks": {
-        "1753151676230": {
-          "completed": true,
-          "order": 2,
-          "text": "New fields to evidence form and backend"
-        },
-        "1753216944848": {
-          "completed": true,
-          "order": 0,
-          "text": "Add migrations"
-        }
-      }
+      "tasks": {}
     }
   }
 }

@@ -1,4 +1,8 @@
 {
+  "task table ids": {
+    "user_id": "01bf28f0-f6a2-4520-b8a2-2ea1b50f2d97",
+    "room_id": "4c3d6caf-aa19-4524-b1d3-94aa7ee90c3f"
+  },
   "users": {
     "TxZFUuKUXxX06KCJHB3zYQe5cls1": {
       "completionHistory": {
@@ -67,55 +71,7 @@
           "userId": "TxZFUuKUXxX06KCJHB3zYQe5cls1"
         }
       },
-      "dailyCompletions": {
-        "2025-07-14": true,
-        "2025-07-15": true
-      },
-      "lastVisits": {
-        "-OUI3gKboWDQnE7K0B5J": 1752614282852
-      },
-      "tasks": {
-        "1752443847890": {
-          "completed": true,
-          "order": 8,
-          "text": "Learning egraphs"
-        },
-        "1752530554372": {
-          "completed": true,
-          "order": 7,
-          "text": "File revival doc"
-        },
-        "1752533014170": {
-          "completed": true,
-          "order": 6,
-          "text": "respond to Hassaan"
-        },
-        "1752549085798": {
-          "completed": true,
-          "order": 5,
-          "text": "export atuh0 users"
-        },
-        "1752549516441": {
-          "completed": true,
-          "order": 4,
-          "text": "Send an email to our BF launch users thanking them"
-        },
-        "1752554538346": {
-          "completed": true,
-          "order": 3,
-          "text": "post on YC slack about the sweaters"
-        },
-        "1752555040143": {
-          "completed": true,
-          "order": 2,
-          "text": "Write an email to the head of product at mistral"
-        },
-        "1752614297543": {
-          "completed": true,
-          "order": 0,
-          "text": "DMing the list of people that liked my slack message"
-        }
-      }
+      "tasks": {}
     }
   }
 }

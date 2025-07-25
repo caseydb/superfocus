@@ -1,6 +1,7 @@
 import { rtdb } from "@/lib/firebase";
 import { ref, set, get, remove, push, onDisconnect } from "firebase/database";
 import type { PrivateRoom, PrivateRoomFromDB } from "../types/privateRooms";
+import { auth } from "@/lib/firebase";
 
 // Check if a private room URL is already taken
 export async function isPrivateRoomUrlTaken(url: string): Promise<boolean> {
@@ -22,30 +23,71 @@ export async function isPrivateRoomUrlTaken(url: string): Promise<boolean> {
 // Create a new private room with custom URL
 export async function createPrivateRoom(userId: string, customUrl: string): Promise<PrivateRoom> {
   
-  // Check if URL is already taken
-  const urlTaken = await isPrivateRoomUrlTaken(customUrl);
-  if (urlTaken) {
-    throw new Error("Room URL already taken");
+  try {
+    // Check if URL is already taken in Firebase RTDB
+    const urlTaken = await isPrivateRoomUrlTaken(customUrl);
+    if (urlTaken) {
+      throw new Error("Room URL already taken");
+    }
+    
+    // Sync with PostgreSQL database
+    let pgRoomId: string | undefined;
+    try {
+      // Get the current user's ID token
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      const idToken = await user.getIdToken();
+      
+      // Call the API to create room in PostgreSQL
+      const response = await fetch("/api/private-room-sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ roomSlug: customUrl }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create room in database");
+      }
+      
+      const result = await response.json();
+      pgRoomId = result.room.id;
+      console.log("PostgreSQL room created:", pgRoomId);
+    } catch (error) {
+      console.error("Error syncing room to PostgreSQL:", error);
+      // Continue without PostgreSQL sync - room will still work in Firebase
+    }
+    
+    // Create room in Firebase RTDB
+    const privateRoomsRef = ref(rtdb, "PrivateRooms");
+    const newRoomRef = push(privateRoomsRef);
+    const roomId = newRoomRef.key!;
+    
+    const roomData: PrivateRoomFromDB = {
+      url: customUrl,
+      createdBy: userId,
+      createdAt: Date.now(),
+      userCount: 0,
+      users: {},
+      ...(pgRoomId && { pgRoomId }) // Only include if PostgreSQL sync succeeded
+    };
+    
+    await set(newRoomRef, roomData);
+    console.log("Firebase RTDB room created:", roomId);
+    
+    return {
+      id: roomId,
+      ...roomData
+    };
+  } catch (error) {
+    console.error("Error creating private room:", error);
+    throw error;
   }
-  
-  const privateRoomsRef = ref(rtdb, "PrivateRooms");
-  const newRoomRef = push(privateRoomsRef);
-  const roomId = newRoomRef.key!;
-  
-  const roomData: PrivateRoomFromDB = {
-    url: customUrl,
-    createdBy: userId,
-    createdAt: Date.now(),
-    userCount: 0,
-    users: {}
-  };
-  
-  await set(newRoomRef, roomData);
-  
-  return {
-    id: roomId,
-    ...roomData
-  };
 }
 
 // Get a private room by URL

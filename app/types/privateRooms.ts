@@ -5,6 +5,7 @@ export type PrivateRoom = {
   createdAt: number;
   userCount: number;
   users?: Record<string, { id: string; displayName: string }>;
+  pgRoomId?: string;
 };
 
 export type PrivateRoomFromDB = Omit<PrivateRoom, "id">;
