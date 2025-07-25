@@ -232,18 +232,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       return "1970-01-01";
     }
     
-    // IMPORTANT: For superadmin viewing other users, timestamps are already in the user's local timezone
-    // They should NOT be converted again. Only convert for personal view.
-    if (isViewingOtherUser && selectedUserData) {
-      // Timestamps are already in the user's timezone, just extract the date
-      const date = new Date(timestamp);
-      const year = date.getFullYear();
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-    
-    // For personal view, do timezone conversion
+    // Always convert timestamps to the appropriate timezone
+    // For SuperAdmin viewing other users, use the selected user's timezone
+    // For personal view, use the current user's timezone
     const date = new Date(timestamp);
     const timezone = displayTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     
@@ -270,7 +261,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     const result = `${year}-${month}-${day}`;
     
     return result;
-  }, [displayTimezone, isViewingOtherUser, selectedUserData]);
+  }, [displayTimezone]);
 
   // Helper to convert date values to timestamps
   const toTimestamp = (dateValue: string | number | Date): number => {
@@ -880,7 +871,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                           months.push({
                             month: weekMonth,
                             weekIndex: weekIndex,
-                            name: firstValidDay.toLocaleDateString("en-US", { month: "short", timeZone: userTimezone || undefined }),
+                            name: firstValidDay.toLocaleDateString("en-US", { month: "short", timeZone: displayTimezone || undefined }),
                           });
                           currentMonth = weekMonth;
                         }
