@@ -144,6 +144,11 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
     })).sort((a, b) => b.totalSeconds - a.totalSeconds);
   }, [apiData]);
 
+  // Calculate total time across all users
+  const totalTimeAllUsers = useMemo(() => {
+    return entries.reduce((sum, entry) => sum + entry.totalSeconds, 0);
+  }, [entries]);
+
   // Original sprint-based calculation (kept for reference but not used)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _entriesOld = useMemo(() => {
@@ -281,6 +286,10 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
         {/* Header with title */}
         <div className="w-full text-center">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Global Leaderboard</h2>
+          {/* Total time display */}
+          <div className="text-sm sm:text-base text-gray-400 mt-2">
+            Total time: <span className="text-[#FFAA00] font-bold">{formatTime(totalTimeAllUsers)}</span>
+          </div>
         </div>
         {/* Show winners for ended sprints, regular table for active sprint */}
         {sprintHasEnded && entries.length > 0 ? (

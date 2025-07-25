@@ -1267,12 +1267,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 >
                   Clear
                 </button>
-                <button
-                  className="mt-4 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-                  onClick={() => setShowNotes(!showNotes)}
-                >
-                  Notes
-                </button>
               </div>
             )}
           </div>
