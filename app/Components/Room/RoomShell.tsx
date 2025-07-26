@@ -7,7 +7,19 @@ import { RootState, AppDispatch } from "../../store/store";
 import { endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
-import { ref, onValue, off, set, remove, push, runTransaction, get, query, orderByChild, limitToLast } from "firebase/database";
+import {
+  ref,
+  onValue,
+  off,
+  set,
+  remove,
+  push,
+  runTransaction,
+  get,
+  query,
+  orderByChild,
+  limitToLast,
+} from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
@@ -28,8 +40,8 @@ import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
 import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
 import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
-import { DotSpinner } from 'ldrs/react';
-import 'ldrs/react/DotSpinner.css';
+import { DotSpinner } from "ldrs/react";
+import "ldrs/react/DotSpinner.css";
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
 import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
 import { PrivateRoomPresence } from "@/app/utils/privateRoomPresence";
@@ -78,6 +90,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [isPomodoroMode, setIsPomodoroMode] = useState(false); // Default to Timer mode
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -89,13 +102,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Track previous volume for mute/unmute functionality
   const [previousVolume, setPreviousVolume] = useState(0.2);
-  
+
   // Local quit cooldown state
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [localQuitCooldown, setLocalQuitCooldown] = useState(0);
   const quitCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const MIN_DURATION_MS = 5 * 60 * 1000; // 5 minutes
-  
+
   // Start cooldown state (persists across task completions)
   const [localStartCooldown, setLocalStartCooldown] = useState(0);
   const lastStartTimeRef = useRef<number>(0);
@@ -155,7 +168,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Timer state is now stored with the task - removed separate timer state listener
 
   // Timer seconds tracking removed - handled by Timer component
-  
+
   // Update local quit cooldown every second
   useEffect(() => {
     const updateQuitCooldown = () => {
@@ -166,21 +179,21 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         setLocalQuitCooldown(0);
       }
     };
-    
+
     // Update immediately
     updateQuitCooldown();
-    
+
     // Then update every second
     const interval = setInterval(updateQuitCooldown, 1000);
     quitCooldownIntervalRef.current = interval;
-    
+
     return () => {
       if (quitCooldownIntervalRef.current) {
         clearInterval(quitCooldownIntervalRef.current);
       }
     };
   }, [timerRunning, currentTimerSeconds, MIN_DURATION_MS]);
-  
+
   // Update start cooldown independently
   useEffect(() => {
     const updateStartCooldown = () => {
@@ -193,14 +206,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         setLocalStartCooldown(0);
       }
     };
-    
+
     // Update immediately
     updateStartCooldown();
-    
+
     // Then update every second
     const interval = setInterval(updateStartCooldown, 1000);
     startCooldownIntervalRef.current = interval;
-    
+
     return () => {
       if (startCooldownIntervalRef.current) {
         clearInterval(startCooldownIntervalRef.current);
@@ -221,7 +234,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
-      
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
@@ -229,17 +241,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         // If this is a public room, store its ID and init presence
         if (currentInstance.type === "public" && !publicRoomId) {
           setPublicRoomId(currentInstance.id);
-          
+
           // Initialize presence if not already done
           if (!publicRoomPresence) {
             const presence = new PublicRoomPresence(currentInstance.id, user.id);
             const joined = await presence.join();
             if (joined) {
               setPublicRoomPresence(presence);
-              
+
               // Add user to PublicRoom users list and update count
               await addUserToPublicRoom(currentInstance.id, user.id, user.displayName);
-              
+
               // Start cleanup scheduler to ensure orphaned rooms are cleaned
               startCleanupScheduler();
             }
@@ -247,7 +259,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
         return;
       }
-      
+
       // First check legacy instances
       const targetRoom = instances.find((instance) => instance.url === roomUrl);
       if (targetRoom) {
@@ -258,7 +270,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         setLoading(false);
         return;
       }
-      
+
       // If not found in legacy instances, check PublicRooms
       try {
         const publicRoom = await getPublicRoomByUrl(roomUrl);
@@ -268,28 +280,28 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             // Create presence manager
             const presence = new PublicRoomPresence(publicRoom.id, user.id);
             const joined = await presence.join();
-            
+
             if (!joined) {
               // Room is full
               setRoomFound(false);
               setLoading(false);
               return;
             }
-            
+
             // Store presence manager
             setPublicRoomPresence(presence);
-            
+
             // Add user to PublicRoom users list and update count
             await addUserToPublicRoom(publicRoom.id, user.id, user.displayName);
-            
+
             // Start cleanup scheduler to ensure orphaned rooms are cleaned
             startCleanupScheduler();
           }
-          
+
           setRoomFound(true);
           // Store the public room ID for cleanup later
           setPublicRoomId(publicRoom.id);
-          
+
           // Create a temporary Instance object for compatibility with the rest of the app
           // This allows PublicRooms to work with the existing UI
           const tempInstance: Instance = {
@@ -299,7 +311,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             createdBy: publicRoom.createdBy,
             url: publicRoom.url,
           };
-          
+
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
@@ -308,7 +320,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       } catch {
         // Silent error handling
       }
-      
+
       // If not found in PublicRooms, check PrivateRooms
       try {
         const privateRoom = await getPrivateRoomByUrl(roomUrl);
@@ -318,25 +330,25 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             // Create presence manager for private rooms
             const presence = new PrivateRoomPresence(privateRoom.id, user.id);
             const joined = await presence.join();
-            
+
             if (!joined) {
               // This shouldn't happen for private rooms, but handle it
               setRoomFound(false);
               setLoading(false);
               return;
             }
-            
+
             // Store presence manager
             setPrivateRoomPresence(presence);
-            
+
             // Add user to PrivateRoom users list and update count
             await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
           }
-          
+
           setRoomFound(true);
           // Store the private room ID for cleanup later
           setPrivateRoomId(privateRoom.id);
-          
+
           // Create a temporary Instance object for compatibility with the rest of the app
           const tempInstance: Instance = {
             id: privateRoom.id,
@@ -345,7 +357,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             createdBy: privateRoom.createdBy,
             url: privateRoom.url,
           };
-          
+
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
@@ -354,22 +366,34 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       } catch {
         // Silent error handling
       }
-      
+
       setRoomFound(false);
       setLoading(false);
     };
-    
+
     if (userReady) {
       // Small delay to ensure Firebase writes are propagated
       const timer = setTimeout(() => {
         checkRoom();
       }, 100);
-      
+
       return () => {
         clearTimeout(timer);
       };
     }
-  }, [instances, roomUrl, currentInstance, joinInstance, userReady, publicRoomId, privateRoomId, setPublicRoomInstance, user, publicRoomPresence, privateRoomPresence]);
+  }, [
+    instances,
+    roomUrl,
+    currentInstance,
+    joinInstance,
+    userReady,
+    publicRoomId,
+    privateRoomId,
+    setPublicRoomInstance,
+    user,
+    publicRoomPresence,
+    privateRoomPresence,
+  ]);
 
   // Track user tab count to handle multi-tab scenarios
   const userTabCountRef = React.useRef(0);
@@ -415,17 +439,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           const usersRef = ref(rtdb, `rooms/${currentInstance.id}/users/${user.id}`);
           remove(activeRef);
           remove(usersRef); // Also remove from main users list
-          
+
           // Also remove from PublicRooms if this is a public room
           if (currentInstance.type === "public" && publicRoomId) {
             removeUserFromPublicRoom(publicRoomId, user.id);
           }
-          
+
           // Also remove from PrivateRooms if this is a private room
           if (currentInstance.type === "private" && privateRoomId) {
             removeUserFromPrivateRoom(privateRoomId, user.id);
           }
-          
+
           return null; // Remove the entire node
         } else {
           // Just decrement the count - user still has other tabs open
@@ -436,7 +460,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           };
         }
       });
-      
+
       // PublicRoom cleanup is now handled by presence system
     };
 
@@ -458,12 +482,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             const usersRef = ref(rtdb, `rooms/${currentInstance.id}/users/${user.id}`);
             remove(activeRef);
             remove(usersRef);
-            
+
             // Also remove from PublicRooms if this is a public room
             if (currentInstance.type === "public") {
               removeUserFromPublicRoom(currentInstance.id, user.id);
             }
-            
+
             return null;
           } else {
             return {
@@ -473,7 +497,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             };
           }
         });
-        
+
         // PublicRoom cleanup is now handled by presence system
       }
 
@@ -484,7 +508,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Clean up room presence when leaving
   useEffect(() => {
     if (!publicRoomPresence && !privateRoomPresence) return;
-    
+
     // Add beforeunload handler for immediate cleanup
     const handleBeforeUnload = () => {
       // Can't use async in beforeunload, so we'll do a sync cleanup attempt
@@ -497,9 +521,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         // For now, we'll rely on the cleanup effect and onDisconnect
       }
     };
-    
+
     window.addEventListener("beforeunload", handleBeforeUnload);
-    
+
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (publicRoomPresence) {
@@ -571,12 +595,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     // Initial sync
     setCurrentTimerSeconds(timerSecondsRef.current);
-    
+
     // Set up periodic sync to catch any updates
     const syncInterval = setInterval(() => {
       setCurrentTimerSeconds(timerSecondsRef.current);
     }, 100); // Check every 100ms
-    
+
     return () => clearInterval(syncInterval);
   }, []);
 
@@ -648,29 +672,29 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     // Only fetch recent events to avoid processing old ones
     const eventsQuery = query(
       ref(rtdb, `GlobalEffects/${currentInstance.id}/events`),
-      orderByChild('timestamp'),
+      orderByChild("timestamp"),
       limitToLast(20) // Only fetch the 20 most recent events
     );
     let timeout: NodeJS.Timeout | null = null;
     const processedEvents = new Set<string>();
     let isInitialLoad = true;
-    
+
     const handle = onValue(eventsQuery, (snap) => {
       const events = snap.val();
       if (!events) return;
-      
+
       // On initial load, mark all existing events as processed to ignore them
       if (isInitialLoad) {
-        Object.keys(events).forEach(eventId => processedEvents.add(eventId));
+        Object.keys(events).forEach((eventId) => processedEvents.add(eventId));
         isInitialLoad = false;
         return;
       }
-      
+
       // Find new events we haven't processed yet
       Object.entries(events as Record<string, { displayName?: string; type?: string }>).forEach(([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
-          
+
           // Show notification in title
           if (event.displayName && event.type) {
             let emoji = "";
@@ -678,7 +702,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             if (event.type === "complete") emoji = "🏆";
             if (event.type === "quit") emoji = "💀";
             document.title = `${emoji} ${event.displayName}`;
-            
+
             if (timeout) clearTimeout(timeout);
             timeout = setTimeout(() => {
               // Resume timer or default title immediately after notification
@@ -692,13 +716,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
       });
     });
-    
+
     // Clean up old processed events periodically
     const cleanupInterval = setInterval(() => {
       const cutoff = Date.now() - 60000; // 1 minute old
-      processedEvents.forEach(eventId => {
+      processedEvents.forEach((eventId) => {
         // Event IDs are in format: userId-type-timestamp
-        const parts = eventId.split('-');
+        const parts = eventId.split("-");
         if (parts.length >= 3) {
           const timestamp = parseInt(parts[parts.length - 1]);
           if (!isNaN(timestamp) && timestamp < cutoff) {
@@ -707,7 +731,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
       });
     }, 30000); // Run cleanup every 30 seconds
-    
+
     return () => {
       off(eventsQuery, "value", handle);
       if (timeout) clearTimeout(timeout);
@@ -770,20 +794,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Write to new GlobalEffects structure
       const eventId = `${user.id}-${type}-${Date.now()}`;
       const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
-      const eventData: { displayName: string; userId: string; type: string; timestamp: number; duration?: number } = { 
-        displayName: user.displayName, 
-        userId: user.id, 
-        type, 
-        timestamp: Date.now() 
+      const eventData: { displayName: string; userId: string; type: string; timestamp: number; duration?: number } = {
+        displayName: user.displayName,
+        userId: user.id,
+        type,
+        timestamp: Date.now(),
       };
-      
+
       // Include duration for complete/quit events
       if (duration !== undefined) {
         eventData.duration = duration;
       }
-      
+
       set(eventRef, eventData);
-      
+
       // Auto-cleanup old events after 10 seconds
       setTimeout(() => {
         remove(eventRef);
@@ -846,7 +870,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       setTimeout(() => {
         remove(flyingMessageRef);
       }, 7000);
-      
+
       // Remove ActiveWorker immediately when quitting
       const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
       remove(activeWorkerRef);
@@ -878,17 +902,19 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         } catch {
           // Task might not be in TaskBuffer, that's OK
         }
-        
+
         // Manually reset the task in Redux to ensure it's in virgin state
-        dispatch(updateTask({
-          id: activeTask.id,
-          updates: { 
-            status: "not_started" as const,
-            timeSpent: 0,
-            lastActive: undefined
-          }
-        }));
-        
+        dispatch(
+          updateTask({
+            id: activeTask.id,
+            updates: {
+              status: "not_started" as const,
+              timeSpent: 0,
+              lastActive: undefined,
+            },
+          })
+        );
+
         // Clear active task
         dispatch(setActiveTask(null));
       }
@@ -1146,12 +1172,30 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {/* Active work border overlay */}
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
-          {/* Top right container for stats and controls */}
+          {/* Top right container for controls */}
           <div className="fixed top-[13px] right-8 z-50 flex items-center gap-4 max-w-[calc(100vw-6rem)]">
-            {/* Personal stats - remove its own positioning */}
-            <div className="hidden sm:block">
-              <PersonalStats />
-            </div>
+            {/* Pomodoro/Timer Toggle */}
+            <button
+              onClick={() => setIsPomodoroMode(!isPomodoroMode)}
+              className="relative w-30 h-7 rounded-full transition-all duration-300 overflow-hidden bg-black border border-gray-700"
+            >
+              <span
+                className={`absolute top-1/2 -translate-y-1/2 text-base font-mono text-gray-400 transition-all duration-300 flex items-center justify-center ${
+                  isPomodoroMode ? "left-6 right-1" : "left-2 right-7"
+                }`}
+              >
+                {isPomodoroMode ? "Timer" : "Pomodoro"}
+              </span>
+              <div
+                className={`absolute top-1 h-5 w-5 bg-gray-400 rounded-full transition-transform duration-300 shadow-lg ${
+                  isPomodoroMode ? "translate-x-1" : "translate-x-[96px]"
+                }`}
+                style={{
+                  boxShadow: "0 0 8px rgba(255, 170, 0, 0.3)",
+                }}
+              />
+            </button>
+
             {/* Controls - remove fixed positioning */}
             <Controls
               className=""
@@ -1172,20 +1216,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               closeAllModals={closeAllModals}
             />
           </div>
-          {/* Mobile personal stats stays at bottom */}
-          <div className="sm:hidden">
-            <PersonalStats />
-          </div>
-          {/* Analytics button - centered bottom - hidden on mobile */}
-          <button
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] text-gray-400 text-sm sm:text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:block"
-            onClick={() => {
-              closeAllModals();
-              setShowAnalytics(true);
-            }}
-          >
-            Analytics
-          </button>
+          {/* Personal stats - bottom center for all screen sizes */}
+          <PersonalStats />
           {/* Tasks - desktop only: bottom right corner */}
           <button
             className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
@@ -1217,18 +1249,31 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <ActiveWorkers roomId={currentInstance.id} />
           {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
-            <TaskInput
-              task={task}
-              setTask={setTask}
-              disabled={(hasStarted && inputLocked) || hasActiveTimer}
-              onStart={() => {
-                // Simply trigger the timer's start button - let it handle all the logic
-                if (timerStartRef.current) {
-                  timerStartRef.current();
-                }
-              }}
-              setShowTaskList={setShowTaskList}
-            />
+            <div className="relative group">
+              <TaskInput
+                task={task}
+                setTask={setTask}
+                disabled={(hasStarted && inputLocked) || hasActiveTimer}
+                onStart={() => {
+                  // Simply trigger the timer's start button - let it handle all the logic
+                  if (timerStartRef.current) {
+                    timerStartRef.current();
+                  }
+                }}
+                setShowTaskList={setShowTaskList}
+              />
+              {/* Clear button in top-right when paused (always visible) or when running (on hover) */}
+              {task.trim() && hasStarted && (
+                <button
+                  className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 ${
+                    timerRunning ? "opacity-0 group-hover:opacity-100" : ""
+                  }`}
+                  onClick={handleClear}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
           <div className={showHistory ? "" : "hidden"}>
             <History userId={user?.id} onClose={() => setShowHistory(false)} />
@@ -1259,27 +1304,62 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               startCooldown={localStartCooldown}
               lastStartTime={lastStartTimeRef.current}
             />
-            {task.trim() && (
-              <div className="flex justify-center w-full gap-6">
-                <button
-                  className="mt-4 text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer"
-                  onClick={handleClear}
-                >
-                  Clear
-                </button>
-              </div>
-            )}
           </div>
 
-          <button
-            className="fixed bottom-4 left-8 z-[60] text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none hidden sm:block"
-            onClick={() => {
-              closeAllModals();
-              setShowLeaderboard(true);
-            }}
-          >
-            Leaderboard
-          </button>
+          {/* Analytics and Leaderboard buttons - bottom left */}
+          <div className="fixed bottom-4 left-8 z-[60] hidden sm:flex flex-col gap-4">
+            {/* Analytics Section */}
+            <button
+              className="flex items-center gap-3 group relative"
+              onClick={() => {
+                closeAllModals();
+                setShowAnalytics(true);
+              }}
+            >
+              <div className="relative">
+                <div
+                  className="w-12 h-12 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  style={{
+                    WebkitMask: `url(/analytics-icon.svg) no-repeat center`,
+                    mask: `url(/analytics-icon.svg) no-repeat center`,
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                  }}
+                />
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+              </div>
+              <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
+                Analytics
+              </span>
+            </button>
+
+            {/* Leaderboard Section */}
+            <button
+              className="flex items-center gap-3 group relative"
+              onClick={() => {
+                closeAllModals();
+                setShowLeaderboard(true);
+              }}
+            >
+              <div className="relative">
+                <div
+                  className="w-12 h-12 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  style={{
+                    WebkitMask: `url(/leaderboard-icon.svg) no-repeat center`,
+                    mask: `url(/leaderboard-icon.svg) no-repeat center`,
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                  }}
+                />
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+              </div>
+              <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
+                Leaderboard
+              </span>
+            </button>
+          </div>
           {showQuitModal && (
             <div className="fixed inset-0 z-50 pointer-events-none animate-in fade-in duration-300">
               {/* Background overlay - dims background while keeping it visible */}
@@ -1331,12 +1411,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             </div>
           )}
-          {showLeaderboard && currentInstance && (
-            <Leaderboard onClose={() => setShowLeaderboard(false)} />
-          )}
-          {showHistory && currentInstance && (
-            <History userId={user?.id} onClose={() => setShowHistory(false)} />
-          )}
+          {showLeaderboard && currentInstance && <Leaderboard onClose={() => setShowLeaderboard(false)} />}
+          {showHistory && currentInstance && <History userId={user?.id} onClose={() => setShowHistory(false)} />}
           {showAnalytics && currentInstance && user && (
             <Analytics
               roomId={currentInstance.id}

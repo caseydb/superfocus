@@ -51,7 +51,6 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [nextId, setNextId] = useState<number>(2);
-  const [isMac, setIsMac] = useState(false);
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
 
   // Set focus only when Notes is explicitly opened
@@ -70,7 +69,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
   // Ensure component is mounted on client side and detect OS
   useEffect(() => {
     setMounted(true);
-    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+    // Platform detection removed - not currently used
   }, []);
 
   // Load notes from database when taskId changes
@@ -507,10 +506,6 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
               <div className="flex items-center gap-2">
                 <span className="px-4 py-1 bg-gray-800 rounded text-gray-300">1.</span>
                 <span>Number</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="px-2 py-1 bg-gray-800 rounded text-gray-300">{isMac ? "⌘J" : "Ctrl+J"}</span>
-                <span>Toggle Notes</span>
               </div>
             </div>
           </div>

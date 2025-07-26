@@ -363,19 +363,17 @@ export default function PersonalStats() {
 
   if (loading || !user) return null;
 
-  // Simple consistent styling
-  const streakStyle = {
-    bg: "bg-gradient-to-br from-[#ffaa00] to-[#e69500]",
-  };
+  // Streak styling - border only, golden at 5+ days
+  const streakBorderColor = streak >= 5 ? "border-[#FFAA00]" : "border-gray-400";
 
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {
     return (
-      <div className="fixed bottom-4 left-0 right-0 sm:top-[13px] sm:right-36 sm:bottom-auto sm:left-auto z-40 animate-in fade-in slide-in-from-top-2 duration-300">
-        <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm mx-auto sm:mx-0 w-fit">
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit">
           <div className="flex items-center justify-center gap-2">
-            <div className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center animate-pulse`}>
-              <span className="text-black text-xs font-bold">{streak}</span>
+            <div className={`w-5 h-5 border ${streakBorderColor} rounded-full flex items-center justify-center animate-pulse bg-transparent`}>
+              <span className="text-gray-300 text-xs font-bold">{streak}</span>
             </div>
             <span className="text-gray-400 text-xs sm:text-base font-mono">
               <span className="text-gray-400">day streak</span> |{" "}
@@ -390,18 +388,18 @@ export default function PersonalStats() {
 
   // Show normal stats if they've completed today's task
   return (
-    <div className="fixed bottom-4 left-0 right-0 sm:relative sm:top-auto sm:right-auto sm:bottom-auto sm:left-auto z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="relative">
         <div
-          className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm mx-auto sm:mx-0 w-fit cursor-pointer"
+          className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
           <div className="flex items-center justify-center gap-2">
             <div
-              className={`w-5 h-5 ${streakStyle.bg} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110`}
+              className={`w-5 h-5 border ${streakBorderColor} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 bg-transparent`}
             >
-              <span className="text-black text-xs font-bold">{streak}</span>
+              <span className="text-gray-300 text-xs font-bold">{streak}</span>
             </div>
             <span className="text-gray-400 text-xs sm:text-base font-mono">
               <span className="text-gray-400">day streak</span> |{" "}
@@ -412,13 +410,13 @@ export default function PersonalStats() {
         </div>
         {/* Tooltip */}
         {showTooltip && (
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 sm:bottom-auto sm:top-full sm:mt-2">
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2">
             <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
               <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
                 New streak period in: <span className="text-gray-100 font-medium">{timeRemaining}</span>
               </div>
-              {/* Arrow */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 sm:bottom-full sm:top-auto border-4 border-transparent border-t-gray-700 sm:border-t-transparent sm:border-b-gray-700"></div>
+              {/* Arrow pointing down */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-700"></div>
             </div>
           </div>
         )}

@@ -738,8 +738,14 @@ function SortableTask({
             <div className="bg-[#0A0E1A] rounded-xl border border-gray-800/50 overflow-hidden">
               {/* Notes Header with Save Button */}
               <div className="px-6 py-3 bg-gray-800/30 border-b border-gray-800/50 flex items-center justify-between">
-                <div className="text-sm text-gray-400">
-                  Notes for this task
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-gray-400">
+                    Notes for this task
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="px-2 py-1 bg-gray-700/50 rounded text-gray-500 text-xs">⌘J</span>
+                    <span className="text-xs text-gray-500">Toggle Notes</span>
+                  </div>
                 </div>
                 <button
                   onClick={saveNotesToDB}
