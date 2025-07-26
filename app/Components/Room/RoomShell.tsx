@@ -91,6 +91,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [isPomodoroMode, setIsPomodoroMode] = useState(false); // Default to Timer mode
+  const [showTimerDropdown, setShowTimerDropdown] = useState(false);
+  const timerDropdownRef = useRef<HTMLDivElement>(null);
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -127,6 +129,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowAnalytics(false);
     setShowQuitModal(false);
     setShowSignInModal(false);
+    setShowTimerDropdown(false);
   }, []);
 
   // Track if there's an active timer state from Redux or TaskBuffer
@@ -993,6 +996,23 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   };
 
+  // Handle click outside for timer dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (timerDropdownRef.current && !timerDropdownRef.current.contains(event.target as Node)) {
+        setShowTimerDropdown(false);
+      }
+    };
+
+    if (showTimerDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTimerDropdown]);
+
   // Add keyboard shortcuts for toggling TaskList and Notes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1173,31 +1193,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
         <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
           {/* Top right container for controls */}
-          <div className="fixed top-[13px] right-8 z-50 flex items-center gap-4 max-w-[calc(100vw-6rem)]">
-            {/* Pomodoro/Timer Toggle */}
-            <button
-              onClick={() => setIsPomodoroMode(!isPomodoroMode)}
-              className="relative w-30 h-7 rounded-full transition-all duration-300 overflow-hidden bg-black border border-gray-700"
-            >
-              <span
-                className={`absolute top-1/2 -translate-y-1/2 text-base font-mono text-gray-400 transition-all duration-300 flex items-center justify-center ${
-                  isPomodoroMode ? "left-6 right-1" : "left-2 right-7"
-                }`}
-              >
-                {isPomodoroMode ? "Timer" : "Pomodoro"}
-              </span>
-              <div
-                className={`absolute top-1 h-5 w-5 bg-gray-400 rounded-full transition-transform duration-300 shadow-lg ${
-                  isPomodoroMode ? "translate-x-1" : "translate-x-[96px]"
-                }`}
-                style={{
-                  boxShadow: "0 0 8px rgba(255, 170, 0, 0.3)",
-                }}
-              />
-            </button>
-
-            {/* Controls - remove fixed positioning */}
+          <div className="fixed top-[13px] right-4 z-50 flex items-center gap-2 max-w-[calc(100vw-6rem)]">
+            {/* Controls - speaker icon, timer dropdown, and name dropdown */}
             <Controls
+              isPomodoroMode={isPomodoroMode}
+              setIsPomodoroMode={setIsPomodoroMode}
+              showTimerDropdown={showTimerDropdown}
+              setShowTimerDropdown={setShowTimerDropdown}
+              timerDropdownRef={timerDropdownRef}
               className=""
               localVolume={localVolume}
               setLocalVolume={setLocalVolume}
@@ -1357,6 +1360,32 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
               <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
                 Leaderboard
+              </span>
+            </button>
+
+            {/* History Section */}
+            <button
+              className="flex items-center gap-3 group relative"
+              onClick={() => {
+                closeAllModals();
+                setShowHistory(true);
+              }}
+            >
+              <div className="relative">
+                <div
+                  className="w-12 h-12 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  style={{
+                    WebkitMask: `url(/history-icon.svg) no-repeat center`,
+                    mask: `url(/history-icon.svg) no-repeat center`,
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                  }}
+                />
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+              </div>
+              <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
+                History
               </span>
             </button>
           </div>
