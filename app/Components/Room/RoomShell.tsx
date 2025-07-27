@@ -1164,7 +1164,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <PersonalStats />
           {/* Tasks - desktop only: bottom right corner */}
           <button
-            className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-base font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
+            className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-lg font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
               showTaskList ? "!hidden" : ""
             }`}
             onClick={() => {
@@ -1172,7 +1172,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setShowTaskList(true);
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="mr-2">
               <path
                 d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
                 stroke="currentColor"
@@ -1281,7 +1281,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <div
-                  className="w-12 h-12 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
                   style={{
                     WebkitMask: `url(/analytics-icon.svg) no-repeat center`,
                     mask: `url(/analytics-icon.svg) no-repeat center`,
@@ -1292,7 +1292,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
                 Analytics
               </span>
             </button>
@@ -1307,10 +1307,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <div
-                  className="w-12 h-12 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
                   style={{
-                    WebkitMask: `url(/leaderboard-icon.svg) no-repeat center`,
-                    mask: `url(/leaderboard-icon.svg) no-repeat center`,
+                    WebkitMask: `url(/crown-icon.svg) no-repeat center`,
+                    mask: `url(/crown-icon.svg) no-repeat center`,
                     WebkitMaskSize: "contain",
                     maskSize: "contain",
                   }}
@@ -1318,7 +1318,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
                 Leaderboard
               </span>
             </button>
@@ -1333,7 +1333,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <div
-                  className="w-12 h-12 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
                   style={{
                     WebkitMask: `url(/history-icon.svg) no-repeat center`,
                     mask: `url(/history-icon.svg) no-repeat center`,
@@ -1344,7 +1344,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-base font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-14 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
                 History
               </span>
             </button>

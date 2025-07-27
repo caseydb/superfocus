@@ -38,7 +38,7 @@ const taskInputSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(checkForActiveTask.fulfilled, (state, action) => {
       if (action.payload) {
-        const { task } = action.payload;
+        const { task } = action.payload as { task: { name: string } };
         // Restore input state when active task is found
         state.currentInput = task.name;
         state.isLocked = true; // Lock input since task is active

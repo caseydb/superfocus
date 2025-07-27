@@ -212,7 +212,7 @@ export function useQuitButton() {
       
       // Reset all UI state
       setTimerRunning(false);
-      setTask();  // Call the function (which dispatches resetInput())
+      setTask("");  // Clear the task
       setTimerResetKey((k) => k + 1);
       setInputLocked(false);
       setHasStarted(false);
