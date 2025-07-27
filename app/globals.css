@@ -32,14 +32,15 @@
   --color-brand-hover: #e69500;
   --color-danger: #ef4444;
   --color-success: #10b981;
-  --color-dark-bg: #000000;
+  --color-dark-bg: #0a0b0b;
   --color-dark-card: #181a1b;
   --color-dark-border: #23272b;
+  --color-elegant-dark: #0a0b0b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #0a0b0b;
     --foreground: #ededed;
   }
 }
@@ -110,7 +111,7 @@ body,
   min-height: 100%;
   width: 100%;
   min-width: 100%;
-  background: #000 !important;
+  background: #0a0b0b !important;
   overflow: hidden;
 }
 

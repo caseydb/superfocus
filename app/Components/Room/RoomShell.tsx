@@ -1032,7 +1032,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   if (!userReady || !user.id || user.id.startsWith("user-")) {
     // Not signed in: mask everything with SignIn
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="min-h-screen flex items-center justify-center bg-elegant-dark text-white">
         <div className="flex flex-col items-center justify-center w-full h-full">
           <div className="w-full flex flex-col items-center mb-10 mt-2">
             <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
@@ -1098,14 +1098,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   }
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-screen flex items-center justify-center bg-elegant-dark">
         <DotSpinner size="40" speed="0.9" color="#FFAA00" />
       </div>
     );
   }
   if (!roomFound) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="min-h-screen flex items-center justify-center bg-elegant-dark text-white">
         <div className="bg-gray-900/90 rounded-2xl shadow-2xl p-10 w-full max-w-lg flex flex-col items-center gap-8 border-4 border-yellow-500">
           <p className="text-2xl font-bold text-red-400">Room not found.</p>
           <button
@@ -1123,7 +1123,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       <>
         {/* Active work border overlay */}
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
-        <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white relative">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-elegant-dark text-white relative">
           {/* Top right container for controls */}
           <div className="fixed top-[13px] right-4 z-50 flex items-center gap-2 max-w-[calc(100vw-6rem)]">
             {/* Controls - speaker icon, timer dropdown, and name dropdown */}

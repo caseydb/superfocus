@@ -75,7 +75,7 @@ export default function Lobby() {
   }
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-black text-white overflow-hidden">
+    <div className="h-screen flex flex-col items-center justify-center bg-elegant-dark text-white overflow-hidden">
       {signedIn && (
         <div className="fixed top-6 right-8 z-50">
           <SignOut />
