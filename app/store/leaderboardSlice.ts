@@ -36,7 +36,6 @@ export const fetchLeaderboard = createAsyncThunk(
       throw new Error(data.error || "Failed to fetch leaderboard");
     }
     
-    console.log("[LeaderboardSlice] Leaderboard loaded:", data.data);
     return { entries: data.data };
   }
 );
@@ -52,7 +51,6 @@ export const refreshLeaderboard = createAsyncThunk(
       throw new Error(data.error || "Failed to refresh leaderboard");
     }
     
-    console.log("[LeaderboardSlice] Leaderboard refreshed:", data.data);
     return data.data;
   }
 );

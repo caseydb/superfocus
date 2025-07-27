@@ -35,7 +35,6 @@ export const fetchHistory = createAsyncThunk(
       throw new Error(data.error || "Failed to fetch history");
     }
     
-    console.log("[HistorySlice] History loaded:", data.history);
     return { history: data.history, slug };
   }
 );

@@ -149,11 +149,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Check for active timer state on mount and lock input immediately
   useEffect(() => {
     if (user?.id) {
-      console.log('[RoomShell] Checking for timer_state on mount for user:', user.id);
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       get(timerRef).then((snapshot) => {
         const timerState = snapshot.val();
-        console.log('[RoomShell] Timer state from Firebase:', timerState);
         if (timerState && timerState.taskId) {
           // Found active timer state - lock input immediately
           dispatch(lockInput());
@@ -175,11 +173,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           timerSecondsRef.current = currentSeconds;
           
           // Set the active task ID immediately
-          console.log('[RoomShell] Restoring timer state on mount:', {
-            taskId: timerState.taskId,
-            running: timerState.running,
-            currentSeconds
-          });
           dispatch(setActiveTask(timerState.taskId));
           
           // Also restore the task name if we can find it
@@ -187,17 +180,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           get(taskRef).then((taskSnapshot) => {
             const taskData = taskSnapshot.val();
             if (taskData && taskData.name) {
-              console.log('[RoomShell] Restored task name:', taskData.name);
               dispatch(setCurrentInput(taskData.name));
             } else {
-              console.log('[RoomShell] Task not found in TaskBuffer for ID:', timerState.taskId);
             }
           });
         } else {
-          console.log('[RoomShell] No timer state found');
         }
-      }).catch(error => {
-        console.log('[RoomShell] Error fetching timer state:', error);
+      }).catch(() => {
+        // Error handling removed - silent failure
       });
     }
   }, [user?.id, dispatch]);
@@ -1221,7 +1211,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             )}
           </div>
           <div className={showHistory ? "" : "hidden"}>
-            <History userId={user?.id} onClose={() => setShowHistory(false)} />
+            <History onClose={() => setShowHistory(false)} />
           </div>
           {/* Timer/Pomodoro is always mounted, just hidden when history is open */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
@@ -1268,6 +1258,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 lastStartTime={lastStartTimeRef.current}
                 initialRunning={timerRunning}
                 onClearClick={handleClearButton}
+                setShowTaskList={setShowTaskList}
               />
             )}
           </div>
@@ -1404,7 +1395,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             </div>
           )}
           {showLeaderboard && currentInstance && <Leaderboard onClose={() => setShowLeaderboard(false)} />}
-          {showHistory && currentInstance && <History userId={user?.id} onClose={() => setShowHistory(false)} />}
+          {showHistory && currentInstance && <History onClose={() => setShowHistory(false)} />}
           {showAnalytics && currentInstance && user && (
             <Analytics
               roomId={currentInstance.id}

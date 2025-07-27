@@ -197,7 +197,7 @@ export function useCompleteButton() {
         }
       }
     },
-    [dispatch, user, currentInstance, reduxTasks, reduxUser, notifyEvent, showCompleteFeedback]
+    [dispatch, user, reduxTasks, reduxUser, notifyEvent, showCompleteFeedback]
   );
 
   return { handleComplete, showCompleteFeedback };

@@ -527,7 +527,7 @@ export default function Timer({
     if (secondsRef) secondsRef.current = seconds;
   }, [seconds, secondsRef]);
 
-  // Cleanup heartbeat and ActiveWorker on unmount
+  // Cleanup heartbeat on unmount
   React.useEffect(() => {
     const heartbeatInterval = heartbeatIntervalRef.current;
     return () => {
@@ -535,13 +535,10 @@ export default function Timer({
         clearInterval(heartbeatInterval);
       }
       
-      // Remove ActiveWorker on unmount if timer is running
-      if (running && user?.id) {
-        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        remove(activeWorkerRef);
-      }
+      // Don't remove ActiveWorker on unmount - let it persist across mode switches
+      // ActiveWorker should only be removed when timer is explicitly stopped/completed
     };
-  }, [running, user?.id]);
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 sm:px-0">

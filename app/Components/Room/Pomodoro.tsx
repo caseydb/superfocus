@@ -21,6 +21,7 @@ interface PomodoroProps {
   lastStartTime?: number;
   initialRunning?: boolean;
   onClearClick?: () => void;
+  setShowTaskList?: (show: boolean) => void;
 }
 
 export default function Pomodoro({
@@ -34,12 +35,14 @@ export default function Pomodoro({
   lastStartTime = 0,
   initialRunning = false,
   onClearClick,
+  setShowTaskList,
 }: PomodoroProps) {
   const dispatch = useDispatch();
   const { user } = useInstance();
   const { currentInput: task, isLocked: inputLocked, hasStarted } = useSelector((state: RootState) => state.taskInput);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+  const preferences = useSelector((state: RootState) => state.preferences);
 
   // Use button hooks
   const { handleStart } = useStartButton();
@@ -60,6 +63,19 @@ export default function Pomodoro({
   const [editingMinutes, setEditingMinutes] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
+  
+  // Filter out completed tasks and sort by most recent
+  const availableTasks = reduxTasks
+    .filter((t) => t.status !== "completed" && t.name && t.name.trim())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+  // Filter tasks based on current input
+  const filteredTasks = task.trim()
+    ? availableTasks.filter((t) => 
+        t.name.toLowerCase().includes(task.toLowerCase().trim())
+      )
+    : availableTasks;
 
   // Preset time options
   const timePresets = [
@@ -240,6 +256,9 @@ export default function Pomodoro({
   const startTimer = async () => {
     if (!task.trim()) return;
 
+    // Close dropdown when starting
+    setShowTaskSuggestions(false);
+
     await handleStart({
       task,
       seconds: elapsedSeconds,
@@ -315,6 +334,7 @@ export default function Pomodoro({
     dispatch(resetInput());
     setRemainingSeconds(totalSeconds);
     setElapsedSeconds(0);
+    setShowTaskSuggestions(false);
   };
 
   // Expose functions to parent via refs
@@ -330,8 +350,6 @@ export default function Pomodoro({
     }
   });
 
-  // Calculate progress percentage
-  const progress = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
 
   return (
     <div className="flex flex-col items-center gap-6 px-4 sm:px-0 w-full mx-auto">
@@ -353,8 +371,38 @@ export default function Pomodoro({
               startTimer();
             }
           }}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
+          onFocus={() => {
+            setInputFocused(true);
+            // Show dropdown if in dropdown mode and there are tasks to show (but not when disabled)
+            if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0 && !inputLocked) {
+              setShowTaskSuggestions(true);
+            } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim() && !inputLocked) {
+              setShowTaskList(true);
+              // Keep focus on this input when opening sidebar
+              setTimeout(() => {
+                textareaRef.current?.focus();
+              }, 50);
+            }
+          }}
+          onBlur={() => {
+            setInputFocused(false);
+            // Hide dropdown after a small delay to allow clicks on suggestions
+            setTimeout(() => {
+              setShowTaskSuggestions(false);
+            }, 200);
+          }}
+          onClick={() => {
+            // Show suggestions when clicking, even if already focused (but not when disabled)
+            if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0 && !inputLocked) {
+              setShowTaskSuggestions(true);
+            } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim() && !inputLocked) {
+              setShowTaskList(true);
+              // Keep focus on this input when opening sidebar
+              setTimeout(() => {
+                textareaRef.current?.focus();
+              }, 50);
+            }
+          }}
           placeholder="What are you focusing on?"
           disabled={inputLocked}
           maxLength={69}
@@ -388,26 +436,60 @@ export default function Pomodoro({
             Clear
           </button>
         )}
+        
+        {/* Task suggestions dropdown */}
+        {showTaskSuggestions && filteredTasks.length > 0 && (
+          <div
+            className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
+            style={{
+              width: "400px",
+              maxWidth: "90vw",
+              top: "100%",
+              left: "50%",
+              transform: "translateX(-50%)",
+              marginTop: "8px",
+              maxHeight: "240px",
+              overflowY: "auto",
+            }}
+          >
+            <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
+              {task.trim() ? `Tasks matching "${task}":` : "Choose from existing tasks:"}
+            </div>
+            <div className="space-y-1">
+              {filteredTasks.map((taskItem) => (
+                <button
+                  key={taskItem.id}
+                  onClick={() => {
+                    dispatch(setCurrentInput(taskItem.name));
+                    setShowTaskSuggestions(false);
+                    textareaRef.current?.focus();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg transition-colors text-white text-sm truncate font-mono border border-transparent hover:bg-gray-800 hover:border-[#FFAA00]/30"
+                >
+                  {taskItem.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Countdown Display */}
       <div className="relative w-64 h-64 sm:w-80 sm:h-80">
-        {/* Background circle */}
-        <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-          <circle cx="50%" cy="50%" r="45%" stroke="#1f2937" strokeWidth="8" fill="none" />
-          {/* Progress circle */}
+        {/* Circle SVG - bigger and thinner */}
+        <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 256 256">
+          {/* Background circle */}
+          <circle cx="128" cy="128" r="115" stroke="#374151" strokeWidth="4" fill="none" />
+          {/* Progress circle - starts full and empties as time runs out */}
           <circle
-            cx="50%"
-            cy="50%"
-            r="45%"
+            cx="128"
+            cy="128"
+            r="115"
             stroke="#FFAA00"
-            strokeWidth="8"
+            strokeWidth="4"
             fill="none"
-            strokeDasharray={`${progress * 2.827} 282.7`}
+            strokeDasharray={`${(remainingSeconds / totalSeconds) * 722.57} 722.57`}
             className="transition-all duration-1000 ease-linear"
-            style={{
-              filter: "drop-shadow(0 0 12px rgba(255, 170, 0, 0.5))",
-            }}
           />
         </svg>
 
@@ -542,14 +624,6 @@ export default function Pomodoro({
       </div>
 
 
-      {/* Visual flourish when timer completes */}
-      {remainingSeconds === 0 && (
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="text-4xl sm:text-6xl font-bold text-[#FFAA00] animate-pulse">Complete! 🎉</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

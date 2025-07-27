@@ -37,7 +37,6 @@ export const fetchPreferences = createAsyncThunk(
       throw new Error(data.error || "Failed to fetch preferences");
     }
     
-    console.log("[PreferenceSlice] Preferences loaded:", data.preferences);
     return data.preferences;
   }
 );
@@ -63,7 +62,6 @@ export const updatePreferences = createAsyncThunk(
       throw new Error(data.error || "Failed to update preferences");
     }
     
-    console.log("[PreferenceSlice] Preferences updated:", data.preferences);
     return data.preferences;
   }
 );

@@ -60,10 +60,8 @@ const calculatePageSize = (width: number, height: number) => {
 };
 
 export default function History({
-  userId,
   onClose,
 }: {
-  userId?: string;
   onClose?: () => void;
 }) {
   // Get history from Redux
@@ -75,8 +73,13 @@ export default function History({
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
   const [showOnlyMine, setShowOnlyMine] = useState(false);
 
-  // Filter history based on toggle
-  const filteredHistory = showOnlyMine && userId ? history.filter((entry) => entry.userId === userId) : history;
+  // Get user data from Redux
+  const currentUser = useSelector((state: RootState) => state.user);
+  
+  // Simple client-side filter - when "My Tasks" is active, filter by user_id
+  const filteredHistory = showOnlyMine && currentUser?.user_id 
+    ? history.filter(entry => entry.userId === currentUser.user_id)
+    : history;
 
   // Calculate total time for filtered tasks (excluding quit tasks)
   const calculateTotalTime = () => {
@@ -145,7 +148,7 @@ export default function History({
           <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
             <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
             <div className="text-lg text-gray-300 font-mono">Total: 0s</div>
-            {userId && (
+            {currentUser?.user_id && (
               <button
                 onClick={() => setShowOnlyMine(!showOnlyMine)}
                 className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
@@ -185,7 +188,7 @@ export default function History({
         <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
           <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
           <div className="text-lg text-gray-300 font-mono">Total: {totalTime}</div>
-          {userId && (
+          {currentUser?.user_id && (
             <button
               onClick={() => setShowOnlyMine(!showOnlyMine)}
               className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all ${

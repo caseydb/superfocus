@@ -96,16 +96,22 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
   if (!showWelcome) return null;
 
   return (
-    <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none">
-      {/* Compact message container */}
-      <div className="bg-gradient-to-r from-gray-900/90 via-black/90 to-gray-900/90 rounded-xl shadow-lg border-2 border-[#FFAA00] px-6 py-3 animate-in slide-in-from-top duration-500">
-        {/* Subtle glowing border effect */}
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#FFAA00]/10 via-[#FFAA00]/20 to-[#FFAA00]/10 blur-lg -z-10" />
+    <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none">
+      {/* Compact message container pinned to top with fade out to sides */}
+      <div className="relative overflow-hidden animate-in slide-in-from-top duration-500">
+        {/* Background with fade effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/95 to-transparent" />
+        
+        {/* Border with fade effect */}
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FFAA00] to-transparent" />
+        
+        {/* Subtle glow effect in center */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFAA00]/10 to-transparent blur-xl" />
 
         {/* Content */}
-        <div className="text-center space-y-2">
+        <div className="relative text-center space-y-1 py-3 px-6">
           {/* Welcome message */}
-          <div className="text-lg sm:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-yellow-300 to-[#FFAA00]">
+          <div className="text-lg sm:text-xl font-bold text-[#FFAA00]">
             {welcomeMessage}
           </div>
 
