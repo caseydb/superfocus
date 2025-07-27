@@ -317,6 +317,13 @@ export default function Pomodoro({
   }, [handleComplete, task, elapsedSeconds, localVolume, clearTimerState, onComplete, heartbeatIntervalRef, dispatch, totalSeconds]);
 
   const handleClear = () => {
+    // If there are elapsed seconds and onClearClick is provided, use it (triggers quit modal)
+    if (elapsedSeconds > 0 && onClearClick) {
+      onClearClick();
+      return;
+    }
+
+    // Otherwise, just clear without quit modal
     // Clean up any active work
     if (user?.id) {
       const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
@@ -442,7 +449,7 @@ export default function Pomodoro({
         {task.trim() && hasStarted && (
           <button
             className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100`}
-            onClick={onClearClick || handleClear}
+            onClick={handleClear}
           >
             Clear
           </button>
