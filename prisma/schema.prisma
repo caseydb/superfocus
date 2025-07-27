@@ -34,6 +34,7 @@ model preference {
   task_selection_mode      String   @default("dropdown")
   focus_check_time         Int      @default(120)
   date_picker              String   @default("this_week")
+  mode                     String   @default("stopwatch")
 
   user                     user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

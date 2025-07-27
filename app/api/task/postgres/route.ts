@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+
     // Try to find room by slug first (assuming room_id might be a slug)
     let room = await prisma.room.findUnique({
       where: { slug: room_id },

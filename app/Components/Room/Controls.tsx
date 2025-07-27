@@ -6,8 +6,9 @@ import { useInstance } from "../Instances";
 import { signOut, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../store/store";
+import { updatePreferences } from "../../store/preferenceSlice";
 
 interface ControlsProps {
   className?: string;
@@ -27,7 +28,6 @@ interface ControlsProps {
   setShowAnalytics: (show: boolean) => void;
   closeAllModals: () => void;
   isPomodoroMode: boolean;
-  setIsPomodoroMode: (mode: boolean) => void;
   showTimerDropdown: boolean;
   setShowTimerDropdown: (show: boolean) => void;
   timerDropdownRef: React.RefObject<HTMLDivElement | null>;
@@ -51,7 +51,6 @@ export default function Controls({
   setShowAnalytics,
   closeAllModals,
   isPomodoroMode,
-  setIsPomodoroMode,
   showTimerDropdown,
   setShowTimerDropdown,
   timerDropdownRef,
@@ -69,6 +68,7 @@ export default function Controls({
 
   // Get user data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
+  const dispatch = useDispatch<AppDispatch>();
 
   // Close menus on outside click
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function Controls({
             }`}
           >
             {/* Label */}
-            <span className="text-base font-mono text-gray-400">{isPomodoroMode ? "Pomodoro" : "Timer"}</span>
+            <span className="text-base font-mono text-gray-400">{isPomodoroMode ? "Pomodoro" : "Deep Work"}</span>
             {/* Dropdown arrow */}
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${
@@ -162,8 +162,14 @@ export default function Controls({
                 {/* Timer Option */}
                 <button
                   onClick={() => {
-                    setIsPomodoroMode(false);
                     setShowTimerDropdown(false);
+                    // Update preference in Redux
+                    if (reduxUser.user_id) {
+                      dispatch(updatePreferences({
+                        userId: reduxUser.user_id,
+                        updates: { mode: "stopwatch" }
+                      }));
+                    }
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
                     !isPomodoroMode
@@ -176,7 +182,7 @@ export default function Controls({
                     <path d="M12 6V12L16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                   <div className="flex flex-col items-start">
-                    <span className="font-medium">Timer</span>
+                    <span className="font-medium">Deep Work</span>
                     <span className="text-xs opacity-70">Classic stopwatch</span>
                   </div>
                   {!isPomodoroMode && (
@@ -187,8 +193,14 @@ export default function Controls({
                 {/* Pomodoro Option */}
                 <button
                   onClick={() => {
-                    setIsPomodoroMode(true);
                     setShowTimerDropdown(false);
+                    // Update preference in Redux
+                    if (reduxUser.user_id) {
+                      dispatch(updatePreferences({
+                        userId: reduxUser.user_id,
+                        updates: { mode: "countdown" }
+                      }));
+                    }
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
                     isPomodoroMode

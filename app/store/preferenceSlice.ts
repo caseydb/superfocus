@@ -8,6 +8,7 @@ interface PreferenceState {
   task_selection_mode: string;
   focus_check_time: number;
   date_picker: string;
+  mode: "stopwatch" | "countdown";
   loading: boolean;
   error: string | null;
 }
@@ -20,6 +21,7 @@ const initialState: PreferenceState = {
   task_selection_mode: "sidebar",
   focus_check_time: 120,
   date_picker: "all_time",
+  mode: "stopwatch",
   loading: false,
   error: null,
 };

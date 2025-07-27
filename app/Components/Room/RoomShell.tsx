@@ -4,7 +4,7 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { endTimeSegment, cleanupTaskFromBuffer, updateTask, setActiveTask } from "../../store/taskSlice";
+import { setActiveTask } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
 import {
@@ -23,6 +23,7 @@ import {
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
+import Pomodoro from "./Pomodoro";
 import History from "./History";
 import Analytics from "./Analytics";
 import Controls from "./Controls";
@@ -45,6 +46,9 @@ import "ldrs/react/DotSpinner.css";
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
 import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
 import { PrivateRoomPresence } from "@/app/utils/privateRoomPresence";
+import { useClearButton } from "@/app/hooks/ClearButton";
+import { useQuitButton } from "@/app/hooks/QuitButton";
+import { resetInput, lockInput, unlockInput, setHasStarted as setHasStartedRedux, setCurrentInput } from "@/app/store/taskInputSlice";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
@@ -60,9 +64,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Get user data from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
-  const [task, setTask] = useState("");
-  const [inputLocked, setInputLocked] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
+  const { currentInput: task } = useSelector((state: RootState) => state.taskInput);
+  const { hasStarted } = useSelector((state: RootState) => state.taskInput);
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
   const timerPauseRef = React.useRef<() => void>(null!);
@@ -90,9 +93,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const [isPomodoroMode, setIsPomodoroMode] = useState(false); // Default to Timer mode
+  // Get mode preference from Redux
+  const preferences = useSelector((state: RootState) => state.preferences);
+  const isPomodoroMode = preferences.mode === "countdown";
   const [showTimerDropdown, setShowTimerDropdown] = useState(false);
   const timerDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Use button hooks
+  const { handleClear } = useClearButton();
+  const { handleQuitConfirm, handlePushOn } = useQuitButton();
 
   const [localVolume, setLocalVolume] = useState(() => {
     if (typeof window !== "undefined") {
@@ -136,6 +145,62 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [hasTaskInBuffer, setHasTaskInBuffer] = useState(false);
   const hasActiveTimer = Boolean(activeTaskId) || hasTaskInBuffer;
   const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
+  
+  // Check for active timer state on mount and lock input immediately
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[RoomShell] Checking for timer_state on mount for user:', user.id);
+      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+      get(timerRef).then((snapshot) => {
+        const timerState = snapshot.val();
+        console.log('[RoomShell] Timer state from Firebase:', timerState);
+        if (timerState && timerState.taskId) {
+          // Found active timer state - lock input immediately
+          dispatch(lockInput());
+          dispatch(setHasStartedRedux(true));
+          
+          // Calculate current seconds from timer state
+          let currentSeconds = 0;
+          if (timerState.running && timerState.startTime) {
+            // Calculate current seconds: base + elapsed time since start
+            const elapsedMs = Date.now() - timerState.startTime;
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+            currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+          } else {
+            // Use stored total seconds when paused
+            currentSeconds = timerState.totalSeconds || 0;
+          }
+          
+          // Update the secondsRef immediately
+          timerSecondsRef.current = currentSeconds;
+          
+          // Set the active task ID immediately
+          console.log('[RoomShell] Restoring timer state on mount:', {
+            taskId: timerState.taskId,
+            running: timerState.running,
+            currentSeconds
+          });
+          dispatch(setActiveTask(timerState.taskId));
+          
+          // Also restore the task name if we can find it
+          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
+          get(taskRef).then((taskSnapshot) => {
+            const taskData = taskSnapshot.val();
+            if (taskData && taskData.name) {
+              console.log('[RoomShell] Restored task name:', taskData.name);
+              dispatch(setCurrentInput(taskData.name));
+            } else {
+              console.log('[RoomShell] Task not found in TaskBuffer for ID:', timerState.taskId);
+            }
+          });
+        } else {
+          console.log('[RoomShell] No timer state found');
+        }
+      }).catch(error => {
+        console.log('[RoomShell] Error fetching timer state:', error);
+      });
+    }
+  }, [user?.id, dispatch]);
 
   // Find taskId for current task
   useEffect(() => {
@@ -156,17 +221,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Find the active task in Redux tasks
       const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
       if (activeTask) {
-        setTask(activeTask.name);
+        dispatch(setCurrentInput(activeTask.name));
         setCurrentTaskId(activeTask.id);
 
         // Lock the input if the task is in progress
         if (activeTask.status === "in_progress" || activeTask.status === "paused") {
-          setInputLocked(true);
-          setHasStarted(true);
+          dispatch(lockInput());
+          dispatch(setHasStartedRedux(true));
         }
       }
     }
-  }, [activeTaskId, reduxTasks, task]);
+  }, [activeTaskId, reduxTasks, task, dispatch]);
 
   // Timer state is now stored with the task - removed separate timer state listener
 
@@ -547,12 +612,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       set(activeRef, { id: user.id, displayName: user.displayName });
       // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
       // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
-      setInputLocked(true);
-      setHasStarted(true);
+      dispatch(lockInput());
+      dispatch(setHasStartedRedux(true));
     } else {
       // Always remove from activeUsers when timer is paused/stopped
       remove(activeRef);
-      setInputLocked(true); // keep locked until complete/clear/quit
+      // Don't change lock state here - let complete/clear/quit handle unlocking
     }
   };
 
@@ -774,180 +839,57 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => off(flyingMessagesRef, "value", handle);
   }, [currentInstance]);
 
-  const handleClear = () => {
-    if (timerSecondsRef.current > 0 && task.trim()) {
-      closeAllModals();
-      setShowQuitModal(true);
-      return;
-    }
-    setTimerRunning(false);
-    setTask("");
-    setTimerResetKey((k) => k + 1);
-    setInputLocked(false);
-    setHasStarted(false);
-    // Clear Firebase timer state when clearing
-    if (currentInstance && user?.id) {
-      // Timer state is part of task - gets removed when task is removed
-    }
+  const handleClearButton = () => {
+    // Store the current seconds before resetting
+    const currentSeconds = timerSecondsRef.current;
+    
+    // Reset the timer seconds ref BEFORE clearing to ensure Pomodoro remounts with 0
+    timerSecondsRef.current = 0;
+    
+    handleClear({
+      timerSeconds: currentSeconds,  // Use the stored value for clear logic
+      task,
+      setShowQuitModal,
+      setTimerRunning,
+      setTask: () => dispatch(resetInput()),
+      setTimerResetKey,
+      setInputLocked: (locked: boolean) => dispatch(locked ? lockInput() : unlockInput()),
+      setHasStarted: (started: boolean) => dispatch(setHasStartedRedux(started)),
+      closeAllModals,
+    });
   };
 
-  // Add event notification for complete and quit
-  function notifyEvent(type: "complete" | "quit", duration?: number) {
-    if (currentInstance && user?.id) {
-      // Write to new GlobalEffects structure
-      const eventId = `${user.id}-${type}-${Date.now()}`;
-      const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
-      const eventData: { displayName: string; userId: string; type: string; timestamp: number; duration?: number } = {
-        displayName: user.displayName,
-        userId: user.id,
-        type,
-        timestamp: Date.now(),
-      };
-
-      // Include duration for complete/quit events
-      if (duration !== undefined) {
-        eventData.duration = duration;
-      }
-
-      set(eventRef, eventData);
-
-      // Auto-cleanup old events after 10 seconds
-      setTimeout(() => {
-        remove(eventRef);
-      }, 10000);
-    }
-  }
-
-  const handleQuitConfirm = async () => {
-    if (timerSecondsRef.current > 0 && currentInstance && user && task.trim()) {
-      const hours = Math.floor(timerSecondsRef.current / 3600)
-        .toString()
-        .padStart(2, "0");
-      const minutes = Math.floor((timerSecondsRef.current % 3600) / 60)
-        .toString()
-        .padStart(2, "0");
-      const secs = (timerSecondsRef.current % 60).toString().padStart(2, "0");
-      const historyRef = ref(rtdb, `rooms/${currentInstance.id}/history`);
-      const quitData = {
-        userId: user.id,
-        displayName: user.displayName,
-        task: task + " (Quit Early)",
-        duration: `${hours}:${minutes}:${secs}`,
-        timestamp: Date.now(),
-        completed: false,
-      };
-      push(historyRef, quitData);
-
-      // Also save to user's personal completion history for cross-room stats
-      // Completion history removed from TaskBuffer - store elsewhere if needed
-
-      // Also add to global completed tasks (will be filtered out from stats due to "Quit Early")
-      if (typeof window !== "undefined") {
-        const windowWithTask = window as Window & { addCompletedTask?: (task: typeof quitData) => void };
-        if (windowWithTask.addCompletedTask) {
-          windowWithTask.addCompletedTask(quitData);
-        }
-      }
-
-      // Always play quit sound locally
-      const quitAudio = new Audio("/quit.mp3");
-      quitAudio.volume = localVolume;
-      quitAudio.play();
-
-      // Only notify quit to RTDB if minimum duration is met
-      if (user?.id && currentInstance && timerSecondsRef.current >= MIN_DURATION_MS / 1000) {
-        notifyEvent("quit", timerSecondsRef.current);
-      }
-
-      // Always add flying message for quit to GlobalEffects
-      const flyingMessageId = `${user.id}-quit-${Date.now()}`;
-      const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
-      set(flyingMessageRef, {
-        text: `💀 ${user.displayName} folded faster than a lawn chair.`,
-        color: "text-red-500",
-        userId: user.id,
-        timestamp: Date.now(),
-      });
-
-      // Auto-remove the message after 7 seconds
-      setTimeout(() => {
-        remove(flyingMessageRef);
-      }, 7000);
-
-      // Remove ActiveWorker immediately when quitting
-      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-      remove(activeWorkerRef);
-
-      // Clean up everything related to this task - make it like it was never started
-      const activeTask = reduxTasks.find((t) => t.name === task?.trim());
-      if (activeTask?.id && user?.id) {
-        // Try to end time segment if it exists, but don't fail if it doesn't
-        try {
-          await dispatch(
-            endTimeSegment({
-              taskId: activeTask.id,
-              firebaseUserId: user.id,
-            })
-          ).unwrap();
-        } catch {
-          // Task might not be in TaskBuffer, that's OK - continue with cleanup
-        }
-
-        // Clean up task from TaskBuffer without transferring to Postgres
-        // This will reset the task status to "not_started" and clear activeTaskId
-        try {
-          await dispatch(
-            cleanupTaskFromBuffer({
-              taskId: activeTask.id,
-              firebaseUserId: user.id,
-            })
-          ).unwrap();
-        } catch {
-          // Task might not be in TaskBuffer, that's OK
-        }
-
-        // Manually reset the task in Redux to ensure it's in virgin state
-        dispatch(
-          updateTask({
-            id: activeTask.id,
-            updates: {
-              status: "not_started" as const,
-              timeSpent: 0,
-              lastActive: undefined,
-            },
-          })
-        );
-
-        // Clear active task
-        dispatch(setActiveTask(null));
-      }
-    }
-    setTimerRunning(false);
-    setTask("");
-    setTimerResetKey((k) => k + 1);
-    setInputLocked(false);
-    setHasStarted(false);
-    setShowQuitModal(false);
-    // Clear Firebase timer state when quitting
-    if (currentInstance && user?.id) {
-      // Timer state is part of task - gets removed when task is removed
-      // Remove user from activeUsers when quitting (same as complete)
-      const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
-      remove(activeRef);
-    }
+  const handleQuitButton = async () => {
+    // Store the current seconds before resetting
+    const currentSeconds = timerSecondsRef.current;
+    
+    // Reset the timer seconds ref BEFORE quitting to ensure Pomodoro remounts with 0
+    timerSecondsRef.current = 0;
+    
+    await handleQuitConfirm({
+      timerSeconds: currentSeconds,  // Use the stored value for quit logging
+      task,
+      localVolume,
+      setTimerRunning,
+      setTask: () => dispatch(resetInput()),
+      setTimerResetKey,
+      setInputLocked: (locked: boolean) => dispatch(locked ? lockInput() : unlockInput()),
+      setHasStarted: (started: boolean) => dispatch(setHasStartedRedux(started)),
+      setShowQuitModal,
+    });
   };
 
-  const handlePushOn = () => {
-    setShowQuitModal(false);
+  const handlePushOnButton = () => {
+    handlePushOn(setShowQuitModal);
   };
 
   // Complete handler: reset timer, clear input, set inactive
   const handleComplete = (duration: string) => {
     setTimerRunning(false);
-    setTask("");
+    dispatch(resetInput());
+    // Reset the timer seconds ref BEFORE triggering reset to ensure Pomodoro remounts with 0
+    timerSecondsRef.current = 0;
     setTimerResetKey((k) => k + 1);
-    setInputLocked(false);
-    setHasStarted(false);
     // Clear Firebase timer state when completing
     if (currentInstance && user?.id) {
       // Timer state is part of task - gets removed when task is removed
@@ -1197,7 +1139,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             {/* Controls - speaker icon, timer dropdown, and name dropdown */}
             <Controls
               isPomodoroMode={isPomodoroMode}
-              setIsPomodoroMode={setIsPomodoroMode}
               showTimerDropdown={showTimerDropdown}
               setShowTimerDropdown={setShowTimerDropdown}
               timerDropdownRef={timerDropdownRef}
@@ -1252,61 +1193,80 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <ActiveWorkers roomId={currentInstance.id} />
           {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
-            <div className="relative group">
-              <TaskInput
-                task={task}
-                setTask={setTask}
-                disabled={(hasStarted && inputLocked) || hasActiveTimer}
-                onStart={() => {
-                  // Simply trigger the timer's start button - let it handle all the logic
-                  if (timerStartRef.current) {
-                    timerStartRef.current();
-                  }
-                }}
-                setShowTaskList={setShowTaskList}
-              />
-              {/* Clear button in top-right when paused (always visible) or when running (on hover) */}
-              {task.trim() && hasStarted && (
-                <button
-                  className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 ${
-                    timerRunning ? "opacity-0 group-hover:opacity-100" : ""
-                  }`}
-                  onClick={handleClear}
+            {/* Only show TaskInput when in Timer mode */}
+            {!isPomodoroMode && (
+              <div className="relative group">
+                <TaskInput
+                  onStart={() => {
+                    // Simply trigger the timer's start button - let it handle all the logic
+                    if (timerStartRef.current) {
+                      timerStartRef.current();
+                    }
+                  }}
+                  setShowTaskList={setShowTaskList}
+                />
+                {/* Clear button in top-right: when running (on hover) or when paused (also on hover) */}
+                {task.trim() && hasStarted && (
+                  <button
+                    className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100`}
+                  onClick={handleClearButton}
                 >
                   Clear
                 </button>
               )}
-            </div>
+              </div>
+            )}
           </div>
           <div className={showHistory ? "" : "hidden"}>
             <History userId={user?.id} onClose={() => setShowHistory(false)} />
           </div>
-          {/* Timer is always mounted, just hidden when history is open */}
+          {/* Timer/Pomodoro is always mounted, just hidden when history is open */}
           <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
             {/* Notes - inline above timer, only show when task exists */}
             {task.trim() && <Notes isOpen={showNotes} task={task} taskId={currentTaskId} />}
 
-            <Timer
-              key={timerResetKey}
-              onActiveChange={handleActiveChange}
-              startRef={timerStartRef}
-              pauseRef={timerPauseRef}
-              onComplete={handleComplete}
-              secondsRef={timerSecondsRef}
-              requiredTask={!!task.trim()}
-              task={task}
-              localVolume={localVolume}
-              onTaskRestore={(taskName) => {
-                setTask(taskName);
-                setInputLocked(true);
-                setHasStarted(true);
-              }}
-              onNewTaskStart={() => {
+            {/* Conditionally render Timer or Pomodoro based on mode */}
+            {!isPomodoroMode ? (
+              <Timer
+                key={timerResetKey}
+                onActiveChange={handleActiveChange}
+                startRef={timerStartRef}
+                pauseRef={timerPauseRef}
+                onComplete={handleComplete}
+                secondsRef={timerSecondsRef}
+                requiredTask={!!task.trim()}
+                localVolume={localVolume}
+                onTaskRestore={(taskName, isRunning) => {
+                  dispatch(setCurrentInput(taskName));
+                  if (isRunning) {
+                    dispatch(lockInput());
+                  }
+                  dispatch(setHasStartedRedux(true));
+                }}
+                onNewTaskStart={() => {
                 lastStartTimeRef.current = Date.now();
               }}
               startCooldown={localStartCooldown}
               lastStartTime={lastStartTimeRef.current}
+              initialRunning={timerRunning}
             />
+            ) : (
+              <Pomodoro
+                key={timerResetKey}
+                localVolume={localVolume}
+                onActiveChange={handleActiveChange}
+                onNewTaskStart={() => {
+                  lastStartTimeRef.current = Date.now();
+                }}
+                onComplete={handleComplete}
+                startRef={timerStartRef}
+                pauseRef={timerPauseRef}
+                secondsRef={timerSecondsRef}
+                lastStartTime={lastStartTimeRef.current}
+                initialRunning={timerRunning}
+                onClearClick={handleClearButton}
+              />
+            )}
           </div>
 
           {/* Analytics and Leaderboard buttons - bottom left */}
@@ -1423,13 +1383,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                     </p>
                     <div className="flex gap-3">
                       <button
-                        onClick={handlePushOn}
+                        onClick={handlePushOnButton}
                         className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
                       >
                         Push On
                       </button>
                       <button
-                        onClick={handleQuitConfirm}
+                        onClick={handleQuitButton}
                         className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
                       >
                         Quit
@@ -1515,7 +1475,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           isOpen={showTaskList}
           onClose={() => setShowTaskList(false)}
           onStartTask={(taskText) => {
-            setTask(taskText);
+            dispatch(setCurrentInput(taskText));
             setShowTaskList(false);
             // Small delay to ensure task is set before starting timer
             setTimeout(() => {
@@ -1524,7 +1484,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               }
             }, 50);
           }}
-          currentTask={task}
           isTimerRunning={timerRunning}
           hasActiveTimer={hasActiveTimer}
           onPauseTimer={() => {

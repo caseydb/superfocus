@@ -209,7 +209,7 @@ export const transferTaskToPostgres = createAsyncThunk(
         id: taskData.id,
         updates: {
           status,
-          duration: durationToSave, // Use provided or calculated duration
+          duration: durationToSave,
           updated_at: new Date().toISOString(),
           completed_at: status === "completed" ? new Date().toISOString() : null,
         },
@@ -667,13 +667,18 @@ export const updateTaskStatusThunk = createAsyncThunk(
 export const cleanupTaskFromBuffer = createAsyncThunk(
   "tasks/cleanupFromBuffer",
   async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
+    console.log('[cleanupTaskFromBuffer] Starting cleanup:', { taskId, firebaseUserId });
+    
     // Remove task from TaskBuffer if it exists
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
 
     // Check if task exists before trying to remove
     const snapshot = await get(taskRef);
     if (snapshot.exists()) {
+      console.log('[cleanupTaskFromBuffer] Found task in TaskBuffer, removing...');
       await remove(taskRef);
+    } else {
+      console.log('[cleanupTaskFromBuffer] Task not found in TaskBuffer');
     }
 
     // Also clear any timer state if it exists
@@ -681,9 +686,13 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
     const timerSnapshot = await get(timerRef);
     if (timerSnapshot.exists()) {
       const timerData = timerSnapshot.val();
+      console.log('[cleanupTaskFromBuffer] Found timer_state:', timerData);
       // Only remove if it's for this task
       if (timerData.taskId === taskId) {
+        console.log('[cleanupTaskFromBuffer] Removing timer_state');
         await remove(timerRef);
+      } else {
+        console.log('[cleanupTaskFromBuffer] Timer_state is for different task:', timerData.taskId);
       }
     }
 
@@ -827,7 +836,9 @@ const taskSlice = createSlice({
       .addCase(transferTaskToPostgres.fulfilled, (state, action) => {
         // Update task in local state with completion data
         const { savedTask, status } = action.payload;
-        const taskIndex = state.tasks.findIndex((task) => task.id === savedTask.id);
+        // Use the original task ID from the action arguments, not the returned savedTask.id
+        const originalTaskId = action.meta.arg.taskId;
+        const taskIndex = state.tasks.findIndex((task) => task.id === originalTaskId);
 
         if (taskIndex !== -1) {
           // Update the existing task with completion data
@@ -842,7 +853,8 @@ const taskSlice = createSlice({
         }
 
         // Clear activeTaskId if the completed task was the active one
-        if (state.activeTaskId === savedTask.id) {
+        // Use the original task ID, not the potentially new savedTask.id
+        if (state.activeTaskId === originalTaskId) {
           state.activeTaskId = null;
         }
       })

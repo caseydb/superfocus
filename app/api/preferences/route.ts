@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         task_selection_mode: true,
         focus_check_time: true,
         date_picker: true,
+        mode: true,
       }
     });
 
@@ -72,6 +73,7 @@ export async function PATCH(request: NextRequest) {
         task_selection_mode: true,
         focus_check_time: true,
         date_picker: true,
+        mode: true,
       }
     });
 

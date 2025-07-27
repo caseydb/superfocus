@@ -1,0 +1,555 @@
+"use client";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useStartButton } from "../../hooks/StartButton";
+import { usePauseButton } from "../../hooks/PauseButton";
+import { useCompleteButton } from "../../hooks/CompleteButton";
+import { useInstance } from "../Instances";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../../store/store";
+import { rtdb } from "../../../lib/firebase";
+import { ref, remove, onDisconnect, set } from "firebase/database";
+import { setCurrentInput, lockInput, unlockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
+
+interface PomodoroProps {
+  localVolume?: number;
+  onActiveChange?: (isActive: boolean) => void;
+  onNewTaskStart?: () => void;
+  onComplete?: (duration: string) => void;
+  startRef?: React.RefObject<() => void>;
+  pauseRef?: React.RefObject<() => void>;
+  secondsRef?: React.RefObject<number>;
+  lastStartTime?: number;
+  initialRunning?: boolean;
+  onClearClick?: () => void;
+}
+
+export default function Pomodoro({
+  localVolume = 0.2,
+  onActiveChange,
+  onNewTaskStart,
+  onComplete,
+  startRef,
+  pauseRef,
+  secondsRef,
+  lastStartTime = 0,
+  initialRunning = false,
+  onClearClick,
+}: PomodoroProps) {
+  const dispatch = useDispatch();
+  const { user } = useInstance();
+  const { currentInput: task, isLocked: inputLocked, hasStarted } = useSelector((state: RootState) => state.taskInput);
+  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+
+  // Use button hooks
+  const { handleStart } = useStartButton();
+  const { handleStop } = usePauseButton();
+  const { handleComplete, showCompleteFeedback } = useCompleteButton();
+
+  // State management
+  const [isStarting, setIsStarting] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedMinutes, setSelectedMinutes] = useState(30);
+  const [totalSeconds, setTotalSeconds] = useState(30 * 60);
+  const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
+  const [elapsedSeconds, setElapsedSeconds] = useState(secondsRef?.current || 0);
+  const [isRunning, setIsRunning] = useState(initialRunning);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [editingMinutes, setEditingMinutes] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Preset time options
+  const timePresets = [
+    { label: "10 min", minutes: 10 },
+    { label: "20 min", minutes: 20 },
+    { label: "30 min", minutes: 30 },
+    { label: "45 min", minutes: 45 },
+    { label: "60 min", minutes: 60 },
+  ];
+
+  // Update total and remaining seconds when selected minutes change
+  useEffect(() => {
+    if (!isRunning && !isPaused) {
+      const seconds = selectedMinutes * 60;
+      setTotalSeconds(seconds);
+      setRemainingSeconds(seconds);
+    }
+  }, [selectedMinutes, isRunning, isPaused]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (isRunning && remainingSeconds > 0) {
+      const interval = setInterval(() => {
+        setRemainingSeconds((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isRunning, remainingSeconds]);
+
+  // Auto-complete when timer reaches zero
+  useEffect(() => {
+    if (isRunning && remainingSeconds === 0) {
+      if (task.trim()) {
+        completeTimer();
+      } else {
+        setIsRunning(false);
+        dispatch(setHasStarted(false));
+        dispatch(unlockInput());
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning, remainingSeconds, task, dispatch]);
+
+  // Notify parent of running state
+  useEffect(() => {
+    if (onActiveChange) onActiveChange(isRunning);
+  }, [isRunning, onActiveChange]);
+
+  // Sync with shared secondsRef on mount and when switching between running states
+  useEffect(() => {
+    // Read from secondsRef when component first mounts or when not actively counting
+    if (secondsRef?.current !== undefined && !isRunning) {
+      setElapsedSeconds(secondsRef.current);
+    }
+  }, [isRunning, secondsRef]); // Update when running state changes
+
+  // Update secondsRef with elapsed seconds
+  useEffect(() => {
+    if (secondsRef) secondsRef.current = elapsedSeconds;
+  }, [elapsedSeconds, secondsRef]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    }
+  }, [task]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const formatElapsedTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleTimeEdit = () => {
+    if (!isRunning && !isPaused) {
+      setIsEditingTime(true);
+      const currentMinutes = Math.floor(remainingSeconds / 60);
+      setEditingMinutes(currentMinutes.toString());
+    }
+  };
+
+  const handleTimeEditSubmit = () => {
+    const minutes = parseInt(editingMinutes) || 0;
+
+    // Limit to reasonable range (1 to 180 minutes)
+    const validMinutes = Math.max(1, Math.min(180, minutes));
+
+    setSelectedMinutes(validMinutes);
+    setTotalSeconds(validMinutes * 60);
+    setRemainingSeconds(validMinutes * 60);
+    setIsEditingTime(false);
+  };
+
+  // Helper functions for timer state - Pomodoro SHOULD save to Firebase for persistence
+  const saveTimerState = React.useCallback(
+    (isRunning: boolean, baseSeconds: number = 0) => {
+      // Use activeTaskId if available, otherwise find by name
+      let taskId = activeTaskId;
+      if (!taskId) {
+        const activeTask = reduxTasks.find((t) => t.name === task?.trim());
+        taskId = activeTask?.id || null;
+      }
+      
+      console.log('[Pomodoro] saveTimerState called:', { taskId, isRunning, baseSeconds, activeTaskId });
+      
+      if (taskId && user?.id) {
+        const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+
+        const timerState = {
+          running: isRunning,
+          startTime: isRunning ? Date.now() : null,
+          baseSeconds: isRunning ? baseSeconds : 0,
+          totalSeconds: !isRunning ? baseSeconds : 0,
+          lastUpdate: Date.now(),
+          taskId: taskId,
+        };
+
+        set(timerRef, timerState);
+      }
+    },
+    [reduxTasks, task, user?.id, activeTaskId]
+  );
+
+  const clearTimerState = React.useCallback(() => {
+    if (user?.id) {
+      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+      remove(timerRef);
+      
+      // Also remove ActiveWorker
+      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+      remove(activeWorkerRef);
+    }
+  }, [user?.id]);
+
+  // Save timer state when user leaves the page (closes tab, refreshes, or navigates away)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      console.log('[Pomodoro] beforeunload triggered:', { isRunning, elapsedSeconds, activeTaskId });
+      // Save timer state if there are seconds accumulated (whether running or paused)
+      if (elapsedSeconds > 0 && activeTaskId) {
+        // Save as paused state with current elapsed seconds
+        saveTimerState(false, elapsedSeconds);
+      }
+      
+      // Remove ActiveWorker if running
+      if (isRunning && user?.id) {
+        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+        remove(activeWorkerRef);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isRunning, elapsedSeconds, saveTimerState, user?.id, activeTaskId]);
+
+  const startTimer = async () => {
+    if (!task.trim()) return;
+
+    await handleStart({
+      task,
+      seconds: elapsedSeconds,
+      isResume: isPaused,
+      localVolume,
+      onNewTaskStart,
+      lastStartTime,
+      saveTimerState,
+      setRunning: setIsRunning,
+      setIsStarting,
+      heartbeatIntervalRef,
+    });
+
+    setIsPaused(false);
+    dispatch(setHasStarted(true));
+    dispatch(lockInput());
+  };
+
+  const pauseTimer = () => {
+    handleStop({
+      task,
+      seconds: elapsedSeconds,
+      saveTimerState,
+      setRunning: setIsRunning,
+      setIsStarting,
+      heartbeatIntervalRef,
+    });
+
+    setIsPaused(true);
+  };
+
+  const resumeTimer = async () => {
+    await startTimer();
+  };
+
+  const completeTimer = useCallback(async () => {
+    try {
+      await handleComplete({
+        task,
+        seconds: elapsedSeconds,
+        localVolume,
+        clearTimerState,
+        onComplete,
+        setIsCompleting,
+        heartbeatIntervalRef,
+      });
+    } finally {
+      // Always reset Pomodoro state, even if complete fails
+      setIsRunning(false);
+      setIsPaused(false);
+      dispatch(resetInput());
+      setRemainingSeconds(totalSeconds);
+      setElapsedSeconds(0);
+    }
+  }, [handleComplete, task, elapsedSeconds, localVolume, clearTimerState, onComplete, heartbeatIntervalRef, dispatch, totalSeconds]);
+
+  const handleClear = () => {
+    // Clean up any active work
+    if (user?.id) {
+      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+      remove(activeWorkerRef);
+      onDisconnect(activeWorkerRef).cancel();
+    }
+
+    // Clear heartbeat interval
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+
+    setIsRunning(false);
+    setIsPaused(false);
+    dispatch(resetInput());
+    setRemainingSeconds(totalSeconds);
+    setElapsedSeconds(0);
+  };
+
+  // Expose functions to parent via refs
+  useEffect(() => {
+    if (startRef) {
+      startRef.current = startTimer;
+    }
+  });
+
+  useEffect(() => {
+    if (pauseRef) {
+      pauseRef.current = pauseTimer;
+    }
+  });
+
+  // Calculate progress percentage
+  const progress = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
+
+  return (
+    <div className="flex flex-col items-center gap-6 px-4 sm:px-0 w-full mx-auto">
+      {/* Task input field - matching Timer styling */}
+      <div className="relative group">
+        <div className="flex flex-col items-center justify-center w-full px-4 sm:px-0">
+          <textarea
+          ref={textareaRef}
+          value={task}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            if (newValue.length <= 69) {
+              dispatch(setCurrentInput(newValue));
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && task.trim() && !isRunning && !isPaused) {
+              e.preventDefault();
+              startTimer();
+            }
+          }}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
+          placeholder="What are you focusing on?"
+          disabled={inputLocked}
+          maxLength={69}
+          className={`text-center text-2xl md:text-3xl font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 w-full ${
+            inputLocked ? "cursor-not-allowed" : "bg-transparent"
+          }`}
+          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", minWidth: "400px", maxWidth: "600px" }}
+          rows={1}
+        />
+        {/* Custom underline */}
+        <div
+          className={`mx-auto transition-colors duration-200 ${
+            inputFocused && !inputLocked ? "bg-[#FFAA00]" : "bg-gray-700"
+          }`}
+          style={{
+            width: "100%",
+            minWidth: "400px",
+            maxWidth: "600px",
+            height: "2px",
+            marginBottom: "30px",
+            borderRadius: "2px",
+          }}
+        />
+        </div>
+        {/* Clear button in top-right - matching Timer's positioning */}
+        {task.trim() && hasStarted && (
+          <button
+            className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100`}
+            onClick={onClearClick || handleClear}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Main Countdown Display */}
+      <div className="relative w-64 h-64 sm:w-80 sm:h-80">
+        {/* Background circle */}
+        <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+          <circle cx="50%" cy="50%" r="45%" stroke="#1f2937" strokeWidth="8" fill="none" />
+          {/* Progress circle */}
+          <circle
+            cx="50%"
+            cy="50%"
+            r="45%"
+            stroke="#FFAA00"
+            strokeWidth="8"
+            fill="none"
+            strokeDasharray={`${progress * 2.827} 282.7`}
+            className="transition-all duration-1000 ease-linear"
+            style={{
+              filter: "drop-shadow(0 0 12px rgba(255, 170, 0, 0.5))",
+            }}
+          />
+        </svg>
+
+        {/* Center content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {/* Main countdown - editable when not running */}
+          <div
+            className={`text-5xl sm:text-7xl font-bold text-white mb-2 ${
+              !isRunning && !isPaused && !isEditingTime ? "cursor-text hover:text-[#FFAA00] transition-colors" : ""
+            } ${isEditingTime ? "border-b-2 border-[#FFAA00]" : ""}`}
+            onClick={handleTimeEdit}
+            title={!isRunning && !isPaused ? "Click to edit time" : ""}
+            style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+          >
+            {isEditingTime ? (
+              <div className="flex items-baseline">
+                <input
+                  type="text"
+                  value={editingMinutes.padStart(2, "0")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" || e.key === "Delete") {
+                      e.preventDefault();
+                      const currentValue = editingMinutes.padStart(2, "0");
+                      // Shift right and add 0: "45" -> "04"
+                      const shiftedValue = "0" + currentValue.slice(0, 1);
+                      setEditingMinutes(shiftedValue.replace(/^0+/, "") || "0");
+                    } else if (e.key === "Enter") {
+                      handleTimeEditSubmit();
+                    } else if (e.key === "Escape") {
+                      setIsEditingTime(false);
+                      setEditingMinutes("");
+                    } else if (/^\d$/.test(e.key)) {
+                      e.preventDefault();
+                      const currentValue = editingMinutes.padStart(2, "0");
+                      // Shift left and add new digit: "04" + "5" -> "45"
+                      const shiftedValue = currentValue.slice(1) + e.key;
+                      setEditingMinutes(shiftedValue.replace(/^0+/, "") || "0");
+                    }
+                  }}
+                  onChange={() => {
+                    // Prevent any changes - all input is handled in onKeyDown
+                  }}
+                  onBlur={handleTimeEditSubmit}
+                  className="w-20 sm:w-24 bg-transparent text-white text-right outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="25"
+                  autoFocus
+                  maxLength={3}
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+                />
+                <span>:{(remainingSeconds % 60).toString().padStart(2, "0")}</span>
+              </div>
+            ) : (
+              formatTime(remainingSeconds)
+            )}
+          </div>
+
+          {/* Time presets inside circle - only show when not running */}
+          {!isRunning && !isPaused && (
+            <div className="flex flex-wrap justify-center gap-2 mt-6 px-4">
+              {timePresets.map((preset) => (
+                <button
+                  key={preset.minutes}
+                  onClick={() => setSelectedMinutes(preset.minutes)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                    (isEditingTime ? parseInt(editingMinutes) || 0 : Math.floor(remainingSeconds / 60)) ===
+                    preset.minutes
+                      ? "bg-[#FFAA00] text-black hover:bg-[#FFB833]"
+                      : "bg-gray-800/50 text-gray-400 hover:bg-gray-700 hover:text-white"
+                  }`}
+                  style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+                >
+                  {preset.minutes}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Subtle elapsed time counter */}
+      <div className="text-sm text-gray-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+        Total time: {formatElapsedTime(elapsedSeconds)}
+      </div>
+
+      {/* Control buttons */}
+      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none justify-center">
+        {!isRunning && !isPaused && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
+              onClick={startTimer}
+              disabled={!task.trim() || isStarting}
+            >
+              {elapsedSeconds > 0 ? "Resume" : "Start"}
+            </button>
+          </div>
+        )}
+
+        {isRunning && (
+          <>
+            <button
+              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+              onClick={pauseTimer}
+            >
+              Pause
+            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                className={`${
+                  showCompleteFeedback ? "bg-green-600" : "bg-green-500"
+                } text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 cursor-pointer`}
+                onClick={completeTimer}
+                disabled={isCompleting}
+              >
+                {showCompleteFeedback ? "Wait..." : "Complete"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {isPaused && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
+              onClick={resumeTimer}
+              disabled={isStarting}
+            >
+              Resume
+            </button>
+          </div>
+        )}
+      </div>
+
+
+      {/* Visual flourish when timer completes */}
+      {remainingSeconds === 0 && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="text-4xl sm:text-6xl font-bold text-[#FFAA00] animate-pulse">Complete! 🎉</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

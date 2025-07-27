@@ -6,6 +6,8 @@ import notesReducer from './notesSlice';
 import preferenceReducer from './preferenceSlice';
 import historyReducer from './historySlice';
 import leaderboardReducer from './leaderboardSlice';
+import taskInputReducer from './taskInputSlice';
+import timerReducer from './timerSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +18,8 @@ export const store = configureStore({
     preferences: preferenceReducer,
     history: historyReducer,
     leaderboard: leaderboardReducer,
+    taskInput: taskInputReducer,
+    timer: timerReducer,
   },
 });
 

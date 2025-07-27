@@ -23,12 +23,8 @@ import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import {
-  addTask,
-  deleteTask,
   updateTask,
   reorderTasks,
-  createTaskThunk,
-  deleteTaskThunk,
   updateTaskOrder,
 } from "../../store/taskSlice";
 import { 
@@ -43,7 +39,11 @@ import {
   selectHasNotesForTaskId
 } from "../../store/notesSlice";
 import { fetchNotes, saveNotes as saveNotesThunk } from "../../store/notesThunks";
-import { v4 as uuidv4 } from "uuid";
+import { useStartTaskButton } from "../../hooks/tasklist/StartTaskButton";
+import { usePauseTaskButton } from "../../hooks/tasklist/PauseTaskButton";
+import { useAddTaskButton } from "../../hooks/tasklist/AddTaskButton";
+import { useDeleteTaskButton } from "../../hooks/tasklist/DeleteTaskButton";
+import { useClearAllTasksButton } from "../../hooks/tasklist/ClearAllTasksButton";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, set, onValue, off, remove } from "firebase/database";
@@ -75,7 +75,6 @@ function SortableTask({
   onEditTextChange,
   editInputRef,
   onStartTask,
-  currentTask,
   isTimerRunning,
   hasActiveTimer,
   onPauseTimer,
@@ -93,7 +92,6 @@ function SortableTask({
   onEditTextChange: (text: string) => void;
   editInputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   onStartTask?: (taskText: string) => void;
-  currentTask?: string;
   isTimerRunning?: boolean;
   hasActiveTimer?: boolean;
   onPauseTimer?: () => void;
@@ -105,6 +103,11 @@ function SortableTask({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
+  const { currentInput: currentTask } = useSelector((state: RootState) => state.taskInput);
+  
+  // Use button hooks
+  const { handleStartTask } = useStartTaskButton();
+  const { handlePauseTask } = usePauseTaskButton();
   const notes = useSelector((state: RootState) => selectNotesByTaskId(task.id)(state));
   const isSavingNotes = useSelector((state: RootState) => selectIsSavingByTaskId(task.id)(state));
   const hasNotesInStore = useSelector((state: RootState) => selectHasNotesForTaskId(task.id)(state));
@@ -466,10 +469,10 @@ function SortableTask({
               onClick={() => {
                 if (isTimerRunning) {
                   // Timer is running, pause it
-                  if (onPauseTimer) onPauseTimer();
+                  handlePauseTask(onPauseTimer);
                 } else {
                   // Timer is paused, resume it (which is the same as starting)
-                  if (onStartTask) onStartTask(task.text);
+                  handleStartTask(task.text, onStartTask);
                 }
               }}
               onPointerDown={(e) => e.stopPropagation()}
@@ -501,7 +504,7 @@ function SortableTask({
             // Show start button for other tasks
             <button
               onClick={() => {
-                if (onStartTask) onStartTask(task.text);
+                handleStartTask(task.text, onStartTask);
               }}
               onPointerDown={(e) => e.stopPropagation()}
               disabled={Boolean(hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim()))}
@@ -893,7 +896,6 @@ export default function TaskList({
   isOpen,
   onClose,
   onStartTask,
-  currentTask,
   isTimerRunning,
   hasActiveTimer,
   onPauseTimer,
@@ -902,7 +904,6 @@ export default function TaskList({
   isOpen: boolean;
   onClose: () => void;
   onStartTask?: (taskText: string) => void;
-  currentTask?: string;
   isTimerRunning?: boolean;
   hasActiveTimer?: boolean;
   onPauseTimer?: () => void;
@@ -912,7 +913,11 @@ export default function TaskList({
   const dispatch = useDispatch<AppDispatch>();
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const taskSliceState = useSelector((state: RootState) => state.tasks);
-  const reduxUser = useSelector((state: RootState) => state.user);
+  
+  // Use button hooks
+  const { handleAddTask: addTaskFromHook } = useAddTaskButton();
+  const { removeTask: removeTaskFromHook } = useDeleteTaskButton();
+  const { clearAll: clearAllFromHook, confirmClearAll: confirmClearAllFromHook } = useClearAllTasksButton();
 
   // Console log the entire taskSlice state
   useEffect(() => {
@@ -1051,47 +1056,11 @@ export default function TaskList({
 
   // Add task to Redux store
   const handleAddTask = () => {
-    if (newTaskText.trim() && user?.id && reduxUser.user_id) {
-      // Generate proper UUID
-      const taskId = uuidv4();
-
-      // Add optimistic task immediately
-      dispatch(
-        addTask({
-          id: taskId,
-          name: newTaskText.trim(),
-        })
-      );
-
-      // Persist to database using PostgreSQL user ID
-      dispatch(
-        createTaskThunk({
-          id: taskId,
-          name: newTaskText.trim(),
-          userId: reduxUser.user_id, // Use PostgreSQL UUID
-        })
-      );
-
-      setNewTaskText("");
-    }
+    addTaskFromHook(newTaskText, setNewTaskText);
   };
 
-  // Remove task from Redux store and database
-  const removeTask = (id: string) => {
-    if (user?.id && reduxUser.user_id) {
-      // First remove from Redux optimistically
-      dispatch(deleteTask(id));
-
-      // Then delete from database and Firebase TaskBuffer
-      dispatch(
-        deleteTaskThunk({
-          id,
-          userId: reduxUser.user_id,
-          firebaseUserId: user.id, // Firebase Auth ID
-        })
-      );
-    }
-  };
+  // Remove task from Redux store and database  
+  const removeTask = removeTaskFromHook;
 
   const startEditing = (task: Task) => {
     setEditingId(task.id);
@@ -1184,19 +1153,12 @@ export default function TaskList({
   };
 
   const clearAll = () => {
-    setShowClearMenu(false);
-    setShowClearAllConfirm(true);
+    clearAllFromHook(setShowClearMenu, setShowClearAllConfirm);
   };
 
   // Clear all tasks from Redux store
   const confirmClearAll = () => {
-    if (user?.id) {
-      // Clear all tasks by deleting each one
-      reduxTasks.forEach((task) => {
-        dispatch(deleteTask(task.id));
-      });
-    }
-    setShowClearAllConfirm(false);
+    confirmClearAllFromHook(setShowClearAllConfirm);
   };
 
   // Only show incomplete tasks
@@ -1339,7 +1301,6 @@ export default function TaskList({
                       onEditTextChange={setEditingText}
                       editInputRef={editInputRef}
                       onStartTask={onStartTask}
-                      currentTask={currentTask}
                       isTimerRunning={isTimerRunning}
                       hasActiveTimer={hasActiveTimer}
                       onPauseTimer={onPauseTimer}

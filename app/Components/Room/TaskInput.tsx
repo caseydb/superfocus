@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
+import { setCurrentInput } from "../../store/taskInputSlice";
 
 const maxLen = 69;
 
@@ -13,18 +14,14 @@ interface Task {
 }
 
 export default function TaskInput({
-  task,
-  setTask,
-  disabled,
   onStart,
   setShowTaskList,
 }: {
-  task: string;
-  setTask: (t: string) => void;
-  disabled: boolean;
   onStart?: () => void;
   setShowTaskList?: (show: boolean) => void;
 }) {
+  const dispatch = useDispatch();
+  const { currentInput: task, isLocked: disabled } = useSelector((state: RootState) => state.taskInput);
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -176,9 +173,9 @@ export default function TaskInput({
             setShowLimitPopup(true);
           }
           
-          setTask(newValue.slice(0, maxLen));
-          // Show suggestions when typing in dropdown mode
-          if (preferences.task_selection_mode === "dropdown") {
+          dispatch(setCurrentInput(newValue.slice(0, maxLen)));
+          // Show suggestions when typing in dropdown mode (but not when disabled)
+          if (preferences.task_selection_mode === "dropdown" && !disabled) {
             setShowTaskSuggestions(true);
           }
         }}
@@ -191,10 +188,10 @@ export default function TaskInput({
         style={{ width: inputWidth }}
         onFocus={() => {
           setIsFocused(true);
-          // Show dropdown if in dropdown mode and there are tasks to show
-          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0) {
+          // Show dropdown if in dropdown mode and there are tasks to show (but not when disabled)
+          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0 && !disabled) {
             setShowTaskSuggestions(true);
-          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim()) {
+          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim() && !disabled) {
             setShowTaskList(true);
             // Keep focus on this input when opening sidebar
             setTimeout(() => {
@@ -203,10 +200,10 @@ export default function TaskInput({
           }
         }}
         onClick={() => {
-          // Show suggestions when clicking, even if already focused
-          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0) {
+          // Show suggestions when clicking, even if already focused (but not when disabled)
+          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0 && !disabled) {
             setShowTaskSuggestions(true);
-          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim()) {
+          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim() && !disabled) {
             setShowTaskList(true);
             // Keep focus on this input when opening sidebar
             setTimeout(() => {
@@ -272,7 +269,7 @@ export default function TaskInput({
       />
 
       {/* Task Suggestions */}
-      {showTaskSuggestions && filteredTasks.length > 0 && (
+      {showTaskSuggestions && filteredTasks.length > 0 && !disabled && (
         <div
           ref={suggestionsContainerRef}
           className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
@@ -295,7 +292,7 @@ export default function TaskInput({
               <button
                 key={taskItem.id}
                 onClick={() => {
-                  setTask(taskItem.text);
+                  dispatch(setCurrentInput(taskItem.text));
                   setShowTaskSuggestions(false);
                   setSelectedTaskIndex(-1);
                 }}
