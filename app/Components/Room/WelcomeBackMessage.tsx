@@ -100,13 +100,13 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
       {/* Compact message container pinned to top with fade out to sides */}
       <div className="relative overflow-hidden animate-in slide-in-from-top duration-500">
         {/* Background with fade effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/95 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/50 to-transparent" />
         
         {/* Border with fade effect */}
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FFAA00] to-transparent" />
         
         {/* Subtle glow effect in center */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFAA00]/10 to-transparent blur-xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFAA00]/5 to-transparent blur-xl" />
 
         {/* Content */}
         <div className="relative text-center space-y-1 py-3 px-6">

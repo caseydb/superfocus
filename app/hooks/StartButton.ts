@@ -13,6 +13,7 @@ import {
   createTaskThunk,
   setActiveTask,
   reorderTasks,
+  updateTaskOrder,
 } from "../store/taskSlice";
 
 interface StartButtonOptions {
@@ -45,11 +46,20 @@ export function useStartButton() {
       const currentTaskIndex = reduxTasks.findIndex((t) => t.name === taskName);
 
       if (currentTaskIndex > 0) {
+        // Move task to top of array
         const reorderedTasks = [...reduxTasks];
         const [taskToMove] = reorderedTasks.splice(currentTaskIndex, 1);
-        const updatedTask = { ...taskToMove, order: -1 };
-        reorderedTasks.unshift(updatedTask);
+        reorderedTasks.unshift(taskToMove);
+        // The reorderTasks reducer will handle setting proper order values
         dispatch(reorderTasks(reorderedTasks));
+        
+        // Update database with new order
+        const token = localStorage.getItem("firebase_token") || "";
+        const updates = reorderedTasks.map((task, index) => ({
+          taskId: task.id,
+          order: index
+        }));
+        dispatch(updateTaskOrder({ updates, token }));
       }
       return Promise.resolve();
     },

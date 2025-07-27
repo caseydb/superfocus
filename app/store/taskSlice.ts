@@ -738,6 +738,9 @@ const taskSlice = createSlice({
   reducers: {
     // Add task to Redux store (optimistic)
     addTask: (state, action: PayloadAction<{ id: string; name: string }>) => {
+      // Calculate the highest order number to place new task at the end
+      const maxOrder = state.tasks.reduce((max, task) => Math.max(max, task.order), -1);
+      
       const newTask: Task = {
         id: action.payload.id,
         name: action.payload.name,
@@ -746,9 +749,9 @@ const taskSlice = createSlice({
         createdAt: Date.now(),
         status: "not_started",
         isOptimistic: true,
-        order: -1, // New tasks go to the top
+        order: maxOrder + 1, // New tasks go to the bottom
       };
-      state.tasks.unshift(newTask);
+      state.tasks.push(newTask);
     },
     // Mark task as synced with database
     markTaskSynced: (state, action: PayloadAction<string>) => {

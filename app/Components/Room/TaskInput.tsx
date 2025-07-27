@@ -39,15 +39,15 @@ export default function TaskInput({
   
   // Filter and sort available tasks from Redux
   React.useEffect(() => {
-    // Filter for incomplete tasks and sort by creation time
+    // Filter for incomplete tasks and sort by order (same as TaskList)
     const incompleteTasks = reduxTasks
       .filter((task) => !task.completed)
-      .sort((a, b) => a.createdAt - b.createdAt)
+      .sort((a, b) => a.order - b.order)
       .map((task) => ({
         id: task.id,
         text: task.name,
         completed: task.completed,
-        order: 0, // Not used anymore but kept for compatibility
+        order: task.order,
       }));
     
     setAvailableTasks(incompleteTasks);
