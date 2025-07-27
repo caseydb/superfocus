@@ -174,11 +174,14 @@ export default function Pomodoro({
   };
 
   const handleTimeEdit = () => {
-    if (!isRunning && !isPaused) {
-      setIsEditingTime(true);
-      const currentMinutes = Math.floor(remainingSeconds / 60);
-      setEditingMinutes(currentMinutes.toString());
+    // If timer is running, pause it first
+    if (isRunning) {
+      pauseTimer();
     }
+    
+    setIsEditingTime(true);
+    const currentMinutes = Math.floor(remainingSeconds / 60);
+    setEditingMinutes(currentMinutes.toString());
   };
 
   const handleTimeEditSubmit = () => {
@@ -186,10 +189,16 @@ export default function Pomodoro({
 
     // Limit to reasonable range (1 to 180 minutes)
     const validMinutes = Math.max(1, Math.min(180, minutes));
+    
+    // Get the current seconds (not the full minute)
+    const currentSeconds = remainingSeconds % 60;
+    
+    // Set the new time with preserved seconds
+    const newTotalSeconds = validMinutes * 60 + currentSeconds;
 
     setSelectedMinutes(validMinutes);
-    setTotalSeconds(validMinutes * 60);
-    setRemainingSeconds(validMinutes * 60);
+    setTotalSeconds(newTotalSeconds);
+    setRemainingSeconds(newTotalSeconds);
     setIsEditingTime(false);
   };
 
@@ -521,13 +530,13 @@ export default function Pomodoro({
 
         {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {/* Main countdown - editable when not running */}
+          {/* Main countdown - always editable */}
           <div
             className={`text-5xl sm:text-7xl font-bold text-white mb-2 ${
-              !isRunning && !isPaused && !isEditingTime ? "cursor-text hover:text-[#FFAA00] transition-colors" : ""
+              !isEditingTime ? "cursor-text hover:text-[#FFAA00] transition-colors" : ""
             } ${isEditingTime ? "border-b-2 border-[#FFAA00]" : ""}`}
             onClick={handleTimeEdit}
-            title={!isRunning && !isPaused ? "Click to edit time" : ""}
+            title="Click to edit time"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
             {isEditingTime ? (
