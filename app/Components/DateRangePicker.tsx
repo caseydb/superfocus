@@ -252,7 +252,7 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
           onChange={handleRangeChange}
         >
           {TIME_RANGES.map((r) => (
-            <option key={r.value} value={r.value} className="bg-gray-900 text-gray-100">
+            <option key={r.value} value={r.value} className="bg-gray-900 text-gray-100 cursor-pointer">
               {r.label}
             </option>
           ))}

@@ -230,6 +230,10 @@ export default function TaskInput({
             }
             setShowTaskSuggestions(false);
             setSelectedTaskIndex(-1);
+            // Close Task List if it's open
+            if (setShowTaskList) {
+              setShowTaskList(false);
+            }
           } else if (e.key === "ArrowDown" && showTaskSuggestions) {
             e.preventDefault();
             setSelectedTaskIndex((prev) => {

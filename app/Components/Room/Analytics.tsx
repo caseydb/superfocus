@@ -778,7 +778,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -828,7 +828,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                 {/* Toggle switch */}
                 <button
                   onClick={() => setColorByTime(!colorByTime)}
-                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
                 >
                   <span className={colorByTime ? "text-gray-500" : "text-white font-medium"}>Tasks</span>
                   <div className="relative w-10 h-5 bg-gray-700 rounded-full transition-colors">
@@ -1041,10 +1041,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                       <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]"></div>
                     </div>
                     <span>More</span>
-                    {colorByTime && (
+                    {colorByTime ? (
                       <>
                         <span className="text-gray-500">|</span>
                         <span className="text-gray-500">0-30m | 30-60m | 1-2h | 2h+</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-gray-500">|</span>
+                        <span className="text-gray-500">1-2 | 3-5 | 6-10 | 11+ tasks</span>
                       </>
                     )}
                   </div>

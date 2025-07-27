@@ -151,7 +151,7 @@ export default function History({
             {currentUser?.user_id && (
               <button
                 onClick={() => setShowOnlyMine(!showOnlyMine)}
-                className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                   showOnlyMine ? "bg-[#FFAA00] text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
                 }`}
               >
@@ -161,7 +161,7 @@ export default function History({
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
             >
               <svg
                 className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -191,7 +191,7 @@ export default function History({
           {currentUser?.user_id && (
             <button
               onClick={() => setShowOnlyMine(!showOnlyMine)}
-              className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+              className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                 showOnlyMine ? "bg-[#FFAA00] text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
               }`}
             >
@@ -201,7 +201,7 @@ export default function History({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+            className="absolute -top-2 -right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -310,7 +310,7 @@ export default function History({
               className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
                 page === 1
                   ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
-                  : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+                  : "bg-gray-800 text-gray-200 hover:bg-gray-700 cursor-pointer"
               }`}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
@@ -324,7 +324,7 @@ export default function History({
               className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
                 page === totalPages
                   ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
-                  : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+                  : "bg-gray-800 text-gray-200 hover:bg-gray-700 cursor-pointer"
               }`}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}

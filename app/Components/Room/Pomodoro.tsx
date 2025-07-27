@@ -377,6 +377,10 @@ export default function Pomodoro({
             if (e.key === "Enter" && task.trim() && !isRunning && !isPaused) {
               e.preventDefault();
               startTimer();
+              // Close Task List if it's open
+              if (setShowTaskList) {
+                setShowTaskList(false);
+              }
             }
           }}
           onFocus={() => {

@@ -248,7 +248,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
         {/* Close button - positioned absolutely */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
         >
           <svg
             className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
