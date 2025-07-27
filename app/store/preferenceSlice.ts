@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 interface PreferenceState {
   toggle_notes: boolean;
   toggle_pomodoro: boolean;
+  pomodoro_duration: number;
   toggle_pomodoro_overtime: boolean;
   sound_volume: number;
   task_selection_mode: string;
@@ -16,6 +17,7 @@ interface PreferenceState {
 const initialState: PreferenceState = {
   toggle_notes: false,
   toggle_pomodoro: false,
+  pomodoro_duration: 30,
   toggle_pomodoro_overtime: true,
   sound_volume: 50,
   task_selection_mode: "sidebar",
@@ -45,20 +47,30 @@ export const fetchPreferences = createAsyncThunk(
 export const updatePreferences = createAsyncThunk(
   "preferences/update",
   async ({ userId, updates }: { userId: string; updates: Partial<PreferenceState> }) => {
+    console.log("[PreferenceSlice] updatePreferences called with:", { userId, updates });
+    console.log("[PreferenceSlice] Update types:", Object.entries(updates).map(([key, value]) => `${key}: ${typeof value} (${value})`));
+    
+    const requestBody = {
+      userId,
+      ...updates,
+    };
+    console.log("[PreferenceSlice] Request body to send:", requestBody);
+    console.log("[PreferenceSlice] Request body JSON:", JSON.stringify(requestBody));
+    
     const response = await fetch("/api/preferences", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        userId,
-        ...updates,
-      }),
+      body: JSON.stringify(requestBody),
     });
     
+    console.log("[PreferenceSlice] Response status:", response.status);
     const data = await response.json();
+    console.log("[PreferenceSlice] Response data:", data);
     
     if (!response.ok) {
+      console.error("[PreferenceSlice] Request failed:", data);
       throw new Error(data.error || "Failed to update preferences");
     }
     

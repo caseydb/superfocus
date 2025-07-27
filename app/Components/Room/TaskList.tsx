@@ -35,7 +35,6 @@ import {
   reorderNotes, 
   toggleCheckbox as toggleCheckboxAction,
   selectNotesByTaskId,
-  selectIsSavingByTaskId,
   selectHasNotesForTaskId
 } from "../../store/notesSlice";
 import { fetchNotes, saveNotes as saveNotesThunk } from "../../store/notesThunks";
@@ -109,7 +108,6 @@ function SortableTask({
   const { handleStartTask } = useStartTaskButton();
   const { handlePauseTask } = usePauseTaskButton();
   const notes = useSelector((state: RootState) => selectNotesByTaskId(task.id)(state));
-  const isSavingNotes = useSelector((state: RootState) => selectIsSavingByTaskId(task.id)(state));
   const hasNotesInStore = useSelector((state: RootState) => selectHasNotesForTaskId(task.id)(state));
   const [isHovered, setIsHovered] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -141,11 +139,17 @@ function SortableTask({
     }
   }, [notes]);
 
-  // Save notes to database
-  const saveNotesToDB = () => {
-    if (!task.id) return;
-    dispatch(saveNotesThunk({ taskId: task.id, notes }));
-  };
+
+  // Auto-save notes after 5 seconds of inactivity
+  useEffect(() => {
+    if (!task.id || notes.length === 0 || !hasNotesInStore || !isExpanded) return;
+
+    const timeoutId = setTimeout(() => {
+      dispatch(saveNotesThunk({ taskId: task.id, notes }));
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [task.id, notes, hasNotesInStore, isExpanded, dispatch]);
 
   // Auto-resize textarea
   const autoResize = (textarea: HTMLTextAreaElement) => {
@@ -741,26 +745,9 @@ function SortableTask({
             <div className="bg-[#0A0E1A] rounded-xl border border-gray-800/50 overflow-hidden">
               {/* Notes Header with Save Button */}
               <div className="px-6 py-3 bg-gray-800/30 border-b border-gray-800/50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-sm text-gray-400">
-                    Notes for this task
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="px-2 py-1 bg-gray-700/50 rounded text-gray-500 text-xs">⌘J</span>
-                    <span className="text-xs text-gray-500">Toggle Notes</span>
-                  </div>
+                <div className="text-xs text-gray-500">
+                  Autosaving Notes
                 </div>
-                <button
-                  onClick={saveNotesToDB}
-                  disabled={isSavingNotes}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                    isSavingNotes
-                      ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                      : "bg-[#FFAA00] hover:bg-[#FF9900] text-black cursor-pointer"
-                  }`}
-                >
-                  {isSavingNotes ? "Saving..." : "Save Notes"}
-                </button>
               </div>
               
               {/* Notes Content */}

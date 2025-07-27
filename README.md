@@ -22,4 +22,5 @@ npx prisma generate
 npx prisma db push
 
 git reset --hard origin/dev
+git reset --hard origin/main
 git clean -fd

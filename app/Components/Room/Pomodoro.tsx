@@ -5,11 +5,12 @@ import { usePauseButton } from "../../hooks/PauseButton";
 import { useCompleteButton } from "../../hooks/CompleteButton";
 import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "../../store/store";
+import { RootState, AppDispatch } from "../../store/store";
 import { rtdb } from "../../../lib/firebase";
 import { ref, remove, onDisconnect, set } from "firebase/database";
 import { setCurrentInput, lockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
+import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 
 interface PomodoroProps {
   localVolume?: number;
@@ -40,12 +41,13 @@ export default function Pomodoro({
   onClearClick,
   setShowTaskList,
 }: PomodoroProps) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
   const { currentInput: task, isLocked: inputLocked, hasStarted } = useSelector((state: RootState) => state.taskInput);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const preferences = useSelector((state: RootState) => state.preferences);
+  const postgresUserId = useSelector((state: RootState) => state.user.user_id);
 
   // Use button hooks
   const { handleStart } = useStartButton();
@@ -56,9 +58,9 @@ export default function Pomodoro({
   const [isStarting, setIsStarting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [selectedMinutes, setSelectedMinutes] = useState(30);
-  const [totalSeconds, setTotalSeconds] = useState(30 * 60);
-  const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
+  const [selectedMinutes, setSelectedMinutes] = useState(preferences.pomodoro_duration);
+  const [totalSeconds, setTotalSeconds] = useState(preferences.pomodoro_duration * 60);
+  const [remainingSeconds, setRemainingSeconds] = useState(preferences.pomodoro_duration * 60);
   const [elapsedSeconds, setElapsedSeconds] = useState(secondsRef?.current || 0);
   const [isRunning, setIsRunning] = useState(initialRunning);
   const [isPaused, setIsPaused] = useState(false);
@@ -83,12 +85,22 @@ export default function Pomodoro({
 
   // Preset time options
   const timePresets = [
-    { label: "10 min", minutes: 10 },
-    { label: "20 min", minutes: 20 },
+    { label: "5 min", minutes: 5 },
+    { label: "15 min", minutes: 15 },
     { label: "30 min", minutes: 30 },
     { label: "45 min", minutes: 45 },
     { label: "60 min", minutes: 60 },
   ];
+
+  // Sync with Redux preference on mount and when preference changes
+  useEffect(() => {
+    if (!isRunning && !isPaused && preferences.pomodoro_duration !== selectedMinutes) {
+      setSelectedMinutes(preferences.pomodoro_duration);
+      const seconds = preferences.pomodoro_duration * 60;
+      setTotalSeconds(seconds);
+      setRemainingSeconds(seconds);
+    }
+  }, [preferences.pomodoro_duration, isRunning, isPaused, selectedMinutes]);
 
   // Update total and remaining seconds when selected minutes change
   useEffect(() => {
@@ -207,6 +219,19 @@ export default function Pomodoro({
     setTotalSeconds(newTotalSeconds);
     setRemainingSeconds(newTotalSeconds);
     setIsEditingTime(false);
+
+    // Update Redux state optimistically
+    console.log("[Pomodoro] Updating preference with validMinutes:", validMinutes, "type:", typeof validMinutes);
+    dispatch(setPreference({ key: 'pomodoro_duration', value: validMinutes }));
+    
+    // Update database if user is logged in
+    if (postgresUserId) {
+      console.log("[Pomodoro] Sending update to database for user:", postgresUserId);
+      dispatch(updatePreferences({ 
+        userId: postgresUserId, 
+        updates: { pomodoro_duration: validMinutes } 
+      }));
+    }
   };
 
   // Helper functions for timer state - Pomodoro SHOULD save to Firebase for persistence
@@ -594,7 +619,22 @@ export default function Pomodoro({
               {timePresets.map((preset) => (
                 <button
                   key={preset.minutes}
-                  onClick={() => setSelectedMinutes(preset.minutes)}
+                  onClick={() => {
+                    setSelectedMinutes(preset.minutes);
+                    
+                    // Update Redux state optimistically
+                    console.log("[Pomodoro] Preset button clicked, updating with minutes:", preset.minutes, "type:", typeof preset.minutes);
+                    dispatch(setPreference({ key: 'pomodoro_duration', value: preset.minutes }));
+                    
+                    // Update database if user is logged in
+                    if (postgresUserId) {
+                      console.log("[Pomodoro] Sending preset update to database for user:", postgresUserId);
+                      dispatch(updatePreferences({ 
+                        userId: postgresUserId, 
+                        updates: { pomodoro_duration: preset.minutes } 
+                      }));
+                    }
+                  }}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer ${
                     (isEditingTime ? parseInt(editingMinutes) || 0 : Math.floor(remainingSeconds / 60)) ===
                     preset.minutes
