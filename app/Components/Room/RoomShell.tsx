@@ -71,6 +71,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const timerPauseRef = React.useRef<() => void>(null!);
   const [showHistory, setShowHistory] = useState(false);
   const timerSecondsRef = React.useRef<number>(0);
+  const pomodoroRemainingRef = React.useRef<number>(0);
   const [showQuitModal, setShowQuitModal] = useState(false);
   const [flyingMessages, setFlyingMessages] = useState<
     {
@@ -290,6 +291,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
     }
   }, [localVolume]);
+
+  // Pause timer when switching modes
+  const prevModeRef = useRef(isPomodoroMode);
+  useEffect(() => {
+    // Only pause if mode actually changed, not on initial mount
+    if (prevModeRef.current !== isPomodoroMode && timerPauseRef.current && timerRunning) {
+      timerPauseRef.current();
+    }
+    prevModeRef.current = isPomodoroMode;
+  }, [isPomodoroMode, timerRunning]);
 
   useEffect(() => {
     const checkRoom = async () => {
@@ -633,7 +644,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
     if (timerRunning) {
       const updateTitleAndSeconds = () => {
-        document.title = formatTime(timerSecondsRef.current);
+        if (isPomodoroMode) {
+          // For Pomodoro, show remaining time in title
+          document.title = formatTime(pomodoroRemainingRef.current);
+        } else {
+          // For Timer, show elapsed time
+          document.title = formatTime(timerSecondsRef.current);
+        }
         setCurrentTimerSeconds(timerSecondsRef.current);
       };
       interval = setInterval(updateTitleAndSeconds, 1000);
@@ -647,7 +664,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [timerRunning]);
+  }, [timerRunning, isPomodoroMode]);
 
   // Sync timer seconds periodically to ensure TaskList shows correct time
   // This is especially important on page load when timer state is restored
@@ -1267,6 +1284,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 startRef={timerStartRef}
                 pauseRef={timerPauseRef}
                 secondsRef={timerSecondsRef}
+                remainingRef={pomodoroRemainingRef}
                 lastStartTime={lastStartTimeRef.current}
                 initialRunning={timerRunning}
                 onClearClick={handleClearButton}

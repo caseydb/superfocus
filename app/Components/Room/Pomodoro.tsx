@@ -19,6 +19,7 @@ interface PomodoroProps {
   startRef?: React.RefObject<() => void>;
   pauseRef?: React.RefObject<() => void>;
   secondsRef?: React.RefObject<number>;
+  remainingRef?: React.RefObject<number>;
   lastStartTime?: number;
   initialRunning?: boolean;
   onClearClick?: () => void;
@@ -33,6 +34,7 @@ export default function Pomodoro({
   startRef,
   pauseRef,
   secondsRef,
+  remainingRef,
   lastStartTime = 0,
   initialRunning = false,
   onClearClick,
@@ -147,6 +149,11 @@ export default function Pomodoro({
   useEffect(() => {
     if (secondsRef) secondsRef.current = elapsedSeconds;
   }, [elapsedSeconds, secondsRef]);
+
+  // Update remainingRef with remaining seconds
+  useEffect(() => {
+    if (remainingRef) remainingRef.current = remainingSeconds;
+  }, [remainingSeconds, remainingRef]);
 
   // Auto-resize textarea
   useEffect(() => {
