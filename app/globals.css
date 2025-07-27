@@ -278,6 +278,50 @@ body,
   animation-delay: 600ms;
 }
 
+/* Epic blaze effect for high activity days */
+@keyframes blaze {
+  0%, 100% {
+    background: 
+      radial-gradient(circle at 50% 50%, #FFAA00 0%, #FF8800 30%, #FF6600 60%, #CC3300 100%);
+    filter: brightness(1.15) saturate(1.2);
+  }
+  25% {
+    background: 
+      radial-gradient(circle at 40% 40%, #FFAA00 5%, #FF8800 25%, #FF5500 55%, #CC2200 95%);
+    filter: brightness(1.2) saturate(1.25);
+  }
+  50% {
+    background: 
+      radial-gradient(circle at 60% 60%, #FFAA00 0%, #FF7700 35%, #FF4400 65%, #BB1100 100%);
+    filter: brightness(1.3) saturate(1.3);
+  }
+  75% {
+    background: 
+      radial-gradient(circle at 45% 55%, #FFAA00 10%, #FF8800 30%, #FF5500 60%, #CC2200 100%);
+    filter: brightness(1.2) saturate(1.25);
+  }
+}
+
+@keyframes blazeSwirl {
+  0%, 100% {
+    background-position: 50% 50%;
+    transform: scale(1);
+  }
+  50% {
+    background-position: 55% 45%;
+    transform: scale(1.02);
+  }
+}
+
+.animate-blaze {
+  animation: 
+    blaze 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite,
+    blazeSwirl 6s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+  background-size: 120% 120%;
+}
+
 .animation-delay-800 {
   animation-delay: 800ms;
 }

@@ -8,6 +8,7 @@ import type { Task } from "../../store/taskSlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
 import { auth } from '@/lib/firebase';
+import FirecapeSquare from "../FirecapeSquare";
 
 interface AnalyticsProps {
   roomId: string;
@@ -731,20 +732,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   // Get color intensity for activity chart
   const getActivityColor = (count: number, totalSeconds: number = 0) => {
     if (colorByTime) {
-      // Color based on time (in minutes)
-      const minutes = totalSeconds / 60;
-      if (minutes === 0) return "bg-gray-800";
-      if (minutes <= 30) return "bg-[#FFAA00]/20";
-      if (minutes <= 60) return "bg-[#FFAA00]/40";
-      if (minutes <= 120) return "bg-[#FFAA00]/70";
-      return "bg-[#FFAA00]";
+      // Color based on time
+      if (totalSeconds === 0) return "bg-gray-800";
+      if (totalSeconds < 1800) return "bg-[#FFAA00]/20"; // Less than 30 min
+      if (totalSeconds < 3600) return "bg-[#FFAA00]/40"; // 30 min - 1 hour
+      if (totalSeconds < 18000) return "bg-[#FFAA00]/70"; // 1-5 hours
+      if (totalSeconds < 36000) return "bg-[#FFAA00]"; // 5-10 hours
+      return "bg-[#FFAA00] animate-blaze"; // 10+ hours - epic blaze effect
     } else {
       // Color based on task count
       if (count === 0) return "bg-gray-800";
-      if (count <= 2) return "bg-[#FFAA00]/20";
-      if (count <= 5) return "bg-[#FFAA00]/40";
-      if (count <= 10) return "bg-[#FFAA00]/70";
-      return "bg-[#FFAA00]";
+      if (count === 1) return "bg-[#FFAA00]/20";
+      if (count <= 4) return "bg-[#FFAA00]/40";
+      if (count <= 9) return "bg-[#FFAA00]/70";
+      if (count <= 19) return "bg-[#FFAA00]"; // 10-19 tasks
+      return "bg-[#FFAA00] animate-blaze"; // 20+ tasks - epic blaze effect
     }
   };
 
@@ -757,7 +759,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95 backdrop-blur-sm animate-fadeIn"
       onClick={handleBackdropClick}
     >
       <div
@@ -993,14 +995,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                               const [year, month, dayNum] = day.date.split("-").map(Number);
                               const date = new Date(year, month - 1, dayNum);
                               
+                              // Check if this is the highest tier (10h+ or 20+ tasks)
+                              const isHighestTier = colorByTime 
+                                ? day.totalSeconds >= 36000 
+                                : day.count >= 20;
+                              
                               return (
                                 <div key={dayIndex} className="relative group">
-                                  <div
-                                    className={`w-[11px] h-[11px] rounded-sm ${getActivityColor(
-                                      day.count,
-                                      day.totalSeconds
-                                    )} hover:ring-2 hover:ring-white transition-all cursor-pointer`}
-                                  />
+                                  {isHighestTier ? (
+                                    <FirecapeSquare className="hover:ring-2 hover:ring-white transition-all cursor-pointer" />
+                                  ) : (
+                                    <div
+                                      className={`w-[11px] h-[11px] rounded-sm ${getActivityColor(
+                                        day.count,
+                                        day.totalSeconds
+                                      )} hover:ring-2 hover:ring-white transition-all cursor-pointer`}
+                                    />
+                                  )}
                                   {showDayLabel && (
                                     <div className="absolute right-full mr-2 top-0 h-[11px] flex items-center">
                                       <span className="text-[10px] text-gray-500 block w-[20px] text-left">
@@ -1033,24 +1044,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                 <div className="mt-2 ml-9">
                   <div className="flex items-center gap-2 text-[9px] text-gray-400">
                     <span>Less</span>
-                    <div className="flex gap-0.5">
+                    <div className="flex gap-0.5 items-center">
                       <div className="w-[8px] h-[8px] rounded-sm bg-gray-800"></div>
                       <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]/20"></div>
                       <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]/40"></div>
                       <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]/70"></div>
                       <div className="w-[8px] h-[8px] rounded-sm bg-[#FFAA00]"></div>
+                      <FirecapeSquare className="w-[8px] h-[8px]" />
                     </div>
-                    <span>More</span>
                     {colorByTime ? (
-                      <>
-                        <span className="text-gray-500">|</span>
-                        <span className="text-gray-500">0-30m | 30-60m | 1-2h | 2h+</span>
-                      </>
+                      <span className="text-gray-500">any | 30m | 1-5h | 5-10h | 10h+</span>
                     ) : (
-                      <>
-                        <span className="text-gray-500">|</span>
-                        <span className="text-gray-500">1-2 | 3-5 | 6-10 | 11+ tasks</span>
-                      </>
+                      <span className="text-gray-500">1 | 3-4 | 5-9 | 10-19 | 20+</span>
                     )}
                   </div>
                 </div>
