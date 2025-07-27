@@ -3,6 +3,7 @@ import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
 import { setCurrentInput } from "../../store/taskInputSlice";
+import { setActiveTask } from "../../store/taskSlice";
 
 const maxLen = 69;
 
@@ -293,6 +294,7 @@ export default function TaskInput({
                 key={taskItem.id}
                 onClick={() => {
                   dispatch(setCurrentInput(taskItem.text));
+                  dispatch(setActiveTask(taskItem.id));
                   setShowTaskSuggestions(false);
                   setSelectedTaskIndex(-1);
                 }}

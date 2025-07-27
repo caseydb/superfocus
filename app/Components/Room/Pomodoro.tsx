@@ -9,6 +9,7 @@ import { RootState } from "../../store/store";
 import { rtdb } from "../../../lib/firebase";
 import { ref, remove, onDisconnect, set } from "firebase/database";
 import { setCurrentInput, lockInput, unlockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
+import { setActiveTask } from "../../store/taskSlice";
 
 interface PomodoroProps {
   localVolume?: number;
@@ -310,7 +311,6 @@ export default function Pomodoro({
       // Always reset Pomodoro state, even if complete fails
       setIsRunning(false);
       setIsPaused(false);
-      dispatch(resetInput());
       setRemainingSeconds(totalSeconds);
       setElapsedSeconds(0);
     }
@@ -479,6 +479,7 @@ export default function Pomodoro({
                   key={taskItem.id}
                   onClick={() => {
                     dispatch(setCurrentInput(taskItem.name));
+                    dispatch(setActiveTask(taskItem.id));
                     setShowTaskSuggestions(false);
                     textareaRef.current?.focus();
                   }}
@@ -628,9 +629,9 @@ export default function Pomodoro({
               <button
                 className={`${
                   showCompleteFeedback ? "bg-green-600" : "bg-green-500"
-                } text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 cursor-pointer`}
+                } text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${elapsedSeconds < 1 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 onClick={completeTimer}
-                disabled={isCompleting}
+                disabled={isCompleting || elapsedSeconds < 1}
               >
                 {showCompleteFeedback ? "Wait..." : "Complete"}
               </button>

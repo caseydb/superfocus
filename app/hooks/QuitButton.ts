@@ -21,6 +21,7 @@ interface QuitButtonOptions {
   setInputLocked: (locked: boolean) => void;
   setHasStarted: (started: boolean) => void;
   setShowQuitModal: (show: boolean) => void;
+  heartbeatIntervalRef?: React.MutableRefObject<NodeJS.Timeout | null>;
 }
 
 const MIN_DURATION_MS = 5 * 60 * 1000; // 5 minutes
@@ -69,7 +70,14 @@ export function useQuitButton() {
         setInputLocked,
         setHasStarted,
         setShowQuitModal,
+        heartbeatIntervalRef,
       } = options;
+
+      // PRIORITY 1: Clear heartbeat interval FIRST to prevent interference
+      if (heartbeatIntervalRef?.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
 
       if (timerSeconds > 0 && currentInstance && user && task.trim()) {
         const hours = Math.floor(timerSeconds / 3600)

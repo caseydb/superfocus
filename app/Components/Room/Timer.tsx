@@ -254,11 +254,10 @@ export default function Timer({
           // First try to find in Redux
           const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
           if (restoredTask) {
-            console.log('[Timer] Restoring task from Redux:', {
-              taskId: timerState.taskId,
-              taskName: restoredTask.name,
-              isRunning
-            });
+            // Skip restoration if task is already completed
+            if (restoredTask.completed || restoredTask.status === "completed") {
+              return;
+            }
             // Set this as the active task
             dispatch(setActiveTask(timerState.taskId));
             // Update task status based on timer state
@@ -278,15 +277,9 @@ export default function Timer({
             get(taskRef).then((taskSnapshot) => {
               const taskData = taskSnapshot.val();
               if (taskData && taskData.name) {
-                console.log('[Timer] Restoring task from TaskBuffer:', {
-                  taskId: timerState.taskId,
-                  taskName: taskData.name,
-                  isRunning
-                });
                 // Check if task already exists in Redux before adding
                 const existingTask = reduxTasks.find(t => t.id === timerState.taskId);
                 if (!existingTask) {
-                  console.log('[Timer] Adding task to Redux from TaskBuffer');
                   // Add task to Redux if not already there
                   dispatch(addTask({
                     id: timerState.taskId,
@@ -407,7 +400,6 @@ export default function Timer({
   // Pause timer when user leaves the page (closes tab, refreshes, or navigates away)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      console.log('[Timer] beforeunload triggered:', { running, seconds, activeTaskId });
       // Save timer state if there are seconds accumulated (whether running or paused)
       if (seconds > 0 && activeTaskId) {
         // Save as paused state
@@ -586,9 +578,9 @@ export default function Timer({
             </button>
             <div className="flex flex-col items-center gap-2">
               <button
-                className={`${showCompleteFeedback ? 'bg-green-600' : 'bg-green-500'} text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 cursor-pointer`}
+                className={`${showCompleteFeedback ? 'bg-green-600' : 'bg-green-500'} text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${seconds < 1 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 onClick={completeTimer}
-                disabled={isCompleting}
+                disabled={isCompleting || seconds < 1}
             >
                 {showCompleteFeedback ? 'Wait...' : 'Complete'}
               </button>

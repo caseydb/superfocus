@@ -11,6 +11,7 @@ import {
 import { setIsActive } from "../store/realtimeSlice";
 import { addHistoryEntry } from "../store/historySlice";
 import { updateLeaderboardOptimistically, refreshLeaderboard } from "../store/leaderboardSlice";
+import { resetInput } from "../store/taskInputSlice";
 
 interface CompleteButtonOptions {
   task: string;
@@ -85,12 +86,35 @@ export function useCompleteButton() {
 
       setIsCompleting(true);
 
-      // Play completion sound immediately for instant feedback
+      // PRIORITY 1: Clear heartbeat interval FIRST to prevent interference
+      if (heartbeatIntervalRef?.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+
+      // PRIORITY 2: Play completion sound immediately for instant feedback
       const completeAudio = new Audio("/complete.mp3");
       completeAudio.volume = localVolume;
       completeAudio.play();
 
       const completionTime = formatTime(seconds);
+
+      // PRIORITY 3: Send global effect immediately
+      if (seconds >= MIN_DURATION_MS / 1000) {
+        notifyEvent("complete", seconds);
+      }
+
+      // PRIORITY 4: Remove ActiveWorker to ensure clean state for global effects
+      if (user?.id) {
+        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
+        remove(activeWorkerRef);
+        onDisconnect(activeWorkerRef).cancel();
+      }
+
+      // PRIORITY 5: Clear timer state
+      clearTimerState();
+      dispatch(setIsActive(false));
+      dispatch(resetInput());
 
       // Mark today as completed for streak tracking
       if (typeof window !== "undefined") {
@@ -98,11 +122,6 @@ export function useCompleteButton() {
         if (windowWithStreak.markStreakComplete) {
           windowWithStreak.markStreakComplete();
         }
-      }
-
-      // Only send complete event to RTDB if minimum duration is met
-      if (seconds >= MIN_DURATION_MS / 1000) {
-        notifyEvent("complete", seconds);
       }
 
       // Optimistically update task status to completed
@@ -116,84 +135,69 @@ export function useCompleteButton() {
         );
       }
 
-      // Transfer task to Postgres
+      // Always call onComplete callback immediately for UI updates
+      if (onComplete) {
+        onComplete(completionTime);
+      }
+
+      // Reset completing state after 2 seconds
+      setTimeout(() => {
+        setIsCompleting(false);
+      }, 2000);
+
+      // Transfer task to Postgres - NON-BLOCKING (fire and forget)
       const activeTaskForTransfer = reduxTasks.find((t) => t.name === task?.trim());
 
       if (activeTaskForTransfer?.id && user?.id) {
         if (typeof window !== "undefined") {
           const token = localStorage.getItem("firebase_token") || "";
 
-          try {
-            const result = await dispatch(
-              transferTaskToPostgres({
-                taskId: activeTaskForTransfer.id,
-                firebaseUserId: user.id,
-                status: "completed",
-                token,
-                duration: seconds,
-              })
-            ).unwrap();
+          // Fire and forget - don't await, don't block UI
+          dispatch(
+            transferTaskToPostgres({
+              taskId: activeTaskForTransfer.id,
+              firebaseUserId: user.id,
+              status: "completed",
+              token,
+              duration: seconds,
+            })
+          )
+            .unwrap()
+            .then((result) => {
+              // Handle success in background
+              if (result && result.savedTask && reduxUser?.user_id) {
+                dispatch(
+                  addHistoryEntry({
+                    taskId: result.savedTask.id,
+                    userId: reduxUser.user_id,
+                    displayName: `${reduxUser.first_name || ""} ${reduxUser.last_name || ""}`.trim() || "Anonymous",
+                    taskName: result.savedTask.task_name || task || "Unnamed Task",
+                    duration: seconds,
+                  })
+                );
 
-            // Add optimistic update to history
-            if (result && result.savedTask && reduxUser?.user_id) {
-              dispatch(
-                addHistoryEntry({
-                  taskId: result.savedTask.id,
-                  userId: reduxUser.user_id,
-                  displayName: `${reduxUser.first_name || ""} ${reduxUser.last_name || ""}`.trim() || "Anonymous",
-                  taskName: result.savedTask.task_name || task || "Unnamed Task",
-                  duration: seconds,
-                })
-              );
+                // Update leaderboard optimistically and refresh from server
+                dispatch(
+                  updateLeaderboardOptimistically({
+                    userId: reduxUser.user_id,
+                    firstName: reduxUser.first_name || "",
+                    lastName: reduxUser.last_name || "",
+                    profileImage: reduxUser.profile_image || null,
+                    taskDuration: seconds,
+                  })
+                );
 
-              // Update leaderboard optimistically and refresh from server
-              dispatch(
-                updateLeaderboardOptimistically({
-                  userId: reduxUser.user_id,
-                  firstName: reduxUser.first_name || "",
-                  lastName: reduxUser.last_name || "",
-                  profileImage: reduxUser.profile_image || null,
-                  taskDuration: seconds,
-                })
-              );
-
-              // Refresh leaderboard from server to get accurate totals
-              dispatch(refreshLeaderboard());
-            }
-
-            // Clear heartbeat interval
-            if (heartbeatIntervalRef?.current) {
-              clearInterval(heartbeatIntervalRef.current);
-              heartbeatIntervalRef.current = null;
-            }
-
-            // Remove ActiveWorker on completion
-            if (user?.id) {
-              const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-              remove(activeWorkerRef);
-              onDisconnect(activeWorkerRef).cancel();
-            }
-
-            clearTimerState(); // Clear Firebase state when completing
-            dispatch(setIsActive(false)); // Update Redux state
-
-            // Reset completing state after 2 seconds
-            setTimeout(() => {
-              setIsCompleting(false);
-            }, 2000);
-          } catch (error) {
-            // Show error message to user
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            alert(`Failed to save task completion: ${errorMessage}`);
-
-            // Reset completing state immediately on error so user can retry
-            setIsCompleting(false);
-          } finally {
-            // Always call onComplete callback, even if saving failed
-            if (onComplete) {
-              onComplete(completionTime);
-            }
-          }
+                // Refresh leaderboard from server to get accurate totals
+                dispatch(refreshLeaderboard());
+              }
+            })
+            .catch((error) => {
+              // Log error but don't block UI
+              console.error("[CompleteButton] Background task save failed:", error);
+              const errorMessage = error instanceof Error ? error.message : "Unknown error";
+              // Optional: Show a non-blocking notification instead of alert
+              console.warn(`Failed to save task completion: ${errorMessage}`);
+            });
         }
       }
     },

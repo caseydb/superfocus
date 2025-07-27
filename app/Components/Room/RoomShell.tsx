@@ -210,7 +210,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     if (activeTaskId && !task) {
       // Find the active task in Redux tasks
       const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
-      if (activeTask) {
+      // Only restore if task is not completed
+      if (activeTask && activeTask.status !== "completed" && !activeTask.completed) {
         dispatch(setCurrentInput(activeTask.name));
         setCurrentTaskId(activeTask.id);
 
@@ -853,6 +854,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     // Store the current seconds before resetting
     const currentSeconds = timerSecondsRef.current;
     
+    // PRIORITY: Pause the timer first to clear heartbeat interval
+    if (timerPauseRef.current && timerRunning) {
+      timerPauseRef.current();
+    }
+    
     // Reset the timer seconds ref BEFORE quitting to ensure Pomodoro remounts with 0
     timerSecondsRef.current = 0;
     
@@ -876,7 +882,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Complete handler: reset timer, clear input, set inactive
   const handleComplete = (duration: string) => {
     setTimerRunning(false);
-    dispatch(resetInput());
     // Reset the timer seconds ref BEFORE triggering reset to ensure Pomodoro remounts with 0
     timerSecondsRef.current = 0;
     setTimerResetKey((k) => k + 1);
@@ -926,6 +931,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         remove(flyingMessageRef);
       }, 7000);
     }
+    
+    // Reset input immediately
+    dispatch(resetInput());
+    
+    // Also reset after a small delay to ensure it overrides any restoration attempts
+    setTimeout(() => {
+      dispatch(resetInput());
+    }, 100);
   };
 
   // Handle click outside for timer dropdown
@@ -1125,7 +1138,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
         <div className="min-h-screen flex flex-col items-center justify-center bg-elegant-dark text-white relative">
           {/* Top right container for controls */}
-          <div className="fixed top-[13px] right-4 z-50 flex items-center gap-2 max-w-[calc(100vw-6rem)]">
+          <div className="fixed top-[8px] right-4 z-50 flex items-center gap-2 max-w-[calc(100vw-6rem)]">
             {/* Controls - speaker icon, timer dropdown, and name dropdown */}
             <Controls
               isPomodoroMode={isPomodoroMode}

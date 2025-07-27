@@ -37,6 +37,7 @@ export function useStartButton() {
   const { user, currentInstance } = useInstance();
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const reduxUser = useSelector((state: RootState) => state.user);
+  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
 
   const moveTaskToTop = useCallback(
     async (task: string): Promise<void> => {
@@ -139,21 +140,38 @@ export function useStartButton() {
       } else {
         // If not resuming (starting fresh), check if there's an existing not_started task with same name
         if (task?.trim() && user?.id && currentInstance && reduxUser.user_id) {
-          // First check if there's already a task with this name that was cleared (not_started)
-          const existingTask = reduxTasks.find((t) => 
-            t.name === task.trim() && 
-            t.status === "not_started"
-          );
+          // First check if there's an activeTaskId set (from dropdown selection)
+          if (activeTaskId) {
+            const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
+            if (activeTask && activeTask.name === task.trim()) {
+              // Use the active task ID
+              taskId = activeTaskId;
+              console.log('[StartButton] Using activeTaskId from dropdown selection:', {
+                taskId: activeTaskId,
+                taskName: task.trim()
+              });
+            }
+          }
           
-          if (existingTask) {
-            // Reuse the existing task ID
-            taskId = existingTask.id;
-            console.log('[StartButton] Reusing existing not_started task:', {
-              taskId: existingTask.id,
-              taskName: task.trim()
-            });
-            dispatch(setActiveTask(existingTask.id));
-          } else {
+          // If no activeTaskId or it doesn't match, check if there's already a task with this name that was cleared (not_started)
+          if (!taskId) {
+            const existingTask = reduxTasks.find((t) => 
+              t.name === task.trim() && 
+              t.status === "not_started"
+            );
+            
+            if (existingTask) {
+              // Reuse the existing task ID
+              taskId = existingTask.id;
+              console.log('[StartButton] Reusing existing not_started task:', {
+                taskId: existingTask.id,
+                taskName: task.trim()
+              });
+              dispatch(setActiveTask(existingTask.id));
+            }
+          }
+          
+          if (!taskId) {
             // Create a new task only if no existing task found
             taskId = uuidv4();
             console.log('[StartButton] Creating new task:', {

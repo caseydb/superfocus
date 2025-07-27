@@ -399,8 +399,8 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
               <thead>
                 <tr className="text-gray-400 text-sm sm:text-base md:text-lg">
                   <th className="px-2 sm:px-4 md:px-6 py-2">Name</th>
-                  <th className="px-2 sm:px-4 md:px-6 py-2 text-center">Tasks</th>
-                  <th className="px-2 sm:px-4 md:px-6 py-2 text-right">Time</th>
+                  <th className="px-2 sm:px-4 md:px-6 py-2 text-center">Time</th>
+                  <th className="px-2 sm:px-4 md:px-6 py-2 text-right">Tasks</th>
                 </tr>
               </thead>
               <tbody>
@@ -413,11 +413,11 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
                       <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-l-xl font-mono truncate max-w-[120px] sm:max-w-none">
                         {entry.displayName}
                       </td>
-                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 text-center text-lg sm:text-xl">
-                        {entry.tasksCompleted}
-                      </td>
-                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-r-xl text-right font-mono">
+                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 text-center font-mono">
                         {formatTime(entry.totalSeconds)}
+                      </td>
+                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-r-xl text-right text-lg sm:text-xl">
+                        {entry.tasksCompleted}
                       </td>
                     </tr>
                     {i < entries.length - 1 && (
