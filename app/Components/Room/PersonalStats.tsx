@@ -374,7 +374,10 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
   if (!hasCompletedToday) {
     return (
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-2 duration-300">
-        <div className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit">
+        <div 
+          className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer hover:border-gray-700/50 transition-colors"
+          onClick={onClick}
+        >
           <div className="flex items-center justify-center gap-2">
             <div className={`w-5 h-5 border ${streakBorderColor} rounded-full flex items-center justify-center animate-pulse bg-transparent`}>
               <span className="text-gray-300 text-xs font-bold">{streak}</span>
