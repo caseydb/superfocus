@@ -22,7 +22,6 @@ export default function Timer({
   pauseRef,
   onComplete,
   secondsRef,
-  requiredTask = true,
   localVolume = 0.2,
   onTaskRestore,
   onNewTaskStart,
@@ -37,7 +36,6 @@ export default function Timer({
   pauseRef?: React.RefObject<() => void>;
   onComplete?: (duration: string) => void;
   secondsRef?: React.RefObject<number>;
-  requiredTask?: boolean;
   localVolume?: number;
   onTaskRestore?: (taskName: string, isRunning: boolean) => void;
   onNewTaskStart?: () => void;
@@ -431,6 +429,28 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState, user?.id, activeTaskId]);
 
   async function startTimer() {
+    // Check if task is empty and provide feedback
+    if (!task.trim()) {
+      // Find TaskInput component and trigger feedback
+      const taskInputElement = document.querySelector('textarea');
+      if (taskInputElement) {
+        taskInputElement.focus();
+        
+        // Add red underline temporarily
+        const underlineElement = taskInputElement.parentElement?.querySelector('div[style*="height"]');
+        if (underlineElement && underlineElement instanceof HTMLElement) {
+          const originalBg = underlineElement.style.background;
+          underlineElement.style.background = '#ef4444'; // red-500
+          underlineElement.style.transition = 'background 200ms';
+          
+          setTimeout(() => {
+            underlineElement.style.background = originalBg;
+          }, 2000);
+        }
+      }
+      return;
+    }
+
     await handleStart({
       task: task || "",
       seconds,
@@ -547,9 +567,11 @@ export default function Timer({
         {!running && !isStarting ? (
           <div className="flex flex-col items-center gap-2">
             <button
-              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
+              className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer ${
+                !task.trim() ? "opacity-60" : ""
+              }`}
               onClick={startTimer}
-              disabled={disabled || !requiredTask}
+              disabled={disabled}
             >
               {seconds > 0 ? "Resume" : "Start"}
             </button>

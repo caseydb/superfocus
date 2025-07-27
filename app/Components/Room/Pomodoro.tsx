@@ -64,6 +64,7 @@ export default function Pomodoro({
   const [inputFocused, setInputFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
+  const [showNoTaskFeedback, setShowNoTaskFeedback] = useState(false);
   
   // Filter out completed tasks and sort by most recent
   const availableTasks = reduxTasks
@@ -352,7 +353,7 @@ export default function Pomodoro({
 
 
   return (
-    <div className="flex flex-col items-center gap-6 px-4 sm:px-0 w-full mx-auto">
+    <div className="flex flex-col items-center gap-4 px-4 sm:px-0 w-full mx-auto -mt-10">
       {/* Task input field - matching Timer styling */}
       <div className="relative group">
         <div className="flex flex-col items-center justify-center w-full px-4 sm:px-0">
@@ -414,19 +415,29 @@ export default function Pomodoro({
         />
         {/* Custom underline */}
         <div
-          className={`mx-auto transition-colors duration-200 ${
-            inputFocused && !inputLocked ? "bg-[#FFAA00]" : "bg-gray-700"
+          className={`mx-auto transition-all duration-200 ${
+            showNoTaskFeedback 
+              ? "bg-[#FFAA00] animate-pulse" 
+              : inputFocused && !inputLocked 
+                ? "bg-[#FFAA00]" 
+                : "bg-gray-700"
           }`}
           style={{
             width: "100%",
             minWidth: "400px",
             maxWidth: "600px",
-            height: "2px",
-            marginBottom: "30px",
+            height: showNoTaskFeedback ? "3px" : "2px",
+            marginBottom: "16px",
             borderRadius: "2px",
           }}
         />
         </div>
+        {/* No task feedback message */}
+        {showNoTaskFeedback && (
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-[#FFAA00] text-sm font-medium animate-in fade-in duration-200">
+            Add a task first
+          </div>
+        )}
         {/* Clear button in top-right - matching Timer's positioning */}
         {task.trim() && hasStarted && (
           <button
@@ -475,7 +486,7 @@ export default function Pomodoro({
       </div>
 
       {/* Main Countdown Display */}
-      <div className="relative w-64 h-64 sm:w-80 sm:h-80">
+      <div className="relative w-72 h-72 sm:w-96 sm:h-96">
         {/* Circle SVG - bigger and thinner */}
         <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 256 256">
           {/* Background circle */}
@@ -553,7 +564,7 @@ export default function Pomodoro({
                 <button
                   key={preset.minutes}
                   onClick={() => setSelectedMinutes(preset.minutes)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer ${
                     (isEditingTime ? parseInt(editingMinutes) || 0 : Math.floor(remainingSeconds / 60)) ===
                     preset.minutes
                       ? "bg-[#FFAA00] text-black hover:bg-[#FFB833]"
@@ -566,22 +577,32 @@ export default function Pomodoro({
               ))}
             </div>
           )}
+
+          {/* Subtle elapsed time counter - always show inside circle */}
+          <div className={`text-sm text-gray-500 ${!isRunning && !isPaused ? "mt-4" : "mt-6"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+            Total time: {formatElapsedTime(elapsedSeconds)}
+          </div>
         </div>
       </div>
 
-      {/* Subtle elapsed time counter */}
-      <div className="text-sm text-gray-500" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
-        Total time: {formatElapsedTime(elapsedSeconds)}
-      </div>
-
       {/* Control buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none justify-center">
+      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none justify-center mt-4">
         {!isRunning && !isPaused && (
           <div className="flex flex-col items-center gap-2">
             <button
-              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
-              onClick={startTimer}
-              disabled={!task.trim() || isStarting}
+              className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto cursor-pointer ${
+                !task.trim() ? "opacity-60" : ""
+              }`}
+              onClick={() => {
+                if (!task.trim()) {
+                  setShowNoTaskFeedback(true);
+                  // Flash the input field
+                  textareaRef.current?.focus();
+                  setTimeout(() => setShowNoTaskFeedback(false), 2000);
+                } else if (!isStarting) {
+                  startTimer();
+                }
+              }}
             >
               {elapsedSeconds > 0 ? "Resume" : "Start"}
             </button>

@@ -1227,7 +1227,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 pauseRef={timerPauseRef}
                 onComplete={handleComplete}
                 secondsRef={timerSecondsRef}
-                requiredTask={!!task.trim()}
                 localVolume={localVolume}
                 onTaskRestore={(taskName, isRunning) => {
                   dispatch(setCurrentInput(taskName));
