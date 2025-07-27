@@ -66,7 +66,7 @@ export default function SignIn() {
         <>
           <button
             onClick={() => handleAuth(signInWithGoogle)}
-            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition mb-2"
+            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition mb-2 cursor-pointer"
           >
             <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
             Continue with Google
@@ -96,20 +96,20 @@ export default function SignIn() {
               setResetEmail(email);
               setError(null);
             }}
-            className="w-full text-[#FFAA00] text-sm font-mono hover:underline text-left mb-2"
+            className="w-full text-[#FFAA00] text-sm font-mono hover:underline text-left mb-2 cursor-pointer"
           >
             Forgot password?
           </button>
           {error && <div className="w-full text-red-500 text-center font-mono text-sm mb-1">{error}</div>}
           <button
             onClick={() => handleAuth(() => signInWithEmail(email, password))}
-            className="w-full bg-[#FFAA00] text-black font-bold text-base py-2 rounded-md shadow hover:bg-[#FFB84D] transition border border-transparent mb-2"
+            className="w-full bg-[#FFAA00] text-black font-bold text-base py-2 rounded-md shadow hover:bg-[#FFB84D] transition border border-transparent mb-2 cursor-pointer"
           >
             Log In
           </button>
           <button
             onClick={() => handleAuth(() => signUpWithEmail(email, password))}
-            className="w-full bg-transparent text-white font-bold text-base py-2 rounded-md shadow border border-[#FFAA00] hover:bg-[#23272b] transition"
+            className="w-full bg-transparent text-white font-bold text-base py-2 rounded-md shadow border border-[#FFAA00] hover:bg-[#23272b] transition cursor-pointer"
           >
             Create Account
           </button>
@@ -135,7 +135,7 @@ export default function SignIn() {
           )}
           <button
             onClick={handlePasswordReset}
-            className="w-full bg-[#FFAA00] text-black font-bold text-base py-2 rounded-md shadow hover:bg-[#FFB84D] transition border border-transparent mb-2"
+            className="w-full bg-[#FFAA00] text-black font-bold text-base py-2 rounded-md shadow hover:bg-[#FFB84D] transition border border-transparent mb-2 cursor-pointer"
           >
             Send Reset Email
           </button>
@@ -146,7 +146,7 @@ export default function SignIn() {
               setError(null);
               setResetEmail("");
             }}
-            className="w-full text-[#FFAA00] text-sm font-mono hover:underline"
+            className="w-full text-[#FFAA00] text-sm font-mono hover:underline cursor-pointer"
           >
             Back to Sign In
           </button>

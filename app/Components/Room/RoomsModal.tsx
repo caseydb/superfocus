@@ -170,7 +170,7 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
         {/* Header */}
         <div className="p-6 border-b border-gray-800">
           <button
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
+            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl cursor-pointer"
             onClick={onClose}
           >
             ×
@@ -237,7 +237,7 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
                             e.stopPropagation();
                             handleJoinRoom(room.url);
                           }}
-                          className="px-4 py-2 bg-[#FFAA00] text-black font-bold rounded-lg hover:bg-[#ff9900] transition-colors font-mono text-sm"
+                          className="px-4 py-2 bg-[#FFAA00] text-black font-bold rounded-lg hover:bg-[#ff9900] transition-colors font-mono text-sm cursor-pointer"
                         >
                           Join
                         </button>

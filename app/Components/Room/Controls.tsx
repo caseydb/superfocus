@@ -136,7 +136,7 @@ export default function Controls({
         <div className="relative mr-3" ref={timerDropdownRef}>
           <button
             onClick={() => setShowTimerDropdown(!showTimerDropdown)}
-            className={`group relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
+            className={`group relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
               showTimerDropdown ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
             }`}
           >
@@ -171,7 +171,7 @@ export default function Controls({
                       }));
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer ${
                     !isPomodoroMode
                       ? "bg-[#FFAA00]/10 text-[#FFAA00]"
                       : "text-gray-400 hover:bg-gray-800 hover:text-gray-300"
@@ -202,7 +202,7 @@ export default function Controls({
                       }));
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer ${
                     isPomodoroMode
                       ? "bg-[#FFAA00]/10 text-[#FFAA00]"
                       : "text-gray-400 hover:bg-gray-800 hover:text-gray-300"
@@ -238,7 +238,7 @@ export default function Controls({
         <div className="ml-auto hidden sm:block">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className={`group relative flex items-center gap-2 pl-2 pr-4 py-2 rounded-lg transition-all duration-300 ${
+            className={`group relative flex items-center gap-2 pl-2 pr-4 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
               dropdownOpen ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
             }`}
           >
@@ -458,7 +458,7 @@ export default function Controls({
           <div className="p-1">
             {/* Preferences Button */}
             <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
               onClick={() => {
                 closeAllModals();
                 setShowPreferences(true);
@@ -486,7 +486,7 @@ export default function Controls({
 
             {/* View Rooms Button */}
             <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
               onClick={() => {
                 closeAllModals();
                 setShowRoomsModal(true);
@@ -536,7 +536,7 @@ export default function Controls({
 
             {/* Leave Room Button */}
             <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
               onClick={() => {
                 leaveInstance();
                 router.push("/");
@@ -556,7 +556,7 @@ export default function Controls({
 
             {/* Sign Out Button */}
             <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
               onClick={async () => {
                 await signOut(auth);
               }}
@@ -595,7 +595,7 @@ export default function Controls({
           >
             {/* Close button */}
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl cursor-pointer"
               onClick={() => setShowNameModal(false)}
             >
               ×
@@ -634,7 +634,7 @@ export default function Controls({
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 font-bold rounded-lg hover:scale-105 transition-all bg-[#FFAA00] text-white w-24 justify-center flex items-center"
+                  className="px-6 py-3 font-bold rounded-lg hover:scale-105 transition-all bg-[#FFAA00] text-white w-24 justify-center flex items-center cursor-pointer"
                 >
                   Save
                 </button>
@@ -655,7 +655,7 @@ export default function Controls({
             {/* Header */}
             <div className="p-6 border-b border-gray-800">
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl cursor-pointer"
                 onClick={() => setShowSideModal(false)}
               >
                 ×
@@ -784,7 +784,7 @@ export default function Controls({
 
               {/* Invite Others Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   closeAllModals();
                   setShowInviteModal(true);
@@ -805,7 +805,7 @@ export default function Controls({
 
               {/* View Rooms Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   closeAllModals();
                   setShowRoomsModal(true);
@@ -855,7 +855,7 @@ export default function Controls({
 
               {/* Preferences Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   closeAllModals();
                   setShowPreferences(true);
@@ -883,7 +883,7 @@ export default function Controls({
 
               {/* Leaderboard Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   closeAllModals();
                   setShowLeaderboard(!showLeaderboard);
@@ -895,7 +895,7 @@ export default function Controls({
 
               {/* History Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   if (instanceType === "public") {
                     setShowHistoryTooltip(true);
@@ -923,7 +923,7 @@ export default function Controls({
 
               {/* Analytics Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   closeAllModals();
                   setShowAnalytics(!showAnalytics);
@@ -944,7 +944,7 @@ export default function Controls({
 
               {/* Leave Room Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={() => {
                   leaveInstance();
                   router.push("/");
@@ -964,7 +964,7 @@ export default function Controls({
 
               {/* Sign Out Button */}
               <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group"
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                 onClick={async () => {
                   await signOut(auth);
                 }}

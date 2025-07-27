@@ -62,7 +62,11 @@ if (typeof window !== "undefined") {
   };
 }
 
-export default function PersonalStats() {
+interface PersonalStatsProps {
+  onClick?: () => void;
+}
+
+export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
   const { user } = useInstance();
   const userTimezone = useSelector((state: RootState) => state.user.timezone);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
@@ -394,6 +398,7 @@ export default function PersonalStats() {
           className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
+          onClick={onClick}
         >
           <div className="flex items-center justify-center gap-2">
             <div

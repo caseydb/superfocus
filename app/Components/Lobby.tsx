@@ -93,7 +93,7 @@ export default function Lobby() {
         <div className="flex flex-col items-center mb-8">
           <button
             onClick={() => signInWithGoogle()}
-            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#FFAA00] transition"
+            className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#FFAA00] transition cursor-pointer"
           >
             <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
             Continue with Google
@@ -101,7 +101,7 @@ export default function Lobby() {
           <div className="mt-4 text-gray-300 text-base">
             Don&apos;t have an account?{" "}
             <button
-              className="font-bold underline underline-offset-2 hover:text-[#FFAA00] transition"
+              className="font-bold underline underline-offset-2 hover:text-[#FFAA00] transition cursor-pointer"
               onClick={() => setShowSignInModal(true)}
             >
               Sign up
@@ -127,7 +127,7 @@ export default function Lobby() {
       >
         <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Join a Room</h1>
         <button
-          className="bg-white text-black font-extrabold py-4 px-10 rounded-full shadow transition mb-1 text-2xl border"
+          className="bg-white text-black font-extrabold py-4 px-10 rounded-full shadow transition mb-1 text-2xl border cursor-pointer"
           style={{ borderColor: "#FFAA00" }}
           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
@@ -160,7 +160,7 @@ export default function Lobby() {
             : "Be the first to start working!"}
         </div>
         <button
-          className="bg-white text-black px-4 py-2 rounded-full font-medium transition mt-1 text-base border"
+          className="bg-white text-black px-4 py-2 rounded-full font-medium transition mt-1 text-base border cursor-pointer"
           style={{ borderColor: "#FFAA00" }}
           onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#FFAA00")}
           onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
@@ -175,7 +175,7 @@ export default function Lobby() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-[#181A1B] rounded-2xl shadow-2xl p-8 w-full max-w-md border border-[#23272b] relative">
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl cursor-pointer"
               onClick={() => {
                 setShowPrivateRoomModal(false);
                 setPrivateRoomName("");
@@ -221,7 +221,7 @@ export default function Lobby() {
 
             <div className="flex gap-3">
               <button
-                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition cursor-pointer"
                 onClick={() => {
                   setShowPrivateRoomModal(false);
                   setPrivateRoomName("");
@@ -232,7 +232,7 @@ export default function Lobby() {
               </button>
               <button
                 // className="flex-1 px-4 py-3 bg-[#00b4ff] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
-                className="flex-1 px-4 py-3 bg-[#FFAA00] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-[#FFAA00] text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 cursor-pointer"
                 disabled={!privateRoomName.trim()}
                 onClick={handleCreatePrivateRoom}
               >

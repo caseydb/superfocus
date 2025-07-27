@@ -476,7 +476,7 @@ function SortableTask({
                 }
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
+              className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 cursor-pointer ${
                 isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
               }`}
               title={isTimerRunning ? "Pause timer" : "Resume timer"}
@@ -511,7 +511,7 @@ function SortableTask({
               className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
                 hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim())
                   ? "text-gray-600 cursor-not-allowed"
-                  : "text-gray-400 hover:text-[#FFAA00]"
+                  : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
               }`}
               title={
                 hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim())
@@ -622,7 +622,7 @@ function SortableTask({
                     }
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className={`p-1 rounded transition-all duration-200 flex items-center justify-center w-5 h-5 ${
+                  className={`p-1 rounded transition-all duration-200 flex items-center justify-center w-5 h-5 cursor-pointer ${
                     isExpanded
                       ? "text-[#FFAA00] hover:text-[#FF9900] bg-[#FFAA00]/10"
                       : "text-gray-500 hover:text-[#FFAA00] hover:bg-gray-800"
@@ -653,7 +653,7 @@ function SortableTask({
                 }
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-white"
+              className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-white cursor-pointer"
               title="Collapse"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -714,7 +714,7 @@ function SortableTask({
                       <button
                         onClick={() => onRemove(task.id)}
                         onPointerDown={(e) => e.stopPropagation()}
-                        className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors"
+                        className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
                         title="Delete task"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -756,7 +756,7 @@ function SortableTask({
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                     isSavingNotes
                       ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                      : "bg-[#FFAA00] hover:bg-[#FF9900] text-black"
+                      : "bg-[#FFAA00] hover:bg-[#FF9900] text-black cursor-pointer"
                   }`}
                 >
                   {isSavingNotes ? "Saving..." : "Save Notes"}
@@ -1192,7 +1192,7 @@ export default function TaskList({
               <div className="relative clear-menu">
                 <button
                   onClick={() => setShowClearMenu(!showClearMenu)}
-                  className="text-gray-400 hover:text-white transition-colors p-1"
+                  className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer"
                   title="Clear options"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -1209,14 +1209,14 @@ export default function TaskList({
                     <button
                       onClick={clearAll}
                       disabled={incompleteTasks === 0}
-                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg cursor-pointer"
                     >
                       Clear All ({incompleteTasks})
                     </button>
                   </div>
                 )}
               </div>
-              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1">
+              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
@@ -1256,7 +1256,7 @@ export default function TaskList({
             <button
               onClick={handleAddTask}
               disabled={!newTaskText.trim()}
-              className="bg-[#FFAA00] text-black px-6 py-3 rounded-xl font-medium hover:bg-[#FF9900] hover:shadow-lg hover:shadow-[#FFAA00]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+              className="bg-[#FFAA00] text-black px-6 py-3 rounded-xl font-medium hover:bg-[#FF9900] hover:shadow-lg hover:shadow-[#FFAA00]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 cursor-pointer"
             >
               Add
             </button>

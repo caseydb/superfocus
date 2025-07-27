@@ -1161,7 +1161,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             />
           </div>
           {/* Personal stats - bottom center for all screen sizes */}
-          <PersonalStats />
+          <PersonalStats onClick={() => {
+            closeAllModals();
+            setShowAnalytics(true);
+          }} />
           {/* Tasks - desktop only: bottom right corner */}
           <button
             className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-lg font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
@@ -1273,7 +1276,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <div className="fixed bottom-4 left-8 z-[60] hidden sm:flex flex-col gap-4">
             {/* Analytics Section */}
             <button
-              className="flex items-center gap-3 group relative"
+              className="flex items-center gap-3 group relative cursor-pointer"
               onClick={() => {
                 closeAllModals();
                 setShowAnalytics(true);
@@ -1299,7 +1302,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
             {/* Leaderboard Section */}
             <button
-              className="flex items-center gap-3 group relative"
+              className="flex items-center gap-3 group relative cursor-pointer"
               onClick={() => {
                 closeAllModals();
                 setShowLeaderboard(true);
@@ -1325,7 +1328,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
             {/* History Section */}
             <button
-              className="flex items-center gap-3 group relative"
+              className="flex items-center gap-3 group relative cursor-pointer"
               onClick={() => {
                 closeAllModals();
                 setShowHistory(true);
