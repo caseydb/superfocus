@@ -8,7 +8,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
 import { rtdb } from "../../../lib/firebase";
 import { ref, remove, onDisconnect, set } from "firebase/database";
-import { setCurrentInput, lockInput, unlockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
+import { setCurrentInput, lockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
 
 interface PomodoroProps {
@@ -113,19 +113,22 @@ export default function Pomodoro({
     }
   }, [isRunning, remainingSeconds]);
 
-  // Auto-complete when timer reaches zero
+  // Auto-pause when timer reaches zero
   useEffect(() => {
     if (isRunning && remainingSeconds === 0) {
-      if (task.trim()) {
-        completeTimer();
-      } else {
-        setIsRunning(false);
-        dispatch(setHasStarted(false));
-        dispatch(unlockInput());
+      // Pause the timer instead of completing
+      pauseTimer();
+      // Reset the pomodoro timer to selected minutes
+      setRemainingSeconds(totalSeconds);
+      // Play a gentle notification sound (using the inactive sound as it's more subtle)
+      if (localVolume > 0) {
+        const notificationAudio = new Audio("/inactive.mp3");
+        notificationAudio.volume = localVolume;
+        notificationAudio.play();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, remainingSeconds, task, dispatch]);
+  }, [isRunning, remainingSeconds, totalSeconds, localVolume]);
 
   // Notify parent of running state
   useEffect(() => {
@@ -314,7 +317,7 @@ export default function Pomodoro({
       setRemainingSeconds(totalSeconds);
       setElapsedSeconds(0);
     }
-  }, [handleComplete, task, elapsedSeconds, localVolume, clearTimerState, onComplete, heartbeatIntervalRef, dispatch, totalSeconds]);
+  }, [handleComplete, task, elapsedSeconds, localVolume, clearTimerState, onComplete, heartbeatIntervalRef, totalSeconds]);
 
   const handleClear = () => {
     // If there are elapsed seconds and onClearClick is provided, use it (triggers quit modal)

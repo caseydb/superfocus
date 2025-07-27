@@ -329,7 +329,7 @@ export function useStartButton() {
         }
       }
     },
-    [dispatch, user, currentInstance, reduxTasks, reduxUser, moveTaskToTop, notifyEvent]
+    [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, moveTaskToTop, notifyEvent]
   );
 
   return { handleStart };
