@@ -124,6 +124,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   const [users, setUsers] = useState<Record<string, User>>({});
   const [currentSprint] = useState(getCurrentSprintNumber());
   const [page, setPage] = useState(1);
+  const [countdown, setCountdown] = useState<string>("");
   const PAGE_SIZE = 10;
 
   // TODO: Replace with Firebase RTDB listener for users
@@ -138,6 +139,54 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
     // Temporary: No history data
     setAllHistory([]);
   }, []);
+
+  // Countdown timer for "This Week" view
+  useEffect(() => {
+    if (timeFilter !== 'this_week') return;
+
+    const calculateCountdown = () => {
+      const now = new Date();
+      
+      // Get next Monday 00:00:00 UTC
+      const nextMonday = new Date();
+      const nowUTC = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours(),
+        now.getUTCMinutes(),
+        now.getUTCSeconds()
+      ));
+      
+      // Calculate days until next Monday
+      const dayOfWeek = nowUTC.getUTCDay();
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+      
+      // Set to next Monday 00:00:00 UTC
+      nextMonday.setUTCDate(nowUTC.getUTCDate() + daysUntilMonday);
+      nextMonday.setUTCHours(0, 0, 0, 0);
+      
+      // Calculate difference
+      const diff = nextMonday.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setCountdown("Resetting...");
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    calculateCountdown();
+    const interval = setInterval(calculateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeFilter]);
 
   // Calculate entries from API data (all-time for now, sprint filtering can be added later)
   const entries = useMemo(() => {
@@ -299,10 +348,17 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           
-          {/* Total on second line */}
-          <span className="text-sm text-gray-400 font-mono mb-2">
-            <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">{formatTime(totalTimeAllUsers)}</span>
-          </span>
+          {/* Total and countdown on second line */}
+          <div className="flex flex-col items-center gap-1 mb-2">
+            <span className="text-sm text-gray-400 font-mono">
+              <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">{formatTime(totalTimeAllUsers)}</span>
+            </span>
+            {timeFilter === 'this_week' && countdown && (
+              <span className="text-xs text-gray-500 font-mono">
+                Resets in: <span className="text-gray-400">{countdown} (UTC)</span>
+              </span>
+            )}
+          </div>
         </div>
         {/* Show winners for ended sprints, regular list for active sprint */}
         {sprintHasEnded && entries.length > 0 ? (

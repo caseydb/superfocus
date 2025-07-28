@@ -189,10 +189,12 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             <div className="absolute top-full left-0 mt-1" style={{ zIndex: 100 }}>
               <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
                 <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
-                  <span className="text-gray-400">This week:</span>{" "}
+                  <span className="text-gray-400">Rank</span>{" "}
+                  <span className="text-gray-100 font-medium">{userRankMap[u.id]}</span>{" "}
+                  <span className="text-gray-400">this week:</span>{" "}
+                  <span className="text-gray-100 font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span> |{" "}
                   <span className="text-gray-100 font-medium">{userWeeklyStats[u.id].totalTasks}</span>{" "}
-                  <span className="text-gray-400">tasks</span> |{" "}
-                  <span className="text-gray-100 font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span>
+                  <span className="text-gray-400">tasks</span>
                 </div>
                 {/* Arrow */}
                 <div className="absolute bottom-full left-4 transform border-4 border-transparent border-b-gray-700"></div>

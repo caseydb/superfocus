@@ -7,13 +7,26 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const timeFilter = searchParams.get('timeFilter') || 'all_time';
     
-    // Get the start of the current week (Monday) if filtering by this week
+    // Get the start of the current week (Monday at 00:00:00 UTC) if filtering by this week
     const monday = new Date();
     if (timeFilter === 'this_week') {
-      const dayOfWeek = monday.getDay();
+      // Get current UTC date
+      const nowUTC = new Date(Date.UTC(
+        monday.getUTCFullYear(),
+        monday.getUTCMonth(),
+        monday.getUTCDate(),
+        monday.getUTCHours(),
+        monday.getUTCMinutes(),
+        monday.getUTCSeconds()
+      ));
+      
+      // Calculate days since Monday (where Monday = 1, Sunday = 0)
+      const dayOfWeek = nowUTC.getUTCDay();
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      monday.setDate(monday.getDate() - daysToMonday);
-      monday.setHours(0, 0, 0, 0);
+      
+      // Set to Monday 00:00:00 UTC
+      monday.setUTCDate(nowUTC.getUTCDate() - daysToMonday);
+      monday.setUTCHours(0, 0, 0, 0);
     }
     
     // Build the query based on the time filter
