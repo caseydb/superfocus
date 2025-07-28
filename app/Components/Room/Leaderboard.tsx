@@ -120,7 +120,9 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   const { entries: apiData, loading } = useAppSelector((state) => state.leaderboard);
   const [allHistory, setAllHistory] = useState<HistoryEntry[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
-  const [currentSprint, setCurrentSprint] = useState(getCurrentSprintNumber());
+  const [currentSprint] = useState(getCurrentSprintNumber());
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 12;
 
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
@@ -226,9 +228,11 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
     return Array.from(sprints).sort((a, b) => a - b);
   }, [allHistory]);
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const paginatedEntries = entries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  
   // Navigation helpers (disabled for now since we're showing all-time data)
-  const canGoBack = false; // currentSprint > 0 && sprintsWithData.includes(currentSprint - 1);
-  const canGoForward = false; // sprintsWithData.includes(currentSprint + 1);
   const sprintHasEnded = false; // hasSprintEnded(currentSprint);
 
   if (loading) {
@@ -242,13 +246,9 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-[800px] flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Keyboard Shortcut Tip */}
-        <div className="absolute top-3 left-4">
-          <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
-        </div>
         {/* Close button - positioned absolutely */}
         <button
           onClick={onClose}
@@ -264,74 +264,55 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           </svg>
         </button>
 
-        <div className="flex items-center justify-center gap-2 w-full mb-2">
-          <button
-            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl transition-colors ${
-              canGoBack ? "text-white hover:bg-gray-700 cursor-pointer" : "text-gray-600 cursor-not-allowed"
-            }`}
-            disabled={!canGoBack}
-            onClick={() => canGoBack && setCurrentSprint(currentSprint - 1)}
-          >
-            ←
-          </button>
-          <div className="text-white text-sm sm:text-lg md:text-xl font-bold select-none text-center px-2">
-            All Time
-          </div>
-          <button
-            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gray-800 flex items-center justify-center text-lg sm:text-2xl transition-colors ${
-              canGoForward ? "text-white hover:bg-gray-700 cursor-pointer" : "text-gray-600 cursor-not-allowed"
-            }`}
-            disabled={!canGoForward}
-            onClick={() => canGoForward && setCurrentSprint(currentSprint + 1)}
-          >
-            →
-          </button>
-        </div>
-        {/* Header with title */}
-        <div className="w-full text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 mt-2">Global Leaderboard</h2>
-          {/* Total time display */}
-          <div className="text-sm sm:text-base text-gray-400 mt-2">
-            Total time: <span className="text-[#FFAA00] font-bold">{formatTime(totalTimeAllUsers)}</span>
+        <div className="flex flex-col items-center w-full relative">
+          {/* Title on first line */}
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Leaderboard</h2>
+          {/* Total on second line */}
+          <span className="text-sm text-gray-400 font-mono mb-1">
+            <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">{formatTime(totalTimeAllUsers)}</span>
+          </span>
+          {/* Keyboard Shortcut Tip */}
+          <div className="absolute -top-1 -left-6">
+            <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
           </div>
         </div>
-        {/* Show winners for ended sprints, regular table for active sprint */}
+        {/* Show winners for ended sprints, regular list for active sprint */}
         {sprintHasEnded && entries.length > 0 ? (
-          <div className="w-full">
+          <div className="w-full space-y-4">
             {/* Velocity Cup - Most Tasks */}
-            <div className="mb-8">
-              <h3 className="text-xl sm:text-2xl font-bold text-[#FFAA00] text-center mb-4">🏆 Velocity Cup</h3>
-              <div className="flex justify-center items-end gap-4 mb-2">
+            <div>
+              <h3 className="text-lg font-bold text-[#FFAA00] text-center mb-2">🏆 Velocity Cup</h3>
+              <div className="flex justify-center items-end gap-2 mb-2">
                 {/* 2nd Place */}
                 {entries[1] && (
                   <div className="text-center">
-                    <div className="text-sm sm:text-base font-bold text-gray-300 mb-1">{entries[1].displayName}</div>
-                    <div className="w-24 sm:w-32 h-20 sm:h-24 bg-gray-300 rounded-t-lg flex flex-col items-center justify-center">
-                      <div className="text-xl sm:text-2xl mb-0.5">🥈</div>
-                      <div className="text-xs sm:text-sm font-bold text-gray-800">{entries[1].tasksCompleted}</div>
-                      <div className="text-xs text-gray-600">tasks</div>
+                    <div className="text-xs font-bold text-gray-300">{entries[1].displayName}</div>
+                    <div className="w-20 h-16 bg-gray-300 rounded-t-lg flex flex-col items-center justify-center">
+                      <div className="text-lg">🥈</div>
+                      <div className="text-xs font-bold text-gray-800">{entries[1].tasksCompleted}</div>
+                      <div className="text-[10px] text-gray-600">tasks</div>
                     </div>
                   </div>
                 )}
                 {/* 1st Place */}
                 {entries[0] && (
                   <div className="text-center">
-                    <div className="text-sm sm:text-base font-bold text-yellow-400 mb-1">{entries[0].displayName}</div>
-                    <div className="w-24 sm:w-32 h-24 sm:h-28 bg-yellow-400 rounded-t-lg flex flex-col items-center justify-center">
-                      <div className="text-xl sm:text-2xl mb-0.5">🥇</div>
-                      <div className="text-xs sm:text-sm font-bold text-gray-800">{entries[0].tasksCompleted}</div>
-                      <div className="text-xs text-gray-800">tasks</div>
+                    <div className="text-xs font-bold text-yellow-400">{entries[0].displayName}</div>
+                    <div className="w-20 h-20 bg-yellow-400 rounded-t-lg flex flex-col items-center justify-center">
+                      <div className="text-lg">🥇</div>
+                      <div className="text-xs font-bold text-gray-800">{entries[0].tasksCompleted}</div>
+                      <div className="text-[10px] text-gray-800">tasks</div>
                     </div>
                   </div>
                 )}
                 {/* 3rd Place */}
                 {entries[2] && (
                   <div className="text-center">
-                    <div className="text-sm sm:text-base font-bold text-amber-700 mb-1">{entries[2].displayName}</div>
-                    <div className="w-24 sm:w-32 h-16 sm:h-20 bg-amber-700 rounded-t-lg flex flex-col items-center justify-center">
-                      <div className="text-xl sm:text-2xl mb-0.5">🥉</div>
-                      <div className="text-xs sm:text-sm font-bold text-gray-100">{entries[2].tasksCompleted}</div>
-                      <div className="text-xs text-gray-200">tasks</div>
+                    <div className="text-xs font-bold text-amber-700">{entries[2].displayName}</div>
+                    <div className="w-20 h-14 bg-amber-700 rounded-t-lg flex flex-col items-center justify-center">
+                      <div className="text-lg">🥉</div>
+                      <div className="text-xs font-bold text-gray-100">{entries[2].tasksCompleted}</div>
+                      <div className="text-[10px] text-gray-200">tasks</div>
                     </div>
                   </div>
                 )}
@@ -340,10 +321,10 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
 
             {/* Time Keeper's Cup - Most Time */}
             <div>
-              <h3 className="text-xl sm:text-2xl font-bold text-[#FFAA00] text-center mb-4">
+              <h3 className="text-lg font-bold text-[#FFAA00] text-center mb-2">
                 ⏱️ Time Keeper&apos;s Cup
               </h3>
-              <div className="flex justify-center items-end gap-4 mb-2">
+              <div className="flex justify-center items-end gap-2 mb-2">
                 {/* Sort by time for this view */}
                 {(() => {
                   const timeEntries = [...entries].sort((a, b) => b.totalSeconds - a.totalSeconds);
@@ -352,12 +333,12 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
                       {/* 2nd Place */}
                       {timeEntries[1] && (
                         <div className="text-center">
-                          <div className="text-sm sm:text-base font-bold text-gray-300 mb-1">
+                          <div className="text-xs font-bold text-gray-300">
                             {timeEntries[1].displayName}
                           </div>
-                          <div className="w-24 sm:w-32 h-20 sm:h-24 bg-gray-300 rounded-t-lg flex flex-col items-center justify-center">
-                            <div className="text-xl sm:text-2xl mb-0.5">🥈</div>
-                            <div className="text-xs sm:text-sm font-bold text-gray-800">
+                          <div className="w-20 h-16 bg-gray-300 rounded-t-lg flex flex-col items-center justify-center">
+                            <div className="text-lg">🥈</div>
+                            <div className="text-xs font-bold text-gray-800">
                               {formatTime(timeEntries[1].totalSeconds)}
                             </div>
                           </div>
@@ -366,12 +347,12 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
                       {/* 1st Place */}
                       {timeEntries[0] && (
                         <div className="text-center">
-                          <div className="text-sm sm:text-base font-bold text-yellow-400 mb-1">
+                          <div className="text-xs font-bold text-yellow-400">
                             {timeEntries[0].displayName}
                           </div>
-                          <div className="w-24 sm:w-32 h-24 sm:h-28 bg-yellow-400 rounded-t-lg flex flex-col items-center justify-center">
-                            <div className="text-xl sm:text-2xl mb-0.5">🥇</div>
-                            <div className="text-xs sm:text-sm font-bold text-gray-800">
+                          <div className="w-20 h-20 bg-yellow-400 rounded-t-lg flex flex-col items-center justify-center">
+                            <div className="text-lg">🥇</div>
+                            <div className="text-xs font-bold text-gray-800">
                               {formatTime(timeEntries[0].totalSeconds)}
                             </div>
                           </div>
@@ -380,12 +361,12 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
                       {/* 3rd Place */}
                       {timeEntries[2] && (
                         <div className="text-center">
-                          <div className="text-sm sm:text-base font-bold text-amber-700 mb-1">
+                          <div className="text-xs font-bold text-amber-700">
                             {timeEntries[2].displayName}
                           </div>
-                          <div className="w-24 sm:w-32 h-16 sm:h-20 bg-amber-700 rounded-t-lg flex flex-col items-center justify-center">
-                            <div className="text-xl sm:text-2xl mb-0.5">🥉</div>
-                            <div className="text-xs sm:text-sm font-bold text-gray-100">
+                          <div className="w-20 h-14 bg-amber-700 rounded-t-lg flex flex-col items-center justify-center">
+                            <div className="text-lg">🥉</div>
+                            <div className="text-xs font-bold text-gray-100">
                               {formatTime(timeEntries[2].totalSeconds)}
                             </div>
                           </div>
@@ -398,41 +379,66 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left mt-2 min-w-[300px]">
-              <thead>
-                <tr className="text-gray-400 text-sm sm:text-base md:text-lg">
-                  <th className="px-2 sm:px-4 md:px-6 py-2">Name</th>
-                  <th className="px-2 sm:px-4 md:px-6 py-2 text-center">Time</th>
-                  <th className="px-2 sm:px-4 md:px-6 py-2 text-right">Tasks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry, i) => (
-                  <React.Fragment key={`${entry.displayName}-${i}`}>
-                    <tr
-                      className="text-white text-sm sm:text-base md:text-lg font-mono align-middle"
-                      style={{ height: 48 }}
-                    >
-                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-l-xl font-mono truncate max-w-[120px] sm:max-w-none">
-                        {entry.displayName}
-                      </td>
-                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 text-center font-mono">
-                        {formatTime(entry.totalSeconds)}
-                      </td>
-                      <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 bg-gray-800 rounded-r-xl text-right text-lg sm:text-xl">
-                        {entry.tasksCompleted}
-                      </td>
-                    </tr>
-                    {i < entries.length - 1 && (
-                      <tr aria-hidden="true">
-                        <td colSpan={3} style={{ height: 12, background: "transparent" }}></td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+          <div className="w-full space-y-2">
+            {paginatedEntries.map((entry, i) => (
+              <div
+                key={`${entry.displayName}-${(page - 1) * PAGE_SIZE + i}`}
+                className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full"
+              >
+                <div className="flex justify-between items-center gap-3">
+                  <div className="flex-1">
+                    <div className="font-mono text-base font-medium text-white">
+                      <span className="text-gray-500 text-sm mr-2">#{i + 1}</span>
+                      {entry.displayName}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="font-mono text-base font-medium text-green-400">
+                      {formatTime(entry.totalSeconds)}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {entry.tasksCompleted} tasks
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Pagination controls - compact and elegant */}
+        {entries.length > PAGE_SIZE && (
+          <div className="mt-1 flex items-center justify-center gap-2">
+            <button
+              className={`p-1.5 rounded transition-colors ${
+                page === 1
+                  ? "text-gray-600 cursor-not-allowed"
+                  : "text-gray-400 hover:text-[#FFAA00] hover:bg-gray-800 cursor-pointer"
+              }`}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-1 text-xs font-mono">
+              <span className="text-gray-500">{page}</span>
+              <span className="text-gray-600">/</span>
+              <span className="text-gray-500">{totalPages}</span>
+            </div>
+            <button
+              className={`p-1.5 rounded transition-colors ${
+                page === totalPages
+                  ? "text-gray-600 cursor-not-allowed"
+                  : "text-gray-400 hover:text-[#FFAA00] hover:bg-gray-800 cursor-pointer"
+              }`}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         )}
 

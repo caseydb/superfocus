@@ -5,32 +5,31 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { fetchHistory } from "../../store/historySlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
-import { DotSpinner } from 'ldrs/react';
-import 'ldrs/react/DotSpinner.css';
-
+import { DotSpinner } from "ldrs/react";
+import "ldrs/react/DotSpinner.css";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - date.getTime());
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) {
     // Today - show time
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   } else if (diffDays === 1) {
-    return 'Yesterday';
+    return "Yesterday";
   } else if (diffDays < 7) {
     return `${diffDays} days ago`;
   } else {
     // Show date
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
     });
   }
 }
@@ -51,39 +50,35 @@ const calculateDynamicWidth = () => {
 const calculatePageSize = (width: number, height: number) => {
   // Since we're now using card layout for all screen sizes with max-width 700px,
   // use consistent height-based logic for pagination
-  if (height >= 1100) return 10;
-  if (height >= 1000) return 9;
-  if (height >= 910) return 8;
-  if (height >= 820) return 7;
-  if (height >= 730) return 6;
-  if (height >= 650) return 5;
-  if (height >= 550) return 4;
-  return 3; // Default for small heights
+  if (height >= 1100) return 11;
+  if (height >= 1000) return 10;
+  if (height >= 910) return 9;
+  if (height >= 820) return 8;
+  if (height >= 730) return 7;
+  if (height >= 650) return 6;
+  if (height >= 550) return 5;
+  return 4; // Default for small heights
 };
 
-export default function History({
-  onClose,
-}: {
-  onClose?: () => void;
-}) {
+export default function History({ onClose }: { onClose?: () => void }) {
   const dispatch = useDispatch<AppDispatch>();
-  
+
   // Get history from Redux
   const history = useSelector((state: RootState) => state.history.entries);
   const loading = useSelector((state: RootState) => state.history.loading);
   const roomSlug = useSelector((state: RootState) => state.history.roomSlug);
-  
+
   // Fetch history when component mounts or room changes
   useEffect(() => {
     // Extract slug from URL since that's what the API expects
-    const pathParts = window.location.pathname.split('/');
+    const pathParts = window.location.pathname.split("/");
     const urlSlug = pathParts[pathParts.length - 1];
-    
+
     if (urlSlug && urlSlug !== roomSlug) {
       dispatch(fetchHistory(urlSlug));
     }
   }, [roomSlug, dispatch]);
-  
+
   // Console log the history state only when it changes
   useEffect(() => {
     console.log("[History Component] Full Redux history state:", {
@@ -92,14 +87,14 @@ export default function History({
       totalEntries: history.length,
       roomSlug,
       entriesByUser: history.reduce((acc, entry) => {
-        const userId = entry.userId || 'unknown';
+        const userId = entry.userId || "unknown";
         if (!acc[userId]) acc[userId] = [];
         acc[userId].push(entry);
         return acc;
-      }, {} as Record<string, typeof history>)
+      }, {} as Record<string, typeof history>),
     });
   }, [history, loading, roomSlug]);
-  
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(3); // Default to 3
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
@@ -108,7 +103,7 @@ export default function History({
   const currentUser = useSelector((state: RootState) => state.user);
   const savedUserFilter = useSelector((state: RootState) => state.preferences.history_user_filter);
   const savedDateFilter = useSelector((state: RootState) => state.preferences.history_date_filter);
-  
+
   // Initialize filter states from preferences
   const [showOnlyMine, setShowOnlyMine] = useState(savedUserFilter === "my_tasks");
   const [selectedTimeRange, setSelectedTimeRange] = useState(savedDateFilter || "all_time");
@@ -126,27 +121,31 @@ export default function History({
   const handleUserFilterChange = (value: string) => {
     const filterValue = value === "mine" ? "my_tasks" : "all_tasks";
     setShowOnlyMine(value === "mine");
-    
+
     // Update preferences
     if (currentUser?.user_id) {
       dispatch(setPreference({ key: "history_user_filter", value: filterValue }));
-      dispatch(updatePreferences({ 
-        userId: currentUser.user_id, 
-        updates: { history_user_filter: filterValue } 
-      }));
+      dispatch(
+        updatePreferences({
+          userId: currentUser.user_id,
+          updates: { history_user_filter: filterValue },
+        })
+      );
     }
   };
 
   const handleDateFilterChange = (value: string) => {
     setSelectedTimeRange(value);
-    
+
     // Update preferences
     if (currentUser?.user_id) {
       dispatch(setPreference({ key: "history_date_filter", value }));
-      dispatch(updatePreferences({ 
-        userId: currentUser.user_id, 
-        updates: { history_date_filter: value } 
-      }));
+      dispatch(
+        updatePreferences({
+          userId: currentUser.user_id,
+          updates: { history_date_filter: value },
+        })
+      );
     }
   };
 
@@ -162,7 +161,7 @@ export default function History({
     { label: "Last 365 days", value: "365_days" },
     { label: "All Time", value: "all_time" },
   ];
-  
+
   // Helper function to get date range based on selected time range
   const getDateRange = (timeRange: string): { start: Date | null; end: Date | null } => {
     const getTodayDate = () => {
@@ -201,12 +200,12 @@ export default function History({
       case "this_week":
         return {
           start: getThisWeekStart(),
-          end: getTodayDate()
+          end: getTodayDate(),
         };
       case "this_month":
         return {
           start: getThisMonthStart(),
-          end: getTodayDate()
+          end: getTodayDate(),
         };
       case "7_days":
       case "14_days":
@@ -218,7 +217,7 @@ export default function History({
           const days = Number(daysMatch[1]);
           return {
             start: getDateNDaysAgo(days),
-            end: getTodayDate()
+            end: getTodayDate(),
           };
         }
         return { start: null, end: null };
@@ -231,16 +230,16 @@ export default function History({
   // Filter by date range
   const filterByDateRange = (entries: typeof history) => {
     if (selectedTimeRange === "all_time") return entries;
-    
+
     const dateRange = getDateRange(selectedTimeRange);
     if (!dateRange.start || !dateRange.end) return entries;
 
     const startTime = dateRange.start.getTime();
-    
+
     // For single day selection, get end of that day
     const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
-    
+
     let endTime: number;
     if (
       startDate.toDateString() === endDate.toDateString() &&
@@ -262,12 +261,11 @@ export default function History({
       return entryTime >= startTime && entryTime <= endTime;
     });
   };
-  
+
   // Apply filters - first by user, then by date
-  const userFilteredHistory = showOnlyMine && currentUser?.user_id 
-    ? history.filter(entry => entry.userId === currentUser.user_id)
-    : history;
-    
+  const userFilteredHistory =
+    showOnlyMine && currentUser?.user_id ? history.filter((entry) => entry.userId === currentUser.user_id) : history;
+
   const filteredHistory = filterByDateRange(userFilteredHistory);
 
   // Calculate total time for filtered tasks (excluding quit tasks)
@@ -323,7 +321,6 @@ export default function History({
     setDynamicWidthClasses(calculateDynamicWidth());
   }, []);
 
-
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -336,23 +333,32 @@ export default function History({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
         <div
-          className={`bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-2 sm:gap-3 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar`}
+          className={`bg-[#181f2a] rounded-3xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[1200px] flex flex-col items-center gap-1 sm:gap-2 border-4 border-[#181f2a] max-h-[90vh] overflow-y-auto custom-scrollbar`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
-            <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
-            <div className="text-lg text-gray-300 font-mono">Total: 0s</div>
+          <div className="flex flex-col items-center w-full relative">
+            {/* Title on first line */}
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">History</h2>
+            {/* Total on second line */}
+            <span className="text-sm text-gray-400 font-mono mb-1">
+              <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">0s</span>
+            </span>
+            {/* Dropdowns on third line */}
             {currentUser?.user_id && (
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2">
                 {/* Task Filter Dropdown */}
                 <div className="relative">
                   <select
-                    className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                    className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
                     value={showOnlyMine ? "mine" : "all"}
                     onChange={(e) => handleUserFilterChange(e.target.value)}
                   >
-                    <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">All Tasks</option>
-                    <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">My Tasks</option>
+                    <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
+                      All Tasks
+                    </option>
+                    <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
+                      My Tasks
+                    </option>
                   </select>
                   {/* Custom Chevron Icon */}
                   <svg
@@ -365,11 +371,11 @@ export default function History({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
-                
+
                 {/* Time Range Dropdown */}
                 <div className="relative">
                   <select
-                    className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                    className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
                     value={selectedTimeRange}
                     onChange={(e) => handleDateFilterChange(e.target.value)}
                   >
@@ -393,13 +399,13 @@ export default function History({
               </div>
             )}
             {/* Keyboard Shortcut Tip */}
-            <div className="absolute -top-3 -left-5">
+            <div className="absolute -top-2 -left-8">
               <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
             </div>
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
             >
               <svg
                 className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -420,23 +426,33 @@ export default function History({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
       <div
-        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-4 sm:py-5 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-2 sm:gap-3 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar`}
+        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col items-center w-full mb-1 mt-1 relative">
-          <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
-          <div className="text-lg text-gray-300 font-mono">Total: {totalTime}</div>
+        <div className="flex flex-col items-center w-full relative">
+          {/* Title on first line */}
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">History</h2>
+          {/* Total on second line */}
+          <span className="text-sm text-gray-400 font-mono mb-1">
+            <span className="text-gray-500">Total:</span>{" "}
+            <span className="text-[#FFAA00] font-semibold">{totalTime}</span>
+          </span>
+          {/* Dropdowns on third line */}
           {currentUser?.user_id && (
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2">
               {/* Task Filter Dropdown */}
               <div className="relative">
                 <select
-                  className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                  className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
                   value={showOnlyMine ? "mine" : "all"}
                   onChange={(e) => handleUserFilterChange(e.target.value)}
                 >
-                  <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">All Tasks</option>
-                  <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">My Tasks</option>
+                  <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
+                    All Tasks
+                  </option>
+                  <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
+                    My Tasks
+                  </option>
                 </select>
                 {/* Custom Chevron Icon */}
                 <svg
@@ -449,11 +465,11 @@ export default function History({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
-              
+
               {/* Time Range Dropdown */}
               <div className="relative">
                 <select
-                  className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 text-center"
+                  className="border border-gray-700 rounded-lg px-3 pr-8 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 text-center"
                   value={selectedTimeRange}
                   onChange={(e) => handleDateFilterChange(e.target.value)}
                 >
@@ -477,13 +493,13 @@ export default function History({
             </div>
           )}
           {/* Keyboard Shortcut Tip */}
-          <div className="absolute -top-3 -left-5">
+          <div className="absolute -top-2 -left-8">
             <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
           </div>
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -498,11 +514,11 @@ export default function History({
         {/* Content */}
         <div className="w-full">
           {/* Card/Blocks Layout - Now shown on all screen sizes */}
-          <div className="block space-y-3 w-full">
+          <div className="block space-y-2 w-full">
             {displayEntries.map((entry, i) => (
               <div
                 key={i}
-                className="bg-gray-800 rounded-lg px-4 py-2 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
+                className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
               >
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex-1">
@@ -532,9 +548,7 @@ export default function History({
                     >
                       {entry.formattedDuration}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {formatDate(entry.completedAt)}
-                    </div>
+                    <div className="text-xs text-gray-500">{formatDate(entry.completedAt)}</div>
                   </div>
                 </div>
               </div>
@@ -585,33 +599,39 @@ export default function History({
             </table>
           </div>
         </div>
-        {/* Pagination controls - integrated into modal */}
+        {/* Pagination controls - compact and elegant */}
         {filteredHistory.length > PAGE_SIZE && (
-          <div className="mt-3 flex items-center justify-center gap-4 lg:gap-8">
+          <div className="mt-1 flex items-center justify-center gap-2">
             <button
-              className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
+              className={`p-1.5 rounded transition-colors ${
                 page === 1
-                  ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
-                  : "bg-gray-800 text-gray-200 hover:bg-gray-700 cursor-pointer"
+                  ? "text-gray-600 cursor-not-allowed"
+                  : "text-gray-400 hover:text-[#FFAA00] hover:bg-gray-800 cursor-pointer"
               }`}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
-              Previous
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
-            <span className="text-gray-300 text-base lg:text-xl font-mono">
-              Page {page} of {totalPages}
-            </span>
+            <div className="flex items-center gap-1 text-xs font-mono">
+              <span className="text-gray-500">{page}</span>
+              <span className="text-gray-600">/</span>
+              <span className="text-gray-500">{totalPages}</span>
+            </div>
             <button
-              className={`px-2 lg:px-3 py-1.5 w-20 lg:w-28 rounded-md text-sm lg:text-base font-mono transition-colors ${
+              className={`p-1.5 rounded transition-colors ${
                 page === totalPages
-                  ? "bg-[#181A1B] text-gray-500 cursor-not-allowed"
-                  : "bg-gray-800 text-gray-200 hover:bg-gray-700 cursor-pointer"
+                  ? "text-gray-600 cursor-not-allowed"
+                  : "text-gray-400 hover:text-[#FFAA00] hover:bg-gray-800 cursor-pointer"
               }`}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
             >
-              Next
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         )}
