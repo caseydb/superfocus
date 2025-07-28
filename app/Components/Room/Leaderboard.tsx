@@ -388,7 +388,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
                 <div className="flex justify-between items-center gap-3">
                   <div className="flex-1">
                     <div className="font-mono text-base font-medium text-white">
-                      <span className="text-gray-500 text-sm mr-2">#{i + 1}</span>
+                      <span className="text-gray-500 text-sm mr-2">#{(page - 1) * PAGE_SIZE + i + 1}</span>
                       {entry.displayName}
                     </div>
                   </div>

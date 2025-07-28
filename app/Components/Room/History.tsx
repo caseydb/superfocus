@@ -399,13 +399,13 @@ export default function History({ onClose }: { onClose?: () => void }) {
               </div>
             )}
             {/* Keyboard Shortcut Tip */}
-            <div className="absolute -top-2 -left-8">
+            <div className="absolute -top-1 -left-6">
               <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
             </div>
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+              className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
             >
               <svg
                 className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -493,13 +493,13 @@ export default function History({ onClose }: { onClose?: () => void }) {
             </div>
           )}
           {/* Keyboard Shortcut Tip */}
-          <div className="absolute -top-2 -left-8">
+          <div className="absolute -top-1 -left-6">
             <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
           </div>
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
