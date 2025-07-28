@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { setActiveTask } from "../../store/taskSlice";
 import { fetchHistory } from "../../store/historySlice";
+import { refreshLeaderboard } from "../../store/leaderboardSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
 import {
@@ -869,6 +870,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           if (urlSlug) {
             dispatch(fetchHistory(urlSlug));
           }
+          
+          // Also refresh the leaderboard
+          dispatch(refreshLeaderboard());
         }
       }
     });
