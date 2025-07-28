@@ -15,6 +15,7 @@ interface LeaderboardState {
   error: string | null;
   roomId: string | null;
   lastFetched: number | null;
+  timeFilter: 'all_time' | 'this_week';
 }
 
 const initialState: LeaderboardState = {
@@ -23,28 +24,32 @@ const initialState: LeaderboardState = {
   error: null,
   roomId: null,
   lastFetched: null,
+  timeFilter: 'all_time',
 };
 
 // Async thunk to fetch leaderboard data
 export const fetchLeaderboard = createAsyncThunk(
   "leaderboard/fetch",
-  async () => {
-    const response = await fetch(`/api/leaderboard`);
+  async (timeFilter: 'all_time' | 'this_week' = 'all_time') => {
+    const response = await fetch(`/api/leaderboard?timeFilter=${timeFilter}`);
     const data = await response.json();
     
     if (!response.ok) {
       throw new Error(data.error || "Failed to fetch leaderboard");
     }
     
-    return { entries: data.data };
+    return { entries: data.data, timeFilter };
   }
 );
 
 // Async thunk to refresh leaderboard after task completion
 export const refreshLeaderboard = createAsyncThunk(
   "leaderboard/refresh",
-  async () => {
-    const response = await fetch(`/api/leaderboard`);
+  async (_, { getState }) => {
+    const state = getState() as { leaderboard: LeaderboardState };
+    const timeFilter = state.leaderboard.timeFilter;
+    
+    const response = await fetch(`/api/leaderboard?timeFilter=${timeFilter}`);
     const data = await response.json();
     
     if (!response.ok) {
@@ -109,6 +114,7 @@ const leaderboardSlice = createSlice({
         state.entries = action.payload.entries;
         state.roomId = null; // No longer tracking roomId
         state.lastFetched = Date.now();
+        state.timeFilter = action.payload.timeFilter;
       })
       .addCase(fetchLeaderboard.rejected, (state, action) => {
         state.loading = false;

@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
-import { useAppSelector } from "../../store/hooks";
+import { useAppSelector, useAppDispatch } from "../../store/hooks";
+import { fetchLeaderboard } from "../../store/leaderboardSlice";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, onValue, off } from "firebase/database";
@@ -117,18 +118,20 @@ function formatTime(totalSeconds: number) {
 }
 
 export default function Leaderboard({ onClose }: { onClose: () => void }) {
-  const { entries: apiData, loading } = useAppSelector((state) => state.leaderboard);
+  const dispatch = useAppDispatch();
+  const { entries: apiData, loading, timeFilter } = useAppSelector((state) => state.leaderboard);
   const [allHistory, setAllHistory] = useState<HistoryEntry[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [currentSprint] = useState(getCurrentSprintNumber());
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 10;
 
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
     // Temporary: No users data
     setUsers({});
   }, []);
+  
 
   // TODO: Replace with Firebase RTDB listener for history
   useEffect(() => {
@@ -235,20 +238,18 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   // Navigation helpers (disabled for now since we're showing all-time data)
   const sprintHasEnded = false; // hasSprintEnded(currentSprint);
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-        <DotSpinner size="40" speed="0.9" color="#FFAA00" />
-      </div>
-    );
-  }
+  // Don't show initial loading state to prevent flicker
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Keyboard Shortcut Tip - positioned at top left */}
+        <div className="absolute top-2 left-3">
+          <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
+        </div>
         {/* Close button - positioned absolutely */}
         <button
           onClick={onClose}
@@ -264,17 +265,44 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           </svg>
         </button>
 
-        <div className="flex flex-col items-center w-full relative">
+        <div className="flex flex-col items-center w-full relative mt-3">
           {/* Title on first line */}
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Leaderboard</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00] mb-2">Leaderboard</h2>
+          
+          {/* Beautiful Switch Component */}
+          <div className="flex items-center gap-1 bg-gray-800/50 rounded-full p-1 mb-2">
+            <button
+              onClick={() => {
+                setPage(1);
+                dispatch(fetchLeaderboard('all_time'));
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                timeFilter === 'all_time'
+                  ? 'bg-[#FFAA00] text-black'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => {
+                setPage(1);
+                dispatch(fetchLeaderboard('this_week'));
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                timeFilter === 'this_week'
+                  ? 'bg-[#FFAA00] text-black'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              This Week
+            </button>
+          </div>
+          
           {/* Total on second line */}
-          <span className="text-sm text-gray-400 font-mono mb-1">
+          <span className="text-sm text-gray-400 font-mono mb-2">
             <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">{formatTime(totalTimeAllUsers)}</span>
           </span>
-          {/* Keyboard Shortcut Tip */}
-          <div className="absolute -top-1 -left-6">
-            <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
-          </div>
         </div>
         {/* Show winners for ended sprints, regular list for active sprint */}
         {sprintHasEnded && entries.length > 0 ? (
@@ -379,35 +407,45 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         ) : (
-          <div className="w-full space-y-2">
-            {paginatedEntries.map((entry, i) => (
-              <div
-                key={`${entry.displayName}-${(page - 1) * PAGE_SIZE + i}`}
-                className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full"
-              >
-                <div className="flex justify-between items-center gap-3">
-                  <div className="flex-1">
-                    <div className="font-mono text-base font-medium text-white">
-                      <span className="text-gray-500 text-sm mr-2">#{(page - 1) * PAGE_SIZE + i + 1}</span>
-                      {entry.displayName}
+          <div className="w-full space-y-1.5" style={{ minHeight: `${PAGE_SIZE * 40 + (PAGE_SIZE - 1) * 6}px` }}>
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <DotSpinner size="30" speed="0.9" color="#FFAA00" />
+              </div>
+            ) : paginatedEntries.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                No entries for this time period
+              </div>
+            ) : (
+              paginatedEntries.map((entry, i) => (
+                <div
+                  key={`${entry.displayName}-${(page - 1) * PAGE_SIZE + i}`}
+                  className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full"
+                >
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="flex-1">
+                      <div className="font-mono text-base font-medium text-white">
+                        <span className="text-gray-500 text-sm mr-2">#{(page - 1) * PAGE_SIZE + i + 1}</span>
+                        {entry.displayName}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="font-mono text-base font-medium text-green-400">
-                      {formatTime(entry.totalSeconds)}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      {entry.tasksCompleted} tasks
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className="font-mono text-base font-medium text-green-400">
+                        {formatTime(entry.totalSeconds)}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {entry.tasksCompleted} tasks
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
         {/* Pagination controls - compact and elegant */}
         {entries.length > PAGE_SIZE && (
-          <div className="mt-1 flex items-center justify-center gap-2">
+          <div className="-mt-3 flex items-center justify-center gap-2">
             <button
               className={`p-1.5 rounded transition-colors ${
                 page === 1

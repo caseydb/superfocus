@@ -79,7 +79,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                   const roomResult = await roomResponse.json();
                   
                   if (roomResult.success && roomResult.room) {
-                    await dispatch(fetchLeaderboard()).unwrap();
+                    await dispatch(fetchLeaderboard('all_time')).unwrap();
                   }
                 } catch (error) {
                   console.error("[ReduxInitializer] Failed to fetch leaderboard:", error);
@@ -148,7 +148,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                       const roomResult = await roomResponse.json();
                       
                       if (roomResult.success && roomResult.room) {
-                        await dispatch(fetchLeaderboard()).unwrap();
+                        await dispatch(fetchLeaderboard('all_time')).unwrap();
                       }
                     } catch (error) {
                       console.error("[ReduxInitializer] Failed to fetch leaderboard on retry:", error);
