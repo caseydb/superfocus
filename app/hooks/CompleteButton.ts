@@ -180,6 +180,7 @@ export function useCompleteButton() {
                 dispatch(
                   updateLeaderboardOptimistically({
                     userId: reduxUser.user_id,
+                    authId: reduxUser.auth_id || user.id, // Fallback to Firebase user.id if auth_id not available yet
                     firstName: reduxUser.first_name || "",
                     lastName: reduxUser.last_name || "",
                     profileImage: reduxUser.profile_image || null,

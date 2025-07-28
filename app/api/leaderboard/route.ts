@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       ? await prisma.$queryRaw`
           SELECT 
             u.id as user_id,
+            u.auth_id,
             u.first_name,
             u.last_name,
             u.profile_image,
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
               AND t.status = 'completed'
               AND t.completed_at >= ${monday}
           GROUP BY 
-            u.id, u.first_name, u.last_name, u.profile_image
+            u.id, u.auth_id, u.first_name, u.last_name, u.profile_image
           HAVING 
             COUNT(DISTINCT t.id) > 0 OR SUM(t.duration) > 0
           ORDER BY 
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
       : await prisma.$queryRaw`
           SELECT 
             u.id as user_id,
+            u.auth_id,
             u.first_name,
             u.last_name,
             u.profile_image,
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
             "task" t ON u.id = t.user_id 
               AND t.status = 'completed'
           GROUP BY 
-            u.id, u.first_name, u.last_name, u.profile_image
+            u.id, u.auth_id, u.first_name, u.last_name, u.profile_image
           HAVING 
             COUNT(DISTINCT t.id) > 0 OR SUM(t.duration) > 0
           ORDER BY 
@@ -64,6 +66,7 @@ export async function GET(request: NextRequest) {
     // Transform the data to ensure proper types
     const formattedData = (leaderboardData as Array<{
       user_id: string;
+      auth_id: string;
       first_name: string;
       last_name: string;
       profile_image: string | null;
@@ -71,6 +74,7 @@ export async function GET(request: NextRequest) {
       total_duration: number;
     }>).map(entry => ({
       user_id: entry.user_id,
+      auth_id: entry.auth_id,
       first_name: entry.first_name,
       last_name: entry.last_name,
       profile_image: entry.profile_image,

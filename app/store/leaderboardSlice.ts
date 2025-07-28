@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 export interface LeaderboardEntry {
   user_id: string;
+  auth_id: string;
   first_name: string;
   last_name: string;
   profile_image: string | null;
@@ -24,13 +25,13 @@ const initialState: LeaderboardState = {
   error: null,
   roomId: null,
   lastFetched: null,
-  timeFilter: 'all_time',
+  timeFilter: 'this_week',
 };
 
 // Async thunk to fetch leaderboard data
 export const fetchLeaderboard = createAsyncThunk(
   "leaderboard/fetch",
-  async (timeFilter: 'all_time' | 'this_week' = 'all_time') => {
+  async (timeFilter: 'all_time' | 'this_week' = 'this_week') => {
     const response = await fetch(`/api/leaderboard?timeFilter=${timeFilter}`);
     const data = await response.json();
     
@@ -67,12 +68,13 @@ const leaderboardSlice = createSlice({
     // Optimistically update leaderboard when a task is completed
     updateLeaderboardOptimistically: (state, action: PayloadAction<{
       userId: string;
+      authId: string;
       firstName: string;
       lastName: string;
       profileImage: string | null;
       taskDuration: number;
     }>) => {
-      const { userId, firstName, lastName, profileImage, taskDuration } = action.payload;
+      const { userId, authId, firstName, lastName, profileImage, taskDuration } = action.payload;
       
       // Find existing user entry
       const existingEntry = state.entries.find(entry => entry.user_id === userId);
@@ -85,6 +87,7 @@ const leaderboardSlice = createSlice({
         // Add new entry
         state.entries.push({
           user_id: userId,
+          auth_id: authId,
           first_name: firstName,
           last_name: lastName,
           profile_image: profileImage,

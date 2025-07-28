@@ -45,6 +45,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({
       user_id: updatedUser.id,
+      auth_id: firebaseUid,
       first_name: updatedUser.first_name,
       last_name: updatedUser.last_name,
       email: updatedUser.email,
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           user_id: null,
+          auth_id: null,
           first_name: null,
           last_name: null,
           email: null,
@@ -104,6 +106,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       user_id: user.id,
+      auth_id: firebaseUid,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,

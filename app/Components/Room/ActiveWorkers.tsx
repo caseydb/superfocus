@@ -3,23 +3,40 @@ import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 import Image from "next/image";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store/store";
+
+interface WeeklyLeaderboardEntry {
+  user_id: string;
+  auth_id: string;
+  first_name: string;
+  last_name: string;
+  profile_image: string | null;
+  total_tasks: number;
+  total_duration: number;
+}
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
-  const userTimezone = useSelector((state: RootState) => state.user.timezone);
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
-  const [userStreaks, setUserStreaks] = useState<Record<string, number>>({});
-  const [userDailyTimes, setUserDailyTimes] = useState<Record<string, number>>({});
-  const [userDailyTasks, setUserDailyTasks] = useState<Record<string, number>>({});
+  const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<WeeklyLeaderboardEntry[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
-  const [runningTimerData, setRunningTimerData] = useState<Record<string, { startTime: number; baseSeconds: number }>>(
-    {}
-  );
-  const [runningTimers, setRunningTimers] = useState<Record<string, boolean>>({});
-  const [hoveredUserSnapshot, setHoveredUserSnapshot] = useState<{ dailyTime: number; dailyTasks: number } | null>(
-    null
-  );
+
+  // Create a mapping of firebase auth UID to rank and stats from weekly leaderboard
+  // Always uses 'this_week' data regardless of main leaderboard filter
+  const { userRankMap, userWeeklyStats } = React.useMemo(() => {
+    const rankMap: Record<string, number> = {};
+    const statsMap: Record<string, { totalTasks: number; totalDuration: number }> = {};
+    
+    weeklyLeaderboard.forEach((entry, index) => {
+      // Map auth_id to rank (index + 1 for 1-based ranking)
+      rankMap[entry.auth_id] = index + 1;
+      // Map auth_id to weekly stats
+      statsMap[entry.auth_id] = {
+        totalTasks: entry.total_tasks,
+        totalDuration: entry.total_duration
+      };
+    });
+    
+    return { userRankMap: rankMap, userWeeklyStats: statsMap };
+  }, [weeklyLeaderboard]);
 
   // Format time display
   const formatTime = (totalSeconds: number) => {
@@ -35,50 +52,46 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     }
   };
 
-  // Calculate streak from actual task history (matching Analytics/PersonalStats)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const calculateStreakFromHistory = (completedDates: string[]) => {
-    if (!completedDates || completedDates.length === 0) return 0;
 
-    // Get unique dates and sort them
-    const uniqueDates = Array.from(new Set(completedDates));
-    const sortedDates = uniqueDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+  // Fetch weekly leaderboard data
+  const fetchWeeklyLeaderboard = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard?timeFilter=this_week');
+      const data = await response.json();
+      if (data.success) {
+        setWeeklyLeaderboard(data.data);
+      }
+    } catch (error) {
+      console.error('[ActiveWorkers] Failed to fetch weekly leaderboard:', error);
+    }
+  }, []);
 
-    // Calculate current streak (working backwards from today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toDateString();
+  // Initial fetch of weekly leaderboard
+  useEffect(() => {
+    fetchWeeklyLeaderboard();
+  }, [fetchWeeklyLeaderboard]);
 
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toDateString();
+  // Listen for history updates (which means someone completed a task) and refresh weekly leaderboard
+  useEffect(() => {
+    if (!roomId) return;
 
-    const lastTaskDate = new Date(sortedDates[sortedDates.length - 1]).toDateString();
-
-    // Check if the streak is current (task completed today or yesterday)
-    if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
-      let currentStreak = 1;
-      let checkDate = new Date(lastTaskDate);
-
-      // Work backwards to count consecutive days
-      for (let i = sortedDates.length - 2; i >= 0; i--) {
-        const prevDate = new Date(sortedDates[i]);
-        const expectedDate = new Date(checkDate);
-        expectedDate.setDate(expectedDate.getDate() - 1);
-
-        if (prevDate.toDateString() === expectedDate.toDateString()) {
-          currentStreak++;
-          checkDate = expectedDate;
-        } else {
-          break;
+    const historyUpdateRef = ref(rtdb, `rooms/${roomId}/historyUpdate`);
+    let lastTimestamp = 0;
+    
+    const handle = onValue(historyUpdateRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.timestamp) {
+        // Only fetch if this is a new update (not the same timestamp we already processed)
+        if (data.timestamp > lastTimestamp && Date.now() - data.timestamp < 10000) {
+          lastTimestamp = data.timestamp;
+          // Refresh weekly leaderboard when someone completes a task
+          fetchWeeklyLeaderboard();
         }
       }
+    });
 
-      return currentStreak;
-    }
-
-    return 0;
-  };
+    return () => off(historyUpdateRef, "value", handle);
+  }, [roomId, fetchWeeklyLeaderboard]);
 
   // Listen to ActiveWorker for users actively running timers
   useEffect(() => {
@@ -108,7 +121,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             displayName: worker.displayName || "Anonymous"
           }));
         
-        
         setActiveUsers(workersInRoom);
       } else {
         setActiveUsers([]);
@@ -120,192 +132,44 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     };
   }, [roomId]);
 
-  // Load streaks from Firebase RTDB
-  useEffect(() => {
-    
-    if (activeUsers.length === 0) {
-      setUserStreaks({});
-      return;
-    }
 
-    // Set up listeners for each active user's streak
-    const unsubscribes: (() => void)[] = [];
-    
-    activeUsers.forEach((user) => {
-      const streakRef = ref(rtdb, `Streaks/${user.id}`);
-      onValue(streakRef, (snapshot) => {
-        const streak = snapshot.val();
-        
-        if (streak && typeof streak === 'number' && streak >= 1) {
-          setUserStreaks(prev => {
-            const newStreaks = {
-              ...prev,
-              [user.id]: streak
-            };
-            return newStreaks;
-          });
-        } else {
-          // No streak or invalid data
-          setUserStreaks(prev => {
-            const newStreaks = {
-              ...prev,
-              [user.id]: 0
-            };
-            return newStreaks;
-          });
-        }
-      });
-      
-      unsubscribes.push(() => off(streakRef, "value"));
-    });
 
-    // Cleanup function
-    return () => {
-      unsubscribes.forEach(unsub => unsub());
-    };
-  }, [activeUsers]);
-
-  // TODO: Replace with Firebase RTDB listener for daily stats
-  // Load daily stats from history for active users
-  useEffect(() => {
-    if (activeUsers.length === 0) {
-      setUserDailyTimes({});
-      setUserDailyTasks({});
-      return;
-    }
-
-    // Get streak date for today (midnight to midnight)
-    const getStreakDate = (timestamp: number = Date.now()) => {
-      const date = new Date(timestamp);
-      
-      // Use user's timezone if available, otherwise fall back to local timezone
-      const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-      
-      // Get the local time in the user's timezone
-      const localTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
-
-      // Format as YYYY-MM-DD
-      const year = localTime.getFullYear();
-      const month = String(localTime.getMonth() + 1).padStart(2, "0");
-      const day = String(localTime.getDate()).padStart(2, "0");
-
-      return `${year}-${month}-${day}`;
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const currentStreakDate = getStreakDate();
-
-    const loadDailyStats = () => {
-      // TODO: Replace with Firebase RTDB query
-      // const instancesRef = ref(rtdb, "instances");
-      // onValue(instancesRef, (snapshot) => { ... }, { onlyOnce: true });
-
-      // Temporary: Set empty stats
-      const dailyTimes: Record<string, number> = {};
-      const dailyTasks: Record<string, number> = {};
-
-      activeUsers.forEach((user) => {
-        dailyTimes[user.id] = 0;
-        dailyTasks[user.id] = 0;
-      });
-
-      setUserDailyTimes(dailyTimes);
-      setUserDailyTasks(dailyTasks);
-    };
-
-    // Load stats immediately
-    loadDailyStats();
-
-    // Set up periodic refresh every 60 seconds
-    const interval = setInterval(loadDailyStats, 60000);
-
-    // TODO: Replace with Firebase RTDB listener for lastEvent
-    // Also listen to lastEvent to refresh when someone completes a task
-    // let lastEventRef: ReturnType<typeof ref> | null = null;
-    // let lastEventHandleFunc: ((snapshot: DataSnapshot) => void) | null = null;
-    // if (roomId) {
-    //   lastEventRef = ref(rtdb, `instances/${roomId}/lastEvent`);
-    //   onValue(lastEventRef, lastEventHandleFunc);
-    // }
-
-    return () => {
-      clearInterval(interval);
-      // TODO: Clean up Firebase listeners
-      // if (lastEventRef && lastEventHandleFunc) {
-      //   off(lastEventRef, "value", lastEventHandleFunc);
-      // }
-    };
-  }, [activeUsers, roomId, userTimezone]);
-
-  // TODO: Replace with Firebase RTDB listener for user timers
-  // Listen to user timers to track who's actively running
-  useEffect(() => {
-    if (!roomId) return;
-
-    // TODO: Replace with Firebase RTDB listener
-    // const userTimersRef = ref(rtdb, `instances/${roomId}/userTimers`);
-    // const handle = onValue(userTimersRef, (snapshot) => { ... });
-    // return () => off(userTimersRef, "value", handle);
-
-    // Temporary: Set empty timers
-    setRunningTimers({});
-    setRunningTimerData({});
-  }, [roomId]);
-
-  // Calculate the current elapsed time for a running timer (only for sorting)
-  const getRunningTimerElapsed = (userId: string) => {
-    const timerData = runningTimerData[userId];
-    if (!timerData) return 0;
-
-    const elapsedSinceStart = Math.floor((Date.now() - timerData.startTime) / 1000);
-    return timerData.baseSeconds + elapsedSinceStart;
-  };
 
   if (activeUsers.length === 0) return null;
 
-  // Sort users by daily time only (highest first), including running timers
+  // Sort users by their weekly rank (lowest rank first)
   const sortedUsers = [...activeUsers].sort((a, b) => {
-    const timeA = (userDailyTimes[a.id] || 0) + (runningTimers[a.id] ? getRunningTimerElapsed(a.id) : 0);
-    const timeB = (userDailyTimes[b.id] || 0) + (runningTimers[b.id] ? getRunningTimerElapsed(b.id) : 0);
-    return timeB - timeA;
+    const rankA = userRankMap[a.id] || 999; // Default to 999 if no rank
+    const rankB = userRankMap[b.id] || 999;
+    return rankA - rankB;
   });
 
   return (
     <div className="fixed top-4 left-8 z-40 text-base font-mono opacity-70 select-none">
       {sortedUsers.map((u, index) => (
-        <div
-          key={u.id}
-          className={`relative text-gray-400 transition-opacity duration-300 flex items-center ${
-            flyingUserIds.includes(u.id) ? "opacity-0" : "opacity-100"
-          }`}
-          style={{ height: "2rem", zIndex: hoveredUserId === u.id ? 50 : 40 - index }}
-          onMouseEnter={() => {
-            setHoveredUserId(u.id);
-            // Take a snapshot of the current data
-            setHoveredUserSnapshot({
-              dailyTime: userDailyTimes[u.id] || 0,
-              dailyTasks: userDailyTasks[u.id] || 0,
-            });
-          }}
-          onMouseLeave={() => {
-            setHoveredUserId(null);
-            setHoveredUserSnapshot(null);
-          }}
-        >
-          {(userStreaks[u.id] || 0) > 0 && (
+          <div
+            key={u.id}
+            className={`relative text-gray-400 transition-opacity duration-300 flex items-center ${
+              flyingUserIds.includes(u.id) ? "opacity-0" : "opacity-100"
+            }`}
+            style={{ height: "2rem", zIndex: hoveredUserId === u.id ? 50 : 40 - index }}
+            onMouseEnter={() => {
+              setHoveredUserId(u.id);
+            }}
+            onMouseLeave={() => {
+              setHoveredUserId(null);
+            }}
+          >
+          {userRankMap[u.id] && (
             <div
-              className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${
-                userStreaks[u.id] >= 10
-                  ? "bg-gradient-to-br from-[#ffaa00] to-[#e69500]"
-                  : `border ${userStreaks[u.id] >= 5 ? "border-[#FFAA00]" : "border-gray-400"}`
+              className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 border ${
+                userRankMap[u.id] <= 5 ? "border-[#FFAA00]" : "border-gray-400"
               }`}
             >
               <span
-                className={`text-xs font-bold font-sans ${
-                  userStreaks[u.id] >= 10 ? "text-black" : userStreaks[u.id] >= 5 ? "text-[#FFAA00]" : "text-[#9CA3AF]"
-                }`}
+                className="text-xs font-bold font-sans text-[#9CA3AF]"
               >
-                {userStreaks[u.id]}
+                {userRankMap[u.id]}
               </span>
             </div>
           )}
@@ -321,14 +185,14 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           </span>
 
           {/* Tooltip */}
-          {hoveredUserId === u.id && (
+          {hoveredUserId === u.id && userWeeklyStats[u.id] && (
             <div className="absolute top-full left-0 mt-1" style={{ zIndex: 100 }}>
               <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
                 <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
-                  <span className="text-gray-400">Today:</span>{" "}
-                  <span className="text-gray-100 font-medium">{hoveredUserSnapshot?.dailyTasks || 0}</span>{" "}
+                  <span className="text-gray-400">This week:</span>{" "}
+                  <span className="text-gray-100 font-medium">{userWeeklyStats[u.id].totalTasks}</span>{" "}
                   <span className="text-gray-400">tasks</span> |{" "}
-                  <span className="text-gray-100 font-medium">{formatTime(hoveredUserSnapshot?.dailyTime || 0)}</span>
+                  <span className="text-gray-100 font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span>
                 </div>
                 {/* Arrow */}
                 <div className="absolute bottom-full left-4 transform border-4 border-transparent border-b-gray-700"></div>

@@ -3,6 +3,7 @@ import { auth } from '@/lib/firebase';
 
 interface UserState {
   user_id: string | null;
+  auth_id: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -14,6 +15,7 @@ interface UserState {
 
 const initialState: UserState = {
   user_id: null,
+  auth_id: null,
   first_name: null,
   last_name: null,
   email: null,
@@ -98,6 +100,7 @@ const userSlice = createSlice({
       .addCase(fetchUserData.fulfilled, (state, action) => {
         state.loading = false;
         state.user_id = action.payload.user_id;
+        state.auth_id = action.payload.auth_id;
         state.first_name = action.payload.first_name;
         state.last_name = action.payload.last_name;
         state.email = action.payload.email;
@@ -115,6 +118,7 @@ const userSlice = createSlice({
       .addCase(updateUserData.fulfilled, (state, action) => {
         state.loading = false;
         state.user_id = action.payload.user_id;
+        state.auth_id = action.payload.auth_id;
         state.first_name = action.payload.first_name;
         state.last_name = action.payload.last_name;
         state.email = action.payload.email;
