@@ -242,9 +242,13 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-full flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-[95%] sm:w-[600px] md:w-[700px] lg:w-[800px] max-w-[800px] flex flex-col items-center gap-4 sm:gap-6 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Keyboard Shortcut Tip */}
+        <div className="absolute top-3 left-4">
+          <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
+        </div>
         {/* Close button - positioned absolutely */}
         <button
           onClick={onClose}
@@ -432,10 +436,6 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* Keyboard Shortcut Tip */}
-        <div className="mt-4 text-center text-xs text-gray-500">
-          Shortcut <span className="px-2 py-1 bg-gray-800 rounded">⌘L</span>
-        </div>
       </div>
 
       {/* Add scrollbar styling */}

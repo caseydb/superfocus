@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import DateRangePicker from "../DateRangePicker";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../store/store";
 import type { Task } from "../../store/taskSlice";
+import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
 import { auth } from '@/lib/firebase';
@@ -35,8 +36,8 @@ interface SuperadminUser {
 }
 
 const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
+  const dispatch = useDispatch<AppDispatch>();
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
-  const [colorByTime, setColorByTime] = useState(false);
   const [superadminUsers, setSuperadminUsers] = useState<SuperadminUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("personal");
@@ -48,6 +49,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const tasksLoading = useSelector((state: RootState) => state.tasks.loading);
   const savedDatePicker = useSelector((state: RootState) => state.preferences.analytics_date_pick);
+  const savedAnalyticsOverview = useSelector((state: RootState) => state.preferences.analytics_overview);
+  
+  // Initialize colorByTime from preferences
+  const [colorByTime, setColorByTime] = useState(savedAnalyticsOverview === "time");
+  
+  // Update local state when preference changes
+  useEffect(() => {
+    setColorByTime(savedAnalyticsOverview === "time");
+  }, [savedAnalyticsOverview]);
+  
+  // Handler for toggle change
+  const handleToggleChange = () => {
+    const newValue = !colorByTime ? "time" : "tasks";
+    setColorByTime(!colorByTime);
+    
+    // Update preferences
+    if (reduxUser?.user_id) {
+      dispatch(setPreference({ key: "analytics_overview", value: newValue }));
+      dispatch(updatePreferences({ 
+        userId: reduxUser.user_id, 
+        updates: { analytics_overview: newValue } 
+      }));
+    }
+  };
   
   // Filter for completed tasks only - memoized to prevent infinite re-renders
   // Get selected user data when viewing another user
@@ -777,6 +802,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                   ? `${displayName.split(" ")[0]}'s Analytics` 
                   : "Analytics Dashboard"}
           </h2>
+          {/* Keyboard Shortcut Tip */}
+          <div className="absolute -top-2 -left-1">
+            <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘S</span>
+          </div>
           {/* Close button */}
           <button
             onClick={onClose}
@@ -829,7 +858,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                 
                 {/* Toggle switch */}
                 <button
-                  onClick={() => setColorByTime(!colorByTime)}
+                  onClick={handleToggleChange}
                   className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
                 >
                   <span className={colorByTime ? "text-gray-500" : "text-white font-medium"}>Tasks</span>
@@ -1139,10 +1168,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div>
             </div>
 
-            {/* Keyboard Shortcut Tip */}
-            <div className="mt-4 text-center text-xs text-gray-500">
-              Shortcut <span className="px-2 py-1 bg-gray-800 rounded">⌘S</span>
-            </div>
           </div>
         )}
       </div>

@@ -247,7 +247,7 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
         {/* Time Range Dropdown */}
         <div className="w-full sm:w-auto flex-shrink-0 relative">
         <select
-          className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none w-full cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800"
+          className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none w-full cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 text-center"
           value={selectedRange}
           onChange={handleRangeChange}
         >

@@ -392,6 +392,10 @@ export default function History({
                 </div>
               </div>
             )}
+            {/* Keyboard Shortcut Tip */}
+            <div className="absolute -top-3 -left-5">
+              <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
+            </div>
             {/* Close button */}
             <button
               onClick={onClose}
@@ -449,7 +453,7 @@ export default function History({
               {/* Time Range Dropdown */}
               <div className="relative">
                 <select
-                  className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800"
+                  className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 text-center"
                   value={selectedTimeRange}
                   onChange={(e) => handleDateFilterChange(e.target.value)}
                 >
@@ -472,6 +476,10 @@ export default function History({
               </div>
             </div>
           )}
+          {/* Keyboard Shortcut Tip */}
+          <div className="absolute -top-3 -left-5">
+            <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
+          </div>
           {/* Close button */}
           <button
             onClick={onClose}

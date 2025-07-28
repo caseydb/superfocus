@@ -9,6 +9,7 @@ interface PreferenceState {
   task_selection_mode: string;
   focus_check_time: number;
   analytics_date_pick: string;
+  analytics_overview: string;
   history_user_filter: string;
   history_date_filter: string;
   mode: "stopwatch" | "countdown";
@@ -25,6 +26,7 @@ const initialState: PreferenceState = {
   task_selection_mode: "sidebar",
   focus_check_time: 120,
   analytics_date_pick: "all_time",
+  analytics_overview: "tasks",
   history_user_filter: "all_tasks",
   history_date_filter: "this_week",
   mode: "stopwatch",
