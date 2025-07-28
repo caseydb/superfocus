@@ -323,19 +323,6 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
             <button
               onClick={() => {
                 setPage(1);
-                dispatch(fetchLeaderboard('all_time'));
-              }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                timeFilter === 'all_time'
-                  ? 'bg-[#FFAA00] text-black'
-                  : 'text-gray-400 hover:text-gray-300'
-              }`}
-            >
-              All Time
-            </button>
-            <button
-              onClick={() => {
-                setPage(1);
                 dispatch(fetchLeaderboard('this_week'));
               }}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
@@ -345,6 +332,19 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
               }`}
             >
               This Week
+            </button>
+            <button
+              onClick={() => {
+                setPage(1);
+                dispatch(fetchLeaderboard('all_time'));
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                timeFilter === 'all_time'
+                  ? 'bg-[#FFAA00] text-black'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              All Time
             </button>
           </div>
           
