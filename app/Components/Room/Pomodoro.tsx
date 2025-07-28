@@ -221,12 +221,10 @@ export default function Pomodoro({
     setIsEditingTime(false);
 
     // Update Redux state optimistically
-    console.log("[Pomodoro] Updating preference with validMinutes:", validMinutes, "type:", typeof validMinutes);
     dispatch(setPreference({ key: 'pomodoro_duration', value: validMinutes }));
     
     // Update database if user is logged in
     if (postgresUserId) {
-      console.log("[Pomodoro] Sending update to database for user:", postgresUserId);
       dispatch(updatePreferences({ 
         userId: postgresUserId, 
         updates: { pomodoro_duration: validMinutes } 
@@ -244,7 +242,6 @@ export default function Pomodoro({
         taskId = activeTask?.id || null;
       }
       
-      console.log('[Pomodoro] saveTimerState called:', { taskId, isRunning, baseSeconds, activeTaskId });
       
       if (taskId && user?.id) {
         const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
@@ -278,7 +275,6 @@ export default function Pomodoro({
   // Save timer state when user leaves the page (closes tab, refreshes, or navigates away)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      console.log('[Pomodoro] beforeunload triggered:', { isRunning, elapsedSeconds, activeTaskId });
       // Save timer state if there are seconds accumulated (whether running or paused)
       if (elapsedSeconds > 0 && activeTaskId) {
         // Save as paused state with current elapsed seconds
@@ -623,12 +619,10 @@ export default function Pomodoro({
                     setSelectedMinutes(preset.minutes);
                     
                     // Update Redux state optimistically
-                    console.log("[Pomodoro] Preset button clicked, updating with minutes:", preset.minutes, "type:", typeof preset.minutes);
                     dispatch(setPreference({ key: 'pomodoro_duration', value: preset.minutes }));
                     
                     // Update database if user is logged in
                     if (postgresUserId) {
-                      console.log("[Pomodoro] Sending preset update to database for user:", postgresUserId);
                       dispatch(updatePreferences({ 
                         userId: postgresUserId, 
                         updates: { pomodoro_duration: preset.minutes } 

@@ -47,30 +47,20 @@ export const fetchPreferences = createAsyncThunk(
 export const updatePreferences = createAsyncThunk(
   "preferences/update",
   async ({ userId, updates }: { userId: string; updates: Partial<PreferenceState> }) => {
-    console.log("[PreferenceSlice] updatePreferences called with:", { userId, updates });
-    console.log("[PreferenceSlice] Update types:", Object.entries(updates).map(([key, value]) => `${key}: ${typeof value} (${value})`));
-    
-    const requestBody = {
-      userId,
-      ...updates,
-    };
-    console.log("[PreferenceSlice] Request body to send:", requestBody);
-    console.log("[PreferenceSlice] Request body JSON:", JSON.stringify(requestBody));
-    
     const response = await fetch("/api/preferences", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        userId,
+        ...updates,
+      }),
     });
     
-    console.log("[PreferenceSlice] Response status:", response.status);
     const data = await response.json();
-    console.log("[PreferenceSlice] Response data:", data);
     
     if (!response.ok) {
-      console.error("[PreferenceSlice] Request failed:", data);
       throw new Error(data.error || "Failed to update preferences");
     }
     
