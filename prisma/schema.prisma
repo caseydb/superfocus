@@ -30,12 +30,14 @@ model preference {
   toggle_notes             Boolean  @default(false)
   toggle_pomodoro          Boolean  @default(false)
   pomodoro_duration        Int      @default(30)
-  toggle_pomodoro_overtime Boolean  @default(true)
   sound_volume             Int      @default(10)
   task_selection_mode      String   @default("dropdown")
   focus_check_time         Int      @default(120)
-  date_picker              String   @default("this_week")
+  analytics_date_pick      String   @default("this_week")
   mode                     String   @default("stopwatch")
+  analytics_overview       String   @default("tasks")
+  history_user_filter      String   @default("all_tasks")
+  history_date_filter      String   @default("this_week")
 
   user                     user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

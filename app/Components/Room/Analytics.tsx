@@ -47,7 +47,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const userTimezone = useSelector((state: RootState) => state.user.timezone);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const tasksLoading = useSelector((state: RootState) => state.tasks.loading);
-  const savedDatePicker = useSelector((state: RootState) => state.preferences.date_picker);
+  const savedDatePicker = useSelector((state: RootState) => state.preferences.analytics_date_pick);
   
   // Filter for completed tasks only - memoized to prevent infinite re-renders
   // Get selected user data when viewing another user

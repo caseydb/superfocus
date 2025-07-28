@@ -8,7 +8,9 @@ interface PreferenceState {
   sound_volume: number;
   task_selection_mode: string;
   focus_check_time: number;
-  date_picker: string;
+  analytics_date_pick: string;
+  history_user_filter: string;
+  history_date_filter: string;
   mode: "stopwatch" | "countdown";
   loading: boolean;
   error: string | null;
@@ -22,7 +24,9 @@ const initialState: PreferenceState = {
   sound_volume: 50,
   task_selection_mode: "sidebar",
   focus_check_time: 120,
-  date_picker: "all_time",
+  analytics_date_pick: "all_time",
+  history_user_filter: "all_tasks",
+  history_date_filter: "this_week",
   mode: "stopwatch",
   loading: false,
   error: null,

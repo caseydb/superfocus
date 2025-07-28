@@ -32,7 +32,7 @@ type DateRangeValue = "today" | "this_week" | "this_month" | "7_days" | "14_days
 
 export default function DateRangePicker({ value, onChange, firstTaskDate }: DateRangePickerProps) {
   const dispatch = useAppDispatch();
-  const savedDatePicker = useAppSelector((state) => state.preferences.date_picker);
+  const savedDatePicker = useAppSelector((state) => state.preferences.analytics_date_pick);
   const userId = useAppSelector((state) => state.user.user_id);
   
   // Initialize with saved preference or default
@@ -215,12 +215,12 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
     // Save to preferences (except for custom)
     if (val !== "custom" && userId) {
       // Optimistic update
-      dispatch(setPreference({ key: "date_picker", value: val }));
+      dispatch(setPreference({ key: "analytics_date_pick", value: val }));
       
       // Database update
       dispatch(updatePreferences({ 
         userId, 
-        updates: { date_picker: val } 
+        updates: { analytics_date_pick: val } 
       }));
     }
   };

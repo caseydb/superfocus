@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { fetchHistory } from "../../store/historySlice";
+import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
 
@@ -102,15 +103,172 @@ export default function History({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(3); // Default to 3
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
 
-  // Get user data from Redux
+  // Get user data and preferences from Redux
   const currentUser = useSelector((state: RootState) => state.user);
+  const savedUserFilter = useSelector((state: RootState) => state.preferences.history_user_filter);
+  const savedDateFilter = useSelector((state: RootState) => state.preferences.history_date_filter);
   
-  // Simple client-side filter - when "My Tasks" is active, filter by user_id
-  const filteredHistory = showOnlyMine && currentUser?.user_id 
+  // Initialize filter states from preferences
+  const [showOnlyMine, setShowOnlyMine] = useState(savedUserFilter === "my_tasks");
+  const [selectedTimeRange, setSelectedTimeRange] = useState(savedDateFilter || "all_time");
+
+  // Update local state when preferences change
+  useEffect(() => {
+    setShowOnlyMine(savedUserFilter === "my_tasks");
+  }, [savedUserFilter]);
+
+  useEffect(() => {
+    setSelectedTimeRange(savedDateFilter || "all_time");
+  }, [savedDateFilter]);
+
+  // Handlers for filter changes
+  const handleUserFilterChange = (value: string) => {
+    const filterValue = value === "mine" ? "my_tasks" : "all_tasks";
+    setShowOnlyMine(value === "mine");
+    
+    // Update preferences
+    if (currentUser?.user_id) {
+      dispatch(setPreference({ key: "history_user_filter", value: filterValue }));
+      dispatch(updatePreferences({ 
+        userId: currentUser.user_id, 
+        updates: { history_user_filter: filterValue } 
+      }));
+    }
+  };
+
+  const handleDateFilterChange = (value: string) => {
+    setSelectedTimeRange(value);
+    
+    // Update preferences
+    if (currentUser?.user_id) {
+      dispatch(setPreference({ key: "history_date_filter", value }));
+      dispatch(updatePreferences({ 
+        userId: currentUser.user_id, 
+        updates: { history_date_filter: value } 
+      }));
+    }
+  };
+
+  // Time range options matching Analytics component
+  const TIME_RANGES = [
+    { label: "Today", value: "today" },
+    { label: "This Week", value: "this_week" },
+    { label: "This Month", value: "this_month" },
+    { label: "Last 7 days", value: "7_days" },
+    { label: "Last 14 days", value: "14_days" },
+    { label: "Last 30 days", value: "30_days" },
+    { label: "Last 90 days", value: "90_days" },
+    { label: "Last 365 days", value: "365_days" },
+    { label: "All Time", value: "all_time" },
+  ];
+  
+  // Helper function to get date range based on selected time range
+  const getDateRange = (timeRange: string): { start: Date | null; end: Date | null } => {
+    const getTodayDate = () => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const getDateNDaysAgo = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n + 1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const getThisWeekStart = () => {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      d.setDate(d.getDate() - diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const getThisMonthStart = () => {
+      const d = new Date();
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    switch (timeRange) {
+      case "today":
+        const today = getTodayDate();
+        return { start: today, end: today };
+      case "this_week":
+        return {
+          start: getThisWeekStart(),
+          end: getTodayDate()
+        };
+      case "this_month":
+        return {
+          start: getThisMonthStart(),
+          end: getTodayDate()
+        };
+      case "7_days":
+      case "14_days":
+      case "30_days":
+      case "90_days":
+      case "365_days":
+        const daysMatch = timeRange.match(/^(\d+)_days$/);
+        if (daysMatch) {
+          const days = Number(daysMatch[1]);
+          return {
+            start: getDateNDaysAgo(days),
+            end: getTodayDate()
+          };
+        }
+        return { start: null, end: null };
+      case "all_time":
+      default:
+        return { start: null, end: null };
+    }
+  };
+
+  // Filter by date range
+  const filterByDateRange = (entries: typeof history) => {
+    if (selectedTimeRange === "all_time") return entries;
+    
+    const dateRange = getDateRange(selectedTimeRange);
+    if (!dateRange.start || !dateRange.end) return entries;
+
+    const startTime = dateRange.start.getTime();
+    
+    // For single day selection, get end of that day
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    
+    let endTime: number;
+    if (
+      startDate.toDateString() === endDate.toDateString() &&
+      endDate.getHours() === 0 &&
+      endDate.getMinutes() === 0 &&
+      endDate.getSeconds() === 0
+    ) {
+      // Same day at midnight - get end of this day
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      endTime = endOfDay.getTime();
+    } else {
+      // Different days - add 24 hours to include full end day
+      endTime = dateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1);
+    }
+
+    return entries.filter((entry) => {
+      const entryTime = new Date(entry.completedAt).getTime();
+      return entryTime >= startTime && entryTime <= endTime;
+    });
+  };
+  
+  // Apply filters - first by user, then by date
+  const userFilteredHistory = showOnlyMine && currentUser?.user_id 
     ? history.filter(entry => entry.userId === currentUser.user_id)
     : history;
+    
+  const filteredHistory = filterByDateRange(userFilteredHistory);
 
   // Calculate total time for filtered tasks (excluding quit tasks)
   const calculateTotalTime = () => {
@@ -152,6 +310,11 @@ export default function History({
     return () => window.removeEventListener("resize", updatePageSize);
   }, []);
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [showOnlyMine, selectedTimeRange]);
+
   // Use paginated results for all devices
   const displayEntries = paginated;
 
@@ -180,14 +343,54 @@ export default function History({
             <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
             <div className="text-lg text-gray-300 font-mono">Total: 0s</div>
             {currentUser?.user_id && (
-              <button
-                onClick={() => setShowOnlyMine(!showOnlyMine)}
-                className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                  showOnlyMine ? "bg-[#FFAA00] text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
-              >
-                {showOnlyMine ? "My Tasks" : "All Tasks"}
-              </button>
+              <div className="flex items-center gap-2 mt-2">
+                {/* Task Filter Dropdown */}
+                <div className="relative">
+                  <select
+                    className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                    value={showOnlyMine ? "mine" : "all"}
+                    onChange={(e) => handleUserFilterChange(e.target.value)}
+                  >
+                    <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">All Tasks</option>
+                    <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">My Tasks</option>
+                  </select>
+                  {/* Custom Chevron Icon */}
+                  <svg
+                    className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+                
+                {/* Time Range Dropdown */}
+                <div className="relative">
+                  <select
+                    className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                    value={selectedTimeRange}
+                    onChange={(e) => handleDateFilterChange(e.target.value)}
+                  >
+                    {TIME_RANGES.map((r) => (
+                      <option key={r.value} value={r.value} className="bg-gray-900 text-gray-100 cursor-pointer">
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Custom Chevron Icon */}
+                  <svg
+                    className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             )}
             {/* Close button */}
             <button
@@ -220,14 +423,54 @@ export default function History({
           <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#FFAA00]">History</div>
           <div className="text-lg text-gray-300 font-mono">Total: {totalTime}</div>
           {currentUser?.user_id && (
-            <button
-              onClick={() => setShowOnlyMine(!showOnlyMine)}
-              className={`mt-2 px-3 py-1 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                showOnlyMine ? "bg-[#FFAA00] text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-              }`}
-            >
-              {showOnlyMine ? "My Tasks" : "All Tasks"}
-            </button>
+            <div className="flex items-center gap-2 mt-2">
+              {/* Task Filter Dropdown */}
+              <div className="relative">
+                <select
+                  className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                  value={showOnlyMine ? "mine" : "all"}
+                  onChange={(e) => handleUserFilterChange(e.target.value)}
+                >
+                  <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">All Tasks</option>
+                  <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">My Tasks</option>
+                </select>
+                {/* Custom Chevron Icon */}
+                <svg
+                  className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              
+              {/* Time Range Dropdown */}
+              <div className="relative">
+                <select
+                  className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800"
+                  value={selectedTimeRange}
+                  onChange={(e) => handleDateFilterChange(e.target.value)}
+                >
+                  {TIME_RANGES.map((r) => (
+                    <option key={r.value} value={r.value} className="bg-gray-900 text-gray-100 cursor-pointer">
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                {/* Custom Chevron Icon */}
+                <svg
+                  className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           )}
           {/* Close button */}
           <button

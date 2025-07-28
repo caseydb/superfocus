@@ -20,11 +20,12 @@ export async function GET(request: NextRequest) {
         toggle_notes: true,
         toggle_pomodoro: true,
         pomodoro_duration: true,
-        toggle_pomodoro_overtime: true,
         sound_volume: true,
         task_selection_mode: true,
         focus_check_time: true,
-        date_picker: true,
+        analytics_date_pick: true,
+        history_user_filter: true,
+        history_date_filter: true,
         mode: true,
       }
     });
@@ -90,11 +91,12 @@ export async function PATCH(request: NextRequest) {
           toggle_notes: true,
           toggle_pomodoro: true,
           pomodoro_duration: true,
-          toggle_pomodoro_overtime: true,
           sound_volume: true,
           task_selection_mode: true,
           focus_check_time: true,
-          date_picker: true,
+          analytics_date_pick: true,
+          history_user_filter: true,
+          history_date_filter: true,
           mode: true,
         }
       });
@@ -109,11 +111,12 @@ export async function PATCH(request: NextRequest) {
         toggle_notes: true,
         toggle_pomodoro: true,
         pomodoro_duration: true,
-        toggle_pomodoro_overtime: true,
         sound_volume: true,
         task_selection_mode: true,
         focus_check_time: true,
-        date_picker: true,
+        analytics_date_pick: true,
+        history_user_filter: true,
+        history_date_filter: true,
         mode: true,
       }
     });
