@@ -1,8 +1,9 @@
 //History
 
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../store/store";
+import { fetchHistory } from "../../store/historySlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
 
@@ -64,9 +65,39 @@ export default function History({
 }: {
   onClose?: () => void;
 }) {
+  const dispatch = useDispatch<AppDispatch>();
+  
   // Get history from Redux
   const history = useSelector((state: RootState) => state.history.entries);
   const loading = useSelector((state: RootState) => state.history.loading);
+  const roomSlug = useSelector((state: RootState) => state.history.roomSlug);
+  
+  // Fetch history when component mounts or room changes
+  useEffect(() => {
+    // Extract slug from URL since that's what the API expects
+    const pathParts = window.location.pathname.split('/');
+    const urlSlug = pathParts[pathParts.length - 1];
+    
+    if (urlSlug && urlSlug !== roomSlug) {
+      dispatch(fetchHistory(urlSlug));
+    }
+  }, [roomSlug, dispatch]);
+  
+  // Console log the history state only when it changes
+  useEffect(() => {
+    console.log("[History Component] Full Redux history state:", {
+      entries: history,
+      loading,
+      totalEntries: history.length,
+      roomSlug,
+      entriesByUser: history.reduce((acc, entry) => {
+        const userId = entry.userId || 'unknown';
+        if (!acc[userId]) acc[userId] = [];
+        acc[userId].push(entry);
+        return acc;
+      }, {} as Record<string, typeof history>)
+    });
+  }, [history, loading, roomSlug]);
   
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(3); // Default to 3

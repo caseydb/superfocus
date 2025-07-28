@@ -189,6 +189,15 @@ export function useCompleteButton() {
 
                 // Refresh leaderboard from server to get accurate totals
                 dispatch(refreshLeaderboard());
+
+                // Write to RTDB to notify all room members about history update
+                if (currentInstance?.id) {
+                  const historyUpdateRef = ref(rtdb, `rooms/${currentInstance.id}/historyUpdate`);
+                  set(historyUpdateRef, {
+                    timestamp: Date.now(),
+                    userId: reduxUser.user_id
+                  });
+                }
               }
             })
             .catch((error) => {
@@ -201,7 +210,7 @@ export function useCompleteButton() {
         }
       }
     },
-    [dispatch, user, reduxTasks, reduxUser, notifyEvent, showCompleteFeedback]
+    [dispatch, user, reduxTasks, reduxUser, notifyEvent, showCompleteFeedback, currentInstance?.id]
   );
 
   return { handleComplete, showCompleteFeedback };

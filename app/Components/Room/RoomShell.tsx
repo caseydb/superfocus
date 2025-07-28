@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { setActiveTask } from "../../store/taskSlice";
+import { fetchHistory } from "../../store/historySlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
 import {
@@ -846,6 +847,34 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
     return () => off(flyingMessagesRef, "value", handle);
   }, [currentInstance]);
+
+  // Listen for history updates from other users
+  useEffect(() => {
+    if (!currentInstance) return;
+
+    const historyUpdateRef = ref(rtdb, `rooms/${currentInstance.id}/historyUpdate`);
+    let lastTimestamp = 0;
+    
+    const handle = onValue(historyUpdateRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.timestamp) {
+        // Only fetch if this is a new update (not the same timestamp we already processed)
+        if (data.timestamp > lastTimestamp && Date.now() - data.timestamp < 10000) {
+          lastTimestamp = data.timestamp;
+          
+          // Extract slug from URL since that's what the API expects
+          const pathParts = window.location.pathname.split('/');
+          const urlSlug = pathParts[pathParts.length - 1];
+          
+          if (urlSlug) {
+            dispatch(fetchHistory(urlSlug));
+          }
+        }
+      }
+    });
+
+    return () => off(historyUpdateRef, "value", handle);
+  }, [currentInstance, dispatch]);
 
   const handleClearButton = () => {
     // Store the current seconds before resetting
