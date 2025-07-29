@@ -3,7 +3,6 @@ import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
 import { setCurrentInput } from "../../store/taskInputSlice";
-import { setActiveTask } from "../../store/taskSlice";
 
 const maxLen = 69;
 
@@ -224,17 +223,26 @@ export default function TaskInput({
         onKeyDown={(e) => {
           if (e.key === "Enter" && !disabled) {
             e.preventDefault();
-            // Always start a new task on Enter, don't select from dropdown
-            if (onStart) {
-              onStart();
+            // If a task is selected in dropdown, use it
+            if (showTaskSuggestions && selectedTaskIndex >= 0 && filteredTasks[selectedTaskIndex]) {
+              const selectedTask = filteredTasks[selectedTaskIndex];
+              dispatch(setCurrentInput(selectedTask.text));
+              // Don't set active task here - only set it when actually starting
+              setShowTaskSuggestions(false);
+              setSelectedTaskIndex(-1);
+            } else {
+              // Otherwise start a new task
+              if (onStart) {
+                onStart();
+              }
+              setShowTaskSuggestions(false);
+              setSelectedTaskIndex(-1);
+              // Close Task List if it's open
+              if (setShowTaskList) {
+                setShowTaskList(false);
+              }
             }
-            setShowTaskSuggestions(false);
-            setSelectedTaskIndex(-1);
-            // Close Task List if it's open
-            if (setShowTaskList) {
-              setShowTaskList(false);
-            }
-          } else if (e.key === "ArrowDown" && showTaskSuggestions) {
+          } else if ((e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) && showTaskSuggestions) {
             e.preventDefault();
             setSelectedTaskIndex((prev) => {
               const newIndex = prev < filteredTasks.length - 1 ? prev + 1 : prev;
@@ -244,7 +252,7 @@ export default function TaskInput({
               }
               return newIndex;
             });
-          } else if (e.key === "ArrowUp" && showTaskSuggestions) {
+          } else if ((e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) && showTaskSuggestions) {
             e.preventDefault();
             setSelectedTaskIndex((prev) => {
               const newIndex = prev > -1 ? prev - 1 : -1;
@@ -298,7 +306,7 @@ export default function TaskInput({
                 key={taskItem.id}
                 onClick={() => {
                   dispatch(setCurrentInput(taskItem.text));
-                  dispatch(setActiveTask(taskItem.id));
+                  // Don't set active task here - only set it when actually starting
                   setShowTaskSuggestions(false);
                   setSelectedTaskIndex(-1);
                 }}

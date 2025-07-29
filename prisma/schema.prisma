@@ -37,7 +37,7 @@ model preference {
   mode                     String   @default("stopwatch")
   analytics_overview       String   @default("tasks")
   history_user_filter      String   @default("all_tasks")
-  history_date_filter      String   @default("this_week")
+  history_date_filter      String   @default("all_time")
 
   user                     user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

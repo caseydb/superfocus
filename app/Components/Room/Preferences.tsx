@@ -106,7 +106,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
               {!isEditingName ? (
                 <button
                   onClick={() => setIsEditingName(true)}
-                  className="px-3 py-2 bg-gray-700 text-gray-100 text-xs font-medium rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
+                  className="px-4 py-3 bg-gray-700 text-gray-100 text-sm font-medium rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
                 >
                   Edit
                 </button>
@@ -215,14 +215,14 @@ export default function Preferences({ onClose }: PreferencesProps) {
                       }
                     }
                   }}
-                  className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-700 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 min-w-[150px] text-center"
+                  className="border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 min-w-[200px] text-center"
                 >
                   <option value="dropdown" className="bg-gray-900 text-gray-100 cursor-pointer">Dropdown List</option>
                   <option value="sidebar" className="bg-gray-900 text-gray-100 cursor-pointer">Task Sidebar</option>
                 </select>
                 {/* Custom Chevron Icon */}
                 <svg
-                  className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                  className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -257,7 +257,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                       }
                     }
                   }}
-                  className="border border-gray-700 rounded-lg px-2 pr-7 py-2 bg-gray-700 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 min-w-[120px] text-center"
+                  className="border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 min-w-[180px] text-center"
                 >
                   <option value="15" className="bg-gray-900 text-gray-100 cursor-pointer">15 minutes</option>
                   <option value="30" className="bg-gray-900 text-gray-100 cursor-pointer">30 minutes</option>
@@ -267,7 +267,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 </select>
                 {/* Custom Chevron Icon */}
                 <svg
-                  className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                  className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
