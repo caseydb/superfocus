@@ -50,7 +50,13 @@ import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } 
 import { PrivateRoomPresence } from "@/app/utils/privateRoomPresence";
 import { useClearButton } from "@/app/hooks/ClearButton";
 import { useQuitButton } from "@/app/hooks/QuitButton";
-import { resetInput, lockInput, unlockInput, setHasStarted as setHasStartedRedux, setCurrentInput } from "@/app/store/taskInputSlice";
+import {
+  resetInput,
+  lockInput,
+  unlockInput,
+  setHasStarted as setHasStartedRedux,
+  setCurrentInput,
+} from "@/app/store/taskInputSlice";
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
@@ -101,7 +107,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const isPomodoroMode = preferences.mode === "countdown";
   const [showTimerDropdown, setShowTimerDropdown] = useState(false);
   const timerDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Use button hooks
   const { handleClear } = useClearButton();
   const { handleQuitConfirm, handlePushOn } = useQuitButton();
@@ -148,50 +154,52 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [hasTaskInBuffer, setHasTaskInBuffer] = useState(false);
   const hasActiveTimer = Boolean(activeTaskId) || hasTaskInBuffer;
   const [currentTimerSeconds, setCurrentTimerSeconds] = useState(0);
-  
+
   // Check for active timer state on mount and lock input immediately
   useEffect(() => {
     if (user?.id) {
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-      get(timerRef).then((snapshot) => {
-        const timerState = snapshot.val();
-        if (timerState && timerState.taskId) {
-          // Found active timer state - lock input immediately
-          dispatch(lockInput());
-          dispatch(setHasStartedRedux(true));
-          
-          // Calculate current seconds from timer state
-          let currentSeconds = 0;
-          if (timerState.running && timerState.startTime) {
-            // Calculate current seconds: base + elapsed time since start
-            const elapsedMs = Date.now() - timerState.startTime;
-            const elapsedSeconds = Math.floor(elapsedMs / 1000);
-            currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-          } else {
-            // Use stored total seconds when paused
-            currentSeconds = timerState.totalSeconds || 0;
-          }
-          
-          // Update the secondsRef immediately
-          timerSecondsRef.current = currentSeconds;
-          
-          // Set the active task ID immediately
-          dispatch(setActiveTask(timerState.taskId));
-          
-          // Also restore the task name if we can find it
-          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
-          get(taskRef).then((taskSnapshot) => {
-            const taskData = taskSnapshot.val();
-            if (taskData && taskData.name) {
-              dispatch(setCurrentInput(taskData.name));
+      get(timerRef)
+        .then((snapshot) => {
+          const timerState = snapshot.val();
+          if (timerState && timerState.taskId) {
+            // Found active timer state - lock input immediately
+            dispatch(lockInput());
+            dispatch(setHasStartedRedux(true));
+
+            // Calculate current seconds from timer state
+            let currentSeconds = 0;
+            if (timerState.running && timerState.startTime) {
+              // Calculate current seconds: base + elapsed time since start
+              const elapsedMs = Date.now() - timerState.startTime;
+              const elapsedSeconds = Math.floor(elapsedMs / 1000);
+              currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
             } else {
+              // Use stored total seconds when paused
+              currentSeconds = timerState.totalSeconds || 0;
             }
-          });
-        } else {
-        }
-      }).catch(() => {
-        // Error handling removed - silent failure
-      });
+
+            // Update the secondsRef immediately
+            timerSecondsRef.current = currentSeconds;
+
+            // Set the active task ID immediately
+            dispatch(setActiveTask(timerState.taskId));
+
+            // Also restore the task name if we can find it
+            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
+            get(taskRef).then((taskSnapshot) => {
+              const taskData = taskSnapshot.val();
+              if (taskData && taskData.name) {
+                dispatch(setCurrentInput(taskData.name));
+              } else {
+              }
+            });
+          } else {
+          }
+        })
+        .catch(() => {
+          // Error handling removed - silent failure
+        });
     }
   }, [user?.id, dispatch]);
 
@@ -855,22 +863,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
     const historyUpdateRef = ref(rtdb, `rooms/${currentInstance.id}/historyUpdate`);
     let lastTimestamp = 0;
-    
+
     const handle = onValue(historyUpdateRef, (snapshot) => {
       const data = snapshot.val();
       if (data && data.timestamp) {
         // Only fetch if this is a new update (not the same timestamp we already processed)
         if (data.timestamp > lastTimestamp && Date.now() - data.timestamp < 10000) {
           lastTimestamp = data.timestamp;
-          
+
           // Extract slug from URL since that's what the API expects
-          const pathParts = window.location.pathname.split('/');
+          const pathParts = window.location.pathname.split("/");
           const urlSlug = pathParts[pathParts.length - 1];
-          
+
           if (urlSlug) {
             dispatch(fetchHistory(urlSlug));
           }
-          
+
           // Also refresh the leaderboard
           dispatch(refreshLeaderboard());
         }
@@ -883,12 +891,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const handleClearButton = () => {
     // Store the current seconds before resetting
     const currentSeconds = timerSecondsRef.current;
-    
+
     // Reset the timer seconds ref BEFORE clearing to ensure Pomodoro remounts with 0
     timerSecondsRef.current = 0;
-    
+
     handleClear({
-      timerSeconds: currentSeconds,  // Use the stored value for clear logic
+      timerSeconds: currentSeconds, // Use the stored value for clear logic
       task,
       setShowQuitModal,
       setTimerRunning,
@@ -903,17 +911,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const handleQuitButton = async () => {
     // Store the current seconds before resetting
     const currentSeconds = timerSecondsRef.current;
-    
+
     // PRIORITY: Pause the timer first to clear heartbeat interval
     if (timerPauseRef.current && timerRunning) {
       timerPauseRef.current();
     }
-    
+
     // Reset the timer seconds ref BEFORE quitting to ensure Pomodoro remounts with 0
     timerSecondsRef.current = 0;
-    
+
     await handleQuitConfirm({
-      timerSeconds: currentSeconds,  // Use the stored value for quit logging
+      timerSeconds: currentSeconds, // Use the stored value for quit logging
       task,
       localVolume,
       setTimerRunning,
@@ -981,10 +989,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         remove(flyingMessageRef);
       }, 7000);
     }
-    
+
     // Reset input immediately
     dispatch(resetInput());
-    
+
     // Also reset after a small delay to ensure it overrides any restoration attempts
     setTimeout(() => {
       dispatch(resetInput());
@@ -1099,7 +1107,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         <div className="flex flex-col items-center justify-center w-full h-full">
           <div className="w-full flex flex-col items-center mb-10 mt-2">
             <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
-              Drop In. Lock In. Get Sh<span style={{ color: "#FFAA00" }}>*</span>t Done.
+              Drop Lock In. Get Sh<span style={{ color: "#FFAA00" }}>*</span>t Done.
             </h1>
             <p className="text-lg md:text-2xl text-gray-300 text-center max-w-2xl mx-auto opacity-90 font-medium">
               Level up your work with others in the zone.
@@ -1214,10 +1222,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             />
           </div>
           {/* Personal stats - bottom center for all screen sizes */}
-          <PersonalStats onClick={() => {
-            closeAllModals();
-            setShowAnalytics(true);
-          }} />
+          <PersonalStats
+            onClick={() => {
+              closeAllModals();
+              setShowAnalytics(true);
+            }}
+          />
           {/* Tasks - desktop only: bottom right corner */}
           <button
             className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-lg font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
@@ -1265,11 +1275,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {task.trim() && hasStarted && (
                   <button
                     className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100`}
-                  onClick={handleClearButton}
-                >
-                  Clear
-                </button>
-              )}
+                    onClick={handleClearButton}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1299,12 +1309,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   dispatch(setHasStartedRedux(true));
                 }}
                 onNewTaskStart={() => {
-                lastStartTimeRef.current = Date.now();
-              }}
-              startCooldown={localStartCooldown}
-              lastStartTime={lastStartTimeRef.current}
-              initialRunning={timerRunning}
-            />
+                  lastStartTimeRef.current = Date.now();
+                }}
+                startCooldown={localStartCooldown}
+                lastStartTime={lastStartTimeRef.current}
+                initialRunning={timerRunning}
+              />
             ) : (
               <Pomodoro
                 key={timerResetKey}

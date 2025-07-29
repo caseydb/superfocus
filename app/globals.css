@@ -107,12 +107,9 @@ body {
 html,
 body,
 #__next {
-  height: 100%;
   min-height: 100%;
   width: 100%;
-  min-width: 100%;
   background: #0a0b0b !important;
-  overflow: hidden;
 }
 
 /* Custom range slider thumb for full-height blue circle */
@@ -434,4 +431,36 @@ input[type="date"]::-webkit-clear-button {
 input[type="date"]:focus-visible {
   outline: 2px solid #ffaa00;
   outline-offset: 2px;
+}
+
+/* Landing page animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
+.animation-delay-600 {
+  animation-delay: 600ms;
 }
