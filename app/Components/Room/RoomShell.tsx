@@ -1287,7 +1287,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             <History onClose={() => setShowHistory(false)} />
           </div>
           {/* Timer/Pomodoro is always mounted, just hidden when history is open */}
-          <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
+          <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center w-full"}>
             {/* Notes - inline above timer, only show when task exists */}
             {task.trim() && <Notes isOpen={showNotes} task={task} taskId={currentTaskId} />}
 

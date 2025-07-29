@@ -380,6 +380,7 @@ export default function Pomodoro({
     setIsRunning(false);
     setIsPaused(false);
     dispatch(resetInput());
+    dispatch(setActiveTask(null)); // Clear activeTaskId to prevent restoration
     setRemainingSeconds(totalSeconds);
     setElapsedSeconds(0);
     setShowTaskSuggestions(false);
@@ -400,7 +401,7 @@ export default function Pomodoro({
 
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 sm:px-0 w-full mx-auto -mt-10">
+    <div className="flex flex-col items-center gap-4 px-4 sm:px-0 w-full max-w-4xl mx-auto -mt-10">
       {/* Task input field - matching Timer styling */}
       <div className="relative group">
         <div className="flex flex-col items-center justify-center w-full px-4 sm:px-0">
@@ -411,6 +412,10 @@ export default function Pomodoro({
             const newValue = e.target.value;
             if (newValue.length <= 69) {
               dispatch(setCurrentInput(newValue));
+              // Clear activeTaskId if user clears the input
+              if (!newValue.trim() && activeTaskId) {
+                dispatch(setActiveTask(null));
+              }
             }
           }}
           onKeyDown={(e) => {
@@ -504,7 +509,7 @@ export default function Pomodoro({
           <div
             className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
             style={{
-              width: "400px",
+              width: "600px",
               maxWidth: "90vw",
               top: "100%",
               left: "50%",
@@ -523,7 +528,7 @@ export default function Pomodoro({
                   key={taskItem.id}
                   onClick={() => {
                     dispatch(setCurrentInput(taskItem.name));
-                    dispatch(setActiveTask(taskItem.id));
+                    // Don't set active task here - only when starting
                     setShowTaskSuggestions(false);
                     textareaRef.current?.focus();
                   }}
@@ -651,7 +656,7 @@ export default function Pomodoro({
       </div>
 
       {/* Control buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md sm:max-w-none justify-center mt-4">
+      <div className="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
         {!isRunning && !isPaused && (
           <div className="flex flex-col items-center gap-2">
             <button

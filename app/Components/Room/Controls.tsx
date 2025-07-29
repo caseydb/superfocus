@@ -157,7 +157,7 @@ export default function Controls({
 
           {/* Dropdown Menu */}
           {showTimerDropdown && (
-            <div className="absolute top-full mt-2 right-0 w-48 bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="absolute top-full mt-2 right-0 w-64 bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
               <div className="p-1">
                 {/* Timer Option */}
                 <button
