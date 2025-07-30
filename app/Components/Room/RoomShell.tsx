@@ -1194,6 +1194,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       <>
         {/* Active work border overlay */}
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
+
+        {/* Feedback Button - Right Side */}
+        <button
+          className="fixed right-0 top-1/2 -translate-y-1/2 bg-gray-900 text-gray-400 hover:text-white text-sm font-bold py-2 px-2 rounded-r-md shadow-lg hover:bg-gray-800 z-40 transition-all duration-300"
+          onClick={() => window.open('https://getlockedin.featurebase.app/', '_blank')}
+          style={{ writingMode: "vertical-lr", textOrientation: "mixed", transform: "rotate(180deg)" }}
+        >
+          ✨ Feedback
+        </button>
+
         <div className="min-h-screen flex flex-col items-center justify-center bg-elegant-dark text-white relative">
           {/* Top right container for controls */}
           <div className="fixed top-[8px] right-4 z-50 flex items-center gap-2 max-w-[calc(100vw-6rem)]">
