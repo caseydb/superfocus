@@ -163,7 +163,7 @@ export function useCompleteButton() {
             })
           )
             .unwrap()
-            .then((result) => {
+            .then(async (result) => {
               // Handle success in background
               if (result && result.savedTask && reduxUser?.user_id) {
                 dispatch(
@@ -198,6 +198,35 @@ export function useCompleteButton() {
                     timestamp: Date.now(),
                     userId: reduxUser.user_id
                   });
+                }
+
+                // Check milestones after task is saved
+                try {
+                  if (!reduxUser?.user_id) {
+                    console.error("[CompleteButton] No Redux user_id available for milestone check");
+                    return;
+                  }
+                  
+                  const response = await fetch("/api/user/milestones/check", {
+                    headers: {
+                      "X-User-Id": reduxUser.user_id,
+                    },
+                  });
+
+                  if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data.shouldShowPopup) {
+                      // Dispatch event to show milestone popup
+                      window.dispatchEvent(new CustomEvent("showMilestoneInvite", {
+                        detail: {
+                          milestone: data.data.milestone,
+                          stats: data.data.stats
+                        }
+                      }));
+                    }
+                  }
+                } catch (error) {
+                  console.error("[CompleteButton] Failed to check milestones:", error);
                 }
               }
             })

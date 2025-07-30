@@ -39,6 +39,7 @@ import RoomsModal from "./RoomsModal";
 import Notes from "./Notes";
 import SignIn from "../SignIn";
 import Preferences from "./Preferences";
+import InvitePopup from "./InvitePopup";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
 import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
@@ -57,6 +58,15 @@ import {
   setHasStarted as setHasStartedRedux,
   setCurrentInput,
 } from "@/app/store/taskInputSlice";
+
+type MilestoneData = {
+  milestone: string;
+  stats: {
+    totalTasks: number;
+    totalHours: number;
+    totalDuration: number;
+  };
+};
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
@@ -102,6 +112,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showInvitePopup, setShowInvitePopup] = useState(false);
   // Get mode preference from Redux
   const preferences = useSelector((state: RootState) => state.preferences);
   const isPomodoroMode = preferences.mode === "countdown";
@@ -148,6 +159,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowQuitModal(false);
     setShowSignInModal(false);
     setShowTimerDropdown(false);
+    setShowInvitePopup(false);
   }, []);
 
   // Track if there's an active timer state from Redux or TaskBuffer
@@ -301,6 +313,24 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
     }
   }, [localVolume]);
+
+  // Get Redux user
+  const reduxUser = useSelector((state: RootState) => state.user);
+
+  // Listen for milestone invite popup events
+  useEffect(() => {
+    const handleMilestoneInvite = (event: CustomEvent) => {
+      const { milestone, stats } = event.detail;
+      setShowInvitePopup(true);
+      // Store milestone data for the popup
+      (window as Window & { milestoneData?: MilestoneData }).milestoneData = { milestone, stats };
+    };
+
+    window.addEventListener("showMilestoneInvite", handleMilestoneInvite as EventListener);
+    return () => {
+      window.removeEventListener("showMilestoneInvite", handleMilestoneInvite as EventListener);
+    };
+  }, []);
 
   // Pause timer when switching modes
   const prevModeRef = useRef(isPomodoroMode);
@@ -1573,6 +1603,74 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
         {/* Rooms Modal */}
         <RoomsModal isOpen={showRoomsModal} onClose={() => setShowRoomsModal(false)} />
+
+        {/* Invite Popup */}
+        <InvitePopup 
+          isOpen={showInvitePopup} 
+          onClose={async () => {
+            console.log("[RoomShell] InvitePopup onClose triggered");
+            setShowInvitePopup(false);
+            
+            // Get milestone data if it exists
+            const milestoneData = (window as Window & { milestoneData?: MilestoneData }).milestoneData;
+            console.log("[RoomShell] Milestone data on close:", milestoneData);
+            
+            if (!milestoneData?.milestone) {
+              console.log("[RoomShell] No milestone data, not marking anything");
+              return;
+            }
+            
+            const milestoneToMark = milestoneData.milestone;
+            console.log("[RoomShell] Marking milestone as shown:", milestoneToMark);
+            
+            try {
+              const body = {
+                milestone: milestoneToMark,
+                channel: "invite_popup",
+              };
+              
+              console.log("[RoomShell] Calling /api/user/milestones/shown with:", body);
+              console.log("[RoomShell] Using user_id:", reduxUser?.user_id);
+              
+              if (!reduxUser?.user_id) {
+                console.error("[RoomShell] No Redux user_id available");
+                return;
+              }
+              
+              const response = await fetch("/api/user/milestones/shown", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-User-Id": reduxUser.user_id,
+                },
+                body: JSON.stringify(body),
+              });
+              
+              console.log("[RoomShell] Mark as shown response:", {
+                status: response.status,
+                ok: response.ok
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error("[RoomShell] Mark as shown error response:", errorText);
+              } else {
+                const data = await response.json();
+                console.log("[RoomShell] Mark as shown success:", data);
+              }
+            } catch (error) {
+              console.error("[RoomShell] Failed to mark milestone as shown - Full error:", error);
+            }
+            
+            // Clear milestone data if it exists
+            if (milestoneData) {
+              delete (window as Window & { milestoneData?: MilestoneData }).milestoneData;
+              console.log("[RoomShell] Cleared milestone data from window");
+            }
+          }}
+          milestone={(window as Window & { milestoneData?: MilestoneData }).milestoneData?.milestone}
+          stats={(window as Window & { milestoneData?: MilestoneData }).milestoneData?.stats}
+        />
       </>
     );
   }

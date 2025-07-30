@@ -23,6 +23,7 @@ model user {
   tasks             task[]   @relation("UserTasks")
   daily_streaks     daily_streak[]
   room_members      room_member[]
+  user_milestone_messages user_milestone_messages[]
 }
 
 model preference {
@@ -117,4 +118,16 @@ model room_member {
 
   room      room     @relation(fields: [room_id], references: [id])
   user      user     @relation(fields: [user_id], references: [id])
+}
+
+model user_milestone_messages {
+  id        String   @id @default(uuid())
+  user_id   String
+  milestone String  
+  channel   String 
+  shown_at  DateTime @default(now())
+
+  user      user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, milestone, channel])
 }
