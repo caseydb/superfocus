@@ -26,6 +26,10 @@ export const POST = async (req: NextRequest) => {
     let user;
     try {
 
+      // Extract first name with email fallback and capitalize first letter
+      const rawFirstName = name?.split(" ")[0] || email?.split("@")[0] || "";
+      const firstName = rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1);
+
       user = await prisma.user.upsert({
         where: { auth_id: uid },
         update: {
@@ -34,7 +38,7 @@ export const POST = async (req: NextRequest) => {
         create: {
           auth_id: uid,
           email: email || "",
-          first_name: name?.split(" ")[0] || "",
+          first_name: firstName,
           last_name: name?.split(" ").slice(1).join(" ") || "",
           profile_image: picture || "",
           last_active: new Date(),
