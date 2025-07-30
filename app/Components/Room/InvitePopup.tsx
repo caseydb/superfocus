@@ -65,19 +65,26 @@ export default function InvitePopup({ isOpen, onClose, milestone }: InvitePopupP
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl cursor-pointer"
-          onClick={handleClose}
-        >
-          ×
-        </button>
-
         {/* Animated gradient background */}
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#FFAA00]/10 via-transparent to-[#FFAA00]/5 animate-pulse" />
 
         {/* Content */}
         <div className="relative">
+          {/* Close button */}
+          <button
+            onClick={handleClose}
+            className="absolute -top-6 -right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+          >
+            <svg
+              className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
           {/* Icon with animation */}
           <div className="flex justify-center mb-6">
             <div className="relative">

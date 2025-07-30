@@ -182,10 +182,13 @@ export const transferTaskToPostgres = createAsyncThunk(
       const snapshot = await get(taskRef);
 
       if (!snapshot.exists()) {
-        // Check if user has any tasks
-        const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
-        await get(userTasksRef);
-        throw new Error("Task not found in TaskBuffer - it may have already been completed");
+        // Task not in TaskBuffer - this is expected if it was already completed
+        // Return a success response indicating task was already processed
+        return {
+          success: true,
+          alreadyCompleted: true,
+          message: "Task already completed and removed from TaskBuffer"
+        };
       }
 
       const taskData = snapshot.val();
@@ -667,7 +670,6 @@ export const updateTaskStatusThunk = createAsyncThunk(
 export const cleanupTaskFromBuffer = createAsyncThunk(
   "tasks/cleanupFromBuffer",
   async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
-    console.log('[cleanupTaskFromBuffer] Starting cleanup:', { taskId, firebaseUserId });
     
     // Remove task from TaskBuffer if it exists
     const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
@@ -675,10 +677,7 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
     // Check if task exists before trying to remove
     const snapshot = await get(taskRef);
     if (snapshot.exists()) {
-      console.log('[cleanupTaskFromBuffer] Found task in TaskBuffer, removing...');
       await remove(taskRef);
-    } else {
-      console.log('[cleanupTaskFromBuffer] Task not found in TaskBuffer');
     }
 
     // Also clear any timer state if it exists
@@ -686,13 +685,9 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
     const timerSnapshot = await get(timerRef);
     if (timerSnapshot.exists()) {
       const timerData = timerSnapshot.val();
-      console.log('[cleanupTaskFromBuffer] Found timer_state:', timerData);
       // Only remove if it's for this task
       if (timerData.taskId === taskId) {
-        console.log('[cleanupTaskFromBuffer] Removing timer_state');
         await remove(timerRef);
-      } else {
-        console.log('[cleanupTaskFromBuffer] Timer_state is for different task:', timerData.taskId);
       }
     }
 
@@ -837,8 +832,18 @@ const taskSlice = createSlice({
         // Task is being transferred
       })
       .addCase(transferTaskToPostgres.fulfilled, (state, action) => {
+        // Check if task was already completed
+        if (action.payload.alreadyCompleted) {
+          // Task was already processed, no state updates needed
+          return;
+        }
+        
         // Update task in local state with completion data
         const { savedTask, status } = action.payload;
+        
+        // Only update if we have a status (not alreadyCompleted case)
+        if (!status) return;
+        
         // Use the original task ID from the action arguments, not the returned savedTask.id
         const originalTaskId = action.meta.arg.taskId;
         const taskIndex = state.tasks.findIndex((task) => task.id === originalTaskId);
@@ -850,7 +855,7 @@ const taskSlice = createSlice({
             status: status,
             completed: status === "completed",
             completedAt: status === "completed" ? Date.now() : undefined,
-            timeSpent: savedTask.duration || state.tasks[taskIndex].timeSpent,
+            timeSpent: savedTask?.duration || state.tasks[taskIndex].timeSpent,
             lastActive: Date.now(),
           };
         }

@@ -128,8 +128,6 @@ export default function Timer({
         taskId = activeTask?.id || null;
       }
       
-      console.log('[Timer] saveTimerState called:', { taskId, isRunning, baseSeconds, activeTaskId });
-      
       if (taskId && user?.id) {
         const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
 

@@ -1608,20 +1608,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         <InvitePopup 
           isOpen={showInvitePopup} 
           onClose={async () => {
-            console.log("[RoomShell] InvitePopup onClose triggered");
             setShowInvitePopup(false);
             
             // Get milestone data if it exists
             const milestoneData = (window as Window & { milestoneData?: MilestoneData }).milestoneData;
-            console.log("[RoomShell] Milestone data on close:", milestoneData);
             
             if (!milestoneData?.milestone) {
-              console.log("[RoomShell] No milestone data, not marking anything");
               return;
             }
             
             const milestoneToMark = milestoneData.milestone;
-            console.log("[RoomShell] Marking milestone as shown:", milestoneToMark);
             
             try {
               const body = {
@@ -1629,11 +1625,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 channel: "invite_popup",
               };
               
-              console.log("[RoomShell] Calling /api/user/milestones/shown with:", body);
-              console.log("[RoomShell] Using user_id:", reduxUser?.user_id);
-              
               if (!reduxUser?.user_id) {
-                console.error("[RoomShell] No Redux user_id available");
                 return;
               }
               
@@ -1646,26 +1638,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 body: JSON.stringify(body),
               });
               
-              console.log("[RoomShell] Mark as shown response:", {
-                status: response.status,
-                ok: response.ok
-              });
-              
-              if (!response.ok) {
-                const errorText = await response.text();
-                console.error("[RoomShell] Mark as shown error response:", errorText);
-              } else {
-                const data = await response.json();
-                console.log("[RoomShell] Mark as shown success:", data);
-              }
-            } catch (error) {
-              console.error("[RoomShell] Failed to mark milestone as shown - Full error:", error);
+              await response.json();
+            } catch {
+              // Silently fail
             }
             
             // Clear milestone data if it exists
             if (milestoneData) {
               delete (window as Window & { milestoneData?: MilestoneData }).milestoneData;
-              console.log("[RoomShell] Cleared milestone data from window");
             }
           }}
           milestone={(window as Window & { milestoneData?: MilestoneData }).milestoneData?.milestone}

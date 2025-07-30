@@ -79,21 +79,6 @@ export default function History({ onClose }: { onClose?: () => void }) {
     }
   }, [roomSlug, dispatch]);
 
-  // Console log the history state only when it changes
-  useEffect(() => {
-    console.log("[History Component] Full Redux history state:", {
-      entries: history,
-      loading,
-      totalEntries: history.length,
-      roomSlug,
-      entriesByUser: history.reduce((acc, entry) => {
-        const userId = entry.userId || "unknown";
-        if (!acc[userId]) acc[userId] = [];
-        acc[userId].push(entry);
-        return acc;
-      }, {} as Record<string, typeof history>),
-    });
-  }, [history, loading, roomSlug]);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(3); // Default to 3

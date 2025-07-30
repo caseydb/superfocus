@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
       data: milestoneMessage,
     });
   } catch (error) {
-    console.error("[Milestones Shown API] Error:", error);
     return NextResponse.json(
       {
         success: false,

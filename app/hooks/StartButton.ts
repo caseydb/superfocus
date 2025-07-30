@@ -128,14 +128,7 @@ export function useStartButton() {
         
         if (activeTask) {
           taskId = activeTask.id;
-          console.log('[StartButton] Resuming existing active task:', {
-            taskId: activeTask.id,
-            taskName: task.trim(),
-            status: activeTask.status
-          });
           dispatch(setActiveTask(activeTask.id));
-        } else {
-          console.log('[StartButton] No active task found to resume');
         }
       } else {
         // If not resuming (starting fresh), check if there's an existing not_started task with same name
@@ -146,10 +139,6 @@ export function useStartButton() {
             if (activeTask && activeTask.name === task.trim()) {
               // Use the active task ID
               taskId = activeTaskId;
-              console.log('[StartButton] Using activeTaskId from dropdown selection:', {
-                taskId: activeTaskId,
-                taskName: task.trim()
-              });
             }
           }
           
@@ -163,10 +152,6 @@ export function useStartButton() {
             if (existingTask) {
               // Reuse the existing task ID
               taskId = existingTask.id;
-              console.log('[StartButton] Reusing existing not_started task:', {
-                taskId: existingTask.id,
-                taskName: task.trim()
-              });
               dispatch(setActiveTask(existingTask.id));
             }
           }
@@ -174,10 +159,6 @@ export function useStartButton() {
           if (!taskId) {
             // Create a new task only if no existing task found
             taskId = uuidv4();
-            console.log('[StartButton] Creating new task:', {
-              taskId,
-              taskName: task.trim()
-            });
 
             // Add optimistic task immediately
             dispatch(
