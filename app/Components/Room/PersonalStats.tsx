@@ -367,8 +367,8 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
 
   if (loading || !user) return null;
 
-  // Streak styling - border only, golden at 5+ days
-  const streakBorderColor = streak >= 5 ? "border-[#FFAA00]" : "border-gray-400";
+  // Streak styling - border only, golden at 2+ days
+  const streakBorderColor = streak >= 2 ? "border-[#FFAA00]" : "border-gray-400";
 
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {

@@ -13,22 +13,26 @@ interface PreferencesProps {
 }
 
 export default function Preferences({ onClose }: PreferencesProps) {
-  const { user, currentInstance } = useInstance();
+  const { user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
   const reduxUser = useSelector((state: RootState) => state.user);
   const preferences = useSelector((state: RootState) => state.preferences);
 
   // Preference states
-  const [displayName, setDisplayName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
+  const [nameError, setNameError] = useState("");
 
-  // Initialize display name from Redux user data
+  // Initialize names from Redux user data
   useEffect(() => {
     if (reduxUser.first_name) {
-      const fullName = reduxUser.last_name ? `${reduxUser.first_name} ${reduxUser.last_name}` : reduxUser.first_name;
-      setDisplayName(fullName);
+      setFirstName(reduxUser.first_name);
+      setLastName(reduxUser.last_name || "");
     } else if (user?.displayName) {
-      setDisplayName(user.displayName);
+      const nameParts = user.displayName.split(" ");
+      setFirstName(nameParts[0]);
+      setLastName(nameParts.slice(1).join(" ") || "");
     }
   }, [reduxUser.first_name, reduxUser.last_name, user?.displayName]);
 
@@ -95,90 +99,134 @@ export default function Preferences({ onClose }: PreferencesProps) {
           <div className="bg-gray-800 rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Account</h3>
 
-            {/* Edit Display Name */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-white font-medium">Display Name</label>
-                <p className="text-sm text-gray-400 mt-1">
-                  {isEditingName ? "Enter your new display name" : displayName}
-                </p>
+            {/* Edit Name */}
+            <div className="space-y-4">
+              {/* First Name */}
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="text-white font-medium">First Name</label>
+                  {!isEditingName && (
+                    <p className="text-sm text-gray-400 mt-1">{firstName || "Not set"}</p>
+                  )}
+                </div>
+                {!isEditingName ? (
+                  <button
+                    onClick={() => {
+                      setIsEditingName(true);
+                      setNameError("");
+                    }}
+                    className="px-4 py-3 bg-gray-700 text-gray-100 text-sm font-medium rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  <div className="flex-1 max-w-xs">
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => {
+                        setFirstName(e.target.value);
+                        setNameError("");
+                      }}
+                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
+                      placeholder="Enter first name"
+                      maxLength={32}
+                      autoFocus
+                    />
+                  </div>
+                )}
               </div>
-              {!isEditingName ? (
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="px-4 py-3 bg-gray-700 text-gray-100 text-sm font-medium rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
-                >
-                  Edit
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="px-3 py-1 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
-                    maxLength={32}
-                    autoFocus
-                  />
+
+              {/* Last Name */}
+              {isEditingName && (
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <label className="text-white font-medium">Last Name</label>
+                  </div>
+                  <div className="flex-1 max-w-xs">
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none"
+                      placeholder="Enter last name"
+                      maxLength={32}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Last Name display when not editing */}
+              {!isEditingName && (
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <label className="text-white font-medium">Last Name</label>
+                    <p className="text-sm text-gray-400 mt-1">{lastName || "Not set"}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error message */}
+              {nameError && (
+                <p className="text-red-400 text-sm mt-2">{nameError}</p>
+              )}
+
+              {/* Save/Cancel buttons */}
+              {isEditingName && (
+                <div className="flex gap-2 mt-4 justify-end">
                   <button
                     onClick={async () => {
-                      if (displayName.trim()) {
-                        const trimmedName = displayName.trim();
+                      // Validate first name
+                      if (!firstName.trim()) {
+                        setNameError("First name is required");
+                        return;
+                      }
 
-                        // Parse display name into first and last name
-                        const nameParts = trimmedName.split(" ");
-                        const firstName = nameParts[0];
-                        const lastName = nameParts.slice(1).join(" ") || null;
+                      const trimmedFirstName = firstName.trim();
+                      const trimmedLastName = lastName.trim();
 
-                        // Optimistic update to Redux
+                      // Optimistic update to Redux
+                      dispatch(
+                        updateUser({
+                          first_name: trimmedFirstName,
+                          last_name: trimmedLastName || null,
+                        })
+                      );
+
+                      // Update PostgreSQL via API
+                      try {
+                        await dispatch(
+                          updateUserData({
+                            first_name: trimmedFirstName,
+                            last_name: trimmedLastName || undefined,
+                          })
+                        ).unwrap();
+                        setIsEditingName(false);
+                        setNameError("");
+                      } catch {
+                        setNameError("Failed to update name. Please try again.");
+                        // Revert optimistic update on failure
                         dispatch(
                           updateUser({
-                            first_name: firstName,
-                            last_name: lastName,
+                            first_name: reduxUser.first_name,
+                            last_name: reduxUser.last_name,
                           })
                         );
-
-                        // TODO: Replace with Firebase RTDB update for real-time presence
-                        // Update the local user state for real-time presence (but not Firebase Auth)
-                        if (user && currentInstance) {
-                          // const userRef = ref(rtdb, `instances/${currentInstance.id}/users/${user.id}`);
-                          // set(userRef, { ...user, displayName: trimmedName });
-                          // Temporary: Just log the update
-                        }
-
-                        // Update PostgreSQL via API (this also updates Redux with server response)
-                        try {
-                          await dispatch(
-                            updateUserData({
-                              first_name: firstName,
-                              last_name: lastName || undefined,
-                            })
-                          ).unwrap();
-                        } catch {
-                          // The Redux state will be updated with the server response
-                          // If it fails, the optimistic update will be overwritten
-                        }
                       }
-                      setIsEditingName(false);
                     }}
-                    className="px-3 py-1 bg-[#FFAA00] text-black rounded-lg hover:bg-[#FFB833] transition-colors font-semibold cursor-pointer"
+                    className="px-4 py-2 bg-[#FFAA00] text-black rounded-lg hover:bg-[#FFB833] transition-colors font-semibold cursor-pointer"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => {
-                      // Reset to current Redux/Firebase state
-                      if (reduxUser.first_name) {
-                        const fullName = reduxUser.last_name
-                          ? `${reduxUser.first_name} ${reduxUser.last_name}`
-                          : reduxUser.first_name;
-                        setDisplayName(fullName);
-                      } else if (user?.displayName) {
-                        setDisplayName(user.displayName);
-                      }
+                      // Reset to current Redux state
+                      setFirstName(reduxUser.first_name || "");
+                      setLastName(reduxUser.last_name || "");
                       setIsEditingName(false);
+                      setNameError("");
                     }}
-                    className="px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>

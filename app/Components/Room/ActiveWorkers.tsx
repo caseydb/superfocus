@@ -18,12 +18,14 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<WeeklyLeaderboardEntry[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+  const [userNames, setUserNames] = useState<Record<string, { firstName: string; lastName: string; profileImage: string | null }>>({});
 
-  // Create a mapping of firebase auth UID to rank and stats from weekly leaderboard
+  // Create a mapping of firebase auth UID to rank, stats, and user info from weekly leaderboard
   // Always uses 'this_week' data regardless of main leaderboard filter
-  const { userRankMap, userWeeklyStats } = React.useMemo(() => {
+  const { userRankMap, userWeeklyStats, userInfoMap } = React.useMemo(() => {
     const rankMap: Record<string, number> = {};
     const statsMap: Record<string, { totalTasks: number; totalDuration: number }> = {};
+    const infoMap: Record<string, { firstName: string; lastName: string }> = {};
     
     weeklyLeaderboard.forEach((entry, index) => {
       // Map auth_id to rank (index + 1 for 1-based ranking)
@@ -33,9 +35,14 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         totalTasks: entry.total_tasks,
         totalDuration: entry.total_duration
       };
+      // Map auth_id to user info
+      infoMap[entry.auth_id] = {
+        firstName: entry.first_name,
+        lastName: entry.last_name
+      };
     });
     
-    return { userRankMap: rankMap, userWeeklyStats: statsMap };
+    return { userRankMap: rankMap, userWeeklyStats: statsMap, userInfoMap: infoMap };
   }, [weeklyLeaderboard]);
 
   // Format time display
@@ -93,6 +100,28 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return () => off(historyUpdateRef, "value", handle);
   }, [roomId, fetchWeeklyLeaderboard]);
 
+  // Fetch user names when active users change
+  useEffect(() => {
+    if (activeUsers.length === 0) return;
+    
+    const authIds = activeUsers.map(u => u.id);
+    
+    fetch('/api/users/by-auth-ids', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authIds })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setUserNames(data.users);
+        }
+      })
+      .catch(error => {
+        console.error('[ActiveWorkers] Failed to fetch user names:', error);
+      });
+  }, [activeUsers]);
+
   // Listen to ActiveWorker for users actively running timers
   useEffect(() => {
     if (!roomId) return;
@@ -103,18 +132,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       const data = snapshot.val();
       
       if (data) {
-        
         // Filter workers in this room who are actively working
-        // Never filter based on staleness - if timer is running, they're working
-        const workersInRoom = Object.entries(data as Record<string, { roomId: string; isActive: boolean; lastSeen?: number; displayName?: string }>)
+        const workersInRoom = Object.entries(data as Record<string, { roomId?: string; isActive?: boolean; lastSeen?: number; displayName?: string }>)
           .filter(([, worker]) => {
-            const isInRoom = worker.roomId === roomId;
-            const isActive = worker.isActive;
-            
-            
-            // Only check if worker is in this room and active
-            // Do NOT filter based on lastSeen age
-            return isInRoom && isActive;
+            // Check if this worker is in our room and is active
+            return worker.roomId === roomId && worker.isActive === true;
           })
           .map(([userId, worker]) => ({
             id: userId,
@@ -174,7 +196,25 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             </div>
           )}
           <span className="cursor-pointer flex items-center gap-1">
-            <span>{u.displayName}</span>
+            <span>
+              {(() => {
+                // First try to get from our fetched user names
+                const fetchedUserInfo = userNames[u.id];
+                // Then try from leaderboard data
+                const leaderboardUserInfo = userInfoMap[u.id];
+                
+                let displayValue;
+                if (fetchedUserInfo) {
+                  displayValue = `${fetchedUserInfo.firstName}${fetchedUserInfo.lastName ? ' ' + fetchedUserInfo.lastName : ''}`;
+                } else if (leaderboardUserInfo) {
+                  displayValue = `${leaderboardUserInfo.firstName}${leaderboardUserInfo.lastName ? ' ' + leaderboardUserInfo.lastName : ''}`;
+                } else {
+                  displayValue = u.displayName;
+                }
+                
+                return displayValue;
+              })()}
+            </span>
             {u.id === "BeAohINmeMfhjrgrhPZlmzVFvzn1" && (
               <Image src="/axe.png" alt="axe" width={16} height={16} className="inline-block" />
             )}

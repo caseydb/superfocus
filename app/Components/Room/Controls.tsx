@@ -8,7 +8,7 @@ import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { updatePreferences } from "../../store/preferenceSlice";
+import { updatePreferences, setPreference } from "../../store/preferenceSlice";
 
 interface ControlsProps {
   className?: string;
@@ -163,7 +163,9 @@ export default function Controls({
                 <button
                   onClick={() => {
                     setShowTimerDropdown(false);
-                    // Update preference in Redux
+                    // Optimistic update first
+                    dispatch(setPreference({ key: "mode", value: "stopwatch" }));
+                    // Then update preference in database
                     if (reduxUser.user_id) {
                       dispatch(updatePreferences({
                         userId: reduxUser.user_id,
@@ -194,7 +196,9 @@ export default function Controls({
                 <button
                   onClick={() => {
                     setShowTimerDropdown(false);
-                    // Update preference in Redux
+                    // Optimistic update first
+                    dispatch(setPreference({ key: "mode", value: "countdown" }));
+                    // Then update preference in database
                     if (reduxUser.user_id) {
                       dispatch(updatePreferences({
                         userId: reduxUser.user_id,
@@ -353,12 +357,16 @@ export default function Controls({
           {/* User Header */}
           <div className="flex items-center mb-4 mx-3 pb-3 border-b border-gray-700/50">
             <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 font-bold text-sm">
-              {(reduxUser.first_name || user.displayName).charAt(0).toUpperCase()}
+              {(() => {
+                const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
+                const lastLetter = reduxUser.last_name?.charAt(0) || '';
+                return (firstLetter + lastLetter).toUpperCase();
+              })()}
             </div>
             <div className="ml-3">
               <h3 className="font-medium text-gray-300 font-mono text-sm">
-                {reduxUser.first_name && reduxUser.last_name
-                  ? `${reduxUser.first_name} ${reduxUser.last_name}`
+                {reduxUser.first_name 
+                  ? `${reduxUser.first_name}${reduxUser.last_name ? ` ${reduxUser.last_name}` : ''}`
                   : user.displayName}
               </h3>
               <p className="text-xs text-gray-500 font-mono">{reduxUser.email || auth.currentUser?.email || ""}</p>
