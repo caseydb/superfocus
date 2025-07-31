@@ -155,8 +155,7 @@ export default function Pomodoro({
     if (isRunning && remainingSeconds === 0) {
       // Pause the timer instead of completing
       pauseTimer();
-      // Reset the pomodoro timer to selected minutes
-      setRemainingSeconds(totalSeconds);
+      // Keep the timer at 00:00 instead of resetting
       // Play a gentle notification sound (using the inactive sound as it's more subtle)
       if (localVolume > 0) {
         const notificationAudio = new Audio("/inactive.mp3");
@@ -708,14 +707,18 @@ export default function Pomodoro({
             )}
           </div>
 
-          {/* Time presets inside circle - only show when not running */}
-          {!isRunning && !isPaused && (
+          {/* Time presets inside circle - show when not running or when timer is at 00:00 */}
+          {(!isRunning && !isPaused) || (isPaused && remainingSeconds === 0) ? (
             <div className="flex flex-wrap justify-center gap-2 mt-6 px-4">
               {timePresets.map((preset) => (
                 <button
                   key={preset.minutes}
                   onClick={() => {
                     setSelectedMinutes(preset.minutes);
+                    // Set the new time immediately
+                    const newSeconds = preset.minutes * 60;
+                    setTotalSeconds(newSeconds);
+                    setRemainingSeconds(newSeconds);
                     
                     // Update Redux state optimistically
                     dispatch(setPreference({ key: 'pomodoro_duration', value: preset.minutes }));
@@ -740,7 +743,7 @@ export default function Pomodoro({
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
 
           {/* Subtle elapsed time counter - always show inside circle */}
           <div className={`text-sm text-gray-500 ${!isRunning && !isPaused ? "mt-4" : "mt-6"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>

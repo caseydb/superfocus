@@ -35,7 +35,7 @@ model preference {
   task_selection_mode      String   @default("dropdown")
   focus_check_time         Int      @default(120)
   analytics_date_pick      String   @default("this_week")
-  mode                     String   @default("stopwatch")
+  mode                     String   @default("countdown")
   analytics_overview       String   @default("tasks")
   history_user_filter      String   @default("all_tasks")
   history_date_filter      String   @default("all_time")
