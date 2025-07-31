@@ -57,6 +57,7 @@ import {
   unlockInput,
   setHasStarted as setHasStartedRedux,
   setCurrentInput,
+  setCurrentTask,
 } from "@/app/store/taskInputSlice";
 
 type MilestoneData = {
@@ -82,7 +83,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Get user data from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
-  const { currentInput: task } = useSelector((state: RootState) => state.taskInput);
+  const { currentInput: task = "" } = useSelector((state: RootState) => state.taskInput);
   const { hasStarted } = useSelector((state: RootState) => state.taskInput);
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
@@ -90,6 +91,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showHistory, setShowHistory] = useState(false);
   const timerSecondsRef = React.useRef<number>(0);
   const pomodoroRemainingRef = React.useRef<number>(0);
+  const isQuittingRef = React.useRef<boolean>(false);
   const [showQuitModal, setShowQuitModal] = useState(false);
   const [flyingMessages, setFlyingMessages] = useState<
     {
@@ -170,8 +172,36 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Check for active timer state on mount and lock input immediately
   useEffect(() => {
     if (user?.id) {
-      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-      get(timerRef)
+      // First check for LastTask
+      const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+      get(lastTaskRef).then(async (lastTaskSnapshot) => {
+        if (lastTaskSnapshot.exists()) {
+          const lastTaskData = lastTaskSnapshot.val();
+          console.log('[RoomShell Mount] Found LastTask:', lastTaskData);
+          
+          // Check if this task exists in TaskBuffer
+          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
+          const taskSnapshot = await get(taskRef);
+          
+          if (taskSnapshot.exists()) {
+            const taskData = taskSnapshot.val();
+            console.log('[RoomShell Mount] Setting LastTask as active:', lastTaskData.taskId);
+            
+            // Set the task input and active task
+            dispatch(setCurrentInput(lastTaskData.taskName || taskData.name));
+            dispatch(setCurrentTask({ id: lastTaskData.taskId, name: lastTaskData.taskName || taskData.name }));
+            dispatch(setActiveTask(lastTaskData.taskId));
+            dispatch(setHasStartedRedux(true));
+            
+            // Don't check timer_state since we found LastTask
+            return;
+          }
+        }
+        
+        // If no LastTask, check timer_state for backward compatibility
+        console.log('[RoomShell Mount] No LastTask found, checking timer_state');
+        const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+        get(timerRef)
         .then((snapshot) => {
           const timerState = snapshot.val();
           if (timerState && timerState.taskId) {
@@ -212,6 +242,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         .catch(() => {
           // Error handling removed - silent failure
         });
+      }).catch(() => {
+        // Silent error handling - LastTask may not exist
+      });
     }
   }, [user?.id, dispatch]);
 
@@ -931,7 +964,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       setShowQuitModal,
       setTimerRunning,
       setTask: () => dispatch(resetInput()),
-      setTimerResetKey,
       setInputLocked: (locked: boolean) => dispatch(locked ? lockInput() : unlockInput()),
       setHasStarted: (started: boolean) => dispatch(setHasStartedRedux(started)),
       closeAllModals,
@@ -940,12 +972,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   const handleQuitButton = async () => {
     // Store the current seconds before resetting
-    const currentSeconds = timerSecondsRef.current;
-
-    // PRIORITY: Pause the timer first to clear heartbeat interval
-    if (timerPauseRef.current && timerRunning) {
-      timerPauseRef.current();
+    let currentSeconds = timerSecondsRef.current;
+    
+    // If timer shows 0 but we have an active task, get the time from the task
+    if (currentSeconds === 0 && activeTaskId) {
+      const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+      if (activeTask && activeTask.timeSpent > 0) {
+        currentSeconds = activeTask.timeSpent;
+      }
     }
+
+    // Set the quit flag to prevent any saves during quit
+    isQuittingRef.current = true;
 
     // Reset the timer seconds ref BEFORE quitting to ensure Pomodoro remounts with 0
     timerSecondsRef.current = 0;
@@ -956,11 +994,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       localVolume,
       setTimerRunning,
       setTask: () => dispatch(resetInput()),
-      setTimerResetKey,
       setInputLocked: (locked: boolean) => dispatch(locked ? lockInput() : unlockInput()),
       setHasStarted: (started: boolean) => dispatch(setHasStartedRedux(started)),
       setShowQuitModal,
     });
+    
+    // Reset the quit flag after quit is complete
+    isQuittingRef.current = false;
+    
+    // Ensure input is unlocked after a small delay (in case Timer state hasn't updated yet)
+    setTimeout(() => {
+      dispatch(unlockInput());
+    }, 100);
   };
 
   const handlePushOnButton = () => {
@@ -1341,8 +1386,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 onComplete={handleComplete}
                 secondsRef={timerSecondsRef}
                 localVolume={localVolume}
-                onTaskRestore={(taskName, isRunning) => {
+                onTaskRestore={(taskName, isRunning, taskId) => {
+                  console.log('[RoomShell] onTaskRestore called with:', { taskName, isRunning, taskId });
                   dispatch(setCurrentInput(taskName));
+                  if (taskId) {
+                    dispatch(setCurrentTask({ id: taskId, name: taskName }));
+                    dispatch(setActiveTask(taskId));
+                  }
                   if (isRunning) {
                     dispatch(lockInput());
                   }
@@ -1354,6 +1404,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 startCooldown={localStartCooldown}
                 lastStartTime={lastStartTimeRef.current}
                 initialRunning={timerRunning}
+                isQuittingRef={isQuittingRef}
               />
             ) : (
               <Pomodoro

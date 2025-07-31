@@ -30,6 +30,8 @@ export function useCompleteButton() {
   const { user, currentInstance } = useInstance();
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const reduxUser = useSelector((state: RootState) => state.user);
+  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  const { currentTaskId } = useSelector((state: RootState) => state.taskInput);
   const [showCompleteFeedback, setShowCompleteFeedback] = useState(false);
 
   const formatTime = (s: number) => {
@@ -125,11 +127,11 @@ export function useCompleteButton() {
       }
 
       // Optimistically update task status to completed
-      const activeTask = reduxTasks.find((t) => t.name === task?.trim());
-      if (activeTask?.id) {
+      const taskId = activeTaskId || currentTaskId;
+      if (taskId) {
         dispatch(
           updateTask({
-            id: activeTask.id,
+            id: taskId,
             updates: { status: "completed" as const, completed: true },
           })
         );
@@ -175,16 +177,16 @@ export function useCompleteButton() {
       }
 
       // Transfer task to Postgres - NON-BLOCKING (fire and forget)
-      const activeTaskForTransfer = reduxTasks.find((t) => t.name === task?.trim());
+      const taskIdForTransfer = activeTaskId || currentTaskId;
 
-      if (activeTaskForTransfer?.id && user?.id) {
+      if (taskIdForTransfer && user?.id) {
         if (typeof window !== "undefined") {
           const token = localStorage.getItem("firebase_token") || "";
 
           // Fire and forget - don't await, don't block UI
           dispatch(
             transferTaskToPostgres({
-              taskId: activeTaskForTransfer.id,
+              taskId: taskIdForTransfer,
               firebaseUserId: user.id,
               status: "completed",
               token,
@@ -200,12 +202,16 @@ export function useCompleteButton() {
               }
               
               if (result && result.savedTask && reduxUser?.user_id) {
+                // Get task name from the saved task or find it in Redux
+                const taskFromRedux = reduxTasks.find(t => t.id === taskIdForTransfer);
+                const taskName = result.savedTask.task_name || taskFromRedux?.name || task || "Unnamed Task";
+                
                 dispatch(
                   addHistoryEntry({
                     taskId: result.savedTask.id,
                     userId: reduxUser.user_id,
                     displayName: `${reduxUser.first_name || ""} ${reduxUser.last_name || ""}`.trim() || "Anonymous",
-                    taskName: result.savedTask.task_name || task || "Unnamed Task",
+                    taskName: taskName,
                     duration: seconds,
                   })
                 );
@@ -245,7 +251,7 @@ export function useCompleteButton() {
         }
       }
     },
-    [dispatch, user, reduxTasks, reduxUser, notifyEvent, showCompleteFeedback, currentInstance?.id]
+    [dispatch, user, reduxUser, reduxTasks, activeTaskId, currentTaskId, notifyEvent, showCompleteFeedback, currentInstance?.id]
   );
 
   return { handleComplete, showCompleteFeedback };

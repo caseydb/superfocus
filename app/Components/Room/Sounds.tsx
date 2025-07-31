@@ -69,37 +69,43 @@ export default function Sounds({ roomId, localVolume = 0.2, currentUserId }: { r
 
   // Initialize audio on first user interaction to comply with browser autoplay policies
   useEffect(() => {
-    if (audioInitialized) return;
-
     const initializeAudio = () => {
-      // Play a silent sound to unlock audio context
+      if (audioInitialized) return;
+      
+      // Only create AudioContext after user interaction
       if (completeRef.current && startedRef.current && quitRef.current) {
-        // Create a silent audio context to initialize
-        const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (AudioContextClass) {
-          const audioContext = new AudioContextClass();
-          audioContext.resume();
+        try {
+          // Create and resume audio context to enable audio playback
+          const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (AudioContextClass) {
+            const audioContext = new AudioContextClass();
+            // Only resume if the context is suspended
+            if (audioContext.state === 'suspended') {
+              audioContext.resume();
+            }
+          }
+          
+          // Set volume for audio elements
+          [completeRef.current, startedRef.current, quitRef.current].forEach(audio => {
+            audio.volume = localVolume;
+          });
+          
+          setAudioInitialized(true);
+        } catch (error) {
+          console.log('Audio initialization deferred:', error);
         }
-        
-        // Set volume for audio elements without playing them
-        [completeRef.current, startedRef.current, quitRef.current].forEach(audio => {
-          audio.volume = localVolume;
-        });
-        
-        setAudioInitialized(true);
-        // Remove the listener after initialization
-        document.removeEventListener('click', initializeAudio);
-        document.removeEventListener('keydown', initializeAudio);
       }
     };
 
     // Add listeners for first user interaction
     document.addEventListener('click', initializeAudio);
     document.addEventListener('keydown', initializeAudio);
+    document.addEventListener('touchstart', initializeAudio);
 
     return () => {
       document.removeEventListener('click', initializeAudio);
       document.removeEventListener('keydown', initializeAudio);
+      document.removeEventListener('touchstart', initializeAudio);
     };
   }, [audioInitialized, localVolume]);
 

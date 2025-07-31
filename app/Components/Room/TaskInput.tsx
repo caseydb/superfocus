@@ -2,7 +2,8 @@
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
-import { setCurrentInput } from "../../store/taskInputSlice";
+import { setCurrentInput, setCurrentTask } from "../../store/taskInputSlice";
+import { setActiveTask } from "../../store/taskSlice";
 
 const maxLen = 69;
 
@@ -11,6 +12,7 @@ interface Task {
   text: string;
   completed: boolean;
   order?: number;
+  timeSpent?: number;
 }
 
 export default function TaskInput({
@@ -48,6 +50,7 @@ export default function TaskInput({
         text: task.name,
         completed: task.completed,
         order: task.order,
+        timeSpent: task.timeSpent,
       }));
     
     setAvailableTasks(incompleteTasks);
@@ -226,8 +229,10 @@ export default function TaskInput({
             // If a task is selected in dropdown, use it
             if (showTaskSuggestions && selectedTaskIndex >= 0 && filteredTasks[selectedTaskIndex]) {
               const selectedTask = filteredTasks[selectedTaskIndex];
-              dispatch(setCurrentInput(selectedTask.text));
-              // Don't set active task here - only set it when actually starting
+              // Set both the text and the task ID
+              console.log('[TaskInput] Setting active task from keyboard selection:', selectedTask.id, selectedTask.text);
+              dispatch(setCurrentTask({ id: selectedTask.id, name: selectedTask.text }));
+              dispatch(setActiveTask(selectedTask.id));
               setShowTaskSuggestions(false);
               setSelectedTaskIndex(-1);
             } else {
@@ -305,18 +310,26 @@ export default function TaskInput({
               <button
                 key={taskItem.id}
                 onClick={() => {
-                  dispatch(setCurrentInput(taskItem.text));
-                  // Don't set active task here - only set it when actually starting
+                  // Set both the text and the task ID
+                  console.log('[TaskInput] Setting active task from click:', taskItem.id, taskItem.text);
+                  dispatch(setCurrentTask({ id: taskItem.id, name: taskItem.text }));
+                  dispatch(setActiveTask(taskItem.id));
                   setShowTaskSuggestions(false);
                   setSelectedTaskIndex(-1);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-white text-sm truncate font-mono border ${
+                className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-white text-sm font-mono border ${
                   selectedTaskIndex === index
                     ? "bg-gray-800 border-[#FFAA00]/50"
                     : "border-transparent hover:bg-gray-800 hover:border-[#FFAA00]/30"
-                }`}
+                } flex items-center justify-between gap-2`}
               >
-                {taskItem.text}
+                <span className="truncate">{taskItem.text}</span>
+                {taskItem.timeSpent && taskItem.timeSpent > 0 && (
+                  <span className="text-xs text-gray-500 flex-shrink-0">
+                    {Math.floor(taskItem.timeSpent / 60).toString().padStart(2, '0')}:
+                    {(taskItem.timeSpent % 60).toString().padStart(2, '0')}
+                  </span>
+                )}
               </button>
             ))}
           </div>

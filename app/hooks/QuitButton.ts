@@ -3,13 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, push, remove } from "firebase/database";
+import { ref, set, push, remove, get } from "firebase/database";
 import {
   updateTask,
-  endTimeSegment,
-  cleanupTaskFromBuffer,
   setActiveTask,
 } from "../store/taskSlice";
+import { unlockInput } from "../store/taskInputSlice";
 
 interface QuitButtonOptions {
   timerSeconds: number;
@@ -17,7 +16,6 @@ interface QuitButtonOptions {
   localVolume: number;
   setTimerRunning: (running: boolean) => void;
   setTask: (task: string) => void;
-  setTimerResetKey: (fn: (prev: number) => number) => void;
   setInputLocked: (locked: boolean) => void;
   setHasStarted: (started: boolean) => void;
   setShowQuitModal: (show: boolean) => void;
@@ -66,20 +64,21 @@ export function useQuitButton() {
         localVolume,
         setTimerRunning,
         setTask,
-        setTimerResetKey,
         setInputLocked,
         setHasStarted,
         setShowQuitModal,
         heartbeatIntervalRef,
       } = options;
 
-      // PRIORITY 1: Clear heartbeat interval FIRST to prevent interference
-      if (heartbeatIntervalRef?.current) {
-        clearInterval(heartbeatIntervalRef.current);
-        heartbeatIntervalRef.current = null;
+      // Get the task name from Redux if not provided (happens when task is paused)
+      let taskName = task.trim();
+      if (!taskName && activeTaskId) {
+        const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+        taskName = activeTask?.name || "";
       }
-
-      if (timerSeconds > 0 && currentInstance && user && task.trim()) {
+      
+      // STEP 1: Global Effects - Flying message, sound, history
+      if (timerSeconds > 0 && currentInstance && user && taskName) {
         const hours = Math.floor(timerSeconds / 3600)
           .toString()
           .padStart(2, "0");
@@ -91,7 +90,7 @@ export function useQuitButton() {
         const quitData = {
           userId: user.id,
           displayName: user.displayName,
-          task: task + " (Quit Early)",
+          task: taskName + " (Quit Early)",
           duration: `${hours}:${minutes}:${secs}`,
           timestamp: Date.now(),
           completed: false,
@@ -134,99 +133,83 @@ export function useQuitButton() {
         // Remove ActiveWorker immediately when quitting
         const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
         remove(activeWorkerRef);
+      }
 
-        // Clean up everything related to this task - make it like it was never started
-        // Use activeTaskId if available (more reliable after reload), otherwise find by name
-        let taskIdToClean = activeTaskId;
-        if (!taskIdToClean) {
-          const activeTask = reduxTasks.find((t) => t.name === task?.trim());
-          taskIdToClean = activeTask?.id || null;
+      // STEP 2: KILL THE HEARTBEAT FIRST
+      if (heartbeatIntervalRef?.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      
+      if (user?.id) {
+        await remove(ref(rtdb, `TaskBuffer/${user.id}/heartbeat`));
+        console.log('[QuitButton] Heartbeat killed');
+      }
+
+      // STEP 3: NUKE THE TASK FROM TASKBUFFER - SIMPLE AND DIRECT
+      const taskIdToClean = activeTaskId;
+      if (taskIdToClean && user?.id) {
+        console.log('[QuitButton] NUKING task from TaskBuffer:', taskIdToClean);
+        
+        // Direct Firebase removal - no Redux thunks, no bullshit
+        const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${taskIdToClean}`);
+        await remove(taskRef);
+        
+        // Remove timer_state if it matches this task
+        const timerStateRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+        const timerSnapshot = await get(timerStateRef);
+        if (timerSnapshot.exists() && timerSnapshot.val().taskId === taskIdToClean) {
+          await remove(timerStateRef);
         }
         
-        console.log('[QuitButton] Attempting to clean up task:', {
-          taskIdToClean,
-          activeTaskId,
-          task: task?.trim(),
-          userId: user?.id,
-          reduxTasks: reduxTasks.map(t => ({ id: t.id, name: t.name, status: t.status }))
-        });
+        // Heartbeat already killed in STEP 2
         
-        if (taskIdToClean && user?.id) {
-          // Try to end time segment if it exists, but don't fail if it doesn't
-          try {
-            await dispatch(
-              endTimeSegment({
-                taskId: taskIdToClean,
-                firebaseUserId: user.id,
-              })
-            ).unwrap();
-          } catch {
-            // Task might not be in TaskBuffer, that's OK - continue with cleanup
-          }
-
-          // Clean up task from TaskBuffer without transferring to Postgres
-          try {
-            console.log('[QuitButton] Cleaning up TaskBuffer for task:', taskIdToClean);
-            await dispatch(
-              cleanupTaskFromBuffer({
-                taskId: taskIdToClean,
-                firebaseUserId: user.id,
-              })
-            ).unwrap();
-            console.log('[QuitButton] Successfully cleaned up TaskBuffer');
-          } catch (error) {
-            console.log('[QuitButton] Failed to clean up TaskBuffer:', error);
-            // Task might not be in TaskBuffer, that's OK
-          }
-
-          // Manually reset the task in Redux to ensure it's in virgin state
-          dispatch(
-            updateTask({
-              id: taskIdToClean,
-              updates: {
-                status: "not_started" as const,
-                timeSpent: 0,
-                lastActive: undefined,
-              },
-            })
-          );
-
-          // Clear active task
-          dispatch(setActiveTask(null));
+        // Remove LastTask if it matches this task
+        const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+        const lastTaskSnapshot = await get(lastTaskRef);
+        if (lastTaskSnapshot.exists() && lastTaskSnapshot.val().taskId === taskIdToClean) {
+          await remove(lastTaskRef);
         }
+        
+        console.log('[QuitButton] Task NUKED from TaskBuffer');
+      }
 
-        // Remove user from activeUsers when quitting
+      // Clean up room presence
+      if (currentInstance && user?.id) {
         const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
         remove(activeRef);
       }
-
-      // MOVED OUTSIDE: ROBUST CLEANUP - Always clear ALL TaskBuffer data for this user when quitting
-      // This ensures we don't have orphaned tasks after quit, regardless of timer state
-      if (user?.id) {
-        console.log('[QuitButton] Performing NUCLEAR TaskBuffer cleanup for user:', user.id);
-        const userTaskBufferRef = ref(rtdb, `TaskBuffer/${user.id}`);
-        
-        // Remove the entire TaskBuffer for this user
-        try {
-          await remove(userTaskBufferRef);
-          console.log('[QuitButton] Successfully nuked entire TaskBuffer for user');
-        } catch (error) {
-          console.log('[QuitButton] Error nuking TaskBuffer:', error);
-        }
-      }
-
-      // ALWAYS clear the active task from Redux, regardless of conditions
-      dispatch(setActiveTask(null));
       
       // Reset all UI state
       setTimerRunning(false);
       setTask("");  // Clear the task
-      setTimerResetKey((k) => k + 1);
       setInputLocked(false);
       setHasStarted(false);
       setShowQuitModal(false);
+
+      // STEP 4: Clear Redux state LAST after everything else is done
+      if (taskIdToClean) {
+        // Reset task in Redux
+        dispatch(
+          updateTask({
+            id: taskIdToClean,
+            updates: {
+              status: "not_started" as const,
+              timeSpent: 0,
+              lastActive: undefined,
+            },
+          })
+        );
+        
+        // Clear active task
+        dispatch(setActiveTask(null));
+      } else {
+        // Even if no taskIdToClean, still clear active task
+        dispatch(setActiveTask(null));
+      }
       
-      console.log('[QuitButton] Cleared all state after quit');
+      // Ensure input is unlocked (in case something re-locked it)
+      dispatch(unlockInput());
     },
     [dispatch, user, currentInstance, reduxTasks, activeTaskId, notifyEvent]
   );

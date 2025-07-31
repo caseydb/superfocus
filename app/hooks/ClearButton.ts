@@ -6,7 +6,6 @@ interface ClearButtonOptions {
   setShowQuitModal: (show: boolean) => void;
   setTimerRunning: (running: boolean) => void;
   setTask: (task: string) => void;
-  setTimerResetKey: (fn: (prev: number) => number) => void;
   setInputLocked: (locked: boolean) => void;
   setHasStarted: (started: boolean) => void;
   closeAllModals: () => void;
@@ -20,7 +19,6 @@ export function useClearButton() {
       setShowQuitModal,
       setTimerRunning,
       setTask,
-      setTimerResetKey,
       setInputLocked,
       setHasStarted,
       closeAllModals,
@@ -34,7 +32,6 @@ export function useClearButton() {
     
     setTimerRunning(false);
     setTask("");
-    setTimerResetKey((k) => k + 1);
     setInputLocked(false);
     setHasStarted(false);
   }, []);

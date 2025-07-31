@@ -43,9 +43,8 @@ import { usePauseTaskButton } from "../../hooks/tasklist/PauseTaskButton";
 import { useAddTaskButton } from "../../hooks/tasklist/AddTaskButton";
 import { useDeleteTaskButton } from "../../hooks/tasklist/DeleteTaskButton";
 import { useClearAllTasksButton } from "../../hooks/tasklist/ClearAllTasksButton";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, set, onValue, off, remove } from "firebase/database";
+import { rtdb } from "../../../lib/firebase";
+import { ref, get } from "firebase/database";
 
 interface Task {
   id: string;
@@ -75,6 +74,7 @@ function SortableTask({
   editInputRef,
   onStartTask,
   isTimerRunning,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   hasActiveTimer,
   onPauseTimer,
   timerSeconds,
@@ -102,7 +102,9 @@ function SortableTask({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currentInput: currentTask } = useSelector((state: RootState) => state.taskInput);
+  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   
   // Use button hooks
   const { handleStartTask } = useStartTaskButton();
@@ -424,7 +426,7 @@ function SortableTask({
     willChange: isDragging ? "transform" : "auto",
   };
 
-  const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+  const isCurrentTask = activeTaskId === task.id;
 
   return (
     <div
@@ -464,7 +466,7 @@ function SortableTask({
           {/* Start/Pause Button */}
           {(() => {
             // Check if this task is the currently active task
-            const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
+            const isCurrentTask = activeTaskId === task.id;
 
             return isCurrentTask;
           })() ? (
@@ -476,7 +478,7 @@ function SortableTask({
                   handlePauseTask(onPauseTimer);
                 } else {
                   // Timer is paused, resume it (which is the same as starting)
-                  handleStartTask(task.text, onStartTask);
+                  handleStartTask(task.id, task.text, onStartTask, onPauseTimer);
                 }
               }}
               onPointerDown={(e) => e.stopPropagation()}
@@ -508,20 +510,14 @@ function SortableTask({
             // Show start button for other tasks
             <button
               onClick={() => {
-                handleStartTask(task.text, onStartTask);
+                console.log('[TaskList] Start button clicked for task:', task.id, task.text);
+                console.log('[TaskList] Current activeTaskId:', activeTaskId);
+                console.log('[TaskList] isTimerRunning:', isTimerRunning);
+                handleStartTask(task.id, task.text, onStartTask, onPauseTimer);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              disabled={Boolean(hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim()))}
-              className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 ${
-                hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim())
-                  ? "text-gray-600 cursor-not-allowed"
-                  : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
-              }`}
-              title={
-                hasActiveTimer && (!currentTask || currentTask.trim() !== task.text.trim())
-                  ? "Another task is active"
-                  : "Start timer for this task"
-              }
+              className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+              title="Start timer for this task"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path
@@ -580,44 +576,55 @@ function SortableTask({
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-1">
-                <p
-                  onClick={() => {
-                    const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                    if (!isCurrentTask) {
-                      // For non-active tasks: edit and expand
-                      onStartEditing(task);
-                      if (!isExpanded && onToggleExpanded) {
-                        onToggleExpanded(task.id);
+                <div className="flex-1 flex items-center gap-2">
+                  <p
+                    onClick={() => {
+                      const isCurrentTask = activeTaskId === task.id;
+                      if (!isCurrentTask) {
+                        // For non-active tasks: edit and expand
+                        onStartEditing(task);
+                        if (!isExpanded && onToggleExpanded) {
+                          onToggleExpanded(task.id);
+                        }
+                      } else {
+                        // For active tasks: only expand (no edit)
+                        if (!isExpanded && onToggleExpanded) {
+                          onToggleExpanded(task.id);
+                        }
                       }
-                    } else {
-                      // For active tasks: only expand (no edit)
-                      if (!isExpanded && onToggleExpanded) {
-                        onToggleExpanded(task.id);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className={`flex-1 ${(() => {
+                      const isCurrentTask = activeTaskId === task.id;
+                      if (isCurrentTask) {
+                        return "cursor-pointer text-gray-400 text-sm hover:text-gray-300";
+                      } else {
+                        return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
+                          isHovered ? "whitespace-normal break-words" : "truncate"
+                        }`;
                       }
-                    }
-                  }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className={`flex-1 ${(() => {
-                    const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                    if (isCurrentTask) {
-                      return "cursor-pointer text-gray-400 text-sm hover:text-gray-300";
-                    } else {
-                      return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
-                        isHovered ? "whitespace-normal break-words" : "truncate"
-                      }`;
-                    }
-                  })()}`}
-                  title={(() => {
-                    const isCurrentTask = currentTask && currentTask.trim() === task.text.trim();
-                    if (isCurrentTask) {
-                      return "Click to expand and view notes";
-                    } else {
-                      return "Click to edit and expand";
-                    }
-                  })()}
-                >
-                  {task.text}
-                </p>
+                    })()}`}
+                    title={(() => {
+                      const isCurrentTask = activeTaskId === task.id;
+                      if (isCurrentTask) {
+                        return "Click to expand and view notes";
+                      } else {
+                        return "Click to edit and expand";
+                      }
+                    })()}
+                  >
+                    {task.text}
+                  </p>
+                  {/* Show active indicator with pulsing circle */}
+                  {activeTaskId === task.id && isTimerRunning && (
+                    <span className="flex items-center gap-1">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFAA00] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFAA00]"></span>
+                      </span>
+                    </span>
+                  )}
+                </div>
                 {/* Expand/Collapse button */}
                 <button
                   onClick={() => {
@@ -714,24 +721,26 @@ function SortableTask({
                       </div>
                     )}
                     {/* Delete Button for non-active tasks */}
-                    <div className={`flex items-center ${taskTime > 0 ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                      <button
-                        onClick={() => onRemove(task.id)}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        className="text-gray-400 hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
-                        title="Delete task"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onRemove(task.id)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={taskTime > 0}
+                      className={taskTime > 0 
+                        ? "text-gray-600 cursor-not-allowed p-1 rounded opacity-0 group-hover:opacity-100 absolute"
+                        : "text-gray-400 hover:text-red-400 p-1 rounded opacity-0 group-hover:opacity-100 transition-colors cursor-pointer"
+                      }
+                      title={taskTime > 0 ? "Cannot delete task with logged time" : "Delete task"}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 );
               }
@@ -1003,6 +1012,44 @@ export default function TaskList({
 
     // Tasks are now managed by Redux
   }, [user?.id, tasks.length]);
+
+  // Load task times from TaskBuffer on mount and when TaskList opens
+  useEffect(() => {
+    if (!user?.id || !isOpen) return;
+    
+    // Load all task times from TaskBuffer
+    const loadTaskTimes = async () => {
+      try {
+        const userRef = ref(rtdb, `TaskBuffer/${user.id}`);
+        const snapshot = await get(userRef);
+        
+        if (snapshot.exists()) {
+          const taskBufferData = snapshot.val();
+          
+          // Update Redux with times from TaskBuffer
+          Object.entries(taskBufferData).forEach(([taskId, data]) => {
+            // Skip non-task entries
+            if (taskId === 'timer_state' || taskId === 'heartbeat' || taskId === 'LastTask') {
+              return;
+            }
+            
+            // Update task time in Redux if it exists
+            const taskData = data as { total_time?: number };
+            if (taskData.total_time !== undefined) {
+              dispatch(updateTask({
+                id: taskId,
+                updates: { timeSpent: taskData.total_time }
+              }));
+            }
+          });
+        }
+      } catch (error) {
+        console.error('[TaskList] Error loading task times from TaskBuffer:', error);
+      }
+    };
+    
+    loadTaskTimes();
+  }, [user?.id, isOpen, dispatch]); // Only reload when TaskList opens, not when tasks change
 
   // Focus input when opening - but not if it was opened via sidebar mode
   // This prevents stealing focus from the main task input

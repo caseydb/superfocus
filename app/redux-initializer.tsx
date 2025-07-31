@@ -88,12 +88,14 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
             }
 
             // Check for any active tasks in Firebase TaskBuffer
+            console.log('[ReduxInitializer] About to call checkForActiveTask at', new Date().toISOString());
             await dispatch(
               checkForActiveTask({
                 firebaseUserId: firebaseUser.uid,
                 userId: userData.user_id,
               })
             ).unwrap();
+            console.log('[ReduxInitializer] checkForActiveTask completed at', new Date().toISOString());
             
             // Check if timezone needs updating (only check once)
             if (!hasCheckedTimezone.current) {
@@ -157,12 +159,14 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 }
 
                 // Check for any active tasks in Firebase TaskBuffer
+                console.log('[ReduxInitializer Retry] About to call checkForActiveTask at', new Date().toISOString());
                 await dispatch(
                   checkForActiveTask({
                     firebaseUserId: firebaseUser.uid,
                     userId: userData.user_id,
                   })
                 ).unwrap();
+                console.log('[ReduxInitializer Retry] checkForActiveTask completed at', new Date().toISOString());
                 
                 // Check timezone on retry as well
                 if (!hasCheckedTimezone.current) {

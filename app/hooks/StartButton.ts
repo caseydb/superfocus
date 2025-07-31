@@ -3,11 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, onDisconnect, update } from "firebase/database";
+import { ref, set, onDisconnect, update, get } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
 import {
   updateTask,
-  startTimeSegment,
   addTaskToBufferWhenStarted,
   addTask,
   createTaskThunk,
@@ -28,6 +27,8 @@ interface StartButtonOptions {
   setIsStarting: (starting: boolean) => void;
   timerStartRef?: React.RefObject<() => void>;
   heartbeatIntervalRef?: React.MutableRefObject<NodeJS.Timeout | null>;
+  pauseTimer?: () => void;
+  running?: boolean;
 }
 
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -38,6 +39,7 @@ export function useStartButton() {
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const reduxUser = useSelector((state: RootState) => state.user);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  const { currentTaskId } = useSelector((state: RootState) => state.taskInput);
 
   const moveTaskToTop = useCallback(
     async (task: string): Promise<void> => {
@@ -106,18 +108,23 @@ export function useStartButton() {
         setRunning,
         setIsStarting,
         heartbeatIntervalRef,
+        pauseTimer,
+        running,
       } = options;
 
       setIsStarting(true);
 
-      // Move task to position #1 in task list BEFORE starting timer (only for new starts)
-      if (!isResume && task && task.trim() && user?.id) {
-        await moveTaskToTop(task);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      console.log('[StartButton] handleStart called with:', {
+        task,
+        seconds,
+        isResume,
+        activeTaskId,
+        currentTaskId,
+        running
+      });
 
-      // Handle task creation/selection based on whether we're resuming or starting new
-      let taskId = "";
+      // First, determine what task ID we're about to start
+      let taskIdToStart = "";
       
       if (isResume) {
         // If resuming, find the currently active/paused task
@@ -127,59 +134,100 @@ export function useStartButton() {
         );
         
         if (activeTask) {
-          taskId = activeTask.id;
-          dispatch(setActiveTask(activeTask.id));
+          taskIdToStart = activeTask.id;
         }
       } else {
-        // If not resuming (starting fresh), check if there's an existing not_started task with same name
-        if (task?.trim() && user?.id && currentInstance && reduxUser.user_id) {
+        // If not resuming (starting fresh)
+        if (task?.trim()) {
           // First check if there's an activeTaskId set (from dropdown selection)
           if (activeTaskId) {
             const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
             if (activeTask && activeTask.name === task.trim()) {
-              // Use the active task ID
-              taskId = activeTaskId;
+              taskIdToStart = activeTaskId;
             }
           }
           
-          // If no activeTaskId or it doesn't match, check if there's already a task with this name that was cleared (not_started)
-          if (!taskId) {
+          // If no activeTaskId or it doesn't match, check if there's already a task with this name
+          if (!taskIdToStart) {
             const existingTask = reduxTasks.find((t) => 
               t.name === task.trim() && 
               t.status === "not_started"
             );
             
             if (existingTask) {
-              // Reuse the existing task ID
-              taskId = existingTask.id;
-              dispatch(setActiveTask(existingTask.id));
+              taskIdToStart = existingTask.id;
+            } else {
+              // Will create a new task
+              taskIdToStart = uuidv4();
             }
           }
+        }
+      }
+
+      // Check if there's another task currently running
+      console.log('[StartButton] Checking if need to pause:', {
+        isResume,
+        taskIdToStart,
+        running,
+        activeTaskId,
+        needsPause: !isResume && taskIdToStart && running && activeTaskId && activeTaskId !== taskIdToStart
+      });
+      
+      if (!isResume && taskIdToStart && running && activeTaskId && activeTaskId !== taskIdToStart) {
+        console.log('[StartButton] Timer is running with different task, pausing first:', activeTaskId, '->', taskIdToStart);
+        
+        // Call the pause function to properly pause the current task
+        if (pauseTimer) {
+          console.log('[StartButton] Calling pauseTimer');
+          pauseTimer();
+          // Wait for pause to complete
+          await new Promise(resolve => setTimeout(resolve, 200));
+          console.log('[StartButton] Pause complete, continuing');
+        } else {
+          console.log('[StartButton] WARNING: pauseTimer function not provided!');
+        }
+      }
+
+      // Move task to position #1 in task list BEFORE starting timer (only for new starts)
+      if (!isResume && task && task.trim() && user?.id) {
+        await moveTaskToTop(task);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Use the task ID we determined above
+      const taskId = taskIdToStart;
+      console.log('[StartButton] Task ID to start:', taskId);
+      
+      // Set the active task
+      if (taskId) {
+        console.log('[StartButton] Setting active task to:', taskId);
+        dispatch(setActiveTask(taskId));
+      }
+      
+      // Create new task if needed (only when not resuming and no existing task was found)
+      if (!isResume && task?.trim() && user?.id && currentInstance && reduxUser.user_id) {
+        if (taskId === taskIdToStart && !reduxTasks.find(t => t.id === taskId)) {
+          // This is a new task that needs to be created
           
-          if (!taskId) {
-            // Create a new task only if no existing task found
-            taskId = uuidv4();
+          // Add optimistic task immediately
+          dispatch(
+            addTask({
+              id: taskId,
+              name: task.trim(),
+            })
+          );
 
-            // Add optimistic task immediately
-            dispatch(
-              addTask({
-                id: taskId,
-                name: task.trim(),
-              })
-            );
+          // Persist to PostgreSQL database
+          dispatch(
+            createTaskThunk({
+              id: taskId,
+              name: task.trim(),
+              userId: reduxUser.user_id,
+            })
+          );
 
-            // Persist to PostgreSQL database
-            dispatch(
-              createTaskThunk({
-                id: taskId,
-                name: task.trim(),
-                userId: reduxUser.user_id,
-              })
-            );
-
-            // Set the new task as active
-            dispatch(setActiveTask(taskId));
-          }
+          // Set the new task as active
+          dispatch(setActiveTask(taskId));
         }
       }
 
@@ -206,13 +254,8 @@ export function useStartButton() {
           })
         ).unwrap();
 
-        // Then start the time segment
-        await dispatch(
-          startTimeSegment({
-            taskId,
-            firebaseUserId: user.id,
-          })
-        ).unwrap();
+        // No need for time segments anymore, just update status
+        console.log('[StartButton] Task started, timer will track total_time');
       }
 
       // Write heartbeat to Firebase
@@ -252,7 +295,18 @@ export function useStartButton() {
         }
 
         if (heartbeatIntervalRef) {
-          heartbeatIntervalRef.current = setInterval(() => {
+          heartbeatIntervalRef.current = setInterval(async () => {
+            // Check if heartbeat still exists before updating
+            const heartbeatSnapshot = await get(heartbeatRef);
+            if (!heartbeatSnapshot.exists()) {
+              // Heartbeat was removed, stop the interval
+              if (heartbeatIntervalRef.current) {
+                clearInterval(heartbeatIntervalRef.current);
+                heartbeatIntervalRef.current = null;
+              }
+              return;
+            }
+            
             const now = Date.now();
 
             // Update both heartbeat and ActiveWorker with error handling
@@ -283,8 +337,20 @@ export function useStartButton() {
       setRunning(true);
       setIsStarting(false);
 
+      // Save this as the last active task
+      if (taskId && user?.id) {
+        const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+        set(lastTaskRef, {
+          taskId: taskId,
+          taskName: task?.trim() || "",
+          timestamp: Date.now()
+        });
+        console.log('[StartButton] Saved LastTask:', taskId);
+      }
+
       // Small delay to ensure state is set before Firebase save
       setTimeout(() => {
+        // Always use the current seconds (which should be the task's total_time)
         saveTimerState(true, seconds);
       }, 50);
 
@@ -310,7 +376,7 @@ export function useStartButton() {
         }
       }
     },
-    [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, moveTaskToTop, notifyEvent]
+    [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, currentTaskId, moveTaskToTop, notifyEvent]
   );
 
   return { handleStart };
