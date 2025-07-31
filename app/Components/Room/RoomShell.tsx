@@ -177,7 +177,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       get(lastTaskRef).then(async (lastTaskSnapshot) => {
         if (lastTaskSnapshot.exists()) {
           const lastTaskData = lastTaskSnapshot.val();
-          console.log('[RoomShell Mount] Found LastTask:', lastTaskData);
           
           // Check if this task exists in TaskBuffer
           const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
@@ -185,7 +184,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           
           if (taskSnapshot.exists()) {
             const taskData = taskSnapshot.val();
-            console.log('[RoomShell Mount] Setting LastTask as active:', lastTaskData.taskId);
             
             // Set the task input and active task
             dispatch(setCurrentInput(lastTaskData.taskName || taskData.name));
@@ -199,7 +197,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
         
         // If no LastTask, check timer_state for backward compatibility
-        console.log('[RoomShell Mount] No LastTask found, checking timer_state');
         const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
         get(timerRef)
         .then((snapshot) => {
@@ -1013,7 +1010,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   };
 
   // Complete handler: reset timer, clear input, set inactive
-  const handleComplete = (duration: string) => {
+  const handleComplete = async (duration: string) => {
     setTimerRunning(false);
     // Reset the timer seconds ref BEFORE triggering reset to ensure Pomodoro remounts with 0
     timerSecondsRef.current = 0;
@@ -1049,11 +1046,26 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
 
       // notifyEvent is now handled by Timer component conditionally based on duration
+      // Get user name from Firebase Users
+      let displayName = user.displayName;
+      try {
+        const userRef = ref(rtdb, `Users/${user.id}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          const firstName = userData.firstName || "";
+          const lastName = userData.lastName || "";
+          displayName = `${firstName}${lastName ? ' ' + lastName : ''}`.trim() || user.displayName;
+        }
+      } catch (error) {
+        console.error('[RoomShell] Failed to fetch user data from Firebase:', error);
+      }
+      
       // Add flying message to GlobalEffects
       const flyingMessageId = `${user.id}-complete-${Date.now()}`;
       const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
       set(flyingMessageRef, {
-        text: `🏆 ${user.displayName} has successfully completed a task!`,
+        text: `🏆 ${displayName} has successfully completed a task!`,
         color: "text-green-400",
         userId: user.id,
         timestamp: Date.now(),
@@ -1387,7 +1399,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 secondsRef={timerSecondsRef}
                 localVolume={localVolume}
                 onTaskRestore={(taskName, isRunning, taskId) => {
-                  console.log('[RoomShell] onTaskRestore called with:', { taskName, isRunning, taskId });
                   dispatch(setCurrentInput(taskName));
                   if (taskId) {
                     dispatch(setCurrentTask({ id: taskId, name: taskName }));

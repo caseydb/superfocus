@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useInstance } from "../Instances";
-// TODO: Remove firebase imports when replacing with proper persistence
-// import { rtdb } from "../../../lib/firebase";
-// import { ref, set, onValue, off } from "firebase/database";
+import { rtdb } from "../../../lib/firebase";
+import { ref, set } from "firebase/database";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { updateUser, updateUserData } from "../../store/userSlice";
@@ -201,6 +200,17 @@ export default function Preferences({ onClose }: PreferencesProps) {
                             last_name: trimmedLastName || undefined,
                           })
                         ).unwrap();
+                        
+                        // Update Firebase Users with the new name
+                        if (user?.id) {
+                          const userRef = ref(rtdb, `Users/${user.id}`);
+                          await set(userRef, {
+                            firstName: trimmedFirstName,
+                            lastName: trimmedLastName || null,
+                            updatedAt: Date.now()
+                          });
+                        }
+                        
                         setIsEditingName(false);
                         setNameError("");
                       } catch {

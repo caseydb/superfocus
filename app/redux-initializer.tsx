@@ -9,7 +9,8 @@ import { fetchPreferences } from "./store/preferenceSlice";
 import { fetchHistory } from "./store/historySlice";
 import { fetchLeaderboard } from "./store/leaderboardSlice";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, rtdb } from "@/lib/firebase";
+import { ref, set, get } from "firebase/database";
 
 export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch<AppDispatch>();
@@ -52,6 +53,24 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
           
           // If user data is fetched successfully, fetch tasks and preferences from PostgreSQL
           if (userData && userData.user_id) {
+            // Initialize Firebase Users if not exists
+            if (userData.first_name) {
+              try {
+                const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
+                const snapshot = await get(userRef);
+                if (!snapshot.exists()) {
+                  // Create Firebase Users entry
+                  await set(userRef, {
+                    firstName: userData.first_name,
+                    lastName: userData.last_name || null,
+                    updatedAt: Date.now()
+                  });
+                }
+              } catch (error) {
+                console.error("[ReduxInitializer] Failed to initialize Firebase Users:", error);
+              }
+            }
+            
             // Fetch tasks
             await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
 
@@ -88,14 +107,12 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
             }
 
             // Check for any active tasks in Firebase TaskBuffer
-            console.log('[ReduxInitializer] About to call checkForActiveTask at', new Date().toISOString());
             await dispatch(
               checkForActiveTask({
                 firebaseUserId: firebaseUser.uid,
                 userId: userData.user_id,
               })
             ).unwrap();
-            console.log('[ReduxInitializer] checkForActiveTask completed at', new Date().toISOString());
             
             // Check if timezone needs updating (only check once)
             if (!hasCheckedTimezone.current) {
@@ -123,6 +140,24 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               
               // If user data is fetched successfully, fetch tasks and preferences from PostgreSQL
               if (userData && userData.user_id) {
+                // Initialize Firebase Users if not exists
+                if (userData.first_name) {
+                  try {
+                    const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
+                    const snapshot = await get(userRef);
+                    if (!snapshot.exists()) {
+                      // Create Firebase Users entry
+                      await set(userRef, {
+                        firstName: userData.first_name,
+                        lastName: userData.last_name || null,
+                        updatedAt: Date.now()
+                      });
+                    }
+                  } catch (error) {
+                    console.error("[ReduxInitializer Retry] Failed to initialize Firebase Users:", error);
+                  }
+                }
+                
                 // Fetch tasks
                 await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
 
@@ -159,14 +194,12 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 }
 
                 // Check for any active tasks in Firebase TaskBuffer
-                console.log('[ReduxInitializer Retry] About to call checkForActiveTask at', new Date().toISOString());
                 await dispatch(
                   checkForActiveTask({
                     firebaseUserId: firebaseUser.uid,
                     userId: userData.user_id,
                   })
                 ).unwrap();
-                console.log('[ReduxInitializer Retry] checkForActiveTask completed at', new Date().toISOString());
                 
                 // Check timezone on retry as well
                 if (!hasCheckedTimezone.current) {

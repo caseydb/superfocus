@@ -7,7 +7,7 @@ import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { rtdb } from "../../../lib/firebase";
-import { ref, remove, onDisconnect, set } from "firebase/database";
+import { ref, remove, onDisconnect, set, update } from "firebase/database";
 import { setCurrentInput, lockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
@@ -121,11 +121,34 @@ export default function Pomodoro({
           }
           return prev - 1;
         });
-        setElapsedSeconds((prev) => prev + 1);
+        setElapsedSeconds((prev) => {
+          const newElapsed = prev + 1;
+          
+          // Save total_time to Firebase every 5 seconds (matching Timer.tsx logic)
+          if (newElapsed % 5 === 0 && activeTaskId && user?.id) {
+            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+            update(taskRef, {
+              total_time: newElapsed,
+              updated_at: Date.now()
+            }).catch(() => {
+              console.log('[Pomodoro] Failed to update task time - task may have been quit');
+            });
+            
+            // Also update LastTask to ensure it's current
+            const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+            set(lastTaskRef, {
+              taskId: activeTaskId,
+              taskName: task || "",
+              timestamp: Date.now()
+            });
+          }
+          
+          return newElapsed;
+        });
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [isRunning, remainingSeconds]);
+  }, [isRunning, remainingSeconds, activeTaskId, user?.id, task]);
 
   // Auto-pause when timer reaches zero
   useEffect(() => {
@@ -157,15 +180,84 @@ export default function Pomodoro({
     }
   }, [isRunning, secondsRef]); // Update when running state changes
 
-  // Update secondsRef with elapsed seconds
+  // Update secondsRef and ref with elapsed seconds
   useEffect(() => {
     if (secondsRef) secondsRef.current = elapsedSeconds;
+    elapsedSecondsRef.current = elapsedSeconds;
   }, [elapsedSeconds, secondsRef]);
 
   // Update remainingRef with remaining seconds
   useEffect(() => {
     if (remainingRef) remainingRef.current = remainingSeconds;
   }, [remainingSeconds, remainingRef]);
+
+  // Store previous activeTaskId to detect actual task changes
+  const previousActiveTaskIdRef = useRef<string | null>(null);
+  const elapsedSecondsRef = useRef(elapsedSeconds);
+  
+  // Watch for active task changes and load the task's accumulated time
+  useEffect(() => {
+    const previousTaskId = previousActiveTaskIdRef.current;
+    
+    if (!activeTaskId) {
+      // Reset everything when no task is active (after quit)
+      setElapsedSeconds(0);
+      if (secondsRef) {
+        secondsRef.current = 0;
+      }
+      // STOP the timer when no task is active
+      setIsRunning(false);
+      setIsPaused(false);
+      // Reset the Pomodoro countdown
+      setRemainingSeconds((prevSeconds) => {
+        // Only reset if it's different from totalSeconds
+        return prevSeconds !== totalSeconds ? totalSeconds : prevSeconds;
+      });
+      previousActiveTaskIdRef.current = activeTaskId;
+      return;
+    }
+    
+    // Check if this is actually a task change
+    const isTaskChange = previousTaskId !== activeTaskId;
+    
+    // Only process if it's an actual task change
+    if (!isTaskChange) {
+      return;
+    }
+    
+    // If timer was running and we had a previous task, save its time first
+    if (isRunning && previousTaskId && user?.id && elapsedSecondsRef.current > 0) {
+      const previousTaskRef = ref(rtdb, `TaskBuffer/${user.id}/${previousTaskId}`);
+      update(previousTaskRef, {
+        total_time: elapsedSecondsRef.current,
+        updated_at: Date.now()
+      }).then(() => {
+        console.log('[Pomodoro] Saved time for previous task before switching:', previousTaskId, elapsedSecondsRef.current);
+      }).catch(() => {
+        console.log('[Pomodoro] Failed to save previous task time');
+      });
+    }
+    
+    // Update the ref to the new task
+    previousActiveTaskIdRef.current = activeTaskId;
+    
+    // Always load the new task's time, even if running
+    // This ensures task switches always show the correct time
+    const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+    if (activeTask && activeTask.timeSpent !== undefined) {
+      setElapsedSeconds(activeTask.timeSpent);
+      if (secondsRef) {
+        secondsRef.current = activeTask.timeSpent;
+      }
+    } else {
+      // New task with no time
+      setElapsedSeconds(0);
+      if (secondsRef) {
+        secondsRef.current = 0;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTaskId, isRunning, reduxTasks, secondsRef, user?.id]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -320,6 +412,10 @@ export default function Pomodoro({
   };
 
   const pauseTimer = () => {
+    // Optimistically update UI immediately
+    setIsRunning(false);
+    setIsPaused(true);
+    
     handleStop({
       task,
       seconds: elapsedSeconds,
@@ -328,8 +424,6 @@ export default function Pomodoro({
       setIsStarting,
       heartbeatIntervalRef,
     });
-
-    setIsPaused(true);
   };
 
   const resumeTimer = async () => {

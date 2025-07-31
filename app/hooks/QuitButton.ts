@@ -143,13 +143,11 @@ export function useQuitButton() {
       
       if (user?.id) {
         await remove(ref(rtdb, `TaskBuffer/${user.id}/heartbeat`));
-        console.log('[QuitButton] Heartbeat killed');
       }
 
       // STEP 3: NUKE THE TASK FROM TASKBUFFER - SIMPLE AND DIRECT
       const taskIdToClean = activeTaskId;
       if (taskIdToClean && user?.id) {
-        console.log('[QuitButton] NUKING task from TaskBuffer:', taskIdToClean);
         
         // Direct Firebase removal - no Redux thunks, no bullshit
         const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${taskIdToClean}`);
@@ -171,7 +169,6 @@ export function useQuitButton() {
           await remove(lastTaskRef);
         }
         
-        console.log('[QuitButton] Task NUKED from TaskBuffer');
       }
 
       // Clean up room presence

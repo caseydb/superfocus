@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue, off, get } from "firebase/database";
 import Image from "next/image";
 
 interface WeeklyLeaderboardEntry {
@@ -18,7 +18,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<WeeklyLeaderboardEntry[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
-  const [userNames, setUserNames] = useState<Record<string, { firstName: string; lastName: string; profileImage: string | null }>>({});
+  const [firebaseUserNames, setFirebaseUserNames] = useState<Record<string, { firstName: string; lastName: string | null }>>({});
 
   // Create a mapping of firebase auth UID to rank, stats, and user info from weekly leaderboard
   // Always uses 'this_week' data regardless of main leaderboard filter
@@ -100,27 +100,52 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return () => off(historyUpdateRef, "value", handle);
   }, [roomId, fetchWeeklyLeaderboard]);
 
-  // Fetch user names when active users change
+  // Create a stable key from user IDs to detect actual changes
+  const activeUserIdsKey = React.useMemo(
+    () => activeUsers.map(u => u.id).sort().join(','),
+    [activeUsers]
+  );
+
+  // Fetch user names from Firebase Users instead of API
   useEffect(() => {
     if (activeUsers.length === 0) return;
     
-    const authIds = activeUsers.map(u => u.id);
-    
-    fetch('/api/users/by-auth-ids', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authIds })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setUserNames(data.users);
+    const fetchFirebaseUsers = async () => {
+      const userPromises = activeUsers.map(async (user) => {
+        // Skip if we already have this user's data from leaderboard
+        if (userInfoMap[user.id]) return null;
+        
+        try {
+          const userRef = ref(rtdb, `Users/${user.id}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            return { id: user.id, data };
+          }
+        } catch (error) {
+          console.error(`[ActiveWorkers] Failed to fetch Firebase user ${user.id}:`, error);
         }
-      })
-      .catch(error => {
-        console.error('[ActiveWorkers] Failed to fetch user names:', error);
+        return null;
       });
-  }, [activeUsers]);
+      
+      const results = await Promise.all(userPromises);
+      const newUserNames: Record<string, { firstName: string; lastName: string | null }> = {};
+      
+      results.forEach(result => {
+        if (result) {
+          newUserNames[result.id] = {
+            firstName: result.data.firstName,
+            lastName: result.data.lastName
+          };
+        }
+      });
+      
+      setFirebaseUserNames(prev => ({ ...prev, ...newUserNames }));
+    };
+    
+    fetchFirebaseUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUserIdsKey, userInfoMap]);
 
   // Listen to ActiveWorker for users actively running timers
   useEffect(() => {
@@ -198,16 +223,16 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           <span className="cursor-pointer flex items-center gap-1">
             <span>
               {(() => {
-                // First try to get from our fetched user names
-                const fetchedUserInfo = userNames[u.id];
-                // Then try from leaderboard data
+                // First try from leaderboard data (most up to date)
                 const leaderboardUserInfo = userInfoMap[u.id];
+                // Then try from Firebase Users
+                const firebaseUserInfo = firebaseUserNames[u.id];
                 
                 let displayValue;
-                if (fetchedUserInfo) {
-                  displayValue = `${fetchedUserInfo.firstName}${fetchedUserInfo.lastName ? ' ' + fetchedUserInfo.lastName : ''}`;
-                } else if (leaderboardUserInfo) {
+                if (leaderboardUserInfo) {
                   displayValue = `${leaderboardUserInfo.firstName}${leaderboardUserInfo.lastName ? ' ' + leaderboardUserInfo.lastName : ''}`;
+                } else if (firebaseUserInfo) {
+                  displayValue = `${firebaseUserInfo.firstName}${firebaseUserInfo.lastName ? ' ' + firebaseUserInfo.lastName : ''}`;
                 } else {
                   displayValue = u.displayName;
                 }

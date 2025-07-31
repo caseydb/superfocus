@@ -39,7 +39,7 @@ export function useStartButton() {
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const reduxUser = useSelector((state: RootState) => state.user);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
-  const { currentTaskId } = useSelector((state: RootState) => state.taskInput);
+  // const { currentTaskId } = useSelector((state: RootState) => state.taskInput);
 
   const moveTaskToTop = useCallback(
     async (task: string): Promise<void> => {
@@ -70,12 +70,29 @@ export function useStartButton() {
   );
 
   const notifyEvent = useCallback(
-    (type: "start") => {
+    async (type: "start") => {
       if (currentInstance && user?.id) {
+        // Try to get firstName/lastName from Firebase Users
+        let firstName = "";
+        let lastName = "";
+        try {
+          const userRef = ref(rtdb, `Users/${user.id}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            firstName = userData.firstName || "";
+            lastName = userData.lastName || "";
+          }
+        } catch (error) {
+          console.error('[StartButton] Failed to fetch user data from Firebase:', error);
+        }
+        
         const eventId = `${user.id}-${type}-${Date.now()}`;
         const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
         const eventData = {
-          displayName: user.displayName,
+          displayName: user.displayName, // Keep for backward compatibility
+          firstName,
+          lastName,
           userId: user.id,
           type,
           timestamp: Date.now(),
@@ -114,14 +131,6 @@ export function useStartButton() {
 
       setIsStarting(true);
 
-      console.log('[StartButton] handleStart called with:', {
-        task,
-        seconds,
-        isResume,
-        activeTaskId,
-        currentTaskId,
-        running
-      });
 
       // First, determine what task ID we're about to start
       let taskIdToStart = "";
@@ -165,26 +174,15 @@ export function useStartButton() {
       }
 
       // Check if there's another task currently running
-      console.log('[StartButton] Checking if need to pause:', {
-        isResume,
-        taskIdToStart,
-        running,
-        activeTaskId,
-        needsPause: !isResume && taskIdToStart && running && activeTaskId && activeTaskId !== taskIdToStart
-      });
       
       if (!isResume && taskIdToStart && running && activeTaskId && activeTaskId !== taskIdToStart) {
-        console.log('[StartButton] Timer is running with different task, pausing first:', activeTaskId, '->', taskIdToStart);
         
         // Call the pause function to properly pause the current task
         if (pauseTimer) {
-          console.log('[StartButton] Calling pauseTimer');
           pauseTimer();
           // Wait for pause to complete
           await new Promise(resolve => setTimeout(resolve, 200));
-          console.log('[StartButton] Pause complete, continuing');
         } else {
-          console.log('[StartButton] WARNING: pauseTimer function not provided!');
         }
       }
 
@@ -196,11 +194,9 @@ export function useStartButton() {
 
       // Use the task ID we determined above
       const taskId = taskIdToStart;
-      console.log('[StartButton] Task ID to start:', taskId);
       
       // Set the active task
       if (taskId) {
-        console.log('[StartButton] Setting active task to:', taskId);
         dispatch(setActiveTask(taskId));
       }
       
@@ -255,7 +251,6 @@ export function useStartButton() {
         ).unwrap();
 
         // No need for time segments anymore, just update status
-        console.log('[StartButton] Task started, timer will track total_time');
       }
 
       // Write heartbeat to Firebase
@@ -281,7 +276,7 @@ export function useStartButton() {
             taskId,
             isActive: true,
             lastSeen: now,
-            displayName: user.displayName || "Anonymous",
+            displayName: user.displayName || "Anonymous", // Keep for backward compatibility
           };
           set(activeWorkerRef, activeWorkerData);
 
@@ -329,7 +324,7 @@ export function useStartButton() {
                   })
                 : Promise.resolve(),
             ]);
-          }, 5000); // Update every 5 seconds for better reliability
+          }, 300000); // Update every 5 minutes to reduce Firebase writes
         }
       }
 
@@ -345,7 +340,6 @@ export function useStartButton() {
           taskName: task?.trim() || "",
           timestamp: Date.now()
         });
-        console.log('[StartButton] Saved LastTask:', taskId);
       }
 
       // Small delay to ensure state is set before Firebase save
@@ -376,7 +370,7 @@ export function useStartButton() {
         }
       }
     },
-    [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, currentTaskId, moveTaskToTop, notifyEvent]
+    [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, moveTaskToTop, notifyEvent]
   );
 
   return { handleStart };

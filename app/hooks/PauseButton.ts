@@ -27,7 +27,6 @@ export function usePauseButton() {
 
       // Use activeTaskId or currentTaskId instead of finding by name
       const taskId = activeTaskId || currentTaskId;
-      console.log('[PauseButton] Pausing task:', taskId, 'with seconds:', seconds);
       
       if (taskId) {
         dispatch(
@@ -40,12 +39,10 @@ export function usePauseButton() {
         // Simply save the current total time to TaskBuffer
         if (user?.id) {
           const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${taskId}`);
-          console.log('[PauseButton] Saving total_time:', seconds, 'for task:', taskId);
           
           // Check if task still exists before updating (might have been quit)
           const checkSnapshot = await get(taskRef);
           if (!checkSnapshot.exists()) {
-            console.log('[PauseButton] Task no longer exists in TaskBuffer, skipping save');
             return;
           }
           
@@ -68,7 +65,6 @@ export function usePauseButton() {
             status: "paused",
             updated_at: Date.now()
           }).then(() => {
-            console.log('[PauseButton] Successfully saved total_time to Firebase');
             // Save timer state
             saveTimerState(false, seconds);
             
@@ -80,8 +76,8 @@ export function usePauseButton() {
                 status: "paused" as const
               }
             }));
-          }).catch((error) => {
-            console.log('[PauseButton] Failed to update task - it may have been deleted:', error);
+          }).catch(() => {
+            // Error handled silently - task may have been deleted
           });
 
           // Update heartbeat to show timer is paused
