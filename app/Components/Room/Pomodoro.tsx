@@ -70,6 +70,7 @@ export default function Pomodoro({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
   const [showNoTaskFeedback, setShowNoTaskFeedback] = useState(false);
+  const hasPlayedZeroNotificationRef = useRef(false);
   
   // Filter out completed tasks and sort by most recent
   const availableTasks = reduxTasks
@@ -156,11 +157,12 @@ export default function Pomodoro({
       // Pause the timer instead of completing
       pauseTimer();
       // Keep the timer at 00:00 instead of resetting
-      // Play a gentle notification sound (using the inactive sound as it's more subtle)
-      if (localVolume > 0) {
+      // Play a gentle notification sound only if we haven't played it yet
+      if (localVolume > 0 && !hasPlayedZeroNotificationRef.current) {
         const notificationAudio = new Audio("/inactive.mp3");
         notificationAudio.volume = localVolume;
         notificationAudio.play();
+        hasPlayedZeroNotificationRef.current = true;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -310,6 +312,8 @@ export default function Pomodoro({
     setTotalSeconds(newTotalSeconds);
     setRemainingSeconds(newTotalSeconds);
     setIsEditingTime(false);
+    // Reset the notification flag since we're setting a new time
+    hasPlayedZeroNotificationRef.current = false;
 
     // Update Redux state optimistically
     dispatch(setPreference({ key: 'pomodoro_duration', value: validMinutes }));
@@ -446,6 +450,8 @@ export default function Pomodoro({
       setIsPaused(false);
       setRemainingSeconds(totalSeconds);
       setElapsedSeconds(0);
+      // Reset the notification flag for next pomodoro
+      hasPlayedZeroNotificationRef.current = false;
     }
   }, [handleComplete, task, elapsedSeconds, localVolume, clearTimerState, onComplete, heartbeatIntervalRef, totalSeconds]);
 
@@ -477,6 +483,8 @@ export default function Pomodoro({
     setRemainingSeconds(totalSeconds);
     setElapsedSeconds(0);
     setShowTaskSuggestions(false);
+    // Reset the notification flag
+    hasPlayedZeroNotificationRef.current = false;
   };
 
   // Expose functions to parent via refs
@@ -719,6 +727,8 @@ export default function Pomodoro({
                     const newSeconds = preset.minutes * 60;
                     setTotalSeconds(newSeconds);
                     setRemainingSeconds(newSeconds);
+                    // Reset the notification flag since we're setting a new time
+                    hasPlayedZeroNotificationRef.current = false;
                     
                     // Update Redux state optimistically
                     dispatch(setPreference({ key: 'pomodoro_duration', value: preset.minutes }));

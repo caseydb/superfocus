@@ -575,8 +575,8 @@ function SortableTask({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 flex-1">
-                <div className="flex-1 flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="flex-1 flex items-center gap-2 min-w-0">
                   <p
                     onClick={() => {
                       const isCurrentTask = activeTaskId === task.id;
@@ -594,10 +594,10 @@ function SortableTask({
                       }
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className={`flex-1 ${(() => {
+                    className={`${(() => {
                       const isCurrentTask = activeTaskId === task.id;
                       if (isCurrentTask) {
-                        return "cursor-pointer text-gray-400 text-sm hover:text-gray-300";
+                        return "cursor-pointer text-gray-400 text-sm hover:text-gray-300 truncate";
                       } else {
                         return `cursor-pointer hover:text-[#FFAA00] transition-colors text-white text-sm ${
                           isHovered ? "whitespace-normal break-words" : "truncate"
@@ -607,9 +607,9 @@ function SortableTask({
                     title={(() => {
                       const isCurrentTask = activeTaskId === task.id;
                       if (isCurrentTask) {
-                        return "Click to expand and view notes";
+                        return task.text; // Show full text in tooltip
                       } else {
-                        return "Click to edit and expand";
+                        return task.text; // Show full text in tooltip
                       }
                     })()}
                   >
