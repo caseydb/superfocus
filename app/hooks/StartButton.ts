@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, onDisconnect, update, get } from "firebase/database";
+import { ref, set, onDisconnect, update, get, remove } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
 import {
   updateTask,
@@ -340,6 +340,10 @@ export function useStartButton() {
           taskName: task?.trim() || "",
           timestamp: Date.now()
         });
+
+        // Clear the justCompletedTask flag when starting a new task
+        const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
+        remove(completedFlagRef);
       }
 
       // Small delay to ensure state is set before Firebase save

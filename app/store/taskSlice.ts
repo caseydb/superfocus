@@ -265,6 +265,18 @@ export const transferTaskToPostgres = createAsyncThunk(
       // Remove the specific task
       await remove(taskRef);
 
+      // Always remove LastTask when any task is completed
+      // This ensures the input field stays empty after completing any task
+      const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
+      await remove(lastTaskRef);
+
+      // Set a flag indicating task was just completed to prevent auto-selection on reload
+      const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
+      await set(completedFlagRef, {
+        timestamp: Date.now(),
+        completedTaskId: taskData.id
+      });
+
       // Clean up timer state only if it belongs to this task
       const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
       const timerSnapshot = await get(timerRef);
@@ -427,6 +439,14 @@ export const checkForActiveTask = createAsyncThunk(
     }
 
     const tasksData = snapshot.val();
+
+    // Check if user just completed a task - if so, don't auto-select anything
+    if (tasksData.justCompletedTask) {
+      // Clean up the flag after checking
+      const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
+      await remove(completedFlagRef);
+      return null;
+    }
 
     // First check if there's a LastTask
     if (tasksData.LastTask) {
