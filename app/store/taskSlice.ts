@@ -77,13 +77,19 @@ export const createTaskThunk = createAsyncThunk(
     id,
     name,
     userId,
+    timezone,
   }: {
     id: string; // UUID generated client-side
     name: string;
     userId: string;
-  }) => {
+    timezone?: string;
+  }, { getState }) => {
     // Get room ID from the current URL
     const roomId = window.location.pathname.split("/").pop() || "default";
+
+    // Get user timezone from state if not provided
+    const state = getState() as { user: { timezone: string } };
+    const userTimezone = timezone || state.user.timezone || "UTC";
 
     // Call API to persist to database
     const response = await fetch("/api/task/postgres", {
@@ -98,6 +104,7 @@ export const createTaskThunk = createAsyncThunk(
         room_id: roomId, // Added room_id
         status: "not_started", // Added default status
         duration: 0, // Added default duration
+        timezone: userTimezone, // Add user's timezone
       }),
     });
 
@@ -174,7 +181,7 @@ export const transferTaskToPostgres = createAsyncThunk(
     status: "completed" | "quit";
     token: string;
     duration?: number; // Optional duration in seconds to override Firebase calculation
-  }) => {
+  }, { getState }) => {
     try {
       // 1. Get task data from TaskBuffer
       const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
@@ -206,6 +213,10 @@ export const transferTaskToPostgres = createAsyncThunk(
       // Use provided duration if available, otherwise use calculated duration
       const durationToSave = duration !== undefined ? duration : finalTotalTime;
 
+      // Get user timezone from state
+      const state = getState() as { user: { timezone: string } };
+      const userTimezone = state.user.timezone || "UTC";
+
       // 2. Update task in Postgres with completion data
       const patchBody = {
         id: taskData.id,
@@ -214,6 +225,7 @@ export const transferTaskToPostgres = createAsyncThunk(
           duration: durationToSave,
           updated_at: new Date().toISOString(),
           completed_at: status === "completed" ? new Date().toISOString() : null,
+          timezone: userTimezone, // Update timezone on completion
         },
       };
 
