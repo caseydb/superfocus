@@ -79,10 +79,16 @@ export default function TaskInput({
   const updateInputWidth = React.useCallback(() => {
     if (spanRef.current && typeof window !== "undefined") {
       const screenWidth = window.innerWidth;
-      if (screenWidth >= 640) {
+      if (screenWidth >= 768) {
         // Desktop: use calculated width
         const minWidth = 650;
         const maxWidth = 800;
+        const width = Math.min(Math.max(spanRef.current.offsetWidth + 40, minWidth), maxWidth);
+        setInputWidth(`${width}px`);
+      } else if (screenWidth >= 640) {
+        // Tablet: use smaller min width
+        const minWidth = 400;
+        const maxWidth = 600;
         const width = Math.min(Math.max(spanRef.current.offsetWidth + 40, minWidth), maxWidth);
         setInputWidth(`${width}px`);
       } else {

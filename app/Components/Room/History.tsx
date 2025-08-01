@@ -34,11 +34,6 @@ function formatDate(dateString: string): string {
   }
 }
 
-// Truncate text to specified length
-const truncateText = (text: string, maxLength: number = 50) => {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-};
 
 // Calculate dynamic width based on history content
 const calculateDynamicWidth = () => {
@@ -384,7 +379,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
               </div>
             )}
             {/* Keyboard Shortcut Tip */}
-            <div className="absolute -top-1 -left-6">
+            <div className="absolute -top-1 -left-6 hidden md:block">
               <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
             </div>
             {/* Close button */}
@@ -478,7 +473,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
             </div>
           )}
           {/* Keyboard Shortcut Tip */}
-          <div className="absolute -top-1 -left-6">
+          <div className="absolute -top-1 -left-6 hidden md:block">
             <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
           </div>
           {/* Close button */}
@@ -508,7 +503,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex-1">
                     <div
-                      className={`font-mono text-base font-medium ${
+                      className={`font-mono text-sm md:text-base font-medium ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                       }`}
                       title={entry.displayName}
@@ -516,18 +511,16 @@ export default function History({ onClose }: { onClose?: () => void }) {
                       {entry.displayName}
                     </div>
                     <div
-                      className={`font-mono text-base leading-snug ${
+                      className={`font-mono text-sm md:text-base leading-snug ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
                       }`}
                     >
-                      <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
-                      <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
-                      <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
+                      <span className="whitespace-normal break-words">{entry.task}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end flex-shrink-0">
                     <div
-                      className={`font-mono text-base font-medium ${
+                      className={`font-mono text-sm md:text-base font-medium ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
                       }`}
                     >
@@ -544,7 +537,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
           <div className="hidden overflow-x-auto">
             <table className="w-full text-left border-separate border-spacing-y-0 min-w-[600px]">
               <thead>
-                <tr className="text-gray-400 text-base">
+                <tr className="text-gray-400 text-sm md:text-base">
                   <th className="px-2 py-1 w-48">Name</th>
                   <th className="px-2 py-1">Task</th>
                   <th className="pl-8 pr-2 py-1 w-32">Time</th>
@@ -554,7 +547,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
                 {displayEntries.map((entry, i) => (
                   <tr key={i} className="group">
                     <td
-                      className={`px-2 py-1 font-mono whitespace-nowrap text-base w-48 ${
+                      className={`px-2 py-1 font-mono whitespace-nowrap text-sm md:text-base w-48 ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                       }`}
                       title={entry.displayName}
@@ -562,17 +555,15 @@ export default function History({ onClose }: { onClose?: () => void }) {
                       {entry.displayName}
                     </td>
                     <td
-                      className={`px-2 py-1 font-mono text-base ${
+                      className={`px-2 py-1 font-mono text-sm md:text-base ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                       }`}
                       title={entry.task}
                     >
-                      <span className="group-hover:hidden min-[600px]:hidden">{truncateText(entry.task, 35)}</span>
-                      <span className="hidden min-[600px]:block group-hover:hidden">{entry.task}</span>
-                      <span className="hidden group-hover:block whitespace-normal break-words">{entry.task}</span>
+                      <span className="whitespace-normal break-words">{entry.task}</span>
                     </td>
                     <td
-                      className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-base w-32 ${
+                      className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-sm md:text-base w-32 ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-green-400"
                       }`}
                     >

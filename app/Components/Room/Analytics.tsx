@@ -803,7 +803,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                   : "Analytics Dashboard"}
           </h2>
           {/* Keyboard Shortcut Tip */}
-          <div className="absolute -top-2 -left-1">
+          <div className="absolute -top-2 -left-1 hidden md:block">
             <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘S</span>
           </div>
           {/* Close button */}

@@ -60,8 +60,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
           </button>
         </div>
 
-        {/* Shortcuts Tips Banner */}
-        <div className="w-full px-6 py-4 bg-gray-900/30 rounded-xl mb-6">
+        {/* Shortcuts Tips Banner - Hidden on mobile */}
+        <div className="hidden md:block w-full px-6 py-4 bg-gray-900/30 rounded-xl mb-6">
           <div className="flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
             <div className="text-gray-400 font-semibold mb-1">Shortcuts</div>
             <div className="flex items-center gap-4 flex-wrap justify-center">
@@ -250,12 +250,12 @@ export default function Preferences({ onClose }: PreferencesProps) {
             <h3 className="text-xl font-bold text-white mb-4">Timer and Task Settings</h3>
 
             {/* Task Selection Mode */}
-            <div className="flex items-center justify-between mb-4">
-              <div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+              <div className="md:flex-1">
                 <label className="text-white font-medium">Task Selection Mode</label>
                 <p className="text-sm text-gray-400 mt-1">Choose how to select tasks when clicking the input field</p>
               </div>
-              <div className="relative">
+              <div className="relative md:flex-none">
                 <select
                   value={preferences.task_selection_mode}
                   onChange={async (e) => {
@@ -273,7 +273,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                       }
                     }
                   }}
-                  className="border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 min-w-[200px] text-center"
+                  className="w-full md:w-auto border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 md:min-w-[200px] text-center"
                 >
                   <option value="dropdown" className="bg-gray-900 text-gray-100 cursor-pointer">Dropdown List</option>
                   <option value="sidebar" className="bg-gray-900 text-gray-100 cursor-pointer">Task Sidebar</option>
@@ -292,12 +292,12 @@ export default function Preferences({ onClose }: PreferencesProps) {
             </div>
 
             {/* Focus Check */}
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="md:flex-1">
                 <label className="text-white font-medium">Focus Check</label>
                 <p className="text-sm text-gray-400 mt-1">Check if still working after this duration</p>
               </div>
-              <div className="relative">
+              <div className="relative md:flex-none">
                 <select
                   value={preferences.focus_check_time}
                   onChange={async (e) => {
@@ -315,7 +315,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                       }
                     }
                   }}
-                  className="border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 min-w-[180px] text-center"
+                  className="w-full md:w-auto border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 md:min-w-[180px] text-center"
                 >
                   <option value="15" className="bg-gray-900 text-gray-100 cursor-pointer">15 minutes</option>
                   <option value="30" className="bg-gray-900 text-gray-100 cursor-pointer">30 minutes</option>

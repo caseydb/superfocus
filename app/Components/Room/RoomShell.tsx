@@ -42,6 +42,7 @@ import Preferences from "./Preferences";
 import InvitePopup from "./InvitePopup";
 import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
+import MobileMenu from "./MobileMenu";
 import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
 import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
 import { DotSpinner } from "ldrs/react";
@@ -85,6 +86,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const { currentInput: task = "" } = useSelector((state: RootState) => state.taskInput);
   const { hasStarted } = useSelector((state: RootState) => state.taskInput);
+  const reduxUser = useSelector((state: RootState) => state.user);
   const [timerResetKey, setTimerResetKey] = useState(0);
   const timerStartRef = React.useRef<() => void>(null!);
   const timerPauseRef = React.useRef<() => void>(null!);
@@ -343,9 +345,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
     }
   }, [localVolume]);
-
-  // Get Redux user
-  const reduxUser = useSelector((state: RootState) => state.user);
 
   // Listen for milestone invite popup events
   useEffect(() => {
@@ -1292,8 +1291,23 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         </button>
 
         <div className="min-h-screen flex flex-col items-center justify-center bg-elegant-dark text-white relative">
-          {/* Top right container for controls */}
-          <div className="fixed top-[8px] right-4 z-50 flex items-center gap-2 max-w-[calc(100vw-6rem)]">
+          {/* Mobile Menu - visible only on mobile */}
+          <MobileMenu
+            localVolume={localVolume}
+            setLocalVolume={setLocalVolume}
+            setShowHistory={setShowHistory}
+            setShowLeaderboard={setShowLeaderboard}
+            setShowAnalytics={setShowAnalytics}
+            setShowTaskList={setShowTaskList}
+            setShowPreferences={setShowPreferences}
+            setShowRoomsModal={setShowRoomsModal}
+            setShowInviteModal={setShowInviteModal}
+            instanceType={currentInstance.type}
+            closeAllModals={closeAllModals}
+          />
+          
+          {/* Top right container for controls - hidden on mobile */}
+          <div className="fixed top-[8px] right-4 z-50 hidden md:flex items-center gap-2 max-w-[calc(100vw-6rem)]">
             {/* Controls - speaker icon, timer dropdown, and name dropdown */}
             <Controls
               isPomodoroMode={isPomodoroMode}

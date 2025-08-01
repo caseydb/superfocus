@@ -564,15 +564,15 @@ export default function Pomodoro({
           placeholder="What are you focusing on?"
           disabled={inputLocked}
           maxLength={69}
-          className={`text-center text-2xl md:text-3xl font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 w-full ${
+          className={`text-center text-2xl md:text-3xl font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 w-full min-w-[280px] md:min-w-[400px] max-w-[600px] ${
             inputLocked ? "cursor-not-allowed" : "bg-transparent"
           }`}
-          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", minWidth: "400px", maxWidth: "600px" }}
+          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           rows={1}
         />
         {/* Custom underline */}
         <div
-          className={`mx-auto transition-all duration-200 ${
+          className={`mx-auto transition-all duration-200 min-w-[280px] md:min-w-[400px] max-w-[600px] ${
             showNoTaskFeedback 
               ? "bg-[#FFAA00] animate-pulse" 
               : inputFocused && !inputLocked 
@@ -581,8 +581,6 @@ export default function Pomodoro({
           }`}
           style={{
             width: "100%",
-            minWidth: "400px",
-            maxWidth: "600px",
             height: showNoTaskFeedback ? "3px" : "2px",
             marginBottom: "16px",
             borderRadius: "2px",

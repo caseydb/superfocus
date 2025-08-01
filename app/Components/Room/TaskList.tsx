@@ -1216,7 +1216,7 @@ export default function TaskList({
           <div className="flex items-center justify-between p-6 pb-4">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold text-white">Task List</h2>
-              <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘K</span>
+              <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500 hidden md:inline">⌘K</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">

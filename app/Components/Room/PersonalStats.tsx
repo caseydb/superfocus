@@ -385,7 +385,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
               <div className={`w-5 h-5 border ${streakBorderColor} rounded-full flex items-center justify-center animate-pulse bg-transparent`}>
                 <span className="text-gray-300 text-xs font-bold">{streak}</span>
               </div>
-              <span className="text-gray-400 text-xs sm:text-base font-mono">
+              <span className="text-gray-400 text-xs font-mono whitespace-nowrap">
                 <span className="text-gray-400">day streak</span> |{" "}
                 <span className="text-gray-300 font-medium">{timeRemaining}</span> to{" "}
                 {streak === 0 ? "start streak!" : "maintain streak!"}
@@ -425,7 +425,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
             >
               <span className="text-gray-300 text-xs font-bold">{streak}</span>
             </div>
-            <span className="text-gray-400 text-xs sm:text-base font-mono">
+            <span className="text-gray-400 text-xs font-mono whitespace-nowrap">
               <span className="text-gray-400">day streak</span> |{" "}
               <span className="text-gray-300 font-medium">{tasksCompleted}</span> tasks |{" "}
               <span className="text-gray-300 font-medium">{formatTime(totalSeconds)}</span> today

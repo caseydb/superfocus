@@ -296,7 +296,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Keyboard Shortcut Tip - positioned at top left */}
-        <div className="absolute top-2 left-3">
+        <div className="absolute top-2 left-3 hidden md:block">
           <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
         </div>
         {/* Close button - positioned absolutely */}
