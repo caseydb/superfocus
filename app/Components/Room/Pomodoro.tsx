@@ -606,7 +606,7 @@ export default function Pomodoro({
         {/* Task suggestions dropdown */}
         {showTaskSuggestions && filteredTasks.length > 0 && (
           <div
-            className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
+            className="absolute mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
             style={{
               width: "600px",
               maxWidth: "90vw",
@@ -614,14 +614,22 @@ export default function Pomodoro({
               left: "50%",
               transform: "translateX(-50%)",
               marginTop: "8px",
-              maxHeight: "240px",
-              overflowY: "auto",
             }}
           >
-            <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
-              {task.trim() ? `Tasks matching "${task}":` : "Choose from existing tasks:"}
-            </div>
-            <div className="space-y-1">
+            <div
+              className="task-dropdown-scrollbar rounded-xl"
+              style={{
+                maxHeight: "240px",
+                overflowY: "auto",
+                padding: "8px",
+                paddingTop: "12px",
+                paddingBottom: "12px",
+              }}
+            >
+              <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
+                {task.trim() ? `Tasks matching "${task}":` : "Choose from existing tasks:"}
+              </div>
+              <div className="space-y-1">
               {filteredTasks.map((taskItem) => (
                 <button
                   key={taskItem.id}
@@ -636,6 +644,7 @@ export default function Pomodoro({
                   {taskItem.name}
                 </button>
               ))}
+              </div>
             </div>
           </div>
         )}

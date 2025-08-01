@@ -248,23 +248,22 @@ export default function History({ onClose }: { onClose?: () => void }) {
     const startTime = dateRange.start.getTime();
 
     // For single day selection, get end of that day
-    const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
 
     let endTime: number;
+    // Check if end date is at midnight (00:00:00)
     if (
-      startDate.toDateString() === endDate.toDateString() &&
       endDate.getHours() === 0 &&
       endDate.getMinutes() === 0 &&
       endDate.getSeconds() === 0
     ) {
-      // Same day at midnight - get end of this day
+      // End date is at midnight - get end of that day (23:59:59.999)
       const endOfDay = new Date(endDate);
       endOfDay.setHours(23, 59, 59, 999);
       endTime = endOfDay.getTime();
     } else {
-      // Different days - add 24 hours to include full end day
-      endTime = dateRange.end.getTime() + (24 * 60 * 60 * 1000 - 1);
+      // End date already has time component, use as is
+      endTime = endDate.getTime();
     }
 
     return entries.filter((entry) => {

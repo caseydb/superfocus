@@ -295,8 +295,7 @@ export default function TaskInput({
       {/* Task Suggestions */}
       {showTaskSuggestions && filteredTasks.length > 0 && !disabled && (
         <div
-          ref={suggestionsContainerRef}
-          className="absolute mt-2 p-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 custom-scrollbar"
+          className="absolute mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
           style={{
             width: inputWidth,
             maxWidth: "90vw",
@@ -304,14 +303,23 @@ export default function TaskInput({
             left: "50%",
             transform: "translateX(-50%)",
             marginTop: "8px",
-            maxHeight: "240px",
-            overflowY: "auto",
           }}
         >
-          <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
-            {task.trim() ? `Tasks matching "${task}":` : "Choose from existing tasks:"}
-          </div>
-          <div className="space-y-1">
+          <div
+            ref={suggestionsContainerRef}
+            className="task-dropdown-scrollbar rounded-xl"
+            style={{
+              maxHeight: "240px",
+              overflowY: "auto",
+              padding: "8px",
+              paddingTop: "12px",
+              paddingBottom: "12px",
+            }}
+          >
+            <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
+              {task.trim() ? `Tasks matching "${task}":` : "Choose from existing tasks:"}
+            </div>
+            <div className="space-y-1">
             {filteredTasks.map((taskItem, index) => (
               <button
                 key={taskItem.id}
@@ -327,17 +335,12 @@ export default function TaskInput({
                   selectedTaskIndex === index
                     ? "bg-gray-800 border-[#FFAA00]/50"
                     : "border-transparent hover:bg-gray-800 hover:border-[#FFAA00]/30"
-                } flex items-center justify-between gap-2`}
+                }`}
               >
                 <span className="truncate">{taskItem.text}</span>
-                {taskItem.timeSpent && taskItem.timeSpent > 0 && (
-                  <span className="text-xs text-gray-500 flex-shrink-0">
-                    {Math.floor(taskItem.timeSpent / 60).toString().padStart(2, '0')}:
-                    {(taskItem.timeSpent % 60).toString().padStart(2, '0')}
-                  </span>
-                )}
               </button>
             ))}
+            </div>
           </div>
         </div>
       )}
