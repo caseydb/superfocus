@@ -3,12 +3,13 @@
 import { useInstance } from "../Components/Instances";
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import SignIn from "./SignIn";
 import { signInWithGoogle, signOutUser } from "@/lib/auth";
 import Image from "next/image";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
+import { DotSpinner } from "ldrs/react";
+import "ldrs/react/DotSpinner.css";
 
 export default function Lobby() {
   const { instances, currentInstance, createInstance, leaveInstance, user, userReady } = useInstance();
@@ -19,6 +20,7 @@ export default function Lobby() {
   const [roomNameError, setRoomNameError] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   // Refs for scroll animations
   const heroRef = useRef<HTMLDivElement>(null);
@@ -96,18 +98,23 @@ export default function Lobby() {
       return;
     }
 
+    setIsJoiningRoom(true);
     createInstance("private", roomName);
     setShowPrivateRoomModal(false);
     setPrivateRoomName("");
     setRoomNameError("");
   };
 
-  // If user is in a room, they should be redirected to the room URL
-  if (currentInstance) {
+  const handleQuickJoin = () => {
+    setIsJoiningRoom(true);
+    createInstance("public");
+  };
+
+  // Show loading screen when joining a room
+  if (isJoiningRoom || currentInstance) {
     return (
-      <div className="bg-white/90 rounded-xl shadow-xl p-8 w-full max-w-md flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="text-gray-600">Redirecting to room...</p>
+      <div className="min-h-screen flex items-center justify-center bg-elegant-dark">
+        <DotSpinner size="40" speed="0.9" color="#FFAA00" />
       </div>
     );
   }
@@ -234,29 +241,12 @@ export default function Lobby() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 animate-fade-in-up animation-delay-400">
-            {!signedIn ? (
-              <>
-                <button
-                  onClick={() => signInWithGoogle()}
-                  className="bg-[#FFAA00] text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-[#FFB833] transform hover:scale-105 transition-all shadow-lg cursor-pointer"
-                >
-                  Start Your First Session
-                </button>
-                <a
-                  href="#lobby-section"
-                  className="border-2 border-[#FFAA00] text-[#FFAA00] px-8 py-4 rounded-full font-bold text-lg hover:bg-[#FFAA00] hover:text-black transform hover:scale-105 transition-all cursor-pointer inline-block"
-                >
-                  Learn More
-                </a>
-              </>
-            ) : (
-              <Link
-                href="/gsd"
-                className="bg-[#FFAA00] text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-[#FFB833] transform hover:scale-105 transition-all shadow-lg cursor-pointer inline-block"
-              >
-                Join a Room Now
-              </Link>
-            )}
+            <button
+              onClick={handleQuickJoin}
+              className="bg-[#FFAA00] text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-[#FFB833] transform hover:scale-105 transition-all shadow-lg cursor-pointer inline-block"
+            >
+              Join a Room Now
+            </button>
           </div>
 
           {/* Live Stats */}
@@ -466,7 +456,7 @@ export default function Lobby() {
                 {/* Quick Join Button */}
                 <button
                   className="group relative px-12 py-6 bg-[#FFAA00] text-black font-black text-2xl rounded-full overflow-hidden transition-all duration-300 hover:scale-110 shadow-2xl cursor-pointer"
-                  onClick={() => router.push('/gsd')}
+                  onClick={handleQuickJoin}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-[#FF8800] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="relative flex items-center gap-3">

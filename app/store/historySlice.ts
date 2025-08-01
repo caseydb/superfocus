@@ -27,8 +27,20 @@ const initialState: HistoryState = {
 // Async thunk to fetch history
 export const fetchHistory = createAsyncThunk(
   "history/fetch",
-  async (slug: string) => {
-    const response = await fetch(`/api/history?slug=${slug}`);
+  async ({ slug, userId, isPublicRoom }: { slug: string; userId?: string; isPublicRoom?: boolean }) => {
+    let url: string;
+    
+    if (isPublicRoom && userId) {
+      // For public rooms, always fetch user's tasks across all rooms
+      url = `/api/history/public?userId=${userId}`;
+    } else {
+      // For private rooms, use the original API
+      url = userId 
+        ? `/api/history?slug=${slug}&userId=${userId}`
+        : `/api/history?slug=${slug}`;
+    }
+    
+    const response = await fetch(url);
     const data = await response.json();
     
     if (!response.ok) {

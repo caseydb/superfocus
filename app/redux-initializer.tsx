@@ -87,7 +87,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               const slug = pathParts[pathParts.length - 1];
               if (slug && slug !== '' && !slug.startsWith('_')) {
                 try {
-                  await dispatch(fetchHistory(slug)).unwrap();
+                  await dispatch(fetchHistory({ slug })).unwrap();
                 } catch (error) {
                   console.error("[ReduxInitializer] Failed to fetch history:", error);
                 }
@@ -174,7 +174,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                   const slug = pathParts[pathParts.length - 1];
                   if (slug && slug !== '' && !slug.startsWith('_')) {
                     try {
-                      await dispatch(fetchHistory(slug)).unwrap();
+                      await dispatch(fetchHistory({ slug })).unwrap();
                     } catch (error) {
                       console.error("[ReduxInitializer] Failed to fetch history on retry:", error);
                     }

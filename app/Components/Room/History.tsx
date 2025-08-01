@@ -7,6 +7,7 @@ import { fetchHistory } from "../../store/historySlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { DotSpinner } from "ldrs/react";
 import "ldrs/react/DotSpinner.css";
+import { useInstance } from "../Instances";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -57,11 +58,27 @@ const calculatePageSize = (width: number, height: number) => {
 
 export default function History({ onClose }: { onClose?: () => void }) {
   const dispatch = useDispatch<AppDispatch>();
+  const { currentInstance } = useInstance();
 
   // Get history from Redux
   const history = useSelector((state: RootState) => state.history.entries);
   const loading = useSelector((state: RootState) => state.history.loading);
   const roomSlug = useSelector((state: RootState) => state.history.roomSlug);
+
+  // Get user data and preferences from Redux
+  const currentUser = useSelector((state: RootState) => state.user);
+  const savedUserFilter = useSelector((state: RootState) => state.preferences.history_user_filter);
+  const savedDateFilter = useSelector((state: RootState) => state.preferences.history_date_filter);
+
+  // Check if current room is public
+  const isPublicRoom = currentInstance?.type === "public";
+
+  // Initialize filter states from preferences
+  const [showOnlyMine, setShowOnlyMine] = useState(savedUserFilter === "my_tasks");
+  const [selectedTimeRange, setSelectedTimeRange] = useState(savedDateFilter || "all_time");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(3); // Default to 3
+  const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
 
   // Fetch history when component mounts or room changes
   useEffect(() => {
@@ -70,23 +87,37 @@ export default function History({ onClose }: { onClose?: () => void }) {
     const urlSlug = pathParts[pathParts.length - 1];
 
     if (urlSlug && urlSlug !== roomSlug) {
-      dispatch(fetchHistory(urlSlug));
+      dispatch(fetchHistory({ 
+        slug: urlSlug, 
+        isPublicRoom,
+        userId: isPublicRoom ? (currentUser.user_id || undefined) : undefined
+      }));
     }
-  }, [roomSlug, dispatch]);
+  }, [roomSlug, dispatch, isPublicRoom, currentUser.user_id]);
 
-
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(3); // Default to 3
-  const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
-
-  // Get user data and preferences from Redux
-  const currentUser = useSelector((state: RootState) => state.user);
-  const savedUserFilter = useSelector((state: RootState) => state.preferences.history_user_filter);
-  const savedDateFilter = useSelector((state: RootState) => state.preferences.history_date_filter);
-
-  // Initialize filter states from preferences
-  const [showOnlyMine, setShowOnlyMine] = useState(savedUserFilter === "my_tasks");
-  const [selectedTimeRange, setSelectedTimeRange] = useState(savedDateFilter || "all_time");
+  // Refetch when user filter changes
+  useEffect(() => {
+    const pathParts = window.location.pathname.split("/");
+    const urlSlug = pathParts[pathParts.length - 1];
+    
+    if (urlSlug) {
+      if (isPublicRoom) {
+        // For public rooms, always show only the user's tasks
+        dispatch(fetchHistory({ 
+          slug: urlSlug, 
+          userId: currentUser.user_id || undefined,
+          isPublicRoom: true
+        }));
+      } else {
+        // For private rooms, respect the filter
+        dispatch(fetchHistory({ 
+          slug: urlSlug, 
+          userId: showOnlyMine ? (currentUser.user_id || undefined) : undefined,
+          isPublicRoom: false
+        }));
+      }
+    }
+  }, [showOnlyMine, currentUser.user_id, dispatch, isPublicRoom]);
 
   // Update local state when preferences change
   useEffect(() => {
@@ -242,9 +273,8 @@ export default function History({ onClose }: { onClose?: () => void }) {
     });
   };
 
-  // Apply filters - first by user, then by date
-  const userFilteredHistory =
-    showOnlyMine && currentUser?.user_id ? history.filter((entry) => entry.userId === currentUser.user_id) : history;
+  // Apply filters - when showOnlyMine is true, the API already returns only user's tasks
+  const userFilteredHistory = history;
 
   const filteredHistory = filterByDateRange(userFilteredHistory);
 
@@ -326,31 +356,33 @@ export default function History({ onClose }: { onClose?: () => void }) {
             {/* Dropdowns on third line */}
             {currentUser?.user_id && (
               <div className="flex items-center gap-2">
-                {/* Task Filter Dropdown */}
-                <div className="relative">
-                  <select
-                    className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
-                    value={showOnlyMine ? "mine" : "all"}
-                    onChange={(e) => handleUserFilterChange(e.target.value)}
-                  >
-                    <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
-                      All Tasks
-                    </option>
-                    <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
-                      My Tasks
-                    </option>
-                  </select>
-                  {/* Custom Chevron Icon */}
-                  <svg
-                    className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                {/* Task Filter Dropdown - Hidden for public rooms */}
+                {!isPublicRoom && (
+                  <div className="relative">
+                    <select
+                      className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                      value={showOnlyMine ? "mine" : "all"}
+                      onChange={(e) => handleUserFilterChange(e.target.value)}
+                    >
+                      <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
+                        All Tasks
+                      </option>
+                      <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
+                        My Tasks
+                      </option>
+                    </select>
+                    {/* Custom Chevron Icon */}
+                    <svg
+                      className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                )}
 
                 {/* Time Range Dropdown */}
                 <div className="relative">
@@ -420,31 +452,33 @@ export default function History({ onClose }: { onClose?: () => void }) {
           {/* Dropdowns on third line */}
           {currentUser?.user_id && (
             <div className="flex items-center gap-2">
-              {/* Task Filter Dropdown */}
-              <div className="relative">
-                <select
-                  className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
-                  value={showOnlyMine ? "mine" : "all"}
-                  onChange={(e) => handleUserFilterChange(e.target.value)}
-                >
-                  <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
-                    All Tasks
-                  </option>
-                  <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
-                    My Tasks
-                  </option>
-                </select>
-                {/* Custom Chevron Icon */}
-                <svg
-                  className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+              {/* Task Filter Dropdown - Hidden for public rooms */}
+              {!isPublicRoom && (
+                <div className="relative">
+                  <select
+                    className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                    value={showOnlyMine ? "mine" : "all"}
+                    onChange={(e) => handleUserFilterChange(e.target.value)}
+                  >
+                    <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
+                      All Tasks
+                    </option>
+                    <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
+                      My Tasks
+                    </option>
+                  </select>
+                  {/* Custom Chevron Icon */}
+                  <svg
+                    className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              )}
 
               {/* Time Range Dropdown */}
               <div className="relative">

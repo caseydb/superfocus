@@ -935,7 +935,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           const urlSlug = pathParts[pathParts.length - 1];
 
           if (urlSlug) {
-            dispatch(fetchHistory(urlSlug));
+            dispatch(fetchHistory({ 
+              slug: urlSlug,
+              isPublicRoom: currentInstance.type === "public",
+              userId: currentInstance.type === "public" ? user.id : undefined
+            }));
           }
 
           // Also refresh the leaderboard
@@ -945,7 +949,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     });
 
     return () => off(historyUpdateRef, "value", handle);
-  }, [currentInstance, dispatch]);
+  }, [currentInstance, dispatch, user.id]);
 
   const handleClearButton = () => {
     // Store the current seconds before resetting

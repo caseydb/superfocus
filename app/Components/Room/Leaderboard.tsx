@@ -127,6 +127,11 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   const [countdown, setCountdown] = useState<string>("");
   const PAGE_SIZE = 10;
 
+  // Fetch leaderboard data on component mount
+  useEffect(() => {
+    dispatch(fetchLeaderboard(timeFilter));
+  }, [dispatch, timeFilter]);
+
   // TODO: Replace with Firebase RTDB listener for users
   useEffect(() => {
     // Temporary: No users data

@@ -4,34 +4,19 @@ import prisma from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const slug = searchParams.get('slug');
     const userId = searchParams.get('userId');
 
-    if (!slug) {
+    if (!userId) {
       return NextResponse.json(
-        { error: "Room slug is required" },
+        { error: "User ID is required for public room history" },
         { status: 400 }
       );
     }
 
-    // First, get the room by slug
-    const room = await prisma.room.findUnique({
-      where: { slug },
-      select: { id: true }
-    });
-
-    if (!room) {
-      return NextResponse.json(
-        { error: "Room not found" },
-        { status: 404 }
-      );
-    }
-
-    // Get completed tasks - if userId is provided, get ALL their tasks across all rooms
-    // Otherwise, get only tasks from the current room
+    // Get ALL completed tasks for the user across all rooms
     const completedTasks = await prisma.task.findMany({
       where: {
-        ...(userId ? { user_id: userId } : { room_id: room.id }),
+        user_id: userId,
         status: 'completed'
       },
       select: {
@@ -65,7 +50,7 @@ export async function GET(request: NextRequest) {
       task: task.task_name,
       duration: task.duration,
       completedAt: task.completed_at,
-      // Format duration as mm:ss or hh:mm:ss
+      roomSlug: task.room.slug,
       formattedDuration: formatDuration(task.duration)
     }));
 
@@ -75,10 +60,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("[History API] Error:", error);
+    console.error("[Public History API] Error:", error);
     return NextResponse.json(
       { 
-        error: "Failed to fetch history",
+        error: "Failed to fetch public room history",
         details: process.env.NODE_ENV === "development" ? 
           (error instanceof Error ? error.message : String(error)) : undefined
       },
