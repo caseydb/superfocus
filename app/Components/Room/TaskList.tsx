@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   DndContext,
   closestCenter,
@@ -937,7 +937,7 @@ export default function TaskList({
 
   const [showClearMenu, setShowClearMenu] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   // TODO: Replace with Firebase RTDB refresh
@@ -1088,10 +1088,31 @@ export default function TaskList({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showClearMenu]);
 
+  // Auto-resize add task textarea
+  const autoResizeAddTaskTextarea = useCallback(() => {
+    if (inputRef.current) {
+      const textarea = inputRef.current;
+      textarea.style.height = "auto";
+      
+      // Force complete reflow to ensure text size classes are applied (same fix as main input)
+      textarea.style.display = 'none';
+      void textarea.offsetHeight; // Force reflow
+      textarea.style.display = '';
+      
+      // Use the actual scrollHeight
+      textarea.style.height = textarea.scrollHeight + "px";
+    }
+  }, []);
+
   // Add task to Redux store
   const handleAddTask = () => {
     addTaskFromHook(newTaskText, setNewTaskText);
   };
+
+  // Auto-resize textarea when text changes
+  useEffect(() => {
+    autoResizeAddTaskTextarea();
+  }, [newTaskText, autoResizeAddTaskTextarea]);
 
   // Remove task from Redux store and database  
   const removeTask = removeTaskFromHook;
@@ -1263,26 +1284,40 @@ export default function TaskList({
         <div className="p-6 border-b border-gray-800">
           <div className="flex gap-3">
             <div className="flex-1 relative">
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
                 value={newTaskText}
                 onChange={(e) => {
                   if (e.target.value.length <= 69) {
                     setNewTaskText(e.target.value);
+                    // Force immediate height recalculation
+                    setTimeout(() => {
+                      autoResizeAddTaskTextarea();
+                    }, 0);
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
                     handleAddTask();
                   }
                 }}
+                onPaste={() => {
+                  // Force height recalculation after paste
+                  requestAnimationFrame(() => {
+                    setTimeout(() => {
+                      autoResizeAddTaskTextarea();
+                    }, 0);
+                  });
+                }}
                 placeholder="Add a new task..."
-                className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors"
+                className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors resize-none overflow-hidden leading-normal"
                 maxLength={69}
+                rows={1}
+                style={{ minHeight: "48px" }}
               />
               {newTaskText.length > 0 && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
+                <div className="absolute right-3 bottom-3 text-xs text-gray-400">
                   {newTaskText.length}/69
                 </div>
               )}
@@ -1290,7 +1325,7 @@ export default function TaskList({
             <button
               onClick={handleAddTask}
               disabled={!newTaskText.trim()}
-              className="bg-[#FFAA00] text-black px-6 py-3 rounded-xl font-medium hover:bg-[#FF9900] hover:shadow-lg hover:shadow-[#FFAA00]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 cursor-pointer"
+              className="bg-[#FFAA00] text-black px-6 py-3 rounded-xl font-medium hover:bg-[#FF9900] hover:shadow-lg hover:shadow-[#FFAA00]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 cursor-pointer self-start"
             >
               Add
             </button>

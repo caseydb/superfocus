@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, remove, onDisconnect } from "firebase/database";
+import { ref, set, remove, onDisconnect, get } from "firebase/database";
 import {
   updateTask,
   transferTaskToPostgres,
@@ -49,12 +49,29 @@ export function useCompleteButton() {
   };
 
   const notifyEvent = useCallback(
-    (type: "complete", duration: number) => {
+    async (type: "complete", duration: number) => {
       if (currentInstance && user?.id) {
+        // Try to get firstName/lastName from Firebase Users
+        let firstName = "";
+        let lastName = "";
+        try {
+          const userRef = ref(rtdb, `Users/${user.id}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            firstName = userData.firstName || "";
+            lastName = userData.lastName || "";
+          }
+        } catch (error) {
+          console.error('[CompleteButton] Failed to fetch user data from Firebase:', error);
+        }
+        
         const eventId = `${user.id}-${type}-${Date.now()}`;
         const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
         const eventData = {
-          displayName: user.displayName,
+          displayName: user.displayName, // Keep for backward compatibility
+          firstName,
+          lastName,
           userId: user.id,
           type,
           timestamp: Date.now(),

@@ -31,12 +31,29 @@ export function useQuitButton() {
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
 
   const notifyEvent = useCallback(
-    (type: "quit", duration: number) => {
+    async (type: "quit", duration: number) => {
       if (currentInstance && user?.id) {
+        // Try to get firstName/lastName from Firebase Users
+        let firstName = "";
+        let lastName = "";
+        try {
+          const userRef = ref(rtdb, `Users/${user.id}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            firstName = userData.firstName || "";
+            lastName = userData.lastName || "";
+          }
+        } catch (error) {
+          console.error('[QuitButton] Failed to fetch user data from Firebase:', error);
+        }
+        
         const eventId = `${user.id}-${type}-${Date.now()}`;
         const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
         const eventData = {
-          displayName: user.displayName,
+          displayName: user.displayName, // Keep for backward compatibility
+          firstName,
+          lastName,
           userId: user.id,
           type,
           timestamp: Date.now(),

@@ -113,8 +113,18 @@ export default function TaskInput({
   // Helper to recalculate textarea height
   const recalculateHeight = React.useCallback(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+      const textarea = textareaRef.current;
+      
+      // Reset height to recalculate
+      textarea.style.height = "auto";
+      
+      // Force complete reflow to ensure text size classes are applied
+      textarea.style.display = 'none';
+      void textarea.offsetHeight; // Force reflow
+      textarea.style.display = '';
+      
+      // Use the actual scrollHeight
+      textarea.style.height = textarea.scrollHeight + "px";
     }
   }, []);
 
@@ -164,7 +174,9 @@ export default function TaskInput({
     <div className="flex flex-col items-center justify-center w-full h-full px-4 sm:px-0">
       <span
         ref={spanRef}
-        className="invisible absolute whitespace-pre text-3xl md:text-4xl font-semibold px-4"
+        className={`invisible absolute whitespace-pre font-semibold px-4 ${
+          task.length > 50 ? "text-2xl md:text-4xl" : "text-3xl md:text-4xl"
+        }`}
         style={{ pointerEvents: "none" }}
       >
         {task || "What are you focusing on?"}
@@ -187,10 +199,25 @@ export default function TaskInput({
           if (preferences.task_selection_mode === "dropdown" && !disabled) {
             setShowTaskSuggestions(true);
           }
+          
+          // Force immediate height recalculation
+          setTimeout(() => {
+            recalculateHeight();
+          }, 0);
+        }}
+        onPaste={() => {
+          // Force height recalculation after paste
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              recalculateHeight();
+            }, 0);
+          });
         }}
         maxLength={maxLen}
-        className={`text-center text-3xl md:text-5xl font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
+        className={`text-center font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
           disabled ? "cursor-not-allowed" : "bg-transparent"
+        } ${
+          task.length > 50 ? "text-2xl md:text-4xl" : "text-3xl md:text-5xl"
         }`}
         placeholder="What are you focusing on?"
         rows={1}

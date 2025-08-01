@@ -836,17 +836,28 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
 
       // Find new events we haven't processed yet
-      Object.entries(events as Record<string, { displayName?: string; type?: string }>).forEach(([eventId, event]) => {
+      Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string }>).forEach(([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
 
           // Show notification in title
-          if (event.displayName && event.type) {
+          if (event.type) {
             let emoji = "";
             if (event.type === "start") emoji = "🥊";
             if (event.type === "complete") emoji = "🏆";
             if (event.type === "quit") emoji = "💀";
-            document.title = `${emoji} ${event.displayName}`;
+            
+            // Use firstName and lastName if available, otherwise fall back to displayName
+            let name = "";
+            if (event.firstName || event.lastName) {
+              name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
+            } else if (event.displayName) {
+              name = event.displayName;
+            } else {
+              name = "Someone";
+            }
+            
+            document.title = `${emoji} ${name}`;
 
             if (timeout) clearTimeout(timeout);
             timeout = setTimeout(() => {
