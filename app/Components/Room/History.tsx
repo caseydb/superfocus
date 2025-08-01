@@ -534,7 +534,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
                 className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
               >
                 <div className="flex justify-between items-start gap-3">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div
                       className={`font-mono text-sm md:text-base font-medium ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
@@ -544,11 +544,13 @@ export default function History({ onClose }: { onClose?: () => void }) {
                       {entry.displayName}
                     </div>
                     <div
-                      className={`font-mono text-sm md:text-base leading-snug ${
+                      className={`font-mono text-sm md:text-base leading-snug group/task ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-gray-300"
                       }`}
                     >
-                      <span className="whitespace-normal break-words">{entry.task}</span>
+                      <span className="block truncate group-hover/task:whitespace-normal group-hover/task:break-words transition-all duration-200">
+                        {entry.task}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end flex-shrink-0">
@@ -588,12 +590,11 @@ export default function History({ onClose }: { onClose?: () => void }) {
                       {entry.displayName}
                     </td>
                     <td
-                      className={`px-2 py-1 font-mono text-sm md:text-base ${
+                      className={`px-2 py-1 font-mono text-sm md:text-base group/task ${
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                       }`}
-                      title={entry.task}
                     >
-                      <span className="whitespace-normal break-words">{entry.task}</span>
+                      <span className="block truncate group-hover/task:whitespace-normal group-hover/task:break-words transition-all duration-200">{entry.task}</span>
                     </td>
                     <td
                       className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-sm md:text-base w-32 ${
