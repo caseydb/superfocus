@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface ContactsProps {
@@ -9,7 +9,7 @@ interface ContactsProps {
   setAvailabilityStatus?: (value: "available" | "dnd" | "offline") => void;
 }
 
-type Status = "online" | "idle" | "offline";
+type Status = "online" | "offline";
 type TabType = "all" | "messages" | "requests" | "invite";
 
 interface Friend {
@@ -30,47 +30,48 @@ interface Friend {
     time: string;
     unread?: boolean;
   };
+  isGroup?: boolean;
 }
 
 // Hardcoded friends data with various statuses
 const MOCK_FRIENDS: Friend[] = [
-  { id: "1", name: "Alex Chen", firstName: "Alex", lastName: "Chen", status: "online", currentRoom: "/focus-flow", currentTask: "Building React components", taskDuration: "45m", avatar: "AC", lastMessage: { text: "Hey, can you review my PR?", time: "2m ago", unread: true } },
-  { id: "2", name: "Sarah Johnson", firstName: "Sarah", lastName: "Johnson", status: "online", currentRoom: "/deep-work", currentTask: "Writing documentation", taskDuration: "1h 23m", avatar: "SJ", lastMessage: { text: "Thanks for the help earlier!", time: "15m ago" } },
-  { id: "4", name: "Emma Davis", firstName: "Emma", lastName: "Davis", status: "online", currentRoom: "/study-hall", currentTask: "Machine learning research", taskDuration: "2h 10m", avatar: "ED" },
+  { id: "1", name: "Alex Chen", firstName: "Alex", lastName: "Chen", status: "online", currentRoom: "/focus-flow", currentTask: "Actively working", taskDuration: "45m", avatar: "AC", lastMessage: { text: "Hey, can you review my PR?", time: "2m ago", unread: true } },
+  { id: "2", name: "Sarah Johnson", firstName: "Sarah", lastName: "Johnson", status: "online", currentRoom: "/deep-work", currentTask: "Do not disturb", taskDuration: "1h 23m", avatar: "SJ", lastMessage: { text: "Thanks for the help earlier!", time: "15m ago" } },
+  { id: "4", name: "Emma Davis", firstName: "Emma", lastName: "Davis", status: "online", currentRoom: "/study-hall", currentTask: "Actively working", taskDuration: "2h 10m", avatar: "ED" },
   { id: "5", name: "James Wilson", firstName: "James", lastName: "Wilson", status: "offline", lastSeen: "2h ago", avatar: "JW", lastMessage: { text: "Great work on the project! 🎉", time: "3h ago" } },
-  { id: "6", name: "Lisa Anderson", firstName: "Lisa", lastName: "Anderson", status: "online", currentRoom: "/focus-flow", currentTask: "UI/UX design", taskDuration: "30m", avatar: "LA" },
-  { id: "7", name: "David Brown", firstName: "David", lastName: "Brown", status: "idle", currentRoom: "/grind-time", lastSeen: "15m ago", avatar: "DB" },
-  { id: "8", name: "Jennifer Taylor", firstName: "Jennifer", lastName: "Taylor", status: "online", currentRoom: "/deep-work", currentTask: "Data analysis", taskDuration: "1h 45m", avatar: "JT" },
+  { id: "6", name: "Lisa Anderson", firstName: "Lisa", lastName: "Anderson", status: "online", currentRoom: "/focus-flow", currentTask: "Completed task 15m ago", taskDuration: "30m", avatar: "LA" },
+  { id: "7", name: "David Brown", firstName: "David", lastName: "Brown", status: "online", currentRoom: "/grind-time", currentTask: "Do not disturb", lastSeen: "15m ago", avatar: "DB" },
+  { id: "8", name: "Jennifer Taylor", firstName: "Jennifer", lastName: "Taylor", status: "online", currentRoom: "/deep-work", currentTask: "Actively working", taskDuration: "1h 45m", avatar: "JT" },
   { id: "9", name: "Robert Martinez", firstName: "Robert", lastName: "Martinez", status: "offline", lastSeen: "Yesterday", avatar: "RM" },
-  { id: "10", name: "Maria Garcia", firstName: "Maria", lastName: "Garcia", status: "online", currentRoom: "/coding-dojo", currentTask: "Backend development", taskDuration: "3h 20m", avatar: "MG" },
-  { id: "11", name: "Chris Lee", firstName: "Chris", lastName: "Lee", status: "idle", currentRoom: "/study-hall", lastSeen: "10m ago", avatar: "CL" },
-  { id: "12", name: "Amanda White", firstName: "Amanda", lastName: "White", status: "online", currentRoom: "/focus-mode", currentTask: "Content creation", taskDuration: "55m", avatar: "AW" },
+  { id: "10", name: "Maria Garcia", firstName: "Maria", lastName: "Garcia", status: "online", currentRoom: "/coding-dojo", currentTask: "Do not disturb", taskDuration: "3h 20m", avatar: "MG" },
+  { id: "11", name: "Chris Lee", firstName: "Chris", lastName: "Lee", status: "online", currentRoom: "/study-hall", currentTask: "Completed task 10m ago", lastSeen: "10m ago", avatar: "CL" },
+  { id: "12", name: "Amanda White", firstName: "Amanda", lastName: "White", status: "online", currentRoom: "/focus-mode", currentTask: "Actively working", taskDuration: "55m", avatar: "AW" },
   { id: "13", name: "Kevin Harris", firstName: "Kevin", lastName: "Harris", status: "offline", lastSeen: "3d ago", avatar: "KH" },
-  { id: "14", name: "Rachel Green", firstName: "Rachel", lastName: "Green", status: "online", currentRoom: "/productivity-lab", currentTask: "Project planning", taskDuration: "40m", avatar: "RG" },
-  { id: "15", name: "Tom Scott", firstName: "Tom", lastName: "Scott", status: "idle", currentRoom: "/deep-focus", lastSeen: "25m ago", avatar: "TS" },
-  { id: "16", name: "Nicole Adams", firstName: "Nicole", lastName: "Adams", status: "online", currentRoom: "/work-zone", currentTask: "Video editing", taskDuration: "1h 15m", avatar: "NA" },
+  { id: "14", name: "Rachel Green", firstName: "Rachel", lastName: "Green", status: "online", currentRoom: "/productivity-lab", currentTask: "Completed task 5m ago", taskDuration: "40m", avatar: "RG" },
+  { id: "15", name: "Tom Scott", firstName: "Tom", lastName: "Scott", status: "online", currentRoom: "/deep-focus", currentTask: "Do not disturb", lastSeen: "25m ago", avatar: "TS" },
+  { id: "16", name: "Nicole Adams", firstName: "Nicole", lastName: "Adams", status: "online", currentRoom: "/work-zone", currentTask: "Actively working", taskDuration: "1h 15m", avatar: "NA" },
   { id: "17", name: "Brian King", firstName: "Brian", lastName: "King", status: "offline", lastSeen: "1w ago", avatar: "BK" },
-  { id: "18", name: "Jessica Lewis", firstName: "Jessica", lastName: "Lewis", status: "online", currentRoom: "/grind-time", currentTask: "Research paper", taskDuration: "2h 30m", avatar: "JL" },
-  { id: "19", name: "Daniel Clark", firstName: "Daniel", lastName: "Clark", status: "idle", currentRoom: "/study-zone", lastSeen: "30m ago", avatar: "DC" },
-  { id: "20", name: "Ashley Rodriguez", firstName: "Ashley", lastName: "Rodriguez", status: "online", currentRoom: "/focus-flow", currentTask: "Marketing strategy", taskDuration: "1h 5m", avatar: "AR" },
+  { id: "18", name: "Jessica Lewis", firstName: "Jessica", lastName: "Lewis", status: "online", currentRoom: "/grind-time", currentTask: "Completed task 30m ago", taskDuration: "2h 30m", avatar: "JL" },
+  { id: "19", name: "Daniel Clark", firstName: "Daniel", lastName: "Clark", status: "online", currentRoom: "/study-zone", currentTask: "Do not disturb", lastSeen: "30m ago", avatar: "DC" },
+  { id: "20", name: "Ashley Rodriguez", firstName: "Ashley", lastName: "Rodriguez", status: "online", currentRoom: "/focus-flow", currentTask: "Actively working", taskDuration: "1h 5m", avatar: "AR" },
 ];
 
 // Friend requests (incoming)
 const MOCK_REQUESTS: Friend[] = [
   { id: "21", name: "Oliver Thompson", firstName: "Oliver", lastName: "Thompson", status: "online", isPending: true, mutualFriends: 5, avatar: "OT" },
   { id: "22", name: "Sophia Walker", firstName: "Sophia", lastName: "Walker", status: "offline", isPending: true, mutualFriends: 3, avatar: "SW" },
-  { id: "23", name: "Ethan Hall", firstName: "Ethan", lastName: "Hall", status: "idle", isPending: true, mutualFriends: 8, avatar: "EH" },
+  { id: "23", name: "Ethan Hall", firstName: "Ethan", lastName: "Hall", status: "online", isPending: true, mutualFriends: 8, avatar: "EH" },
 ];
 
 // Outgoing pending requests
 const MOCK_PENDING: Friend[] = [
   { id: "24", name: "Ryan Mitchell", firstName: "Ryan", lastName: "Mitchell", status: "online", isPending: true, mutualFriends: 7, avatar: "RM" },
-  { id: "25", name: "Sophie Chen", firstName: "Sophie", lastName: "Chen", status: "idle", isPending: true, mutualFriends: 4, avatar: "SC" },
+  { id: "25", name: "Sophie Chen", firstName: "Sophie", lastName: "Chen", status: "online", isPending: true, mutualFriends: 4, avatar: "SC" },
 ];
 
 // Non-friends (for profile lookups)
 const NON_FRIENDS: Friend[] = [
-  { id: "3", name: "Mike Williams", firstName: "Mike", lastName: "Williams", status: "idle", currentRoom: "/productivity-lab", lastSeen: "5m ago", avatar: "MW", mutualFriends: 12 },
+  { id: "3", name: "Mike Williams", firstName: "Mike", lastName: "Williams", status: "online", currentRoom: "/productivity-lab", currentTask: "Completed task 5m ago", lastSeen: "5m ago", avatar: "MW", mutualFriends: 12 },
 ];
 
 interface Message {
@@ -123,7 +124,23 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
   const [messageText, setMessageText] = useState("");
   const [recipientSearch, setRecipientSearch] = useState("");
   const [showProfileModal, setShowProfileModal] = useState<string | null>(null);
+  const [showContactMenu, setShowContactMenu] = useState<string | null>(null);
   const [availabilityStatus, setAvailabilityStatus] = useState(availabilityStatusProp ?? "available");
+  
+  // Click outside handler for contact menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.contact-menu-container')) {
+        setShowContactMenu(null);
+      }
+    };
+
+    if (showContactMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showContactMenu]);
   
   // Filter friends based on search and tab
   const filteredFriends = useMemo(() => {
@@ -140,9 +157,30 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
         lastName: "Standup",
         status: "online",
         lastMessage: { text: "Great meeting everyone!", time: "30m ago" },
-        avatar: "TS"
+        avatar: "TS",
+        isGroup: true
       };
       let allConversations = [groupConvo, ...conversations];
+      
+      // Sort by message recency
+      allConversations.sort((a, b) => {
+        const getTimeValue = (timeStr: string) => {
+          if (timeStr.includes('m ago')) {
+            return parseInt(timeStr.replace('m ago', ''));
+          }
+          if (timeStr.includes('h ago')) {
+            return parseInt(timeStr.replace('h ago', '')) * 60;
+          }
+          if (timeStr.includes('d ago')) {
+            return parseInt(timeStr.replace('d ago', '')) * 60 * 24;
+          }
+          return 999999; // Very old messages
+        };
+        
+        const timeA = getTimeValue(a.lastMessage?.time || '');
+        const timeB = getTimeValue(b.lastMessage?.time || '');
+        return timeA - timeB; // Lower values (more recent) first
+      });
       
       // Filter by search query - search in names and all message content
       if (searchQuery) {
@@ -179,10 +217,30 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
       );
     }
     
-    // Sort: online first, then idle, then offline
+    // Sort: green dots first, then yellow dots, then red dots, then offline
     return friends.sort((a, b) => {
-      const statusOrder = { online: 0, idle: 1, offline: 2 };
-      return statusOrder[a.status] - statusOrder[b.status];
+      // Helper to get priority based on status and task
+      const getPriority = (friend: Friend) => {
+        if (friend.status === "offline") return 4;
+        if (friend.currentTask?.includes("Do not disturb")) return 3;
+        if (friend.currentTask?.includes("Completed task")) return 2;
+        if (friend.currentTask?.includes("Actively working")) return 1;
+        return 1; // Default for other online statuses
+      };
+      
+      const priorityA = getPriority(a);
+      const priorityB = getPriority(b);
+      
+      // If both are "Completed task", sort by time (extract minutes)
+      if (priorityA === 2 && priorityB === 2) {
+        const getMinutes = (task: string) => {
+          const match = task.match(/(\d+)m/);
+          return match ? parseInt(match[1]) : 999;
+        };
+        return getMinutes(a.currentTask || "") - getMinutes(b.currentTask || "");
+      }
+      
+      return priorityA - priorityB;
     });
   }, [activeTab, searchQuery]);
 
@@ -198,7 +256,8 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
     }
     
     return pending.sort((a, b) => {
-      const statusOrder = { online: 0, idle: 1, offline: 2 };
+      // Sort online first, then offline for pending requests
+      const statusOrder = { online: 0, offline: 1 };
       return statusOrder[a.status] - statusOrder[b.status];
     });
   }, [activeTab, searchQuery]);
@@ -212,19 +271,21 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
     router.push(roomUrl);
   };
 
-  const getStatusColor = (status: Status) => {
-    switch (status) {
-      case "online": return "bg-green-500";
-      case "idle": return "bg-yellow-500";
-      case "offline": return "bg-gray-500";
+  const getStatusColor = (status: Status, taskDescription?: string) => {
+    if (status === "offline") return "bg-gray-500";
+    if (status === "online" && taskDescription) {
+      if (taskDescription.includes("Do not disturb")) return "bg-red-500";
+      if (taskDescription.includes("Completed task")) return "bg-yellow-500";
+      if (taskDescription.includes("Actively working")) return "bg-green-500";
     }
+    return "bg-green-500"; // Default for online
   };
 
   const getStatusText = (friend: Friend) => {
     if (friend.status === "online" && friend.currentTask) {
-      return `${friend.currentTask} • ${friend.taskDuration}`;
+      return friend.currentTask;
     }
-    if (friend.status === "idle" || friend.status === "offline") {
+    if (friend.status === "offline") {
       return friend.lastSeen || "Offline";
     }
     return "Available";
@@ -546,20 +607,41 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                <div className="flex-1">
+                <div className="flex items-center gap-3 flex-1">
                   {(() => {
                     const isGroup = selectedConversation.startsWith('group-');
                     if (isGroup) {
                       const groupFriend = filteredFriends.find(f => f.id === selectedConversation);
+                      // For group chats, show overlapping avatars
+                      const groupMembers = [
+                        { id: "1", avatar: "AC", status: "online", currentTask: "Actively working" },
+                        { id: "2", avatar: "SJ", status: "online", currentTask: "Do not disturb" },
+                        { id: "3", avatar: "MW", status: "online", currentTask: "Completed task 5m ago" }
+                      ];
                       return (
                         <>
-                          <h3 className="font-medium text-gray-200">{groupFriend?.name || 'Group Chat'}</h3>
-                          <div className="flex items-center gap-1 text-xs">
-                            <button onClick={() => setShowProfileModal("1")} className="text-gray-500 hover:text-[#FFAA00] transition-colors">Alex</button>
-                            <span className="text-gray-600">•</span>
-                            <button onClick={() => setShowProfileModal("2")} className="text-gray-500 hover:text-[#FFAA00] transition-colors">Sarah</button>
-                            <span className="text-gray-600">•</span>
-                            <button onClick={() => setShowProfileModal("3")} className="text-gray-500 hover:text-[#FFAA00] transition-colors">Mike</button>
+                          <div className="flex -space-x-2">
+                            {groupMembers.slice(0, 3).map((member, index) => (
+                              <button
+                                key={member.id}
+                                onClick={() => setShowProfileModal(member.id)}
+                                className="relative hover:z-10 transition-all"
+                                style={{ zIndex: 3 - index }}
+                              >
+                                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-xs font-medium text-gray-300 border-2 border-gray-900 hover:ring-2 hover:ring-[#FFAA00] transition-all">
+                                  {member.avatar}
+                                </div>
+                                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(member.status, member.currentTask)}`} />
+                              </button>
+                            ))}
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-gray-200">{groupFriend?.name || 'Group Chat'}</h3>
+                            <p className="text-xs text-gray-500">
+                              <button onClick={() => setShowProfileModal("1")} className="hover:text-[#FFAA00] transition-colors">Alex Chen</button>,{' '}
+                              <button onClick={() => setShowProfileModal("2")} className="hover:text-[#FFAA00] transition-colors">Sarah Johnson</button>,{' '}
+                              <button onClick={() => setShowProfileModal("3")} className="hover:text-[#FFAA00] transition-colors">Mike Williams</button>
+                            </p>
                           </div>
                         </>
                       );
@@ -567,10 +649,26 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                     const friend = MOCK_FRIENDS.find(f => f.id === selectedConversation);
                     return (
                       <>
-                        <h3 className="font-medium text-gray-200">{friend?.name}</h3>
-                        <p className="text-xs text-gray-500">
-                          {friend?.status === 'online' ? 'Active now' : friend?.lastSeen || 'Offline'}
-                        </p>
+                        <button
+                          onClick={() => friend && setShowProfileModal(friend.id)}
+                          className="relative hover:opacity-80 transition-opacity"
+                        >
+                          <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all">
+                            {friend?.avatar}
+                          </div>
+                          {friend && <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status, friend.currentTask)}`} />}
+                        </button>
+                        <div>
+                          <button
+                            onClick={() => friend && setShowProfileModal(friend.id)}
+                            className="text-left"
+                          >
+                            <h3 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">{friend?.name}</h3>
+                          </button>
+                          <p className="text-xs text-gray-500">
+                            {friend?.status === 'online' ? 'Active now' : friend?.lastSeen || 'Offline'}
+                          </p>
+                        </div>
                       </>
                     );
                   })()}
@@ -580,13 +678,13 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {MOCK_CONVERSATIONS[selectedConversation]?.map((message) => {
-                  const sender = message.isMe ? null : MOCK_FRIENDS.find(f => f.id === message.senderId);
+                  const sender = message.isMe ? null : [...MOCK_FRIENDS, ...NON_FRIENDS].find(f => f.id === message.senderId);
                   return (
                     <div
                       key={message.id}
                       className={`flex ${message.isMe ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex items-end gap-2 max-w-[70%] ${message.isMe ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex items-start gap-2 max-w-[70%] ${message.isMe ? 'flex-row-reverse' : ''}`}>
                         {!message.isMe && (
                           <button
                             onClick={() => setShowProfileModal(message.senderId)}
@@ -596,13 +694,21 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                           </button>
                         )}
                         <div>
-                          {!message.isMe && selectedConversation.startsWith('group-') && (
-                            <button
-                              onClick={() => setShowProfileModal(message.senderId)}
-                              className="text-xs text-gray-500 mb-1 hover:text-[#FFAA00] transition-colors text-left"
-                            >
-                              {sender?.firstName || 'Unknown'}
-                            </button>
+                          {!message.isMe && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <button
+                                onClick={() => setShowProfileModal(message.senderId)}
+                                className="text-xs text-gray-500 hover:text-[#FFAA00] transition-colors"
+                              >
+                                {sender?.name || 'Unknown'}
+                              </button>
+                              <span className="text-xs text-gray-600">{message.time}</span>
+                            </div>
+                          )}
+                          {message.isMe && (
+                            <div className="flex items-center gap-2 mb-1 justify-end">
+                              <span className="text-xs text-gray-600">{message.time}</span>
+                            </div>
                           )}
                           <div
                             className={`px-3 py-2 rounded-lg ${
@@ -613,7 +719,6 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                           >
                             <p className="text-sm">{message.text}</p>
                           </div>
-                          <p className="text-xs text-gray-600 mt-1">{message.time}</p>
                         </div>
                       </div>
                     </div>
@@ -766,12 +871,28 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {/* Avatar with status indicator */}
-                      <div className="relative">
-                        <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
-                          {friend.avatar}
+                      <button
+                        onClick={(e) => {
+                          if (!friend.isGroup && (activeTab === "all" || activeTab === "messages")) {
+                            // For individuals, open profile and stop propagation
+                            e.stopPropagation();
+                            setShowProfileModal(friend.id);
+                          }
+                          // For groups, don't stop propagation - let parent handle it
+                        }}
+                        className="relative hover:opacity-80 transition-opacity"
+                      >
+                        <div className={`w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${!friend.isGroup ? 'hover:ring-2 hover:ring-[#FFAA00]' : ''} transition-all`}>
+                          {friend.isGroup ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          ) : (
+                            friend.avatar
+                          )}
                         </div>
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status)}`} />
-                      </div>
+                        {!friend.isGroup && <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status, friend.currentTask)}`} />}
+                      </button>
                       
                       {/* Friend info */}
                       <div className="flex-1">
@@ -785,7 +906,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                         </div>
                         {activeTab === "messages" && friend.lastMessage ? (
                           <>
-                            <p className="text-sm text-gray-500 line-clamp-1">
+                            <p className={`text-sm line-clamp-1 ${friend.lastMessage.unread ? 'text-white font-semibold' : 'text-gray-500'}`}>
                               {friend.lastMessage.text}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -876,7 +997,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                                   <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
                                     {friend.avatar}
                                   </div>
-                                  <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status)}`} />
+                                  {!friend.isGroup && <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status, friend.currentTask)}`} />}
                                 </div>
                                 
                                 {/* Friend info */}
@@ -928,33 +1049,31 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                           {/* Avatar with status indicator */}
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              if (activeTab === "all") {
+                              if (!friend.isGroup && (activeTab === "all" || activeTab === "messages")) {
+                                // For individuals, open profile and stop propagation
+                                e.stopPropagation();
                                 setShowProfileModal(friend.id);
                               }
+                              // For groups, don't stop propagation - let parent handle it
                             }}
-                            className={`relative ${activeTab === "all" ? "hover:opacity-80 transition-opacity" : ""}`}
+                            className="relative hover:opacity-80 transition-opacity"
                           >
-                            <div className={`w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${activeTab === "all" ? "hover:ring-2 hover:ring-[#FFAA00] transition-all" : ""}`}>
-                              {friend.avatar}
+                            <div className={`w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${!friend.isGroup ? 'hover:ring-2 hover:ring-[#FFAA00]' : ''} transition-all`}>
+                              {friend.isGroup ? (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              ) : (
+                                friend.avatar
+                              )}
                             </div>
-                            <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status)}`} />
+                            {!friend.isGroup && <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(friend.status, friend.currentTask)}`} />}
                           </button>
                           
                           {/* Friend info */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (activeTab === "all") {
-                                    setShowProfileModal(friend.id);
-                                  }
-                                }}
-                                className={`font-medium text-gray-200 text-left ${activeTab === "all" ? "hover:text-[#FFAA00] transition-colors" : ""}`}
-                              >
-                                {friend.name}
-                              </button>
+                              <h3 className="font-medium text-gray-200">{friend.name}</h3>
                               {friend.isPending && (
                                 <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-full">
                                   Pending
@@ -963,7 +1082,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                             </div>
                             {activeTab === "messages" && friend.lastMessage ? (
                               <>
-                                <p className="text-sm text-gray-500 line-clamp-1">
+                                <p className={`text-sm line-clamp-1 ${friend.lastMessage.unread ? 'text-white font-semibold' : 'text-gray-500'}`}>
                                   {friend.lastMessage.text}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
@@ -1022,11 +1141,37 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                                   Join Room
                                 </button>
                               )}
-                              <button className="p-2 text-gray-500 hover:text-gray-300 transition-colors opacity-0 group-hover:opacity-100">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                </svg>
-                              </button>
+                              <div className="relative contact-menu-container">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowContactMenu(showContactMenu === friend.id ? null : friend.id);
+                                  }}
+                                  className="p-2 text-gray-500 hover:text-gray-300 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                  </svg>
+                                </button>
+                                
+                                {showContactMenu === friend.id && (
+                                  <div className="absolute right-0 mt-1 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 py-1 z-50">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // TODO: Remove contact logic
+                                        setShowContactMenu(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors flex items-center gap-2"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                      Remove Contact
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </>
                           ) : null}
                         </div>
@@ -1103,7 +1248,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                   <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-2xl font-medium text-gray-300">
                     {profileUser.avatar}
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-gray-900 ${getStatusColor(profileUser.status)}`} />
+                  <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-gray-900 ${getStatusColor(profileUser.status, profileUser.currentTask)}`} />
                 </div>
 
                 {/* Name */}
@@ -1112,7 +1257,9 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                 {/* Status */}
                 <p className="text-sm text-gray-500 mb-4">
                   {profileUser.status === 'online' && profileUser.currentTask
-                    ? `${profileUser.currentTask} • ${profileUser.taskDuration}`
+                    ? profileUser.currentTask.includes('Do not disturb') 
+                      ? profileUser.currentTask
+                      : `${profileUser.currentTask} • ${profileUser.taskDuration}`
                     : profileUser.status === 'online'
                     ? 'Active now'
                     : profileUser.lastSeen || 'Offline'
