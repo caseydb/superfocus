@@ -28,6 +28,8 @@ import Timer from "./Timer";
 import Pomodoro from "./Pomodoro";
 import History from "./History";
 import Analytics from "./Analytics";
+import Contacts from "./Contacts";
+import Rooms from "./Rooms";
 import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
 import Leaderboard from "./Leaderboard";
@@ -109,7 +111,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  const [showRooms, setShowRooms] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "dnd" | "offline">("available");
   const [showTaskList, setShowTaskList] = useState(false);
   const [showRoomsModal, setShowRoomsModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -160,6 +165,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowNotes(false);
     setShowPreferences(false);
     setShowAnalytics(false);
+    setShowContacts(false);
+    setShowRooms(false);
     setShowQuitModal(false);
     setShowSignInModal(false);
     setShowTimerDropdown(false);
@@ -1198,6 +1205,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     showHistory,
     showLeaderboard,
     showAnalytics,
+    showContacts,
     closeAllModals,
   ]);
 
@@ -1345,6 +1353,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               showAnalytics={showAnalytics}
               setShowAnalytics={setShowAnalytics}
               closeAllModals={closeAllModals}
+              availabilityStatus={availabilityStatus}
+              setAvailabilityStatus={setAvailabilityStatus}
             />
           </div>
           {/* Personal stats - bottom center for all screen sizes */}
@@ -1546,6 +1556,95 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 History
               </span>
             </button>
+            {/* Contacts Section */}
+            <button
+              className="flex items-center gap-3 group relative cursor-pointer"
+              onClick={() => {
+                closeAllModals();
+                setShowContacts(true);
+              }}
+            >
+              <div className="relative">
+                <div
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  style={{
+                    WebkitMask: `url(/contacts.svg) no-repeat center`,
+                    mask: `url(/contacts.svg) no-repeat center`,
+                    WebkitMaskSize: "85%",
+                    maskSize: "85%",
+                  }}
+                />
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+                {/* Notification badge */}
+                {availabilityStatus !== "dnd" && (
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    4
+                  </div>
+                )}
+              </div>
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+                People
+              </span>
+            </button>
+            {/* Rooms Section */}
+            <button
+              className="flex items-center gap-3 group relative cursor-pointer"
+              onClick={() => {
+                closeAllModals();
+                setShowRooms(true);
+              }}
+            >
+              <div className="relative">
+                <svg 
+                  className="w-10 h-10 text-gray-400 group-hover:text-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 p-[3px]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="14"
+                    y="3"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="3"
+                    y="14"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="14"
+                    y="14"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+              </div>
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+                Rooms
+              </span>
+            </button>
           </div>
           {showQuitModal && (
             <div className="fixed inset-0 z-50 pointer-events-none animate-in fade-in duration-300">
@@ -1608,6 +1707,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               onClose={() => setShowAnalytics(false)}
             />
           )}
+          {showContacts && (
+            <Contacts 
+              onClose={() => setShowContacts(false)} 
+              availabilityStatus={availabilityStatus}
+              setAvailabilityStatus={setAvailabilityStatus}
+            />
+          )}
+          {showRooms && <Rooms onClose={() => setShowRooms(false)} />}
           {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
         </div>
         {/* Invite Modal - rendered as separate overlay */}

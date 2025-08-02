@@ -31,6 +31,8 @@ interface ControlsProps {
   showTimerDropdown: boolean;
   setShowTimerDropdown: (show: boolean) => void;
   timerDropdownRef: React.RefObject<HTMLDivElement | null>;
+  availabilityStatus?: "available" | "dnd" | "offline";
+  setAvailabilityStatus?: (value: "available" | "dnd" | "offline") => void;
 }
 
 export default function Controls({
@@ -54,16 +56,20 @@ export default function Controls({
   showTimerDropdown,
   setShowTimerDropdown,
   timerDropdownRef,
+  availabilityStatus = "available",
+  setAvailabilityStatus,
 }: ControlsProps) {
   const { user, currentInstance, leaveInstance } = useInstance();
   const [editedName, setEditedName] = useState(user.displayName);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [showSideModal, setShowSideModal] = useState(false);
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(localVolume > 0 ? localVolume : 0.5);
   const soundIconRef = useRef<HTMLSpanElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
+  const availabilityModalRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // Get user data from Redux store
@@ -76,8 +82,9 @@ export default function Controls({
       const target = e.target as Node;
       const isInDropdownMenu = dropdownRef.current && dropdownRef.current.contains(target);
       const isInDropdownIcon = dropdownIconRef.current && dropdownIconRef.current.contains(target);
-      // Only close if click is outside dropdown menu and icon
-      if (!isInDropdownMenu && !isInDropdownIcon) {
+      const isInAvailabilityModal = availabilityModalRef.current && availabilityModalRef.current.contains(target);
+      // Only close if click is outside dropdown menu, icon, and availability modal
+      if (!isInDropdownMenu && !isInDropdownIcon && !isInAvailabilityModal) {
         setDropdownOpen(false);
       }
     }
@@ -132,8 +139,87 @@ export default function Controls({
   return (
     <div className={className + " select-none relative"}>
       <div className="flex items-center">
-        {/* Beautiful Timer Mode Dropdown - first */}
-        <div className="relative mr-3" ref={timerDropdownRef}>
+        {/* Speaker icon - leftmost */}
+        <span
+          className="cursor-pointer flex items-center px-2 mr-3"
+          onClick={(e) => {
+            if (localVolume === 0) {
+              // Unmute: restore previous volume
+              setLocalVolume(previousVolume);
+            } else {
+              // Mute: set to 0 (don't update previousVolume)
+              setLocalVolume(0);
+            }
+          }}
+          title={localVolume === 0 ? "Unmute" : "Mute"}
+        >
+          {localVolume === 0 ? (
+            // Muted macOS-style speaker icon (gray-400 for header)
+            <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
+              <g>
+                <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
+                <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                <path
+                  d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M24 3.5c3.5 4 3.5 13 0 17"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                {/* Gray-400 border for mute line (underneath, slightly thicker and longer) */}
+                <line x1="9" y1="6" x2="26" y2="21.5" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round" />
+                {/* Red mute line (on top, slightly thicker and longer) */}
+                <line x1="9" y1="6" x2="26" y2="21.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+              </g>
+            </svg>
+          ) : (
+            // Unmuted macOS-style speaker icon (gray-400 for header)
+            <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
+              <g>
+                <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
+                <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                <path
+                  d="M17 8c1.333 1.333 1.333 6.667 0 8"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M24 3.5c3.5 4 3.5 13 0 17"
+                  stroke="#9ca3af"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </g>
+            </svg>
+          )}
+        </span>
+        
+        {/* Beautiful Timer Mode Dropdown - second */}
+        <div className="relative mr-2" ref={timerDropdownRef}>
           <button
             onClick={() => setShowTimerDropdown(!showTimerDropdown)}
             className={`group relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
@@ -238,97 +324,29 @@ export default function Controls({
           )}
         </div>
         
-        {/* Name and dropdown button with integrated speaker icon */}
+        {/* Name and dropdown button */}
         <div className="ml-auto hidden sm:block">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className={`group relative flex items-center gap-2 pl-2 pr-4 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
+            className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
               dropdownOpen ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
             }`}
           >
-            {/* Speaker icon inside the button but with its own click handler */}
-            <span
-              ref={soundIconRef}
-              className="cursor-pointer flex items-center px-2"
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering the dropdown
-                if (localVolume === 0) {
-                  // Unmute: restore previous volume
-                  setLocalVolume(previousVolume);
-                } else {
-                  // Mute: set to 0 (don't update previousVolume)
-                  setLocalVolume(0);
-                }
-              }}
-              title={localVolume === 0 ? "Unmute" : "Mute"}
-            >
-              {localVolume === 0 ? (
-                // Muted macOS-style speaker icon (gray-400 for header)
-                <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
-                  <g>
-                    <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
-                    <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
-                    <path
-                      d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                      stroke="#9ca3af"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                      stroke="#9ca3af"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M24 3.5c3.5 4 3.5 13 0 17"
-                      stroke="#9ca3af"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                    {/* Gray-400 border for mute line (underneath, slightly thicker and longer) */}
-                    <line x1="9" y1="6" x2="26" y2="21.5" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round" />
-                    {/* Red mute line (on top, slightly thicker and longer) */}
-                    <line x1="9" y1="6" x2="26" y2="21.5" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-                  </g>
-                </svg>
-              ) : (
-                // Unmuted macOS-style speaker icon (gray-400 for header)
-                <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
-                  <g>
-                    <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
-                    <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
-                    <path
-                      d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                      stroke="#9ca3af"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                      stroke="#9ca3af"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M24 3.5c3.5 4 3.5 13 0 17"
-                      stroke="#9ca3af"
-                      strokeWidth="1.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                  </g>
-                </svg>
-              )}
-            </span>
-            <span className="text-base font-mono text-gray-400 max-w-[200px] truncate">
-              {reduxUser.first_name || user.displayName.split(" ")[0]}
-            </span>
+            {/* Avatar with status indicator */}
+            <div className="relative">
+              <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+                {(() => {
+                  const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
+                  const lastLetter = reduxUser.last_name?.charAt(0) || '';
+                  return (firstLetter + lastLetter).toUpperCase();
+                })()}
+              </div>
+              <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
+                availabilityStatus === "offline" ? 'bg-gray-500' : 
+                availabilityStatus === "dnd" ? 'bg-red-500' : 
+                'bg-green-500'
+              }`} />
+            </div>
             {/* Dropdown arrow */}
             <svg 
               className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`}
@@ -356,12 +374,20 @@ export default function Controls({
         >
           {/* User Header */}
           <div className="flex items-center mb-4 mx-3 pb-3 border-b border-gray-700/50">
-            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 font-bold text-sm">
-              {(() => {
-                const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
-                const lastLetter = reduxUser.last_name?.charAt(0) || '';
-                return (firstLetter + lastLetter).toUpperCase();
-              })()}
+            {/* Avatar with status indicator - matching controls bar design */}
+            <div className="relative">
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+                {(() => {
+                  const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
+                  const lastLetter = reduxUser.last_name?.charAt(0) || '';
+                  return (firstLetter + lastLetter).toUpperCase();
+                })()}
+              </div>
+              <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${
+                availabilityStatus === "offline" ? 'bg-gray-500' : 
+                availabilityStatus === "dnd" ? 'bg-red-500' : 
+                'bg-green-500'
+              }`} />
             </div>
             <div className="ml-3">
               <h3 className="font-medium text-gray-300 font-mono text-sm">
@@ -370,6 +396,33 @@ export default function Controls({
                   : user.displayName}
               </h3>
               <p className="text-xs text-gray-500 font-mono">{reduxUser.email || auth.currentUser?.email || ""}</p>
+              {/* Availability Status */}
+              <button
+                onClick={() => setShowAvailabilityModal(true)}
+                className="mt-1 flex items-center gap-1 text-xs font-mono group transition-colors"
+              >
+                <span className={
+                  availabilityStatus === "offline" ? "text-gray-400 group-hover:text-[#FFAA00]" :
+                  availabilityStatus === "dnd" ? "text-red-400" : 
+                  "text-green-400"
+                }>
+                  {availabilityStatus === "offline" ? "Appear offline" :
+                   availabilityStatus === "dnd" ? "Do Not Disturb" : 
+                   "Online"}
+                </span>
+                <svg 
+                  className={`w-3 h-3 text-gray-500 transition-colors ${
+                    availabilityStatus === "offline" ? "group-hover:text-[#FFAA00]" :
+                    availabilityStatus === "dnd" ? "group-hover:text-red-400" : 
+                    "group-hover:text-green-400"
+                  }`}
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -485,74 +538,37 @@ export default function Controls({
               <span className="font-medium font-mono">Preferences</span>
             </button>
 
-            {/* View Rooms Button */}
+            {/* Plans and Billing Button */}
             <button
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
               onClick={() => {
-                closeAllModals();
-                setShowRoomsModal(true);
+                // TODO: Add plans and billing modal/page
                 setDropdownOpen(false);
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <rect
                   x="3"
-                  y="3"
-                  width="7"
-                  height="7"
-                  rx="1"
+                  y="6"
+                  width="18"
+                  height="12"
+                  rx="2"
                   stroke="currentColor"
                   strokeWidth="2"
                 />
-                <rect
-                  x="14"
-                  y="3"
-                  width="7"
-                  height="7"
-                  rx="1"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <rect
-                  x="3"
-                  y="14"
-                  width="7"
-                  height="7"
-                  rx="1"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <rect
-                  x="14"
-                  y="14"
-                  width="7"
-                  height="7"
-                  rx="1"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-              </svg>
-              <span className="font-medium font-mono">View Rooms</span>
-            </button>
-
-            {/* Leave Room Button */}
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
-              onClick={() => {
-                leaveInstance();
-                router.push("/");
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path
-                  d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
+                  d="M3 10h18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M7 14h4"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
                 />
               </svg>
-              <span className="font-medium font-mono">Leave Room</span>
+              <span className="font-medium font-mono">Plan & Billing</span>
             </button>
 
             {/* Sign Out Button */}
@@ -662,8 +678,20 @@ export default function Controls({
                 ×
               </button>
               <div className="flex items-center mt-8">
-                <div className="w-12 h-12 bg-[#FFAA00] rounded-full flex items-center justify-center text-black font-bold">
-                  {(reduxUser.first_name || user.displayName).charAt(0).toUpperCase()}
+                {/* Avatar with status indicator - matching controls bar design */}
+                <div className="relative">
+                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+                    {(() => {
+                      const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
+                      const lastLetter = reduxUser.last_name?.charAt(0) || '';
+                      return (firstLetter + lastLetter).toUpperCase();
+                    })()}
+                  </div>
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-gray-900 ${
+                    availabilityStatus === "offline" ? 'bg-gray-500' : 
+                    availabilityStatus === "dnd" ? 'bg-red-500' : 
+                    'bg-green-500'
+                  }`} />
                 </div>
                 <div className="ml-3">
                   <h3 className="font-semibold text-white font-mono">
@@ -804,55 +832,6 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
               </button>
 
-              {/* View Rooms Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                onClick={() => {
-                  closeAllModals();
-                  setShowRoomsModal(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <rect
-                    x="3"
-                    y="3"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    />
-                  <rect
-                    x="14"
-                    y="3"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    />
-                  <rect
-                    x="3"
-                    y="14"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    />
-                  <rect
-                    x="14"
-                    y="14"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">View Rooms</span>
-              </button>
 
               {/* Preferences Button */}
               <button
@@ -943,25 +922,6 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Analytics</span>
               </button>
 
-              {/* Leave Room Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                onClick={() => {
-                  leaveInstance();
-                  router.push("/");
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path
-                    d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Leave Room</span>
-              </button>
 
               {/* Sign Out Button */}
               <button
@@ -980,6 +940,120 @@ export default function Controls({
                     />
                 </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Availability Modal */}
+      {showAvailabilityModal && (
+        <div
+          ref={availabilityModalRef}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowAvailabilityModal(false);
+          }}
+        >
+          <div
+            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-gray-800 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button - matching People modal design */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAvailabilityModal(false);
+              }}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            >
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h2 className="text-xl font-bold text-white mb-4">Set Status</h2>
+            
+            <div className="space-y-3">
+              {/* Online Option */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAvailabilityStatus?.("available");
+                  setShowAvailabilityModal(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all ${
+                  availabilityStatus === "available"
+                    ? 'border-green-500 bg-green-500/10' 
+                    : 'border-gray-700 hover:border-[#FFAA00]'
+                }`}
+              >
+                <div className="w-3 h-3 bg-green-500 rounded-full" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-gray-200">Online</p>
+                  <p className="text-xs text-gray-500">Receive all notifications</p>
+                </div>
+                {availabilityStatus === "available" && (
+                  <svg className="w-5 h-5 text-[#FFAA00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Do Not Disturb Option */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAvailabilityStatus?.("dnd");
+                  setShowAvailabilityModal(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all ${
+                  availabilityStatus === "dnd"
+                    ? 'border-red-500 bg-red-500/10' 
+                    : 'border-gray-700 hover:border-[#FFAA00]'
+                }`}
+              >
+                <div className="w-3 h-3 bg-red-500 rounded-full" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-gray-200">Do Not Disturb</p>
+                  <p className="text-xs text-gray-500">Hide notification badges</p>
+                </div>
+                {availabilityStatus === "dnd" && (
+                  <svg className="w-5 h-5 text-[#FFAA00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Appear Offline Option */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAvailabilityStatus?.("offline");
+                  setShowAvailabilityModal(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all ${
+                  availabilityStatus === "offline"
+                    ? 'border-gray-500 bg-gray-500/10' 
+                    : 'border-gray-700 hover:border-[#FFAA00]'
+                }`}
+              >
+                <div className="w-3 h-3 bg-gray-500 rounded-full" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-gray-200">Appear offline</p>
+                  <p className="text-xs text-gray-500">Appear inactive to others</p>
+                </div>
+                {availabilityStatus === "offline" && (
+                  <svg className="w-5 h-5 text-[#FFAA00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>

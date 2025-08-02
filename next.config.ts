@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
   },
   productionBrowserSourceMaps: true,
   serverExternalPackages: ["firebase-admin"],
+  devIndicators: false,
 };
 
 export default nextConfig;
