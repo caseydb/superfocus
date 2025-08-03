@@ -122,6 +122,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showInvitePopup, setShowInvitePopup] = useState(false);
+  const [messagesNotificationCount, setMessagesNotificationCount] = useState(1);
+  const [requestsNotificationCount, setRequestsNotificationCount] = useState(3);
+  const peopleNotificationCount = messagesNotificationCount + requestsNotificationCount;
+  const setPeopleNotificationCount = () => {}; // No longer needed, calculated automatically
   // Get mode preference from Redux
   const preferences = useSelector((state: RootState) => state.preferences);
   const isPomodoroMode = preferences.mode === "countdown";
@@ -1577,9 +1581,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
                 {/* Notification badge */}
-                {availabilityStatus !== "dnd" && (
+                {availabilityStatus !== "dnd" && peopleNotificationCount > 0 && (
                   <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    4
+                    {peopleNotificationCount}
                   </div>
                 )}
               </div>
@@ -1712,6 +1716,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               onClose={() => setShowContacts(false)} 
               availabilityStatus={availabilityStatus}
               setAvailabilityStatus={setAvailabilityStatus}
+              onNotificationCountChange={setPeopleNotificationCount}
+              messagesNotificationCount={messagesNotificationCount}
+              setMessagesNotificationCount={setMessagesNotificationCount}
+              requestsNotificationCount={requestsNotificationCount}
+              setRequestsNotificationCount={setRequestsNotificationCount}
             />
           )}
           {showRooms && <Rooms onClose={() => setShowRooms(false)} />}

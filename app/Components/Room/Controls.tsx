@@ -8,6 +8,8 @@ import { auth } from "@/lib/firebase";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { updatePreferences, setPreference } from "../../store/preferenceSlice";
+import AccountModal from "./AccountModal";
+import BillingModal from "./BillingModal";
 
 interface ControlsProps {
   className?: string;
@@ -63,6 +65,8 @@ export default function Controls({
   const [showNameModal, setShowNameModal] = useState(false);
   const [showSideModal, setShowSideModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showBillingModal, setShowBillingModal] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(localVolume > 0 ? localVolume : 0.5);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
@@ -391,7 +395,6 @@ export default function Controls({
                   ? `${reduxUser.first_name}${reduxUser.last_name ? ` ${reduxUser.last_name}` : ''}`
                   : user.displayName}
               </h3>
-              <p className="text-xs text-gray-500 font-mono">{reduxUser.email || auth.currentUser?.email || ""}</p>
               {/* Availability Status */}
               <button
                 onClick={() => setShowAvailabilityModal(true)}
@@ -534,11 +537,31 @@ export default function Controls({
               <span className="font-medium font-mono">Preferences</span>
             </button>
 
+            {/* Account Button */}
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+              onClick={() => {
+                setShowAccountModal(true);
+                setDropdownOpen(false);
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="font-medium font-mono">Account</span>
+            </button>
+
             {/* Plans and Billing Button */}
             <button
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
               onClick={() => {
-                // TODO: Add plans and billing modal/page
+                setShowBillingModal(true);
                 setDropdownOpen(false);
               }}
             >
@@ -918,6 +941,58 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Analytics</span>
               </button>
 
+              {/* Account Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                onClick={() => {
+                  setShowAccountModal(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Account</span>
+              </button>
+
+              {/* Plan & Billing Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                onClick={() => {
+                  setShowBillingModal(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <rect
+                    x="3"
+                    y="6"
+                    width="18"
+                    height="12"
+                    rx="2"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M3 10h18"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M7 14h4"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Plan & Billing</span>
+              </button>
 
               {/* Sign Out Button */}
               <button
@@ -1054,6 +1129,14 @@ export default function Controls({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Account Modal */}
+      {showAccountModal && (
+        <AccountModal onClose={() => setShowAccountModal(false)} />
+      )}
+      {showBillingModal && (
+        <BillingModal onClose={() => setShowBillingModal(false)} />
       )}
     </div>
   );

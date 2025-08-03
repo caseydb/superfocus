@@ -7,6 +7,11 @@ interface ContactsProps {
   onClose: () => void;
   availabilityStatus?: "available" | "dnd" | "offline";
   setAvailabilityStatus?: (value: "available" | "dnd" | "offline") => void;
+  onNotificationCountChange?: (count: number) => void;
+  messagesNotificationCount?: number;
+  setMessagesNotificationCount?: (count: number) => void;
+  requestsNotificationCount?: number;
+  setRequestsNotificationCount?: (count: number) => void;
 }
 
 type Status = "online" | "offline";
@@ -121,7 +126,16 @@ const COMMON_EMOJIS = [
 // Track if beta disclaimer has been shown this session
 let hasShownPeopleBetaDisclaimer = false;
 
-const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availabilityStatusProp, setAvailabilityStatus: setAvailabilityStatusProp }) => {
+const Contacts: React.FC<ContactsProps> = ({ 
+  onClose, 
+  availabilityStatus: availabilityStatusProp, 
+  setAvailabilityStatus: setAvailabilityStatusProp, 
+  onNotificationCountChange,
+  messagesNotificationCount: messagesNotificationCountProp,
+  setMessagesNotificationCount: setMessagesNotificationCountProp,
+  requestsNotificationCount: requestsNotificationCountProp,
+  setRequestsNotificationCount: setRequestsNotificationCountProp
+}) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -154,6 +168,16 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
   const [reactionPickerCoords, setReactionPickerCoords] = useState<{ top: number; left: number } | null>(null);
   const [userReactions, setUserReactions] = useState<Record<string, string[]>>({});
   const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(!hasShownPeopleBetaDisclaimer);
+  const messagesNotificationCount = messagesNotificationCountProp ?? 1;
+  const requestsNotificationCount = requestsNotificationCountProp ?? 3;
+  const setMessagesNotificationCount = setMessagesNotificationCountProp || (() => {});
+  const setRequestsNotificationCount = setRequestsNotificationCountProp || (() => {});
+  
+  // Update parent component with total notification count
+  useEffect(() => {
+    const totalCount = messagesNotificationCount + requestsNotificationCount;
+    onNotificationCountChange?.(totalCount);
+  }, [messagesNotificationCount, requestsNotificationCount, onNotificationCountChange]);
   
   // Update flag when disclaimer is dismissed
   useEffect(() => {
@@ -328,8 +352,6 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
     });
   }, [activeTab, searchQuery]);
 
-  const requestsCount = MOCK_REQUESTS.length;
-  const unreadMessagesCount = MOCK_FRIENDS.filter(f => f.lastMessage?.unread).length;
 
   const handleQuickSwitch = (roomUrl: string) => {
     onClose();
@@ -478,6 +500,8 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
             onClick={() => {
               setActiveTab("messages");
               setShowAddFriend(false);
+              setMessagesNotificationCount(0);
+              setMessagesNotificationCountProp?.(0);
             }}
             className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
               activeTab === "messages"
@@ -486,13 +510,13 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
             }`}
           >
             Messages
-            {unreadMessagesCount > 0 && (
+            {messagesNotificationCount > 0 && (
               <span className={`px-1.5 py-0.5 rounded-full text-xs ${
                 activeTab === "messages" 
                   ? "bg-black/20 text-black" 
                   : "bg-red-500 text-white animate-pulse"
               }`}>
-                {unreadMessagesCount}
+                {messagesNotificationCount}
               </span>
             )}
           </button>
@@ -501,6 +525,8 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
               setActiveTab("requests");
               setShowAddFriend(false);
               setShowNewMessage(false);
+              setRequestsNotificationCount(0);
+              setRequestsNotificationCountProp?.(0);
             }}
             className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
               activeTab === "requests"
@@ -509,13 +535,13 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
             }`}
           >
             Requests
-            {requestsCount > 0 && (
+            {requestsNotificationCount > 0 && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                 activeTab === "requests" 
                   ? "bg-black/20 text-black" 
                   : "bg-red-500 text-white animate-pulse"
               }`}>
-                {requestsCount}
+                {requestsNotificationCount}
               </span>
             )}
           </button>
