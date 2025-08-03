@@ -341,11 +341,12 @@ export default function Controls({
                   return (firstLetter + lastLetter).toUpperCase();
                 })()}
               </div>
-              <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
+              {/* Status indicator dot - commented out */}
+              {/* <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
                 availabilityStatus === "offline" ? 'bg-gray-500' : 
                 availabilityStatus === "dnd" ? 'bg-red-500' : 
                 'bg-green-500'
-              }`} />
+              }`} /> */}
             </div>
             {/* Dropdown arrow */}
             <svg 
@@ -383,11 +384,12 @@ export default function Controls({
                   return (firstLetter + lastLetter).toUpperCase();
                 })()}
               </div>
-              <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${
+              {/* Status indicator dot - commented out */}
+              {/* <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${
                 availabilityStatus === "offline" ? 'bg-gray-500' : 
                 availabilityStatus === "dnd" ? 'bg-red-500' : 
                 'bg-green-500'
-              }`} />
+              }`} /> */}
             </div>
             <div className="ml-3">
               <h3 className="font-medium text-gray-300 font-mono text-sm">
@@ -395,8 +397,8 @@ export default function Controls({
                   ? `${reduxUser.first_name}${reduxUser.last_name ? ` ${reduxUser.last_name}` : ''}`
                   : user.displayName}
               </h3>
-              {/* Availability Status */}
-              <button
+              {/* Availability Status - Commented out */}
+              {/* <button
                 onClick={() => setShowAvailabilityModal(true)}
                 className="mt-1 flex items-center gap-1 text-xs font-mono group transition-colors"
               >
@@ -421,7 +423,11 @@ export default function Controls({
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </button>
+              </button> */}
+              {/* User Email */}
+              <p className="mt-1 text-xs font-mono text-gray-400">
+                {reduxUser.email || auth.currentUser?.email || ""}
+              </p>
             </div>
           </div>
 
@@ -516,6 +522,26 @@ export default function Controls({
 
           {/* Menu Items */}
           <div className="p-1">
+            {/* Account Button */}
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+              onClick={() => {
+                setShowAccountModal(true);
+                setDropdownOpen(false);
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="font-medium font-mono">Account</span>
+            </button>
+
             {/* Preferences Button */}
             <button
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
@@ -535,26 +561,6 @@ export default function Controls({
                 />
               </svg>
               <span className="font-medium font-mono">Preferences</span>
-            </button>
-
-            {/* Account Button */}
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
-              onClick={() => {
-                setShowAccountModal(true);
-                setDropdownOpen(false);
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="font-medium font-mono">Account</span>
             </button>
 
             {/* Plans and Billing Button */}
@@ -706,11 +712,12 @@ export default function Controls({
                       return (firstLetter + lastLetter).toUpperCase();
                     })()}
                   </div>
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-gray-900 ${
+                  {/* Status indicator dot - commented out */}
+                  {/* <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-gray-900 ${
                     availabilityStatus === "offline" ? 'bg-gray-500' : 
                     availabilityStatus === "dnd" ? 'bg-red-500' : 
                     'bg-green-500'
-                  }`} />
+                  }`} /> */}
                 </div>
                 <div className="ml-3">
                   <h3 className="font-semibold text-white font-mono">
@@ -851,6 +858,25 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
               </button>
 
+              {/* Account Button */}
+              <button
+                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                onClick={() => {
+                  setShowAccountModal(true);
+                  setShowSideModal(false);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                  <path
+                    d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                    stroke="#9ca3af"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Account</span>
+              </button>
 
               {/* Preferences Button */}
               <button
@@ -939,26 +965,6 @@ export default function Controls({
                     />
                 </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Analytics</span>
-              </button>
-
-              {/* Account Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                onClick={() => {
-                  setShowAccountModal(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path
-                    d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Account</span>
               </button>
 
               {/* Plan & Billing Button */}

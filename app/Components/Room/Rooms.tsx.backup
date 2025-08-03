@@ -29,7 +29,7 @@ interface RoomsProps {
   onClose: () => void;
 }
 
-type TabType = "experiment" | "team";
+type TabType = "experiment" | "quick-join" | "my-rooms" | "team";
 
 interface RoomMember {
   id: string;
@@ -66,15 +66,19 @@ interface SortableRoomCardProps {
   currentRoomUrl: string;
   onJoinRoom: (url: string) => void;
   onSettingsClick: (room: Room) => void;
+  activeTab: TabType;
 }
 
 const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ 
   room, 
   currentRoomUrl, 
   onJoinRoom, 
-  onSettingsClick
+  onSettingsClick,
+  activeTab 
 }) => {
   const {
+    attributes,
+    listeners,
     setNodeRef,
     transform,
     transition,
@@ -113,9 +117,11 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
         currentRoomUrl === room.url 
           ? "border-[#FFAA00] bg-gray-800/70" 
           : "border-gray-700 hover:border-gray-600"
-      } ${
+      } ${activeTab === "my-rooms" ? "cursor-move" : ""} ${
         isDragging ? "shadow-2xl shadow-[#FFAA00]/20" : ""
       }`}
+      {...(activeTab === "my-rooms" ? attributes : {})}
+      {...(activeTab === "my-rooms" ? listeners : {})}
     >
       {/* Room Header */}
       <div className="flex items-start justify-between mb-3">
@@ -444,38 +450,14 @@ const MOCK_ROOMS: Room[] = [
 // Track if beta disclaimer has been shown this session
 let hasShownRoomsBetaDisclaimer = false;
 
-// Teams data structure
-const TEAMS_DATA = {
-  vendorsage: {
-    id: "vendorsage",
-    name: "Vendorsage",
-    description: "Your primary team workspace",
-    members: MOCK_FRIENDS.slice(0, 4), // Use existing friends data
-    rooms: MOCK_ROOMS.filter(room => room.type === "private"),
-    createdBy: "You",
-    createdAt: "2024-01-15"
-  },
-  nexus: {
-    id: "nexus",
-    name: "Nexus",
-    description: "New team workspace",
-    members: [MOCK_FRIENDS[0]], // Only the creator
-    rooms: [], // No rooms yet
-    createdBy: MOCK_FRIENDS[0].name,
-    createdAt: new Date().toISOString().split('T')[0]
-  }
-};
-
 const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState("vendorsage");
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
   const [newRoomType, setNewRoomType] = useState<"public" | "private">("public");
-  const [newRoomTeam, setNewRoomTeam] = useState(selectedTeam);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<Room | null>(null);
   const [showMembersModal, setShowMembersModal] = useState<Room | null>(null);
@@ -483,7 +465,6 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
   const [showTeamInviteModal, setShowTeamInviteModal] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState<Room | null>(null);
-  const [newTeamName, setNewTeamName] = useState("");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(!hasShownRoomsBetaDisclaimer);
@@ -505,11 +486,6 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
       hasShownRoomsBetaDisclaimer = true;
     }
   }, [showBetaDisclaimer]);
-
-  // Update newRoomTeam when selectedTeam changes
-  useEffect(() => {
-    setNewRoomTeam(selectedTeam);
-  }, [selectedTeam]);
 
   // Get current room URL to highlight it
   // For demo purposes, default to the first room if not in a room
@@ -548,7 +524,7 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
     }
     
     // Sort based on tab
-    if (activeTab === "experiment") {
+    if (activeTab === "experiment" || activeTab === "my-rooms") {
       // Sort by type (private/Vendorsage first), then pinned, then custom order
       return rooms.sort((a, b) => {
         // First, sort by type (private first)
@@ -701,26 +677,60 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
         <div className="flex items-center gap-1 bg-gray-800/50 rounded-full p-1 mb-4">
           <button
             onClick={() => setActiveTab("experiment")}
-            className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
+            className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
               activeTab === "experiment"
                 ? "bg-[#FFAA00] text-black"
                 : "text-gray-400 hover:text-gray-300"
             }`}
           >
-            Rooms
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            Experiment Tab
           </button>
           <button
             onClick={() => setActiveTab("team")}
-            className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
+            className={`flex-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               activeTab === "team"
                 ? "bg-[#FFAA00] text-black"
                 : "text-gray-400 hover:text-gray-300"
             }`}
           >
-            Teams
+            Team
           </button>
         </div>
 
+        {/* Search and Create Room - Only show for My Rooms tab */}
+        {/* {activeTab === "my-rooms" && (
+          <div className="flex gap-2 mb-4">
+            <div className="flex-1 relative">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search rooms..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => setShowCreateRoom(!showCreateRoom)}
+              className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create Room
+            </button>
+          </div>
+        )} */}
 
         {/* Rooms Grid / Quick Join */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
@@ -849,38 +859,13 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                           <span className="text-sm text-gray-300">Private Room</span>
                         </label>
                       </div>
-                      {newRoomType === "private" && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">Select Team</label>
-                          <div className="relative">
-                            <select
-                              value={newRoomTeam}
-                              onChange={(e) => setNewRoomTeam(e.target.value)}
-                              className="w-full px-3 py-2 pr-10 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-[#FFAA00] transition-colors appearance-none"
-                            >
-                              <option value="vendorsage">Vendorsage</option>
-                              <option value="nexus">Nexus</option>
-                            </select>
-                            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
                       <div className="flex gap-2">
                         <button
                           className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
                           onClick={() => {
                             // Handle create room
-                            console.log("Creating room:", {
-                              name: newRoomName,
-                              description: newRoomDescription,
-                              type: newRoomType,
-                              team: newRoomType === "private" ? newRoomTeam : null
-                            });
                             setNewRoomName("");
                             setNewRoomDescription("");
-                            setNewRoomTeam(selectedTeam);
                             setShowCreateRoom(false);
                           }}
                         >
@@ -892,7 +877,6 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                             setShowCreateRoom(false);
                             setNewRoomName("");
                             setNewRoomDescription("");
-                            setNewRoomTeam(selectedTeam);
                           }}
                         >
                           Cancel
@@ -928,6 +912,7 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                             currentRoomUrl={currentRoomUrl}
                             onJoinRoom={handleJoinRoom}
                             onSettingsClick={setEditingRoom}
+                            activeTab={activeTab}
                           />
                         );
                       })}
@@ -959,13 +944,163 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
               <p className="text-lg font-medium">No rooms found</p>
               <p className="text-sm text-gray-600">Try a different search or create a new room</p>
             </div>
+          ) : false ? ( /* activeTab === "my-rooms" - commented out */
+            // My Rooms tab - Commented out
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              measuring={{
+                droppable: {
+                  strategy: MeasuringStrategy.Always,
+                }
+              }}
+            >
+              <SortableContext
+                items={filteredRooms.map(room => room.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                  {filteredRooms.map((room) => (
+                    <SortableRoomCard
+                      key={room.id}
+                      room={room}
+                      currentRoomUrl={currentRoomUrl}
+                      onJoinRoom={handleJoinRoom}
+                      onSettingsClick={setEditingRoom}
+                      activeTab={activeTab}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+              <DragOverlay>
+                {activeId ? (() => {
+                  const activeRoom = filteredRooms.find(r => r.id === activeId);
+                  if (!activeRoom) return null;
+                  
+                  return (
+                    <div className="pointer-events-none">
+                      <div className="p-4 bg-gray-800 rounded-lg border-2 border-[#FFAA00] shadow-2xl shadow-[#FFAA00]/40 opacity-95 flex flex-col min-h-[200px] max-w-[350px]">
+                        {/* Room Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-gray-200">{activeRoom.name}</h3>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                activeRoom.type === "private" 
+                                  ? "bg-purple-500/20 text-purple-400" 
+                                  : "bg-blue-500/20 text-blue-400"
+                              }`}>
+                                {activeRoom.type === "private" ? "Vendorsage" : "Public"}
+                              </span>
+                            </div>
+                            {activeRoom.description && (
+                              <p className="text-sm text-gray-500 line-clamp-2">{activeRoom.description}</p>
+                            )}
+                          </div>
+                          
+                          {/* Quick Stats */}
+                          <div className="text-right text-xs text-gray-500">
+                            <div className="font-medium text-gray-400">{activeRoom.weeklyStats.totalTime}</div>
+                            <div>{activeRoom.weeklyStats.totalTasks} tasks</div>
+                            <div className="text-[10px] mt-1">this week</div>
+                          </div>
+                        </div>
+
+                        {/* Content Section - Flex grow to push button down */}
+                        <div className="flex-1">
+                          {/* Active Members */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex -space-x-2">
+                              {(() => {
+                                const displayItems = [];
+                                const maxVisible = 5;
+                                const hasOverflow = activeRoom.members.length > maxVisible;
+                                const membersToShow = hasOverflow ? 4 : activeRoom.members.length;
+                                
+                                // Sort members by status: online > idle > offline
+                                const statusOrder = { online: 0, idle: 1, offline: 2 };
+                                const sortedMembers = [...activeRoom.members].sort((a, b) => 
+                                  statusOrder[a.status] - statusOrder[b.status]
+                                );
+                                
+                                // Add member avatars
+                                for (let i = 0; i < membersToShow; i++) {
+                                  const member = sortedMembers[i];
+                                  displayItems.push(
+                                    <div
+                                      key={member.id}
+                                      className="relative"
+                                    >
+                                      <div className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
+                                        member.status === "offline" ? "bg-gray-700 text-gray-400" : "bg-gray-600 text-gray-200"
+                                      }`}>
+                                        {member.avatar}
+                                      </div>
+                                      <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
+                                        member.status === "online" ? "bg-green-500" : 
+                                        member.status === "idle" ? "bg-yellow-500" : "bg-gray-600"
+                                      }`} />
+                                    </div>
+                                  );
+                                }
+                                
+                                // Add overflow indicator
+                                if (hasOverflow) {
+                                  const overflowCount = activeRoom.members.length - 4;
+                                  displayItems.push(
+                                    <div key="overflow" className="relative">
+                                      <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
+                                        {overflowCount > 99 ? '99+' : `+${overflowCount}`}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                
+                                return displayItems;
+                              })()}
+                            </div>
+                            <span className="text-sm text-gray-400">
+                              {activeRoom.activeCount > 0 ? (
+                                <span className="text-green-400">{activeRoom.activeCount} active</span>
+                              ) : (
+                                <span className="text-gray-500">No one active</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Join Button - Always at bottom */}
+                        <button
+                          className={`w-full py-2 rounded-lg font-medium transition-all duration-200 ${
+                            currentRoomUrl === activeRoom.url
+                              ? "bg-gray-700 text-gray-400"
+                              : "bg-gray-700 text-gray-300"
+                          }`}
+                          disabled
+                        >
+                          {currentRoomUrl === activeRoom.url ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                              Current Room
+                            </span>
+                          ) : (
+                            "Join Room"
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })() : null}
+              </DragOverlay>
+            </DndContext>
           ) : activeTab === "team" ? (
             // Team Tab
             <div className="flex flex-col h-full">
               {(() => {
-                // Get current team data
-                const currentTeam = TEAMS_DATA[selectedTeam as keyof typeof TEAMS_DATA] || TEAMS_DATA.vendorsage;
-                const teamRooms = currentTeam.rooms;
+                // Get all Vendorsage (private) rooms
+                const teamRooms = MOCK_ROOMS.filter(room => room.type === "private");
                 const allTeamMembers = new Map();
                 let totalActiveMembers = 0;
                 let totalTasks = 0;
@@ -992,33 +1127,26 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                   }
                 });
                 
-                // For Nexus team, use the team members instead of room members
-                const teamMembers = selectedTeam === "nexus" 
-                  ? currentTeam.members.map(member => ({
-                      ...member,
-                      rooms: [] // Nexus team members aren't in any rooms yet
-                    }))
-                  : Array.from(allTeamMembers.values());
-                
                 const formatTotalTime = (minutes: number) => {
                   const hours = Math.floor(minutes / 60);
                   const mins = minutes % 60;
                   return `${hours}h ${mins}m`;
                 };
                 
+                const allMembersArray = Array.from(allTeamMembers.values());
+                
                 // Sort members by status priority
-                const sortedMembers = teamMembers.sort((a, b) => {
+                const sortedMembers = allMembersArray.sort((a, b) => {
                   // Priority order:
                   // 1. Actively working (online without "Do not disturb")
                   // 2. Completed task (idle status)
                   // 3. Do not disturb (online with "Do not disturb")
                   // 4. Last seen (offline)
                   
-                  const getStatusPriority = (member: { status: string; currentTask?: string; task?: string }) => {
-                    const task = member.currentTask || member.task;
-                    if (member.status === "online" && task && !task.includes("Do not disturb")) return 1;
+                  const getStatusPriority = (member: { status: string; task?: string }) => {
+                    if (member.status === "online" && member.task && !member.task.includes("Do not disturb")) return 1;
                     if (member.status === "idle") return 2;
-                    if (member.status === "online" && task && task.includes("Do not disturb")) return 3;
+                    if (member.status === "online" && member.task && member.task.includes("Do not disturb")) return 3;
                     if (member.status === "offline") return 4;
                     return 5;
                   };
@@ -1028,188 +1156,14 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                 
                 return (
                   <div className="space-y-6">
-                    {selectedTeam === "create" ? (
-                      // Create Team Form
-                      <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                        <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-xl font-bold text-[#FFAA00]">Create New Team</h3>
-                          <button
-                            onClick={() => {
-                              setSelectedTeam("vendorsage");
-                              setNewTeamName("");
-                              setInviteEmails("");
-                            }}
-                            className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
-                          >
-                            <svg
-                              className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                        
-                        <div className="space-y-4 mb-6">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">Team Name</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                placeholder="Enter team name"
-                                value={newTeamName}
-                                onChange={(e) => setNewTeamName(e.target.value.slice(0, 30))}
-                                maxLength={30}
-                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                                {newTeamName.length}/30
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
-                              Invite Team Members
-                            </label>
-                            <textarea
-                              placeholder="Enter email addresses (you can do this later)"
-                              value={inviteEmails}
-                              onChange={(e) => setInviteEmails(e.target.value)}
-                              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors resize-none"
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Pricing Information */}
-                        <div className="bg-gradient-to-r from-[#FFAA00]/10 to-[#FFB833]/10 rounded-lg p-4 mb-6 border border-[#FFAA00]/30">
-                          <div className="flex items-start gap-3">
-                            <svg className="w-5 h-5 text-[#FFAA00] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <div className="flex-1">
-                              <h4 className="text-sm font-semibold text-[#FFAA00] mb-1">Team Pricing</h4>
-                              <p className="text-sm text-gray-300 mb-3">
-                                Teams are billed at <span className="font-semibold text-white">$5/month per user</span>
-                              </p>
-                              <div className="space-y-2 text-xs text-gray-400">
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span>Your bill automatically adjusts as team members join or leave</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span>You&apos;ll only be charged for active team members</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span>Cancel anytime with no hidden fees</span>
-                                </div>
-                              </div>
-                              <a 
-                                href="https://buy.stripe.com/your-team-subscription-link" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#FFAA00] text-black font-medium text-sm rounded-lg hover:bg-[#FFB700] transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                </svg>
-                                Set Up Billing
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gray-800/50 rounded-lg p-4 mb-6 border border-gray-700">
-                          <h4 className="text-sm font-medium text-gray-400 mb-2">What happens next?</h4>
-                          <ul className="space-y-2 text-sm text-gray-500">
-                            <li className="flex items-start gap-2">
-                              <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>Your team will be created immediately</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>You&apos;ll be the team owner and first member</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>Invite members and create rooms to get started</span>
-                            </li>
-                          </ul>
-                        </div>
-                        
-                        <div className="flex gap-3">
-                          <button
-                            disabled={!newTeamName.trim()}
-                            onClick={() => {
-                              // Handle create team
-                              console.log("Creating team:", newTeamName, "with invites:", inviteEmails);
-                              setSelectedTeam("vendorsage"); // Or switch to the new team
-                              setNewTeamName("");
-                              setInviteEmails("");
-                            }}
-                            className="flex-1 px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Create Team
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedTeam("vendorsage");
-                              setNewTeamName("");
-                              setInviteEmails("");
-                            }}
-                            className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Team Overview Header */}
-                        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                    {/* Team Overview Header */}
+                    <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="relative inline-flex items-center">
-                              <select
-                                value={selectedTeam}
-                                onChange={(e) => {
-                                  setSelectedTeam(e.target.value);
-                                }}
-                                className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer"
-                              >
-                                <option value="vendorsage">Vendorsage</option>
-                                <option value="nexus">Nexus</option>
-                                <option value="create">+ Create Team</option>
-                              </select>
-                              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
+                            <h2 className="text-2xl font-bold text-gray-200">Vendorsage</h2>
                           </div>
-                          <p className="text-gray-400">
-                            {selectedTeam === "nexus" 
-                              ? "Your new team workspace - invite members to get started"
-                              : `You're collaborating across ${teamRooms.length} workspaces`
-                            }
-                          </p>
+                          <p className="text-gray-400">You&apos;re collaborating across 2 workspaces</p>
                         </div>
                         <button 
                           onClick={() => setShowTeamInviteModal(true)}
@@ -1225,19 +1179,19 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                       {/* Team Stats */}
                       <div className="grid grid-cols-4 gap-4 mt-6">
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{selectedTeam === "nexus" ? 0 : totalActiveMembers}</p>
+                          <p className="text-2xl font-bold text-green-400">{totalActiveMembers}</p>
                           <p className="text-sm text-gray-500">Active Now</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{teamMembers.length}</p>
+                          <p className="text-2xl font-bold text-green-400">{allMembersArray.length}</p>
                           <p className="text-sm text-gray-500">Total Team Members</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{selectedTeam === "nexus" ? "0h 0m" : formatTotalTime(totalTime)}</p>
+                          <p className="text-2xl font-bold text-green-400">{formatTotalTime(totalTime)}</p>
                           <p className="text-sm text-gray-500">Total Time This Week</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{selectedTeam === "nexus" ? 0 : totalTasks}</p>
+                          <p className="text-2xl font-bold text-green-400">{totalTasks}</p>
                           <p className="text-sm text-gray-500">Tasks Completed</p>
                         </div>
                       </div>
@@ -1248,27 +1202,8 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                       <h3 className="text-lg font-semibold text-gray-200 mb-4">
                         Team Rooms ({teamRooms.length})
                       </h3>
-                      {teamRooms.length === 0 ? (
-                        <div className="bg-gray-800/30 rounded-lg p-8 border border-gray-700 border-dashed text-center mb-6">
-                          <svg className="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                          <p className="text-gray-500 mb-4">No rooms created yet</p>
-                          <button
-                            onClick={() => {
-                              setActiveTab("experiment");
-                              setShowCreateRoom(true);
-                              setNewRoomType("private");
-                              setNewRoomTeam(selectedTeam);
-                            }}
-                            className="px-4 py-2 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
-                          >
-                            Create Your First Room
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="grid gap-3 mb-6">
-                          {teamRooms.map((room) => (
+                      <div className="grid gap-3 mb-6">
+                        {teamRooms.map((room) => (
                           <div key={room.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -1291,8 +1226,7 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                             </div>
                           </div>
                         ))}
-                        </div>
-                      )}
+                      </div>
                     </div>
                     
                     {/* Team Members */}
@@ -1373,14 +1307,10 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                                         }
                                       })()}
                                     </p>
-                                    {member.rooms && member.rooms.length > 0 && (
-                                      <>
-                                        <span className="text-gray-600">•</span>
-                                        <p className="text-gray-500 text-xs">
-                                          {member.rooms.join(", ")}
-                                        </p>
-                                      </>
-                                    )}
+                                    <span className="text-gray-600">•</span>
+                                    <p className="text-gray-500 text-xs">
+                                      {member.rooms.join(", ")}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -1392,8 +1322,6 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                         ))}
                       </div>
                     </div>
-                  </>
-                )}
                   </div>
                 );
               })()}
@@ -2367,128 +2295,6 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
           </div>
         </div>
       )}
-
-      {/* Create Team Modal - Now integrated into Teams tab */}
-      {/* {showCreateTeamModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowCreateTeamModal(false);
-          setNewTeamName("");
-          setInviteEmails("");
-        }}>
-          <div
-            className="bg-gray-900 rounded-lg shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar border border-gray-800"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-[#FFAA00]">Create New Team</h3>
-                <button
-                  onClick={() => {
-                    setShowCreateTeamModal(false);
-                    setNewTeamName("");
-                    setNewTeamDescription("");
-                  }}
-                  className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
-                >
-                  <svg
-                    className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Team Name</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Enter team name"
-                      value={newTeamName}
-                      onChange={(e) => setNewTeamName(e.target.value.slice(0, 30))}
-                      maxLength={30}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                      {newTeamName.length}/30
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">
-                    Invite Team Members
-                  </label>
-                  <textarea
-                    placeholder="Enter email addresses (you can do this later)"
-                    value={inviteEmails}
-                    onChange={(e) => setInviteEmails(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors resize-none"
-                    rows={3}
-                  />
-                </div>
-              </div>
-              
-              <div className="bg-gray-800/50 rounded-lg p-4 mb-6 border border-gray-700">
-                <h4 className="text-sm font-medium text-gray-400 mb-2">What happens next?</h4>
-                <ul className="space-y-2 text-sm text-gray-500">
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Your team will be created immediately</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>You'll be the team owner and first member</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Invite members and create rooms to get started</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div className="flex gap-3">
-                <button
-                  disabled={!newTeamName.trim()}
-                  onClick={() => {
-                    // Handle create team
-                    console.log("Creating team:", newTeamName, "with invites:", inviteEmails);
-                    setShowCreateTeamModal(false);
-                    setNewTeamName("");
-                    setInviteEmails("");
-                    // In a real app, you would add the new team to the teams list
-                    // and switch to it
-                  }}
-                  className="flex-1 px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Create Team
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCreateTeamModal(false);
-                    setNewTeamName("");
-                    setNewTeamDescription("");
-                  }}
-                  className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 };

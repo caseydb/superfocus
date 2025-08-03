@@ -28,7 +28,7 @@ import Timer from "./Timer";
 import Pomodoro from "./Pomodoro";
 import History from "./History";
 import Analytics from "./Analytics";
-import Contacts from "./Contacts";
+// import Contacts from "./Contacts"; // People Modal - Feature deprioritized
 import Rooms from "./Rooms";
 import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
@@ -111,7 +111,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [showContacts, setShowContacts] = useState(false);
+  // const [showContacts, setShowContacts] = useState(false); // People Modal - Feature deprioritized
   const [showRooms, setShowRooms] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
   const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "dnd" | "offline">("available");
@@ -122,10 +122,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showInvitePopup, setShowInvitePopup] = useState(false);
-  const [messagesNotificationCount, setMessagesNotificationCount] = useState(1);
-  const [requestsNotificationCount, setRequestsNotificationCount] = useState(3);
-  const peopleNotificationCount = messagesNotificationCount + requestsNotificationCount;
-  const setPeopleNotificationCount = () => {}; // No longer needed, calculated automatically
+  // People Modal - Feature deprioritized
+  // const [messagesNotificationCount, setMessagesNotificationCount] = useState(1);
+  // const [requestsNotificationCount, setRequestsNotificationCount] = useState(3);
+  // const peopleNotificationCount = messagesNotificationCount + requestsNotificationCount;
+  // const setPeopleNotificationCount = () => {}; // No longer needed, calculated automatically
   // Get mode preference from Redux
   const preferences = useSelector((state: RootState) => state.preferences);
   const isPomodoroMode = preferences.mode === "countdown";
@@ -169,7 +170,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowNotes(false);
     setShowPreferences(false);
     setShowAnalytics(false);
-    setShowContacts(false);
+    // setShowContacts(false); // People Modal - Feature deprioritized
     setShowRooms(false);
     setShowQuitModal(false);
     setShowSignInModal(false);
@@ -1209,7 +1210,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     showHistory,
     showLeaderboard,
     showAnalytics,
-    showContacts,
+    // showContacts, // People Modal - Feature deprioritized
     closeAllModals,
   ]);
 
@@ -1560,8 +1561,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 History
               </span>
             </button>
-            {/* Contacts Section */}
-            <button
+            {/* Contacts Section - People Modal - Feature deprioritized */}
+            {/* <button
               className="flex items-center gap-3 group relative cursor-pointer"
               onClick={() => {
                 closeAllModals();
@@ -1579,18 +1580,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   }}
                 />
                 {/* Glow effect on hover */}
-                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+                {/* <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div> */}
                 {/* Notification badge */}
-                {availabilityStatus !== "dnd" && peopleNotificationCount > 0 && (
+                {/* {availabilityStatus !== "dnd" && peopleNotificationCount > 0 && (
                   <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {peopleNotificationCount}
                   </div>
-                )}
-              </div>
+                )} */}
+              {/* </div>
               <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
                 People
               </span>
-            </button>
+            </button> */}
             {/* Rooms Section */}
             <button
               className="flex items-center gap-3 group relative cursor-pointer"
@@ -1711,7 +1712,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               onClose={() => setShowAnalytics(false)}
             />
           )}
-          {showContacts && (
+          {/* People Modal - Feature deprioritized */}
+          {/* {showContacts && (
             <Contacts 
               onClose={() => setShowContacts(false)} 
               availabilityStatus={availabilityStatus}
@@ -1722,7 +1724,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               requestsNotificationCount={requestsNotificationCount}
               setRequestsNotificationCount={setRequestsNotificationCount}
             />
-          )}
+          )} */}
           {showRooms && <Rooms onClose={() => setShowRooms(false)} />}
           {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
         </div>
