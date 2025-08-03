@@ -5,7 +5,6 @@ import { useInstance } from "../Instances";
 // import { ref, set, onValue, off } from "firebase/database";
 import { signOut, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { updatePreferences, setPreference } from "../../store/preferenceSlice";
@@ -47,7 +46,6 @@ export default function Controls({
   setShowInviteModal,
   showLeaderboard,
   setShowLeaderboard,
-  setShowRoomsModal,
   setShowPreferences,
   showAnalytics,
   setShowAnalytics,
@@ -59,18 +57,16 @@ export default function Controls({
   availabilityStatus = "available",
   setAvailabilityStatus,
 }: ControlsProps) {
-  const { user, currentInstance, leaveInstance } = useInstance();
+  const { user, currentInstance } = useInstance();
   const [editedName, setEditedName] = useState(user.displayName);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [showSideModal, setShowSideModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(localVolume > 0 ? localVolume : 0.5);
-  const soundIconRef = useRef<HTMLSpanElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
   const availabilityModalRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   // Get user data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
@@ -142,7 +138,7 @@ export default function Controls({
         {/* Speaker icon - leftmost */}
         <span
           className="cursor-pointer flex items-center px-2 mr-3"
-          onClick={(e) => {
+          onClick={() => {
             if (localVolume === 0) {
               // Unmute: restore previous volume
               setLocalVolume(previousVolume);

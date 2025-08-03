@@ -31,21 +31,22 @@ interface Friend {
     unread?: boolean;
   };
   isGroup?: boolean;
+  team?: string;
 }
 
 // Hardcoded friends data with various statuses
 const MOCK_FRIENDS: Friend[] = [
-  { id: "1", name: "Alex Chen", firstName: "Alex", lastName: "Chen", status: "online", currentRoom: "/focus-flow", currentTask: "Actively working", taskDuration: "45m", avatar: "AC", lastMessage: { text: "Hey, can you review my PR?", time: "2m ago", unread: true } },
-  { id: "2", name: "Sarah Johnson", firstName: "Sarah", lastName: "Johnson", status: "online", currentRoom: "/deep-work", currentTask: "Do not disturb", taskDuration: "1h 23m", avatar: "SJ", lastMessage: { text: "Thanks for the help earlier!", time: "15m ago" } },
+  { id: "1", name: "Alex Chen", firstName: "Alex", lastName: "Chen", status: "online", currentRoom: "/focus-flow", currentTask: "Actively working", taskDuration: "45m", avatar: "AC", lastMessage: { text: "Hey, can you review my PR?", time: "2m ago", unread: true }, team: "Vendorsage" },
+  { id: "2", name: "Sarah Johnson", firstName: "Sarah", lastName: "Johnson", status: "online", currentRoom: "/deep-work", currentTask: "Do not disturb", taskDuration: "1h 23m", avatar: "SJ", lastMessage: { text: "Thanks for the help earlier!", time: "15m ago" }, team: "Vendorsage" },
   { id: "4", name: "Emma Davis", firstName: "Emma", lastName: "Davis", status: "online", currentRoom: "/study-hall", currentTask: "Actively working", taskDuration: "2h 10m", avatar: "ED" },
   { id: "5", name: "James Wilson", firstName: "James", lastName: "Wilson", status: "offline", lastSeen: "2h ago", avatar: "JW", lastMessage: { text: "Great work on the project! 🎉", time: "3h ago" } },
-  { id: "6", name: "Lisa Anderson", firstName: "Lisa", lastName: "Anderson", status: "online", currentRoom: "/focus-flow", currentTask: "Completed task 15m ago", taskDuration: "30m", avatar: "LA" },
+  { id: "6", name: "Lisa Anderson", firstName: "Lisa", lastName: "Anderson", status: "online", currentRoom: "/focus-flow", currentTask: "Completed task 15m ago", taskDuration: "30m", avatar: "LA", team: "Vendorsage" },
   { id: "7", name: "David Brown", firstName: "David", lastName: "Brown", status: "online", currentRoom: "/grind-time", currentTask: "Do not disturb", lastSeen: "15m ago", avatar: "DB" },
-  { id: "8", name: "Jennifer Taylor", firstName: "Jennifer", lastName: "Taylor", status: "online", currentRoom: "/deep-work", currentTask: "Actively working", taskDuration: "1h 45m", avatar: "JT" },
+  { id: "8", name: "Jennifer Taylor", firstName: "Jennifer", lastName: "Taylor", status: "online", currentRoom: "/deep-work", currentTask: "Actively working", taskDuration: "1h 45m", avatar: "JT", team: "Vendorsage" },
   { id: "9", name: "Robert Martinez", firstName: "Robert", lastName: "Martinez", status: "offline", lastSeen: "Yesterday", avatar: "RM" },
-  { id: "10", name: "Maria Garcia", firstName: "Maria", lastName: "Garcia", status: "online", currentRoom: "/coding-dojo", currentTask: "Do not disturb", taskDuration: "3h 20m", avatar: "MG" },
+  { id: "10", name: "Maria Garcia", firstName: "Maria", lastName: "Garcia", status: "online", currentRoom: "/coding-dojo", currentTask: "Do not disturb", taskDuration: "3h 20m", avatar: "MG", team: "Vendorsage" },
   { id: "11", name: "Chris Lee", firstName: "Chris", lastName: "Lee", status: "online", currentRoom: "/study-hall", currentTask: "Completed task 10m ago", lastSeen: "10m ago", avatar: "CL" },
-  { id: "12", name: "Amanda White", firstName: "Amanda", lastName: "White", status: "online", currentRoom: "/focus-mode", currentTask: "Actively working", taskDuration: "55m", avatar: "AW" },
+  { id: "12", name: "Amanda White", firstName: "Amanda", lastName: "White", status: "online", currentRoom: "/focus-mode", currentTask: "Actively working", taskDuration: "55m", avatar: "AW", team: "Vendorsage" },
   { id: "13", name: "Kevin Harris", firstName: "Kevin", lastName: "Harris", status: "offline", lastSeen: "3d ago", avatar: "KH" },
   { id: "14", name: "Rachel Green", firstName: "Rachel", lastName: "Green", status: "online", currentRoom: "/productivity-lab", currentTask: "Completed task 5m ago", taskDuration: "40m", avatar: "RG" },
   { id: "15", name: "Tom Scott", firstName: "Tom", lastName: "Scott", status: "online", currentRoom: "/deep-focus", currentTask: "Do not disturb", lastSeen: "25m ago", avatar: "TS" },
@@ -80,14 +81,9 @@ interface Message {
   text: string;
   time: string;
   isMe?: boolean;
+  reactions?: string[];
 }
 
-interface Conversation {
-  id: string;
-  participants: Friend[];
-  messages: Message[];
-  lastMessage: Friend["lastMessage"];
-}
 
 const MOCK_CONVERSATIONS: Record<string, Message[]> = {
   "1": [
@@ -105,12 +101,25 @@ const MOCK_CONVERSATIONS: Record<string, Message[]> = {
     { id: "m8", senderId: "me", text: "Hi Emma! Quick question about the ML research you're working on", time: "Just now", isMe: true },
   ],
   "group-1": [
-    { id: "g1", senderId: "1", text: "Team standup in 5 minutes!", time: "1h ago" },
-    { id: "g2", senderId: "3", text: "I'll be there", time: "58m ago" },
+    { id: "g1", senderId: "1", text: "Team standup in 5 minutes!", time: "1h ago", reactions: ["👍", "👍"] },
+    { id: "g2", senderId: "3", text: "I'll be there", time: "58m ago", reactions: ["✅", "✅"] },
     { id: "g3", senderId: "me", text: "Same here", time: "57m ago", isMe: true },
-    { id: "g4", senderId: "2", text: "Great meeting everyone!", time: "30m ago" },
+    { id: "g4", senderId: "2", text: "Great meeting everyone!", time: "30m ago", reactions: ["🎉", "🎉", "👏", "💯"] },
   ],
 };
+
+// Common emojis for quick access
+const COMMON_EMOJIS = [
+  "😀", "😃", "😄", "😁", "😊", "😍", "🥰", "😘", "🤗", "🤩",
+  "😎", "🤓", "🧐", "🤔", "😂", "🤣", "😭", "😢", "😅", "😆",
+  "👍", "👎", "👌", "✌️", "🤞", "🤟", "👏", "🙌", "💪", "🙏",
+  "❤️", "💕", "💖", "💗", "💙", "💚", "💛", "💜", "🖤", "🤍",
+  "🔥", "⭐", "✨", "💫", "🌟", "⚡", "🎉", "🎊", "🎈", "🎁",
+  "💯", "✅", "❌", "⚠️", "📌", "🚀", "💡", "🎯", "📣", "💬"
+];
+
+// Track if beta disclaimer has been shown this session
+let hasShownPeopleBetaDisclaimer = false;
 
 const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availabilityStatusProp, setAvailabilityStatus: setAvailabilityStatusProp }) => {
   const router = useRouter();
@@ -123,9 +132,35 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [messageText, setMessageText] = useState("");
   const [recipientSearch, setRecipientSearch] = useState("");
+  const [groupName, setGroupName] = useState("");
   const [showProfileModal, setShowProfileModal] = useState<string | null>(null);
   const [showContactMenu, setShowContactMenu] = useState<string | null>(null);
   const [availabilityStatus, setAvailabilityStatus] = useState(availabilityStatusProp ?? "available");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [messageReactions, setMessageReactions] = useState<Record<string, string[]>>(() => {
+    // Initialize with pre-existing reactions from mock data
+    const initialReactions: Record<string, string[]> = {};
+    Object.values(MOCK_CONVERSATIONS).forEach(messages => {
+      messages.forEach(message => {
+        if (message.reactions) {
+          initialReactions[message.id] = [...message.reactions];
+        }
+      });
+    });
+    return initialReactions;
+  });
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+  const [reactionPickerCoords, setReactionPickerCoords] = useState<{ top: number; left: number } | null>(null);
+  const [userReactions, setUserReactions] = useState<Record<string, string[]>>({});
+  const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(!hasShownPeopleBetaDisclaimer);
+  
+  // Update flag when disclaimer is dismissed
+  useEffect(() => {
+    if (!showBetaDisclaimer && !hasShownPeopleBetaDisclaimer) {
+      hasShownPeopleBetaDisclaimer = true;
+    }
+  }, [showBetaDisclaimer]);
   
   // Click outside handler for contact menu
   useEffect(() => {
@@ -141,6 +176,36 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showContactMenu]);
+  
+  // Click outside handler for emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.emoji-picker-container')) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showEmojiPicker]);
+  
+  // Click outside handler for reaction picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.reaction-picker-container')) {
+        setShowReactionPicker(null);
+      }
+    };
+
+    if (showReactionPicker) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showReactionPicker]);
   
   // Filter friends based on search and tab
   const filteredFriends = useMemo(() => {
@@ -158,7 +223,8 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
         status: "online",
         lastMessage: { text: "Great meeting everyone!", time: "30m ago" },
         avatar: "TS",
-        isGroup: true
+        isGroup: true,
+        team: "Vendorsage"
       };
       let allConversations = [groupConvo, ...conversations];
       
@@ -262,13 +328,13 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
     });
   }, [activeTab, searchQuery]);
 
-  const onlineFriendsCount = MOCK_FRIENDS.filter(f => f.status === "online").length;
   const requestsCount = MOCK_REQUESTS.length;
   const unreadMessagesCount = MOCK_FRIENDS.filter(f => f.lastMessage?.unread).length;
 
   const handleQuickSwitch = (roomUrl: string) => {
     onClose();
-    router.push(roomUrl);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    router.push(roomUrl as any);
   };
 
   const getStatusColor = (status: Status, taskDescription?: string) => {
@@ -283,18 +349,66 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
 
   const getStatusText = (friend: Friend) => {
     if (friend.status === "online" && friend.currentTask) {
+      // Replace "Completed task X ago" with "Standby"
+      if (friend.currentTask.includes("Completed task")) {
+        return "Standby";
+      }
       return friend.currentTask;
     }
     if (friend.status === "offline") {
-      return friend.lastSeen || "Offline";
+      // Generate a random time for last seen if not provided
+      const lastSeenTimes = ["5m ago", "30m ago", "1h ago", "2h ago", "5h ago", "1d ago"];
+      const randomTime = lastSeenTimes[Math.floor(Math.random() * lastSeenTimes.length)];
+      const lastSeenText = friend.lastSeen || randomTime;
+      // Handle special cases like "Yesterday" that don't need "ago"
+      if (lastSeenText.toLowerCase() === "yesterday") {
+        return "Last seen yesterday";
+      }
+      return `Last seen ${lastSeenText}`;
     }
     return "Available";
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
+      {/* Beta Disclaimer Popup */}
+      {showBetaDisclaimer && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+          onClick={() => setShowBetaDisclaimer(false)}
+        >
+          <div 
+            className="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md mx-4 border border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-[#FFAA00]/20 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-200">Beta Preview</h3>
+              <p className="text-gray-400 leading-relaxed">
+                This is a prototype demonstration with simulated data for user experience testing and feedback collection.
+              </p>
+              <p className="text-sm text-gray-500">
+                Real-time functionality coming soon.
+              </p>
+              <button
+                onClick={() => setShowBetaDisclaimer(false)}
+                className="px-6 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
+              >
+                Got it, let&apos;s explore!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative"
+        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative ${
+          showBetaDisclaimer ? 'opacity-40 pointer-events-none' : ''
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -556,6 +670,19 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                   </div>
                 )}
               </div>
+              {/* Group Name Field - Only show when multiple recipients */}
+              {selectedRecipients.length > 1 && (
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Group Name (optional):</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Team Standup, Project Alpha..."
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors"
+                  />
+                </div>
+              )}
               <div className="flex gap-2">
                 <button
                   className="px-4 py-2 font-medium rounded-lg transition-colors bg-[#FFAA00] text-black hover:bg-[#FFB700]"
@@ -573,6 +700,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                     setShowNewMessage(false);
                     setSelectedRecipients([]);
                     setRecipientSearch("");
+                    setGroupName("");
                   }}
                 >
                   Start Conversation
@@ -583,6 +711,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                     setShowNewMessage(false);
                     setSelectedRecipients([]);
                     setRecipientSearch("");
+                    setGroupName("");
                   }}
                 >
                   Cancel
@@ -614,9 +743,9 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                       const groupFriend = filteredFriends.find(f => f.id === selectedConversation);
                       // For group chats, show overlapping avatars
                       const groupMembers = [
-                        { id: "1", avatar: "AC", status: "online", currentTask: "Actively working" },
-                        { id: "2", avatar: "SJ", status: "online", currentTask: "Do not disturb" },
-                        { id: "3", avatar: "MW", status: "online", currentTask: "Completed task 5m ago" }
+                        { id: "1", avatar: "AC", status: "online" as Status, currentTask: "Actively working" },
+                        { id: "2", avatar: "SJ", status: "online" as Status, currentTask: "Do not disturb" },
+                        { id: "3", avatar: "MW", status: "online" as Status, currentTask: "Completed task 5m ago" }
                       ];
                       return (
                         <>
@@ -679,12 +808,15 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {MOCK_CONVERSATIONS[selectedConversation]?.map((message) => {
                   const sender = message.isMe ? null : [...MOCK_FRIENDS, ...NON_FRIENDS].find(f => f.id === message.senderId);
+                  const reactions = messageReactions[message.id] || [];
                   return (
                     <div
                       key={message.id}
-                      className={`flex ${message.isMe ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${message.isMe ? 'justify-end' : 'justify-start'} group`}
+                      onMouseEnter={() => setHoveredMessageId(message.id)}
+                      onMouseLeave={() => setHoveredMessageId(null)}
                     >
-                      <div className={`flex items-start gap-2 max-w-[70%] ${message.isMe ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex items-start gap-2 max-w-[70%] ${message.isMe ? 'flex-row-reverse' : ''} relative`}>
                         {!message.isMe && (
                           <button
                             onClick={() => setShowProfileModal(message.senderId)}
@@ -693,7 +825,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                             {sender?.avatar || 'U'}
                           </button>
                         )}
-                        <div>
+                        <div className="reaction-picker-container">
                           {!message.isMe && (
                             <div className="flex items-center gap-2 mb-1">
                               <button
@@ -710,14 +842,105 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                               <span className="text-xs text-gray-600">{message.time}</span>
                             </div>
                           )}
-                          <div
-                            className={`px-3 py-2 rounded-lg ${
-                              message.isMe
-                                ? 'bg-[#FFAA00] text-black'
-                                : 'bg-gray-800 text-gray-200'
-                            }`}
-                          >
-                            <p className="text-sm">{message.text}</p>
+                          <div className="relative">
+                            <div
+                              className={`px-3 py-2 rounded-lg ${
+                                message.isMe
+                                  ? 'bg-[#FFAA00] text-black'
+                                  : 'bg-gray-800 text-gray-200'
+                              }`}
+                            >
+                              <p className="text-sm">{message.text}</p>
+                            </div>
+                            
+                            {/* Reactions */}
+                            {reactions.length > 0 && (
+                              <div className={`flex gap-1 mt-1 ${message.isMe ? 'justify-end' : 'justify-start'}`}>
+                                <div className="flex gap-0.5 bg-gray-800/50 rounded-full px-1.5 py-0.5">
+                                  {reactions.slice(0, 7).map((emoji, index) => {
+                                    const userAddedEmojis = userReactions[message.id] || [];
+                                    const isUserEmoji = userAddedEmojis.includes(emoji);
+                                    const emojiCount = reactions.filter(e => e === emoji).length;
+                                    
+                                    // Group same emojis together
+                                    if (index > 0 && reactions.slice(0, index).includes(emoji)) {
+                                      return null;
+                                    }
+                                    
+                                    return (
+                                      <button
+                                        key={`${emoji}-${index}`}
+                                        onClick={() => {
+                                          if (isUserEmoji) {
+                                            // Remove user's emoji
+                                            const newUserEmojis = userAddedEmojis.filter(e => e !== emoji);
+                                            setUserReactions(prev => ({
+                                              ...prev,
+                                              [message.id]: newUserEmojis
+                                            }));
+                                            
+                                            // Remove one instance from reactions
+                                            const newReactions = [...reactions];
+                                            const indexToRemove = newReactions.indexOf(emoji);
+                                            if (indexToRemove > -1) {
+                                              newReactions.splice(indexToRemove, 1);
+                                            }
+                                            setMessageReactions(prev => ({
+                                              ...prev,
+                                              [message.id]: newReactions
+                                            }));
+                                          }
+                                        }}
+                                        className={`text-sm hover:bg-gray-700/50 px-1 rounded-full transition-colors ${
+                                          isUserEmoji ? 'ring-1 ring-[#FFAA00]/50' : ''
+                                        }`}
+                                        disabled={!isUserEmoji}
+                                      >
+                                        {emoji}{emojiCount > 1 && <span className="ml-0.5 text-xs text-gray-400">{emojiCount}</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Add Reaction Button */}
+                            {hoveredMessageId === message.id && (
+                              <button
+                                onClick={(e) => {
+                                  const button = e.currentTarget;
+                                  const rect = button.getBoundingClientRect();
+                                  const messageRect = e.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
+                                  
+                                  // Calculate position for emoji picker
+                                  const pickerHeight = 280;
+                                  const pickerWidth = 344; // 320px + padding
+                                  
+                                  let top = rect.top - pickerHeight - 8;
+                                  let left = messageRect ? (message.isMe ? messageRect.right - pickerWidth : messageRect.left) : rect.left;
+                                  
+                                  // If picker would go above viewport, position below
+                                  if (top < 10) {
+                                    top = rect.bottom + 8;
+                                  }
+                                  
+                                  // Keep within horizontal bounds
+                                  if (left < 10) left = 10;
+                                  if (left + pickerWidth > window.innerWidth - 10) {
+                                    left = window.innerWidth - pickerWidth - 10;
+                                  }
+                                  
+                                  setReactionPickerCoords({ top, left });
+                                  setShowReactionPicker(message.id);
+                                }}
+                                className={`absolute ${message.isMe ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 ${message.isMe ? '-translate-x-full -ml-2' : 'translate-x-full ml-2'} opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center`}
+                              >
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </button>
+                            )}
+                            
                           </div>
                         </div>
                       </div>
@@ -728,39 +951,71 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
 
               {/* Message Input */}
               <div className="border-t border-gray-800 p-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type a message..."
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && messageText.trim()) {
-                        e.preventDefault();
-                        // Handle send message
-                        setMessageText('');
-                      }
-                    }}
-                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors"
-                  />
-                  <button
-                    onClick={() => {
-                      if (messageText.trim()) {
-                        // Handle send message
-                        setMessageText('');
-                      }
-                    }}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      messageText.trim()
-                        ? 'bg-[#FFAA00] text-black hover:bg-[#FFB700]'
-                        : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                    }`}
-                    disabled={!messageText.trim()}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1 emoji-picker-container">
+                      <input
+                        type="text"
+                        placeholder="Type a message..."
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey && messageText.trim()) {
+                            e.preventDefault();
+                            // Handle send message
+                            setMessageText('');
+                          }
+                        }}
+                        className="w-full pl-3 pr-10 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors"
+                      />
+                      <button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FFAA00] transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </button>
+                      
+                      {/* Emoji Picker Dropdown */}
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-full right-0 mb-2 bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-3 z-50">
+                          <div className="grid grid-cols-10 gap-1 max-w-[300px]">
+                            {COMMON_EMOJIS.map((emoji, index) => (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  setMessageText(prev => prev + emoji);
+                                  setShowEmojiPicker(false);
+                                }}
+                                className="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition-colors text-lg"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (messageText.trim()) {
+                          // Handle send message
+                          setMessageText('');
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        messageText.trim()
+                          ? 'bg-[#FFAA00] text-black hover:bg-[#FFB700]'
+                          : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                      }`}
+                      disabled={!messageText.trim()}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -859,26 +1114,15 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
               {filteredFriends.map((friend) => (
                 <div
                   key={friend.id}
-                  className={`p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-gray-600 transition-all duration-200 group ${
-                    activeTab === "messages" ? "cursor-pointer" : ""
-                  }`}
-                  onClick={() => {
-                    if (activeTab === "messages") {
-                      setSelectedConversation(friend.id);
-                    }
-                  }}
+                  className="p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-gray-600 transition-all duration-200 group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {/* Avatar with status indicator */}
                       <button
                         onClick={(e) => {
-                          if (!friend.isGroup && (activeTab === "all" || activeTab === "messages")) {
-                            // For individuals, open profile and stop propagation
-                            e.stopPropagation();
-                            setShowProfileModal(friend.id);
-                          }
-                          // For groups, don't stop propagation - let parent handle it
+                          e.stopPropagation();
+                          setShowProfileModal(friend.id);
                         }}
                         className="relative hover:opacity-80 transition-opacity"
                       >
@@ -898,38 +1142,29 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium text-gray-200">{friend.name}</h3>
+                          {friend.team && (
+                            <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full">
+                              {friend.team}
+                            </span>
+                          )}
                           {friend.isPending && (
                             <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-full">
                               Pending
                             </span>
                           )}
                         </div>
-                        {activeTab === "messages" && friend.lastMessage ? (
-                          <>
-                            <p className={`text-sm line-clamp-1 ${friend.lastMessage.unread ? 'text-white font-semibold' : 'text-gray-500'}`}>
-                              {friend.lastMessage.text}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-gray-600">{friend.lastMessage.time}</span>
-                              {friend.lastMessage.unread && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <p className="text-sm text-gray-500">
-                            {friend.isPending && friend.mutualFriends
-                              ? `${friend.mutualFriends} mutual friends`
-                              : getStatusText(friend)
-                            }
-                          </p>
-                        )}
+                        <p className="text-sm text-gray-500">
+                          {friend.isPending && friend.mutualFriends
+                            ? `${friend.mutualFriends} mutual friends`
+                            : getStatusText(friend)
+                          }
+                        </p>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                      {friend.isPending ? (
+                      {friend.isPending && (
                         <>
                           <button className="px-3 py-1.5 bg-[#FFAA00] text-black text-sm font-medium rounded-lg hover:bg-[#FFB700] transition-colors">
                             Accept
@@ -938,40 +1173,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                             Ignore
                           </button>
                         </>
-                      ) : activeTab !== "messages" ? (
-                        <>
-                          {activeTab === "all" && (
-                            <button
-                              onClick={() => {
-                                setActiveTab("messages");
-                                setSelectedConversation(friend.id);
-                              }}
-                              className="px-3 py-1.5 bg-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                              </svg>
-                              Message
-                            </button>
-                          )}
-                          {friend.status === "online" && friend.currentRoom && (
-                            <button
-                              onClick={() => handleQuickSwitch(friend.currentRoom)}
-                              className="px-3 py-1.5 bg-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                              Join Room
-                            </button>
-                          )}
-                          <button className="p-2 text-gray-500 hover:text-gray-300 transition-colors opacity-0 group-hover:opacity-100">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                          </button>
-                        </>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1074,6 +1276,11 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium text-gray-200">{friend.name}</h3>
+                              {friend.team && (
+                                <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full">
+                                  {friend.team}
+                                </span>
+                              )}
                               {friend.isPending && (
                                 <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-full">
                                   Pending
@@ -1132,7 +1339,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                               )}
                               {friend.status === "online" && friend.currentRoom && (
                                 <button
-                                  onClick={() => handleQuickSwitch(friend.currentRoom)}
+                                  onClick={() => handleQuickSwitch(friend.currentRoom!)}
                                   className="px-3 py-1.5 bg-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1256,14 +1463,7 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
                 
                 {/* Status */}
                 <p className="text-sm text-gray-500 mb-4">
-                  {profileUser.status === 'online' && profileUser.currentTask
-                    ? profileUser.currentTask.includes('Do not disturb') 
-                      ? profileUser.currentTask
-                      : `${profileUser.currentTask} • ${profileUser.taskDuration}`
-                    : profileUser.status === 'online'
-                    ? 'Active now'
-                    : profileUser.lastSeen || 'Offline'
-                  }
+                  {getStatusText(profileUser)}
                 </p>
 
                 {/* Current Room */}
@@ -1339,6 +1539,53 @@ const Contacts: React.FC<ContactsProps> = ({ onClose, availabilityStatus: availa
           </div>
         );
       })()}
+      
+      {/* Reaction Picker Portal */}
+      {showReactionPicker && reactionPickerCoords && (
+        <div 
+          className="fixed bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-3 z-[200] reaction-picker-container"
+          style={{
+            top: `${reactionPickerCoords.top}px`,
+            left: `${reactionPickerCoords.left}px`,
+            maxHeight: '280px',
+            overflowY: 'auto'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="grid grid-cols-10 gap-0.5 w-[320px]">
+            {COMMON_EMOJIS.map((emoji, index) => {
+              const currentReactions = messageReactions[showReactionPicker] || [];
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    if (currentReactions.length < 7) {
+                      // Add to message reactions
+                      setMessageReactions(prev => ({
+                        ...prev,
+                        [showReactionPicker]: [...currentReactions, emoji]
+                      }));
+                      
+                      // Track that the user added this emoji
+                      const currentUserEmojis = userReactions[showReactionPicker] || [];
+                      setUserReactions(prev => ({
+                        ...prev,
+                        [showReactionPicker]: [...currentUserEmojis, emoji]
+                      }));
+                    }
+                    setShowReactionPicker(null);
+                    setReactionPickerCoords(null);
+                  }}
+                  className="w-7 h-7 flex items-center justify-center hover:bg-gray-700 rounded transition-colors text-sm"
+                  disabled={currentReactions.length >= 7}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

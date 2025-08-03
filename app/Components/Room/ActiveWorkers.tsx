@@ -203,7 +203,12 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             onMouseEnter={() => {
               setHoveredUserId(u.id);
             }}
-            onMouseLeave={() => {
+            onMouseLeave={(e) => {
+              // Check if we're moving to the tooltip
+              const relatedTarget = e.relatedTarget as HTMLElement;
+              if (relatedTarget && e.currentTarget.contains(relatedTarget)) {
+                return; // Don't close if moving to child element (tooltip)
+              }
               setHoveredUserId(null);
             }}
           >
@@ -249,20 +254,59 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             </span>
           </span>
 
-          {/* Tooltip */}
-          {hoveredUserId === u.id && userWeeklyStats[u.id] && (
-            <div className="absolute top-full left-0 mt-1" style={{ zIndex: 100 }}>
-              <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700 shadow-lg">
-                <div className="text-gray-300 text-xs font-mono whitespace-nowrap">
-                  <span className="text-gray-400">Rank</span>{" "}
-                  <span className="text-gray-100 font-medium">{userRankMap[u.id]}</span>{" "}
-                  <span className="text-gray-400">this week:</span>{" "}
-                  <span className="text-gray-100 font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span> |{" "}
-                  <span className="text-gray-100 font-medium">{userWeeklyStats[u.id].totalTasks}</span>{" "}
-                  <span className="text-gray-400">tasks</span>
+          {/* Combined Tooltip & Add Contact */}
+          {hoveredUserId === u.id && (
+            <div 
+              className="absolute top-0 left-full" 
+              style={{ zIndex: 100 }}
+              data-tooltip-for={u.id}
+              onMouseEnter={() => setHoveredUserId(u.id)}
+              onMouseLeave={() => setHoveredUserId(null)}
+            >
+              {/* Invisible bridge to maintain hover */}
+              <div className="absolute inset-y-0 -left-2 w-4" />
+              <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 overflow-hidden w-64 ml-2">
+                {/* Stats Section */}
+                {userWeeklyStats[u.id] && (
+                  <div className="px-4 py-3 border-b border-gray-800/50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="text-2xl font-bold text-white">#{userRankMap[u.id]}</span>
+                          <span className="text-xs text-gray-500 font-medium">THIS WEEK</span>
+                        </div>
+                        <div className="flex gap-4 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 bg-[#FFAA00] rounded-full"></div>
+                            <span className="text-gray-400">Time:</span>
+                            <span className="text-white font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                            <span className="text-gray-400">Tasks:</span>
+                            <span className="text-white font-medium">{userWeeklyStats[u.id].totalTasks}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Add Contact Button */}
+                <div className="p-2">
+                  <button
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:border-[#FFAA00] hover:text-[#FFAA00] font-medium transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Just UI proof of concept - no action needed
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span className="text-sm">Add Contact</span>
+                  </button>
                 </div>
-                {/* Arrow */}
-                <div className="absolute bottom-full left-4 transform border-4 border-transparent border-b-gray-700"></div>
               </div>
             </div>
           )}
