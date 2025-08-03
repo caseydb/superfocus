@@ -1051,7 +1051,6 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                   return `${hours}h ${mins}m`;
                 };
                 
-                const onlineMembers = Array.from(allTeamMembers.values()).filter(m => m.status === "online");
                 const allMembersArray = Array.from(allTeamMembers.values());
                 
                 // Sort members by status priority
@@ -1080,12 +1079,9 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-2xl font-bold text-gray-200">Vendorsage Team</h2>
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400">
-                              Enterprise
-                            </span>
+                            <h2 className="text-2xl font-bold text-gray-200">Vendorsage</h2>
                           </div>
-                          <p className="text-gray-400">Cross-functional teams collaborating across {teamRooms.length} workspaces</p>
+                          <p className="text-gray-400">You&apos;re collaborating across 2 workspaces</p>
                         </div>
                         <button 
                           onClick={() => setShowTeamInviteModal(true)}
@@ -1154,7 +1150,7 @@ const Rooms: React.FC<RoomsProps> = ({ onClose }) => {
                     {/* Team Members */}
                     <div>
                       <h3 className="text-lg font-semibold text-gray-200 mb-4">
-                        Team Members ({allMembersArray.length} total, {onlineMembers.length} online)
+                        Team Members
                       </h3>
                       <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
                         {sortedMembers.map((member) => (
