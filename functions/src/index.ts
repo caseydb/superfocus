@@ -110,74 +110,178 @@ export const updatePublicRoomUserCount = functions.database
     return null;
   });
 
-// Clean up stale PrivateRoom presence data (runs every hour)
-export const cleanUpStalePrivateRoomPresence = functions.pubsub.schedule("every 60 minutes").onRun(async (context) => {
-
+// Clean up stale PrivateRoom users (runs every 1 minute for testing)
+export const cleanUpStalePrivateRoomUsers = functions.pubsub.schedule("every 1 minutes").onRun(async (context) => {
   const now = Date.now();
-  const STALE_THRESHOLD = 60 * 60 * 1000; // 1 hour
+  const STALE_THRESHOLD = 70 * 1000; // 70 seconds (same as Presence system)
 
   try {
-    const presenceRef = admin.database().ref("/PrivateRoomPresence");
-    const snapshot = await presenceRef.once("value");
+    const privateRoomsRef = admin.database().ref("/PrivateRooms");
+    const snapshot = await privateRoomsRef.once("value");
 
     if (!snapshot.exists()) {
       return null;
     }
 
     const rooms = snapshot.val();
-    const cleanupPromises: Promise<void>[] = [];
+    const updates: { [path: string]: any } = {};
 
-    for (const [roomId, users] of Object.entries(rooms)) {
-      let hasActiveUser = false;
+    for (const [roomId, roomData] of Object.entries(rooms)) {
+      const room = roomData as any;
+      if (!room.users) continue;
 
-      for (const [, data] of Object.entries(users as Record<string, any>)) {
-        if (now - data.lastSeen < STALE_THRESHOLD) {
-          hasActiveUser = true;
-          break;
+      let userCountChanged = false;
+
+      // Check each user in the room
+      for (const [userId] of Object.entries(room.users)) {
+        
+        // Check if user has an active presence session
+        const presenceSnapshot = await admin.database()
+          .ref(`Presence/${userId}/sessions`)
+          .once("value");
+        
+        let hasActiveSession = false;
+        if (presenceSnapshot.exists()) {
+          const sessions = presenceSnapshot.val();
+          for (const sessionData of Object.values(sessions)) {
+            const session = sessionData as any;
+            if (session.roomId === roomId && 
+                typeof session.lastSeen === 'number' && 
+                (now - session.lastSeen) < STALE_THRESHOLD) {
+              hasActiveSession = true;
+              break;
+            }
+          }
+        }
+
+        // If no active session for this room, remove user
+        if (!hasActiveSession) {
+          updates[`PrivateRooms/${roomId}/users/${userId}`] = null;
+          userCountChanged = true;
         }
       }
 
-      // If no active users in the last hour, clean up presence data
-      if (!hasActiveUser) {
-        cleanupPromises.push(admin.database().ref(`/PrivateRoomPresence/${roomId}`).remove());
+      // Update user count if any users were removed
+      if (userCountChanged) {
+        const remainingUsers = Object.keys(room.users).filter(userId => 
+          updates[`PrivateRooms/${roomId}/users/${userId}`] !== null
+        );
+        updates[`PrivateRooms/${roomId}/userCount`] = remainingUsers.length;
       }
     }
 
-    await Promise.all(cleanupPromises);
+    // Apply all updates at once
+    if (Object.keys(updates).length > 0) {
+      await admin.database().ref().update(updates);
+      console.log(`[cleanUpStalePrivateRoomUsers] Cleaned up ${Object.keys(updates).length} entries`);
+    }
+
   } catch (error) {
+    console.error('[cleanUpStalePrivateRoomUsers] Error:', error);
   }
 
   return null;
 });
 
-// Clean up stale ActiveWorker entries (runs every hour)
-export const cleanUpStaleActiveWorkers = functions.pubsub.schedule("every 60 minutes").onRun(async (context) => {
+// ActiveWorker cleanup removed - no longer using ActiveWorker system
+
+// Clean up stale Presence sessions (runs every 1 minute for testing)
+export const cleanUpStalePresenceSessions = functions.pubsub.schedule("every 1 minutes").onRun(async (context) => {
   const now = Date.now();
-  const STALE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
+  const STALE_THRESHOLD = 70 * 1000; // 70 seconds (5 seconds after offline threshold)
 
   try {
-    const activeWorkersRef = admin.database().ref("/ActiveWorker");
-    const snapshot = await activeWorkersRef.once("value");
+    const presenceRef = admin.database().ref("/Presence");
+    const roomIndexRef = admin.database().ref("/RoomIndex");
+    
+    const [presenceSnapshot, roomIndexSnapshot] = await Promise.all([
+      presenceRef.once("value"),
+      roomIndexRef.once("value")
+    ]);
 
-    if (!snapshot.exists()) {
-      return null;
-    }
-
-    const workers = snapshot.val();
     const cleanupPromises: Promise<void>[] = [];
 
-    for (const [userId, workerData] of Object.entries(workers)) {
-      const data = workerData as { lastSeen?: number; isActive?: boolean };
+    // Clean up Presence sessions
+    if (presenceSnapshot.exists()) {
+      const allUsers = presenceSnapshot.val();
+
+      // Iterate through all users
+      for (const [userId, userData] of Object.entries(allUsers)) {
+        const sessions = (userData as any).sessions;
+        if (!sessions) continue;
+
+        // Check each session
+        for (const [sessionId, sessionData] of Object.entries(sessions)) {
+          const session = sessionData as any;
+          
+          // If lastSeen is older than stale threshold, remove the session
+          if (typeof session.lastSeen === 'number' && 
+              (now - session.lastSeen) > STALE_THRESHOLD) {
+            cleanupPromises.push(
+              admin.database().ref(`/Presence/${userId}/sessions/${sessionId}`).remove()
+            );
+          }
+        }
+      }
+    }
+
+    // Clean up RoomIndex entries where all sessions are stale
+    if (roomIndexSnapshot.exists()) {
+      const allRooms = roomIndexSnapshot.val();
       
-      // If lastSeen is older than 24 hours, remove the entry
-      if (data.lastSeen && (now - data.lastSeen) > STALE_THRESHOLD) {
-        cleanupPromises.push(admin.database().ref(`/ActiveWorker/${userId}`).remove());
+      for (const [roomId, roomData] of Object.entries(allRooms)) {
+        const users = roomData as any;
+        
+        for (const [userId] of Object.entries(users)) {
+          // Check if this user has any active sessions in Presence
+          const userSessions = presenceSnapshot.child(userId).child("sessions").val();
+          let hasActiveSession = false;
+          
+          if (userSessions) {
+            for (const sessionData of Object.values(userSessions)) {
+              const session = sessionData as any;
+              if (session.roomId === roomId && typeof session.lastSeen === 'number' && 
+                  (now - session.lastSeen) < STALE_THRESHOLD) {
+                hasActiveSession = true;
+                break;
+              }
+            }
+          }
+          
+          // If no active sessions for this room, remove from RoomIndex
+          if (!hasActiveSession) {
+            cleanupPromises.push(
+              admin.database().ref(`/RoomIndex/${roomId}/${userId}`).remove()
+            );
+          }
+        }
       }
     }
 
     await Promise.all(cleanupPromises);
+
+    // Clean up empty user nodes in Presence
+    const updatedSnapshot = await presenceRef.once("value");
+    if (updatedSnapshot.exists()) {
+      const updatedUsers = updatedSnapshot.val();
+      const userCleanupPromises: Promise<void>[] = [];
+
+      for (const [userId, userData] of Object.entries(updatedUsers)) {
+        const sessions = (userData as any).sessions;
+        // If user has no sessions, remove the user node
+        if (!sessions || Object.keys(sessions).length === 0) {
+          userCleanupPromises.push(
+            admin.database().ref(`/Presence/${userId}`).remove()
+          );
+        }
+      }
+
+      await Promise.all(userCleanupPromises);
+    }
+
+    console.log(`[cleanUpStalePresenceSessions] Cleaned up ${cleanupPromises.length} stale entries`);
   } catch (error) {
-    // Silent error handling
+    console.error('[cleanUpStalePresenceSessions] Error:', error);
   }
 
   return null;

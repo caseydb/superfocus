@@ -7,7 +7,7 @@ import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { rtdb } from "../../../lib/firebase";
-import { ref, remove, onDisconnect, set, update } from "firebase/database";
+import { ref, remove, set, update } from "firebase/database";
 import { setCurrentInput, lockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
@@ -361,9 +361,7 @@ export default function Pomodoro({
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
       
-      // Also remove ActiveWorker
-      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-      remove(activeWorkerRef);
+      // ActiveWorker removed - now handled by PresenceService
     }
   }, [user?.id]);
 
@@ -376,11 +374,7 @@ export default function Pomodoro({
         saveTimerState(false, elapsedSeconds);
       }
       
-      // Remove ActiveWorker if running
-      if (isRunning && user?.id) {
-        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        remove(activeWorkerRef);
-      }
+      // ActiveWorker removed - now handled by PresenceService
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -463,12 +457,7 @@ export default function Pomodoro({
     }
 
     // Otherwise, just clear without quit modal
-    // Clean up any active work
-    if (user?.id) {
-      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-      remove(activeWorkerRef);
-      onDisconnect(activeWorkerRef).cancel();
-    }
+    // ActiveWorker removed - now handled by PresenceService
 
     // Clear heartbeat interval
     if (heartbeatIntervalRef.current) {

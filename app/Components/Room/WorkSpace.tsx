@@ -2,6 +2,9 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { PresenceService } from "@/app/utils/presenceService";
+import { rtdb } from "@/lib/firebase";
+import { ref, onValue, off } from "firebase/database";
 import {
   DndContext,
   closestCenter,
@@ -667,8 +670,73 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   }, [activeTab, searchQuery, myRoomsOrder]);
 
   // const totalActiveUsers = MOCK_ROOMS.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
-  const globalActiveUsers = 3847; // Global active users across all rooms
-  const globalActiveRooms = 342; // Global active rooms across the platform
+  const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
+  const [globalActiveRooms, setGlobalActiveRooms] = useState(0);
+  
+  // Listen to real-time online user count and public room count
+  useEffect(() => {
+    // Initial fetch for online users
+    const fetchOnlineUsers = async () => {
+      try {
+        const count = await PresenceService.getTotalOnlineUsers();
+        setGlobalActiveUsers(count);
+      } catch (error) {
+        console.error('Failed to fetch online users:', error);
+      }
+    };
+    
+    fetchOnlineUsers();
+    
+    // Listen to real-time user changes
+    const unsubscribeUsers = PresenceService.listenToTotalOnlineUsers((count) => {
+      setGlobalActiveUsers(count);
+    });
+    
+    // Listen to real-time room count (public + active private)
+    const publicRoomsRef = ref(rtdb, 'PublicRooms');
+    const privateRoomsRef = ref(rtdb, 'PrivateRooms');
+    
+    let publicCount = 0;
+    let privateWithUsersCount = 0;
+    
+    const updateTotalRooms = () => {
+      setGlobalActiveRooms(publicCount + privateWithUsersCount);
+    };
+    
+    // Listen to public rooms
+    const publicRoomHandler = (snapshot: { exists: () => boolean; val: () => Record<string, unknown> }) => {
+      if (snapshot.exists()) {
+        const rooms = snapshot.val();
+        publicCount = Object.keys(rooms).length;
+      } else {
+        publicCount = 0;
+      }
+      updateTotalRooms();
+    };
+    
+    // Listen to private rooms
+    const privateRoomHandler = (snapshot: { exists: () => boolean; val: () => Record<string, unknown> }) => {
+      if (snapshot.exists()) {
+        const rooms = snapshot.val();
+        // Count private rooms with at least 1 user
+        privateWithUsersCount = Object.values(rooms).filter((room) => 
+          (room as { userCount?: number }).userCount && (room as { userCount?: number }).userCount! > 0
+        ).length;
+      } else {
+        privateWithUsersCount = 0;
+      }
+      updateTotalRooms();
+    };
+    
+    onValue(publicRoomsRef, publicRoomHandler);
+    onValue(privateRoomsRef, privateRoomHandler);
+    
+    return () => {
+      unsubscribeUsers();
+      off(publicRoomsRef, 'value', publicRoomHandler);
+      off(privateRoomsRef, 'value', privateRoomHandler);
+    };
+  }, [])
 
   const handleJoinRoom = (roomUrl: string) => {
     onClose();

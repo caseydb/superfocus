@@ -96,11 +96,13 @@ export async function getPrivateRoomByUrl(url: string): Promise<PrivateRoom | nu
   const privateRoomsRef = ref(rtdb, "PrivateRooms");
   const snapshot = await get(privateRoomsRef);
   
+  
   if (!snapshot.exists()) {
     return null;
   }
   
   const rooms = snapshot.val();
+  
   for (const roomId in rooms) {
     if (rooms[roomId].url === url) {
       const room = rooms[roomId];

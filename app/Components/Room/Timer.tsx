@@ -10,7 +10,7 @@ import {
   setActiveTask,
 } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, remove, get, onDisconnect, update } from "firebase/database";
+import { ref, set, remove, get, update } from "firebase/database";
 import { useStartButton } from "../../hooks/StartButton";
 import { usePauseButton } from "../../hooks/PauseButton";
 import { useCompleteButton } from "../../hooks/CompleteButton";
@@ -45,7 +45,7 @@ export default function Timer({
   initialRunning?: boolean;
   isQuittingRef?: React.MutableRefObject<boolean>;
 }) {
-  const { currentInstance, user } = useInstance();
+  const { user } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
   const { currentInput: task, currentTaskId } = useSelector((state: RootState) => state.taskInput);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
@@ -157,34 +157,10 @@ export default function Timer({
           });
         }
         
-        // Update ActiveWorker status
-        if (currentInstance) {
-          const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-          if (isRunning) {
-            const now = Date.now();
-            const activeWorkerData = {
-              userId: user.id,
-              roomId: currentInstance.id,
-              taskId: taskId,
-              isActive: true,
-              lastSeen: now,
-              displayName: user.displayName || "Anonymous"
-            };
-            set(activeWorkerRef, activeWorkerData);
-            
-            // Set up onDisconnect to remove ActiveWorker if user disconnects
-            onDisconnect(activeWorkerRef).remove();
-          } else {
-            // Remove ActiveWorker when not running
-            remove(activeWorkerRef);
-            
-            // Cancel onDisconnect since we're manually removing
-            onDisconnect(activeWorkerRef).cancel();
-          }
-        }
+        // ActiveWorker removed - now handled by PresenceService
       }
     },
-    [currentTaskId, activeTaskId, user?.id, user?.displayName, currentInstance, isQuittingRef, task]
+    [currentTaskId, activeTaskId, user?.id, isQuittingRef, task]
   );
 
   // Helper to clear timer state from Firebase
@@ -193,10 +169,7 @@ export default function Timer({
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
       
-      // Also remove ActiveWorker
-      const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-      remove(activeWorkerRef);
-      onDisconnect(activeWorkerRef).cancel();
+      // ActiveWorker removed - now handled by PresenceService
     }
   }, [user?.id]);
 
@@ -578,11 +551,7 @@ export default function Timer({
         saveTimerState(false, seconds);
       }
       
-      // Remove ActiveWorker if running
-      if (running && user?.id) {
-        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        remove(activeWorkerRef);
-      }
+      // ActiveWorker removed - now handled by PresenceService
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -753,8 +722,7 @@ export default function Timer({
         clearInterval(heartbeatInterval);
       }
       
-      // Don't remove ActiveWorker on unmount - let it persist across mode switches
-      // ActiveWorker should only be removed when timer is explicitly stopped/completed
+      // Cleanup handled by PresenceService
     };
   }, []);
 

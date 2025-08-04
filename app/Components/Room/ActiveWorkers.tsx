@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, get } from "firebase/database";
 import Image from "next/image";
+import { PresenceService } from "@/app/utils/presenceService";
 
 interface WeeklyLeaderboardEntry {
   user_id: string;
@@ -147,36 +148,56 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeUserIdsKey, userInfoMap]);
 
-  // Listen to ActiveWorker for users actively running timers
+  // Track previous state to avoid logging on every heartbeat
+  const previousStateRef = React.useRef<string>('');
+  
+  // Listen to room presence using new PresenceService
   useEffect(() => {
     if (!roomId) return;
 
-    // Listen to all ActiveWorker entries
-    const activeWorkerRef = ref(rtdb, `ActiveWorker`);
-    const handle = onValue(activeWorkerRef, (snapshot) => {
-      const data = snapshot.val();
+    const unsubscribe = PresenceService.listenToRoomPresence(roomId, (sessions) => {
+      // Separate active and idle users
+      const active: { id: string; displayName: string }[] = [];
+      const idle: { id: string; displayName: string }[] = [];
       
-      if (data) {
-        // Filter workers in this room who are actively working
-        const workersInRoom = Object.entries(data as Record<string, { roomId?: string; isActive?: boolean; lastSeen?: number; displayName?: string }>)
-          .filter(([, worker]) => {
-            // Check if this worker is in our room and is active
-            return worker.roomId === roomId && worker.isActive === true;
-          })
-          .map(([userId, worker]) => ({
-            id: userId,
-            displayName: worker.displayName || "Anonymous"
-          }));
+      // Group sessions by user (handle multiple tabs)
+      const userMap = new Map<string, boolean>();
+      
+      sessions.forEach(session => {
+        const currentStatus = userMap.get(session.userId);
+        // User is active if ANY of their sessions are active
+        userMap.set(session.userId, currentStatus || session.isActive);
+      });
+      
+      // Convert to arrays
+      userMap.forEach((isActive, userId) => {
+        const userObj = {
+          id: userId,
+          displayName: "Anonymous" // Will be replaced by Firebase user data
+        };
         
-        setActiveUsers(workersInRoom);
-      } else {
-        setActiveUsers([]);
+        if (isActive) {
+          active.push(userObj);
+        } else {
+          idle.push(userObj);
+        }
+      });
+      
+      setActiveUsers(active);
+      
+      // Only log when there's an actual change in user count or active status
+      const activeIds = active.map(u => u.id).sort().join(',');
+      const idleIds = idle.map(u => u.id).sort().join(',');
+      const currentState = `active:${activeIds}|idle:${idleIds}`;
+      
+      if (currentState !== previousStateRef.current) {
+        console.log('[ActiveWorkers] Active workers:', active.length, active);
+        console.log('[ActiveWorkers] Idle workers:', idle.length, idle);
+        previousStateRef.current = currentState;
       }
     });
     
-    return () => {
-      off(activeWorkerRef, "value", handle);
-    };
+    return unsubscribe;
   }, [roomId]);
 
 

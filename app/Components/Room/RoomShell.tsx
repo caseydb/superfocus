@@ -46,12 +46,11 @@ import { signInWithGoogle } from "@/lib/auth";
 import Image from "next/image";
 import MobileMenu from "./MobileMenu";
 import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
-import { PublicRoomPresence } from "@/app/utils/publicRoomPresence";
+import { PresenceService } from "@/app/utils/presenceService";
 import { DotSpinner } from "ldrs/react";
 import "ldrs/react/DotSpinner.css";
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
 import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
-import { PrivateRoomPresence } from "@/app/utils/privateRoomPresence";
 import { useClearButton } from "@/app/hooks/ClearButton";
 import { useQuitButton } from "@/app/hooks/QuitButton";
 import {
@@ -77,9 +76,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
   const [publicRoomId, setPublicRoomId] = useState<string | null>(null);
-  const [publicRoomPresence, setPublicRoomPresence] = useState<PublicRoomPresence | null>(null);
+  const [roomPresence, setRoomPresence] = useState<PresenceService | null>(null);
   const [privateRoomId, setPrivateRoomId] = useState<string | null>(null);
-  const [privateRoomPresence, setPrivateRoomPresence] = useState<PrivateRoomPresence | null>(null);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -385,6 +383,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
+      
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
@@ -394,11 +393,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           setPublicRoomId(currentInstance.id);
 
           // Initialize presence if not already done
-          if (!publicRoomPresence) {
-            const presence = new PublicRoomPresence(currentInstance.id, user.id);
-            const joined = await presence.join();
-            if (joined) {
-              setPublicRoomPresence(presence);
+          if (!roomPresence) {
+            const presence = new PresenceService(user.id, currentInstance.id);
+            const initialized = await presence.initialize();
+            if (initialized) {
+              setRoomPresence(presence);
 
               // Add user to PublicRoom users list and update count
               await addUserToPublicRoom(currentInstance.id, user.id, user.displayName);
@@ -429,18 +428,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Only join if we're not already in this room
           if (!publicRoomId || publicRoomId !== publicRoom.id) {
             // Create presence manager
-            const presence = new PublicRoomPresence(publicRoom.id, user.id);
-            const joined = await presence.join();
+            const presence = new PresenceService(user.id, publicRoom.id);
+            const initialized = await presence.initialize();
 
-            if (!joined) {
-              // Room is full
+            if (!initialized) {
+              // Failed to initialize presence
               setRoomFound(false);
               setLoading(false);
               return;
             }
 
             // Store presence manager
-            setPublicRoomPresence(presence);
+            setRoomPresence(presence);
 
             // Add user to PublicRoom users list and update count
             await addUserToPublicRoom(publicRoom.id, user.id, user.displayName);
@@ -478,27 +477,30 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         if (privateRoom) {
           // Only join if we're not already in this room
           if (!privateRoomId || privateRoomId !== privateRoom.id) {
-            // Create presence manager for private rooms
-            const presence = new PrivateRoomPresence(privateRoom.id, user.id);
-            const joined = await presence.join();
+            try {
+              // Create presence manager for private rooms
+              const presence = new PresenceService(user.id, privateRoom.id);
+              const initialized = await presence.initialize();
+              
+              if (initialized) {
+                // Store presence manager
+                setRoomPresence(presence);
 
-            if (!joined) {
-              // This shouldn't happen for private rooms, but handle it
+                // Add user to PrivateRoom users list and update count
+                await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
+                
+                // Store the private room ID for cleanup later
+                setPrivateRoomId(privateRoom.id);
+              }
+            } catch {
               setRoomFound(false);
               setLoading(false);
               return;
             }
 
-            // Store presence manager
-            setPrivateRoomPresence(presence);
-
-            // Add user to PrivateRoom users list and update count
-            await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
           }
 
           setRoomFound(true);
-          // Store the private room ID for cleanup later
-          setPrivateRoomId(privateRoom.id);
 
           // Create a temporary Instance object for compatibility with the rest of the app
           const tempInstance: Instance = {
@@ -523,12 +525,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
 
     if (userReady) {
+      let cancelled = false;
+      
       // Small delay to ensure Firebase writes are propagated
       const timer = setTimeout(() => {
-        checkRoom();
+        if (!cancelled) {
+          checkRoom();
+        }
       }, 100);
 
       return () => {
+        cancelled = true;
         clearTimeout(timer);
       };
     }
@@ -542,8 +549,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     privateRoomId,
     setPublicRoomInstance,
     user,
-    publicRoomPresence,
-    privateRoomPresence,
+    roomPresence,
   ]);
 
   // Track user tab count to handle multi-tab scenarios
@@ -658,39 +664,35 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Clean up room presence when leaving
   useEffect(() => {
-    if (!publicRoomPresence && !privateRoomPresence) return;
+    if (!roomPresence) return;
 
     // Add beforeunload handler for immediate cleanup
     const handleBeforeUnload = () => {
       // Can't use async in beforeunload, so we'll do a sync cleanup attempt
-      if (publicRoomPresence) {
-        // Use navigator.sendBeacon to make a cleanup request
-        // For now, we'll rely on the cleanup effect and onDisconnect
-      }
-      if (privateRoomPresence) {
-        // Use navigator.sendBeacon to make a cleanup request
-        // For now, we'll rely on the cleanup effect and onDisconnect
-      }
+      // The PresenceService has onDisconnect handlers that will clean up
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      if (publicRoomPresence) {
-        publicRoomPresence.leave();
-      }
-      if (privateRoomPresence) {
-        privateRoomPresence.leave();
+      if (roomPresence) {
+        roomPresence.cleanup();
       }
     };
-  }, [publicRoomPresence, privateRoomPresence]);
+  }, [roomPresence]);
 
   // Track active user status in Firebase RTDB
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
     const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
     setTimerRunning(isActive);
+    
+    // Update presence service
+    if (roomPresence) {
+      roomPresence.setActive(isActive);
+    }
+    
     if (isActive) {
       set(activeRef, { id: user.id, displayName: user.displayName });
       // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
@@ -1281,6 +1283,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       </div>
     );
   }
+  
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-elegant-dark">
