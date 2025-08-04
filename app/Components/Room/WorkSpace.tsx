@@ -14,15 +14,8 @@ import {
   DragOverlay,
   MeasuringStrategy,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import {
-  useSortable,
-} from "@dnd-kit/sortable";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 interface WorkSpaceProps {
@@ -68,18 +61,8 @@ interface SortableRoomCardProps {
   onSettingsClick: (room: Room) => void;
 }
 
-const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ 
-  room, 
-  currentRoomUrl, 
-  onJoinRoom, 
-  onSettingsClick
-}) => {
-  const {
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ 
+const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, onSettingsClick }) => {
+  const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: room.id,
     animateLayoutChanges: () => true,
   });
@@ -98,10 +81,14 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
       return "bg-red-500";
     }
     switch (status) {
-      case "online": return "bg-green-500";
-      case "idle": return "bg-yellow-500";
-      case "offline": return "bg-gray-600";
-      default: return "bg-gray-600";
+      case "online":
+        return "bg-green-500";
+      case "idle":
+        return "bg-yellow-500";
+      case "offline":
+        return "bg-gray-600";
+      default:
+        return "bg-gray-600";
     }
   };
 
@@ -110,35 +97,29 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
       ref={setNodeRef}
       style={style}
       className={`p-4 bg-gray-800/50 rounded-lg border transition-all duration-200 group flex flex-col min-h-[200px] ${
-        currentRoomUrl === room.url 
-          ? "border-[#FFAA00] bg-gray-800/70" 
-          : "border-gray-700 hover:border-gray-600"
-      } ${
-        isDragging ? "shadow-2xl shadow-[#FFAA00]/20" : ""
-      }`}
+        currentRoomUrl === room.url ? "border-[#FFAA00] bg-gray-800/70" : "border-gray-700 hover:border-gray-600"
+      } ${isDragging ? "shadow-2xl shadow-[#FFAA00]/20" : ""}`}
     >
       {/* Room Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-gray-200">{room.name}</h3>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              room.type === "private" 
-                ? "bg-purple-500/20 text-purple-400" 
-                : "bg-blue-500/20 text-blue-400"
-            }`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full ${
+                room.type === "private" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"
+              }`}
+            >
               {room.type === "private" ? "Vendorsage" : "Public"}
             </span>
           </div>
-          {room.description && (
-            <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>
-          )}
+          {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
         </div>
-        
+
         <div className="flex items-start gap-2">
           {/* Settings Menu - Available for all users */}
           <div className="relative group/menu">
-            <button 
+            <button
               className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-gray-700 rounded-lg transition-all opacity-0 group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
@@ -146,12 +127,22 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
               }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
             </button>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="text-right text-xs text-gray-500">
             <div className="font-medium text-gray-400">{room.weeklyStats.totalTime}</div>
@@ -171,13 +162,11 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
               const maxVisible = 5;
               const hasOverflow = room.members.length > maxVisible;
               const membersToShow = hasOverflow ? 4 : room.members.length;
-              
+
               // Sort members by status: online > idle > offline
               const statusOrder = { online: 0, idle: 1, offline: 2 };
-              const sortedMembers = [...room.members].sort((a, b) => 
-                statusOrder[a.status] - statusOrder[b.status]
-              );
-              
+              const sortedMembers = [...room.members].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+
               // Add member avatars
               for (let i = 0; i < membersToShow; i++) {
                 const member = sortedMembers[i];
@@ -185,30 +174,37 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                   <div
                     key={member.id}
                     className="relative"
-                    title={`${member.name}${member.task ? ` - ${member.task}` : ''}`}
+                    title={`${member.name}${member.task ? ` - ${member.task}` : ""}`}
                   >
-                    <div className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
-                      member.status === "offline" ? "bg-gray-700 text-gray-400" : "bg-gray-600 text-gray-200"
-                    }`}>
+                    <div
+                      className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
+                        member.status === "offline" ? "bg-gray-700 text-gray-400" : "bg-gray-600 text-gray-200"
+                      }`}
+                    >
                       {member.avatar}
                     </div>
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(member.status, member.task)}`} />
+                    <div
+                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(
+                        member.status,
+                        member.task
+                      )}`}
+                    />
                   </div>
                 );
               }
-              
+
               // Add overflow indicator
               if (hasOverflow) {
                 const overflowCount = room.members.length - 4;
                 displayItems.push(
                   <div key="overflow" className="relative">
                     <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
-                      {overflowCount > 99 ? '99+' : `+${overflowCount}`}
+                      {overflowCount > 99 ? "99+" : `+${overflowCount}`}
                     </div>
                   </div>
                 );
               }
-              
+
               return displayItems;
             })()}
           </div>
@@ -247,10 +243,50 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
 
 // Mock friends data for profile modal
 const MOCK_FRIENDS = [
-  { id: "1", name: "Alex Chen", firstName: "Alex", lastName: "Chen", status: "online" as const, currentTask: "Building React components", lastMessage: "Hey, can you review my PR?", avatar: "AC", mutualFriends: 15 },
-  { id: "2", name: "Sarah Johnson", firstName: "Sarah", lastName: "Johnson", status: "online" as const, currentTask: "Do not disturb", lastMessage: "Thanks for the help earlier!", avatar: "SJ", mutualFriends: 8 },
-  { id: "3", name: "Mike Williams", firstName: "Mike", lastName: "Williams", status: "idle" as const, currentTask: "Completed task 5m ago", lastMessage: null, avatar: "MW", mutualFriends: 12 },
-  { id: "4", name: "Emma Davis", firstName: "Emma", lastName: "Davis", status: "online" as const, currentTask: "Machine learning research", lastMessage: null, avatar: "ED", mutualFriends: 5 },
+  {
+    id: "1",
+    name: "Alex Chen",
+    firstName: "Alex",
+    lastName: "Chen",
+    status: "online" as const,
+    currentTask: "Building React components",
+    lastMessage: "Hey, can you review my PR?",
+    avatar: "AC",
+    mutualFriends: 15,
+  },
+  {
+    id: "2",
+    name: "Sarah Johnson",
+    firstName: "Sarah",
+    lastName: "Johnson",
+    status: "online" as const,
+    currentTask: "Do not disturb",
+    lastMessage: "Thanks for the help earlier!",
+    avatar: "SJ",
+    mutualFriends: 8,
+  },
+  {
+    id: "3",
+    name: "Mike Williams",
+    firstName: "Mike",
+    lastName: "Williams",
+    status: "idle" as const,
+    currentTask: "Completed task 5m ago",
+    lastMessage: null,
+    avatar: "MW",
+    mutualFriends: 12,
+  },
+  {
+    id: "4",
+    name: "Emma Davis",
+    firstName: "Emma",
+    lastName: "Davis",
+    status: "online" as const,
+    currentTask: "Machine learning research",
+    lastMessage: null,
+    avatar: "ED",
+    mutualFriends: 5,
+  },
 ];
 
 // Mock data for rooms with various members and activities
@@ -263,9 +299,23 @@ const MOCK_ROOMS: Room[] = [
     activeCount: 3,
     isPinned: true,
     members: [
-      { id: "1", name: "Alex Chen", avatar: "AC", status: "online", task: "Building React components", duration: "45m" },
+      {
+        id: "1",
+        name: "Alex Chen",
+        avatar: "AC",
+        status: "online",
+        task: "Building React components",
+        duration: "45m",
+      },
       { id: "6", name: "Lisa Anderson", avatar: "LA", status: "online", task: "UI/UX design", duration: "30m" },
-      { id: "20", name: "Ashley Rodriguez", avatar: "AR", status: "online", task: "Marketing strategy", duration: "1h 5m" },
+      {
+        id: "20",
+        name: "Ashley Rodriguez",
+        avatar: "AR",
+        status: "online",
+        task: "Marketing strategy",
+        duration: "1h 5m",
+      },
       { id: "21", name: "Sam Wilson", avatar: "SW", status: "idle" },
       { id: "22", name: "Jordan Lee", avatar: "JL", status: "offline" },
       // Adding many more offline/idle members to reach 113 total
@@ -310,7 +360,14 @@ const MOCK_ROOMS: Room[] = [
     type: "public",
     activeCount: 2,
     members: [
-      { id: "4", name: "Emma Davis", avatar: "ED", status: "online", task: "Machine learning research", duration: "2h 10m" },
+      {
+        id: "4",
+        name: "Emma Davis",
+        avatar: "ED",
+        status: "online",
+        task: "Machine learning research",
+        duration: "2h 10m",
+      },
       { id: "11", name: "Chris Lee", avatar: "CL", status: "idle" },
       { id: "25", name: "Morgan Taylor", avatar: "MT", status: "online", task: "Reading papers", duration: "55m" },
       { id: "26", name: "Jamie Kim", avatar: "JK", status: "offline" },
@@ -331,7 +388,14 @@ const MOCK_ROOMS: Room[] = [
     activeCount: 1,
     members: [
       { id: "3", name: "Mike Williams", avatar: "MW", status: "idle" },
-      { id: "14", name: "Rachel Green", avatar: "RG", status: "online", task: "Do not disturb - Deep focus", duration: "40m" },
+      {
+        id: "14",
+        name: "Rachel Green",
+        avatar: "RG",
+        status: "online",
+        task: "Do not disturb - Deep focus",
+        duration: "40m",
+      },
       { id: "29", name: "Alex Park", avatar: "AP", status: "offline" },
     ],
     weeklyStats: {
@@ -371,7 +435,14 @@ const MOCK_ROOMS: Room[] = [
       { id: "34", name: "Priya Patel", avatar: "PP", status: "online", task: "API development", duration: "3h 45m" },
       { id: "35", name: "James Wilson", avatar: "JW", status: "online", task: "Do not disturb", duration: "2h 20m" },
       { id: "36", name: "Sofia Martinez", avatar: "SM", status: "online", task: "Database migration", duration: "45m" },
-      { id: "37", name: "Alex Thompson", avatar: "AT", status: "online", task: "Frontend refactor", duration: "1h 30m" },
+      {
+        id: "37",
+        name: "Alex Thompson",
+        avatar: "AT",
+        status: "online",
+        task: "Frontend refactor",
+        duration: "1h 30m",
+      },
       { id: "38", name: "Nina Patel", avatar: "NP", status: "idle", task: "Documentation", duration: "55m" },
       { id: "39", name: "Carlos Ruiz", avatar: "CR", status: "idle" },
     ],
@@ -409,8 +480,22 @@ const MOCK_ROOMS: Room[] = [
     type: "private",
     activeCount: 3,
     members: [
-      { id: "10", name: "Maria Garcia", avatar: "MG", status: "online", task: "Backend development", duration: "3h 20m" },
-      { id: "391", name: "Ryan Thompson", avatar: "RT", status: "online", task: "Frontend debugging", duration: "1h 45m" },
+      {
+        id: "10",
+        name: "Maria Garcia",
+        avatar: "MG",
+        status: "online",
+        task: "Backend development",
+        duration: "3h 20m",
+      },
+      {
+        id: "391",
+        name: "Ryan Thompson",
+        avatar: "RT",
+        status: "online",
+        task: "Frontend debugging",
+        duration: "1h 45m",
+      },
       { id: "40", name: "Zoe Chen", avatar: "ZC", status: "online", task: "Code optimization", duration: "2h 10m" },
       { id: "41", name: "Omar Hassan", avatar: "OH", status: "offline" },
       { id: "42", name: "Kim Lee", avatar: "KL", status: "offline" },
@@ -451,9 +536,9 @@ const TEAMS_DATA = {
     name: "Vendorsage",
     description: "Your primary team workspace",
     members: MOCK_FRIENDS.slice(0, 4), // Use existing friends data
-    rooms: MOCK_ROOMS.filter(room => room.type === "private"),
+    rooms: MOCK_ROOMS.filter((room) => room.type === "private"),
     createdBy: "You",
-    createdAt: "2024-01-15"
+    createdAt: "2024-01-15",
   },
   nexus: {
     id: "nexus",
@@ -462,8 +547,8 @@ const TEAMS_DATA = {
     members: [MOCK_FRIENDS[0]], // Only the creator
     rooms: [], // No rooms yet
     createdBy: MOCK_FRIENDS[0].name,
-    createdAt: new Date().toISOString().split('T')[0]
-  }
+    createdAt: new Date().toISOString().split("T")[0],
+  },
 };
 
 const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
@@ -490,14 +575,22 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [preferences, setPreferences] = useState({
     activityType: "any",
     roomSize: "any",
-    workStyle: "any"
+    workStyle: "any",
   });
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState<Room | null>(null);
-  const [myRoomsOrder, setMyRoomsOrder] = useState<string[]>(() => 
-    MOCK_ROOMS.map(room => room.id)
-  );
+  const [myRoomsOrder, setMyRoomsOrder] = useState<string[]>(() => MOCK_ROOMS.map((room) => room.id));
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [showProfileModal, setShowProfileModal] = useState<{id: string; name: string; firstName: string; lastName: string; status: string; currentTask?: string; avatar: string; lastMessage?: string | null; mutualFriends: number} | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState<{
+    id: string;
+    name: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+    currentTask?: string;
+    avatar: string;
+    lastMessage?: string | null;
+    mutualFriends: number;
+  } | null>(null);
 
   // Update flag when disclaimer is dismissed
   useEffect(() => {
@@ -514,9 +607,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   // Get current room URL to highlight it
   // For demo purposes, default to the first room if not in a room
   const actualPathname = typeof window !== "undefined" ? window.location.pathname : "";
-  const currentRoomUrl = MOCK_ROOMS.some(room => room.url === actualPathname) 
-    ? actualPathname 
-    : "/team-alpha"; // Default to Team Alpha Sprint room for demo
+  const currentRoomUrl = MOCK_ROOMS.some((room) => room.url === actualPathname) ? actualPathname : "/team-alpha"; // Default to Team Alpha Sprint room for demo
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -533,20 +624,21 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   // Filter rooms based on search and tab
   const filteredRooms = useMemo(() => {
     let rooms = MOCK_ROOMS;
-    
+
     // For experiment tab, show all rooms (both public and private/Vendorsage)
     if (activeTab === "experiment") {
       rooms = MOCK_ROOMS;
     }
-    
+
     if (searchQuery) {
-      rooms = rooms.filter(r => 
-        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.members.some(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      rooms = rooms.filter(
+        (r) =>
+          r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.members.some((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
-    
+
     // Sort based on tab
     if (activeTab === "experiment") {
       // Sort by type (private/Vendorsage first), then pinned, then custom order
@@ -554,12 +646,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         // First, sort by type (private first)
         if (a.type === "private" && b.type === "public") return -1;
         if (a.type === "public" && b.type === "private") return 1;
-        
+
         // Then by pinned status
         if (a.isPinned !== b.isPinned) {
           return a.isPinned ? -1 : 1;
         }
-        
+
         // Then by custom order
         const indexA = myRoomsOrder.indexOf(a.id);
         const indexB = myRoomsOrder.indexOf(b.id);
@@ -567,7 +659,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       });
     } else if (activeTab === "team") {
       // For team tab, only show private rooms
-      return rooms.filter(r => r.type === "private");
+      return rooms.filter((r) => r.type === "private");
     } else {
       // Default sort by active count for quick-join
       return rooms.sort((a, b) => b.activeCount - a.activeCount);
@@ -586,11 +678,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   const handleQuickJoin = () => {
     // Get public rooms with available space
-    const availableRooms = MOCK_ROOMS.filter(room => 
-      room.type === "public" && 
-      room.members.length < (room.maxMembers || 50)
+    const availableRooms = MOCK_ROOMS.filter(
+      (room) => room.type === "public" && room.members.length < (room.maxMembers || 50)
     );
-    
+
     if (availableRooms.length > 0) {
       // Pick a random room from available ones
       const randomRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)];
@@ -618,7 +709,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-    
+
     setActiveId(null);
   };
 
@@ -627,10 +718,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       return "bg-red-500";
     }
     switch (status) {
-      case "online": return "bg-green-500";
-      case "idle": return "bg-yellow-500";
-      case "offline": return "bg-gray-600";
-      default: return "bg-gray-600";
+      case "online":
+        return "bg-green-500";
+      case "idle":
+        return "bg-yellow-500";
+      case "offline":
+        return "bg-gray-600";
+      default:
+        return "bg-gray-600";
     }
   };
 
@@ -638,27 +733,31 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
       {/* Beta Disclaimer Popup */}
       {showBetaDisclaimer && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
           onClick={() => setShowBetaDisclaimer(false)}
         >
-          <div 
+          <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md mx-4 border border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center space-y-4">
               <div className="w-16 h-16 bg-[#FFAA00]/20 rounded-full flex items-center justify-center mx-auto">
                 <svg className="w-8 h-8 text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-gray-200">Beta Preview</h3>
               <p className="text-gray-400 leading-relaxed">
-                This is a prototype demonstration with simulated data for user experience testing and feedback collection.
+                This is a prototype demonstration with simulated data for user experience testing and feedback
+                collection.
               </p>
-              <p className="text-sm text-gray-500">
-                Real-time functionality coming soon.
-              </p>
+              <p className="text-sm text-gray-500">Real-time functionality coming soon.</p>
               <button
                 onClick={() => setShowBetaDisclaimer(false)}
                 className="px-6 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
@@ -669,18 +768,17 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           </div>
         </div>
       )}
-      
+
       <div
         className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative ${
-          showBetaDisclaimer ? 'opacity-40 pointer-events-none' : ''
+          showBetaDisclaimer ? "opacity-40 pointer-events-none" : ""
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="relative flex items-center justify-center mb-4">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">WorkSpace</h2>
-          
-          
+
           {/* Close button */}
           <button
             onClick={onClose}
@@ -702,9 +800,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           <button
             onClick={() => setActiveTab("experiment")}
             className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
-              activeTab === "experiment"
-                ? "bg-[#FFAA00] text-black"
-                : "text-gray-400 hover:text-gray-300"
+              activeTab === "experiment" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-gray-300"
             }`}
           >
             Rooms
@@ -712,15 +808,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           <button
             onClick={() => setActiveTab("team")}
             className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
-              activeTab === "team"
-                ? "bg-[#FFAA00] text-black"
-                : "text-gray-400 hover:text-gray-300"
+              activeTab === "team" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-gray-300"
             }`}
           >
             Teams
           </button>
         </div>
-
 
         {/* Rooms Grid / Quick Join */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
@@ -731,14 +824,26 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
-                    <svg className="w-5 h-5 text-[#FFAA00] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <svg
+                      className="w-5 h-5 text-[#FFAA00] flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
                     </svg>
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <h3 className="font-semibold text-gray-200">Quick Join</h3>
                         <p className="text-xs text-gray-500">
-                          <span className="text-green-500 font-bold">{globalActiveRooms}</span> rooms • <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people online
+                          <span className="text-green-500 font-bold">{globalActiveRooms}</span> rooms •{" "}
+                          <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people
+                          online
                         </p>
                       </div>
                       <p className="text-sm text-gray-400 mt-1">
@@ -751,7 +856,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB833] transition-all duration-200 flex items-center gap-2 flex-shrink-0"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
                     </svg>
                     Quick Join
                   </button>
@@ -761,7 +871,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               {/* My Rooms List */}
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-200 mb-3">My Rooms</h3>
-                
+
                 {/* Search and Create Room */}
                 <div className="flex gap-2 mb-4 px-1">
                   <div className="flex-1 relative">
@@ -861,7 +971,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               <option value="vendorsage">Vendorsage</option>
                               <option value="nexus">Nexus</option>
                             </select>
-                            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg
+                              className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </div>
@@ -876,7 +991,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               name: newRoomName,
                               description: newRoomDescription,
                               type: newRoomType,
-                              team: newRoomType === "private" ? newRoomTeam : null
+                              team: newRoomType === "private" ? newRoomTeam : null,
                             });
                             setNewRoomName("");
                             setNewRoomDescription("");
@@ -909,18 +1024,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   measuring={{
                     droppable: {
                       strategy: MeasuringStrategy.Always,
-                    }
+                    },
                   }}
                 >
-                  <SortableContext
-                    items={myRoomsOrder}
-                    strategy={rectSortingStrategy}
-                  >
+                  <SortableContext items={myRoomsOrder} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {myRoomsOrder.map(roomId => {
-                        const room = filteredRooms.find(r => r.id === roomId);
+                      {myRoomsOrder.map((roomId) => {
+                        const room = filteredRooms.find((r) => r.id === roomId);
                         if (!room) return null;
-                        
+
                         return (
                           <SortableRoomCard
                             key={room.id}
@@ -934,19 +1046,21 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     </div>
                   </SortableContext>
                   <DragOverlay>
-                    {activeId ? (() => {
-                      const activeRoom = filteredRooms.find(r => r.id === activeId);
-                      if (!activeRoom) return null;
-                      
-                      return (
-                        <div className="bg-gray-800/95 rounded-xl border border-[#FFAA00] shadow-2xl p-4 cursor-grabbing">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-gray-200">{activeRoom.name}</h3>
-                          </div>
-                          <p className="text-xs text-gray-500">{activeRoom.description}</p>
-                        </div>
-                      );
-                    })() : null}
+                    {activeId
+                      ? (() => {
+                          const activeRoom = filteredRooms.find((r) => r.id === activeId);
+                          if (!activeRoom) return null;
+
+                          return (
+                            <div className="bg-gray-800/95 rounded-xl border border-[#FFAA00] shadow-2xl p-4 cursor-grabbing">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-200">{activeRoom.name}</h3>
+                              </div>
+                              <p className="text-xs text-gray-500">{activeRoom.description}</p>
+                            </div>
+                          );
+                        })()
+                      : null}
                   </DragOverlay>
                 </DndContext>
               </div>
@@ -954,7 +1068,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           ) : filteredRooms.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
               </svg>
               <p className="text-lg font-medium">No rooms found</p>
               <p className="text-sm text-gray-600">Try a different search or create a new room</p>
@@ -970,14 +1089,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 let totalActiveMembers = 0;
                 let totalTasks = 0;
                 let totalTime = 0;
-                
+
                 // Aggregate data from all team rooms
-                teamRooms.forEach(room => {
-                  room.members.forEach(member => {
+                teamRooms.forEach((room) => {
+                  room.members.forEach((member) => {
                     if (!allTeamMembers.has(member.id)) {
                       allTeamMembers.set(member.id, {
                         ...member,
-                        rooms: [room.name]
+                        rooms: [room.name],
                       });
                     } else {
                       allTeamMembers.get(member.id).rooms.push(room.name);
@@ -991,21 +1110,22 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     totalTime += parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
                   }
                 });
-                
+
                 // For Nexus team, use the team members instead of room members
-                const teamMembers = selectedTeam === "nexus" 
-                  ? currentTeam.members.map(member => ({
-                      ...member,
-                      rooms: [] // Nexus team members aren't in any rooms yet
-                    }))
-                  : Array.from(allTeamMembers.values());
-                
+                const teamMembers =
+                  selectedTeam === "nexus"
+                    ? currentTeam.members.map((member) => ({
+                        ...member,
+                        rooms: [], // Nexus team members aren't in any rooms yet
+                      }))
+                    : Array.from(allTeamMembers.values());
+
                 const formatTotalTime = (minutes: number) => {
                   const hours = Math.floor(minutes / 60);
                   const mins = minutes % 60;
                   return `${hours}h ${mins}m`;
                 };
-                
+
                 // Sort members by status priority
                 const sortedMembers = teamMembers.sort((a, b) => {
                   // Priority order:
@@ -1013,7 +1133,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   // 2. Completed task (idle status)
                   // 3. Do not disturb (online with "Do not disturb")
                   // 4. Last seen (offline)
-                  
+
                   const getStatusPriority = (member: { status: string; currentTask?: string; task?: string }) => {
                     const task = member.currentTask || member.task;
                     if (member.status === "online" && task && !task.includes("Do not disturb")) return 1;
@@ -1022,10 +1142,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     if (member.status === "offline") return 4;
                     return 5;
                   };
-                  
+
                   return getStatusPriority(a) - getStatusPriority(b);
                 });
-                
+
                 return (
                   <div className={selectedTeam === "create" ? "flex flex-col justify-center h-full" : "space-y-6"}>
                     {selectedTeam === "create" ? (
@@ -1047,22 +1167,25 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               stroke="currentColor"
                               viewBox="0 0 24 24"
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </div>
-                        
+
                         {/* Value Proposition */}
                         <div className="mb-4 space-y-3">
                           <div className="text-center space-y-2">
-                            <h2 className="text-xl font-bold text-gray-200">
-                              Transform Your Team&apos;s Productivity
-                            </h2>
+                            <h2 className="text-xl font-bold text-gray-200">Transform Your Team&apos;s Productivity</h2>
                             <p className="text-sm text-gray-400 max-w-2xl mx-auto">
                               Create dedicated workspaces where your team can focus and achieve more together.
                             </p>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700">
                               <div className="flex items-start gap-3">
@@ -1084,12 +1207,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 <div>
                                   <h4 className="font-semibold text-gray-200 mb-1">Boost Morale</h4>
                                   <p className="text-sm text-gray-400">
-                                    Work is easier when people don&apos;t feel alone.
+                                    Work is easier when people don&apos;t feel alone
                                   </p>
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700">
                               <div className="flex items-start gap-3">
                                 <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1116,12 +1239,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 <div>
                                   <h4 className="font-semibold text-gray-200 mb-1">Visibility</h4>
                                   <p className="text-sm text-gray-400">
-                                    See real-time activity and progress as it happens.
+                                    See real-time activity and progress as it happens
                                   </p>
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700">
                               <div className="flex items-start gap-3">
                                 <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1147,7 +1270,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Pricing and What Happens Next - Side by Side */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                           {/* Pricing Information */}
@@ -1169,7 +1292,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               <div className="flex-1">
                                 <h4 className="text-sm font-semibold text-[#FFAA00] mb-1">Team Pricing</h4>
                                 <p className="text-sm text-gray-300 mb-3">
-                                  <span className="font-semibold text-green-400">7 day free trial</span> then <span className="font-semibold text-white">$5/month per user</span>
+                                  <span className="font-semibold text-green-400">7 day free trial</span> then{" "}
+                                  <span className="font-semibold text-white">$5/month per user</span>
                                 </p>
                                 <div className="space-y-2 text-xs text-gray-400">
                                   <div className="flex items-start gap-2">
@@ -1224,7 +1348,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* What happens next */}
                           <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                             <div className="flex items-start gap-3">
@@ -1234,12 +1358,17 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                               </svg>
                               <div className="flex-1">
                                 <h4 className="text-sm font-semibold text-white mb-1">What happens next?</h4>
                                 <p className="text-sm text-gray-300 mb-3">
-                                  <span className="font-semibold">Instant setup</span> with no credit card required
+                                  <span className="font-semibold">Instant setup</span> to hit the ground running
                                 </p>
                                 <div className="space-y-2 text-xs text-gray-400">
                                   <div className="flex items-start gap-2">
@@ -1295,7 +1424,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex gap-3 items-end">
                           <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-400 mb-2">Team Name</label>
@@ -1342,216 +1471,265 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <>
                         {/* Team Overview Header */}
                         <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="relative inline-flex items-center">
-                              <select
-                                value={selectedTeam}
-                                onChange={(e) => {
-                                  setSelectedTeam(e.target.value);
-                                }}
-                                className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer"
-                              >
-                                <option value="vendorsage">Vendorsage</option>
-                                <option value="nexus">Nexus</option>
-                                <option value="create">+ Create Team</option>
-                              </select>
-                              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
-                          </div>
-                          <p className="text-gray-400">
-                            {selectedTeam === "nexus" 
-                              ? "Your new team workspace - invite members to get started"
-                              : currentTeam.description
-                            }
-                          </p>
-                        </div>
-                        <button 
-                          onClick={() => setShowTeamInviteModal(true)}
-                          className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                          </svg>
-                          Invite Team Member
-                        </button>
-                      </div>
-                      
-                      {/* Team Stats */}
-                      <div className="grid grid-cols-4 gap-4 mt-6">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{selectedTeam === "nexus" ? 0 : totalActiveMembers}</p>
-                          <p className="text-sm text-gray-500">Active Now</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{teamMembers.length}</p>
-                          <p className="text-sm text-gray-500">Total Team Members</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{selectedTeam === "nexus" ? "0h 0m" : formatTotalTime(totalTime)}</p>
-                          <p className="text-sm text-gray-500">Total Time This Week</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-green-400">{selectedTeam === "nexus" ? 0 : totalTasks}</p>
-                          <p className="text-sm text-gray-500">Tasks Completed</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Team Workspaces */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-200 mb-4">
-                        Team Rooms ({teamRooms.length})
-                      </h3>
-                      {teamRooms.length === 0 ? (
-                        <div className="bg-gray-800/30 rounded-lg p-8 border border-gray-700 border-dashed text-center mb-6">
-                          <svg className="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                          <p className="text-gray-500 mb-4">No rooms created yet</p>
-                          <button
-                            onClick={() => {
-                              setActiveTab("experiment");
-                              setShowCreateRoom(true);
-                              setNewRoomType("private");
-                              setNewRoomTeam(selectedTeam);
-                            }}
-                            className="px-4 py-2 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
-                          >
-                            Create Your First Room
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="grid gap-3 mb-6">
-                          {teamRooms.map((room) => (
-                          <div key={room.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="relative inline-flex items-center">
+                                  <select
+                                    value={selectedTeam}
+                                    onChange={(e) => {
+                                      setSelectedTeam(e.target.value);
+                                    }}
+                                    className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer"
+                                  >
+                                    <option value="vendorsage">Vendorsage</option>
+                                    <option value="nexus">Nexus</option>
+                                    <option value="create">+ Create Team</option>
+                                  </select>
+                                  <svg
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 9l-7 7-7-7"
+                                    />
                                   </svg>
                                 </div>
-                                <div>
-                                  <h4 className="font-medium text-gray-200">{room.name}</h4>
-                                  <p className="text-sm text-gray-500">{room.activeCount} active • {room.members.length} members</p>
-                                </div>
                               </div>
-                              <button
-                                onClick={() => handleJoinRoom(room.url)}
-                                className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
-                              >
-                                Join Room
-                              </button>
+                              <p className="text-gray-400">
+                                {selectedTeam === "nexus"
+                                  ? "Your new team workspace - invite members to get started"
+                                  : currentTeam.description}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setShowTeamInviteModal(true)}
+                              className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                                />
+                              </svg>
+                              Invite Team Member
+                            </button>
+                          </div>
+
+                          {/* Team Stats */}
+                          <div className="grid grid-cols-4 gap-4 mt-6">
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-400">
+                                {selectedTeam === "nexus" ? 0 : totalActiveMembers}
+                              </p>
+                              <p className="text-sm text-gray-500">Active Now</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-400">{teamMembers.length}</p>
+                              <p className="text-sm text-gray-500">Total Team Members</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-400">
+                                {selectedTeam === "nexus" ? "0h 0m" : formatTotalTime(totalTime)}
+                              </p>
+                              <p className="text-sm text-gray-500">Total Time This Week</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-400">
+                                {selectedTeam === "nexus" ? 0 : totalTasks}
+                              </p>
+                              <p className="text-sm text-gray-500">Tasks Completed</p>
                             </div>
                           </div>
-                        ))}
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Team Members */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-200 mb-4">
-                        Team Members
-                      </h3>
-                      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                        {sortedMembers.map((member) => (
-                          <div key={member.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all group">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => {
-                                    const friend = MOCK_FRIENDS.find(f => f.name === member.name) || {
-                                      id: member.id,
-                                      name: member.name,
-                                      firstName: member.name.split(' ')[0],
-                                      lastName: member.name.split(' ')[1] || '',
-                                      status: member.status,
-                                      currentTask: member.task,
-                                      avatar: member.avatar,
-                                      lastMessage: null,
-                                      mutualFriends: Math.floor(Math.random() * 20) + 1
-                                    };
-                                    setShowProfileModal(friend);
-                                  }}
-                                  className="relative hover:opacity-80 transition-opacity"
-                                >
-                                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all">
-                                    {member.avatar}
-                                  </div>
-                                  <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(member.status, member.task)}`} />
-                                </button>
-                                <div className="flex-1">
-                                  <button
-                                    onClick={() => {
-                                      const friend = MOCK_FRIENDS.find(f => f.name === member.name) || {
-                                        id: member.id,
-                                        name: member.name,
-                                        firstName: member.name.split(' ')[0],
-                                        lastName: member.name.split(' ')[1] || '',
-                                        status: member.status,
-                                        currentTask: member.task,
-                                        avatar: member.avatar,
-                                        lastMessage: null,
-                                        mutualFriends: Math.floor(Math.random() * 20) + 1
-                                      };
-                                      setShowProfileModal(friend);
-                                    }}
-                                    className="text-left"
-                                  >
-                                    <h4 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">{member.name}</h4>
-                                  </button>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <p className="text-gray-500">
-                                      {(() => {
-                                        if (member.status === "online" && member.task) {
-                                          if (member.task.includes("Do not disturb")) {
-                                            return "Do not disturb";
-                                          }
-                                          return "Actively working";
-                                        } else if (member.status === "idle") {
-                                          return "Standby";
-                                        } else {
-                                          // Offline - show last seen with fixed times based on member ID
-                                          const lastSeenMap: Record<string, string> = {
-                                            "9": "5m ago",
-                                            "13": "30m ago", 
-                                            "17": "1h ago",
-                                            "21": "2h ago",
-                                            "24": "5h ago",
-                                            "27": "1d ago",
-                                            "29": "3h ago",
-                                            "30": "45m ago"
-                                          };
-                                          return `Last seen ${lastSeenMap[member.id] || "2h ago"}`;
-                                        }
-                                      })()}
-                                    </p>
-                                    {member.rooms && member.rooms.length > 0 && (
-                                      <>
-                                        <span className="text-gray-600">•</span>
-                                        <p className="text-gray-500 text-xs">
-                                          {member.rooms.join(", ")}
-                                        </p>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <button className="opacity-0 group-hover:opacity-100 px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all">
-                                Message
+
+                        {/* Team Workspaces */}
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Team Rooms ({teamRooms.length})</h3>
+                          {teamRooms.length === 0 ? (
+                            <div className="bg-gray-800/30 rounded-lg p-8 border border-gray-700 border-dashed text-center mb-6">
+                              <svg
+                                className="w-12 h-12 text-gray-600 mx-auto mb-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                />
+                              </svg>
+                              <p className="text-gray-500 mb-4">No rooms created yet</p>
+                              <button
+                                onClick={() => {
+                                  setActiveTab("experiment");
+                                  setShowCreateRoom(true);
+                                  setNewRoomType("private");
+                                  setNewRoomTeam(selectedTeam);
+                                }}
+                                className="px-4 py-2 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
+                              >
+                                Create Your First Room
                               </button>
                             </div>
+                          ) : (
+                            <div className="grid gap-3 mb-6">
+                              {teamRooms.map((room) => (
+                                <div
+                                  key={room.id}
+                                  className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                        <svg
+                                          className="w-5 h-5 text-purple-400"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                          />
+                                        </svg>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-medium text-gray-200">{room.name}</h4>
+                                        <p className="text-sm text-gray-500">
+                                          {room.activeCount} active • {room.members.length} members
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleJoinRoom(room.url)}
+                                      className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
+                                    >
+                                      Join Room
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Team Members */}
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Team Members</h3>
+                          <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                            {sortedMembers.map((member) => (
+                              <div
+                                key={member.id}
+                                className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all group"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      onClick={() => {
+                                        const friend = MOCK_FRIENDS.find((f) => f.name === member.name) || {
+                                          id: member.id,
+                                          name: member.name,
+                                          firstName: member.name.split(" ")[0],
+                                          lastName: member.name.split(" ")[1] || "",
+                                          status: member.status,
+                                          currentTask: member.task,
+                                          avatar: member.avatar,
+                                          lastMessage: null,
+                                          mutualFriends: Math.floor(Math.random() * 20) + 1,
+                                        };
+                                        setShowProfileModal(friend);
+                                      }}
+                                      className="relative hover:opacity-80 transition-opacity"
+                                    >
+                                      <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all">
+                                        {member.avatar}
+                                      </div>
+                                      <div
+                                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(
+                                          member.status,
+                                          member.task
+                                        )}`}
+                                      />
+                                    </button>
+                                    <div className="flex-1">
+                                      <button
+                                        onClick={() => {
+                                          const friend = MOCK_FRIENDS.find((f) => f.name === member.name) || {
+                                            id: member.id,
+                                            name: member.name,
+                                            firstName: member.name.split(" ")[0],
+                                            lastName: member.name.split(" ")[1] || "",
+                                            status: member.status,
+                                            currentTask: member.task,
+                                            avatar: member.avatar,
+                                            lastMessage: null,
+                                            mutualFriends: Math.floor(Math.random() * 20) + 1,
+                                          };
+                                          setShowProfileModal(friend);
+                                        }}
+                                        className="text-left"
+                                      >
+                                        <h4 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">
+                                          {member.name}
+                                        </h4>
+                                      </button>
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <p className="text-gray-500">
+                                          {(() => {
+                                            if (member.status === "online" && member.task) {
+                                              if (member.task.includes("Do not disturb")) {
+                                                return "Do not disturb";
+                                              }
+                                              return "Actively working";
+                                            } else if (member.status === "idle") {
+                                              return "Standby";
+                                            } else {
+                                              // Offline - show last seen with fixed times based on member ID
+                                              const lastSeenMap: Record<string, string> = {
+                                                "9": "5m ago",
+                                                "13": "30m ago",
+                                                "17": "1h ago",
+                                                "21": "2h ago",
+                                                "24": "5h ago",
+                                                "27": "1d ago",
+                                                "29": "3h ago",
+                                                "30": "45m ago",
+                                              };
+                                              return `Last seen ${lastSeenMap[member.id] || "2h ago"}`;
+                                            }
+                                          })()}
+                                        </p>
+                                        {member.rooms && member.rooms.length > 0 && (
+                                          <>
+                                            <span className="text-gray-600">•</span>
+                                            <p className="text-gray-500 text-xs">{member.rooms.join(", ")}</p>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button className="opacity-0 group-hover:opacity-100 px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all">
+                                    Message
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -1562,8 +1740,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 <div
                   key={room.id}
                   className={`p-4 bg-gray-800/50 rounded-lg border transition-all duration-200 group flex flex-col min-h-[200px] ${
-                    currentRoomUrl === room.url 
-                      ? "border-[#FFAA00] bg-gray-800/70" 
+                    currentRoomUrl === room.url
+                      ? "border-[#FFAA00] bg-gray-800/70"
                       : "border-gray-700 hover:border-gray-600"
                   }`}
                 >
@@ -1572,23 +1750,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-gray-200">{room.name}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          room.type === "private" 
-                            ? "bg-purple-500/20 text-purple-400" 
-                            : "bg-blue-500/20 text-blue-400"
-                        }`}>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            room.type === "private"
+                              ? "bg-purple-500/20 text-purple-400"
+                              : "bg-blue-500/20 text-blue-400"
+                          }`}
+                        >
                           {room.type === "private" ? "Vendorsage" : "Public"}
                         </span>
                       </div>
-                      {room.description && (
-                        <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>
-                      )}
+                      {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
                     </div>
-                    
+
                     <div className="flex items-start gap-2">
                       {/* Settings Menu - Available for all users */}
                       <div className="relative group/menu">
-                        <button 
+                        <button
                           className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-gray-700 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1596,12 +1774,22 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           }}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
                           </svg>
                         </button>
                       </div>
-                      
+
                       {/* Quick Stats */}
                       <div className="text-right text-xs text-gray-500">
                         <div className="font-medium text-gray-400">{room.weeklyStats.totalTime}</div>
@@ -1615,60 +1803,69 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   <div className="flex-1">
                     {/* Active Members */}
                     <div className="flex items-center gap-2 mb-3">
-                    <div className="flex -space-x-2">
-                      {(() => {
-                        const displayItems = [];
-                        const maxVisible = 5;
-                        const hasOverflow = room.members.length > maxVisible;
-                        const membersToShow = hasOverflow ? 4 : room.members.length;
-                        
-                        // Sort members by status: online > idle > offline
-                        const statusOrder = { online: 0, idle: 1, offline: 2 };
-                        const sortedMembers = [...room.members].sort((a, b) => 
-                          statusOrder[a.status] - statusOrder[b.status]
-                        );
-                        
-                        // Add member avatars
-                        for (let i = 0; i < membersToShow; i++) {
-                          const member = sortedMembers[i];
-                          displayItems.push(
-                            <div
-                              key={member.id}
-                              className="relative"
-                              title={`${member.name}${member.task ? ` - ${member.task}` : ''}`}
-                            >
-                              <div className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
-                                member.status === "offline" ? "bg-gray-700 text-gray-400" : "bg-gray-600 text-gray-200"
-                              }`}>
-                                {member.avatar}
-                              </div>
-                              <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(member.status, member.task)}`} />
-                            </div>
+                      <div className="flex -space-x-2">
+                        {(() => {
+                          const displayItems = [];
+                          const maxVisible = 5;
+                          const hasOverflow = room.members.length > maxVisible;
+                          const membersToShow = hasOverflow ? 4 : room.members.length;
+
+                          // Sort members by status: online > idle > offline
+                          const statusOrder = { online: 0, idle: 1, offline: 2 };
+                          const sortedMembers = [...room.members].sort(
+                            (a, b) => statusOrder[a.status] - statusOrder[b.status]
                           );
-                        }
-                        
-                        // Add overflow indicator as just another item in the sequence
-                        if (hasOverflow) {
-                          const overflowCount = room.members.length - 4;
-                          displayItems.push(
-                            <div key="overflow" className="relative">
-                              <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
-                                {overflowCount > 99 ? '99+' : `+${overflowCount}`}
+
+                          // Add member avatars
+                          for (let i = 0; i < membersToShow; i++) {
+                            const member = sortedMembers[i];
+                            displayItems.push(
+                              <div
+                                key={member.id}
+                                className="relative"
+                                title={`${member.name}${member.task ? ` - ${member.task}` : ""}`}
+                              >
+                                <div
+                                  className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
+                                    member.status === "offline"
+                                      ? "bg-gray-700 text-gray-400"
+                                      : "bg-gray-600 text-gray-200"
+                                  }`}
+                                >
+                                  {member.avatar}
+                                </div>
+                                <div
+                                  className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(
+                                    member.status,
+                                    member.task
+                                  )}`}
+                                />
                               </div>
-                            </div>
-                          );
-                        }
-                        
-                        return displayItems;
-                      })()}
-                    </div>
-                    <span className="text-sm text-gray-400">
-                      {room.activeCount > 0 ? (
-                        <span className="text-green-400">{room.activeCount} active</span>
-                      ) : (
-                        <span className="text-gray-500">No one active</span>
-                      )}
-                    </span>
+                            );
+                          }
+
+                          // Add overflow indicator as just another item in the sequence
+                          if (hasOverflow) {
+                            const overflowCount = room.members.length - 4;
+                            displayItems.push(
+                              <div key="overflow" className="relative">
+                                <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
+                                  {overflowCount > 99 ? "99+" : `+${overflowCount}`}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return displayItems;
+                        })()}
+                      </div>
+                      <span className="text-sm text-gray-400">
+                        {room.activeCount > 0 ? (
+                          <span className="text-green-400">{room.activeCount} active</span>
+                        ) : (
+                          <span className="text-gray-500">No one active</span>
+                        )}
+                      </span>
                     </div>
                   </div>
 
@@ -1700,10 +1897,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Room Settings Modal */}
       {editingRoom && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setEditingRoom(null);
-        }}>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditingRoom(null);
+          }}
+        >
           <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -1714,7 +1914,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 onClick={() => setEditingRoom(null)}
                 className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
               >
-                <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -1734,7 +1939,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-[#FFAA00]"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
                       <textarea
@@ -1752,7 +1957,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 <h4 className="text-sm font-medium text-red-400 mb-3">Danger Zone</h4>
                 <div className="space-y-2">
                   {!editingRoom.isOwner && (
-                    <button 
+                    <button
                       onClick={() => {
                         setShowLeaveConfirmModal(editingRoom);
                         setEditingRoom(null);
@@ -1760,13 +1965,18 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       className="px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors w-full flex items-center justify-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                        />
                       </svg>
                       Leave Room
                     </button>
                   )}
                   {editingRoom.isOwner && (
-                    <button 
+                    <button
                       onClick={() => {
                         setShowDeleteModal(editingRoom);
                         setEditingRoom(null);
@@ -1781,7 +1991,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               </div>
 
               {/* Action Buttons */}
-              {(editingRoom.isOwner || editingRoom.isAdmin) ? (
+              {editingRoom.isOwner || editingRoom.isAdmin ? (
                 <div className="flex gap-3 pt-4">
                   <button
                     className="flex-1 px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
@@ -1813,11 +2023,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Members Management Modal */}
       {showMembersModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowMembersModal(null);
-          setMemberSearchQuery("");
-        }}>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMembersModal(null);
+            setMemberSearchQuery("");
+          }}
+        >
           <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[700px] max-h-[90vh] overflow-y-auto border border-gray-800 custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
@@ -1825,7 +2038,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-bold text-[#FFAA00]">Manage Members</h3>
-                <p className="text-sm text-gray-500 mt-1">{showMembersModal.members.length} members • {showMembersModal.maxMembers || 50} max</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {showMembersModal.members.length} members • {showMembersModal.maxMembers || 50} max
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1836,8 +2051,18 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
                   title="Back to Room Settings"
                 >
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg
+                    className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
                   </svg>
                 </button>
                 <button
@@ -1847,7 +2072,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   }}
                   className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
                 >
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1868,79 +2098,79 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             {/* Members List */}
             <div className="space-y-2 mb-6">
               {showMembersModal.members
-                .filter(member => 
-                  member.name.toLowerCase().includes(memberSearchQuery.toLowerCase())
-                )
+                .filter((member) => member.name.toLowerCase().includes(memberSearchQuery.toLowerCase()))
                 .map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
-                        {member.avatar}
-                      </div>
-                      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${
-                        (() => {
-                          if (member.status === "offline") return "bg-gray-600";
-                          if (member.status === "idle") return "bg-yellow-500";
-                          if (member.status === "online" && member.task) {
-                            if (member.task.toLowerCase().includes("do not disturb")) return "bg-red-500";
-                            if (member.task.toLowerCase().includes("completed")) return "bg-yellow-500";
-                          }
-                          return "bg-green-500";
-                        })()
-                      }`} />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-200">{member.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {showMembersModal.admins?.includes(member.name) && (
-                          <span className="text-[#FFAA00]">Admin • </span>
-                        )}
-                        {(() => {
-                          if (member.status === "online" && member.task) {
-                            // Check for different task states
-                            if (member.task.toLowerCase().includes("do not disturb")) {
-                              return "Do not disturb";
-                            } else if (member.task.toLowerCase().includes("completed")) {
-                              // Extract time from task like "Completed task 15m ago"
-                              const timeMatch = member.task.match(/(\d+[hm])/);
-                              return `Completed task ${timeMatch ? timeMatch[1] : "5m"} ago`;
-                            } else {
-                              return "Actively working";
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+                          {member.avatar}
+                        </div>
+                        <div
+                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${(() => {
+                            if (member.status === "offline") return "bg-gray-600";
+                            if (member.status === "idle") return "bg-yellow-500";
+                            if (member.status === "online" && member.task) {
+                              if (member.task.toLowerCase().includes("do not disturb")) return "bg-red-500";
+                              if (member.task.toLowerCase().includes("completed")) return "bg-yellow-500";
                             }
-                          } else if (member.status === "online") {
-                            return "Actively working";
-                          } else if (member.status === "idle") {
-                            // Idle status represents completed task
-                            return `Completed task ${member.duration || "5m ago"}`;
-                          } else {
-                            return `Last seen ${member.duration || "2h ago"}`;
-                          }
-                        })()}
-                      </p>
+                            return "bg-green-500";
+                          })()}`}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-200">{member.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {showMembersModal.admins?.includes(member.name) && (
+                            <span className="text-[#FFAA00]">Admin • </span>
+                          )}
+                          {(() => {
+                            if (member.status === "online" && member.task) {
+                              // Check for different task states
+                              if (member.task.toLowerCase().includes("do not disturb")) {
+                                return "Do not disturb";
+                              } else if (member.task.toLowerCase().includes("completed")) {
+                                // Extract time from task like "Completed task 15m ago"
+                                const timeMatch = member.task.match(/(\d+[hm])/);
+                                return `Completed task ${timeMatch ? timeMatch[1] : "5m"} ago`;
+                              } else {
+                                return "Actively working";
+                              }
+                            } else if (member.status === "online") {
+                              return "Actively working";
+                            } else if (member.status === "idle") {
+                              // Idle status represents completed task
+                              return `Completed task ${member.duration || "5m ago"}`;
+                            } else {
+                              return `Last seen ${member.duration || "2h ago"}`;
+                            }
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {showMembersModal.admins?.includes(member.name) ? (
+                        <button className="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors">
+                          Remove Admin
+                        </button>
+                      ) : (
+                        <button className="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors">
+                          Make Admin
+                        </button>
+                      )}
+                      <button className="px-3 py-1 text-xs bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 transition-colors">
+                        Remove
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {showMembersModal.admins?.includes(member.name) ? (
-                      <button className="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors">
-                        Remove Admin
-                      </button>
-                    ) : (
-                      <button className="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors">
-                        Make Admin
-                      </button>
-                    )}
-                    <button className="px-3 py-1 text-xs bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 transition-colors">
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
 
             {/* Admins Section */}
             <div className="border-t border-gray-700 pt-4">
-              <h4 className="text-sm font-medium text-gray-400 mb-3">Room Admins ({showMembersModal.admins?.length || 0})</h4>
+              <h4 className="text-sm font-medium text-gray-400 mb-3">
+                Room Admins ({showMembersModal.admins?.length || 0})
+              </h4>
               <div className="flex flex-wrap gap-2">
                 {showMembersModal.admins?.map((admin) => (
                   <span key={admin} className="px-3 py-1 bg-[#FFAA00]/20 text-[#FFAA00] rounded-full text-sm">
@@ -1955,10 +2185,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Invite Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowInviteModal(null);
-        }}>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowInviteModal(null);
+          }}
+        >
           <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -1974,15 +2207,30 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
                   title="Back to Room Settings"
                 >
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg
+                    className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
                   </svg>
                 </button>
                 <button
                   onClick={() => setShowInviteModal(null)}
                   className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
                 >
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -2034,10 +2282,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowDeleteModal(null);
-        }}>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteModal(null);
+          }}
+        >
           <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -2051,7 +2302,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 }}
                 className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
               >
-                <svg className="w-4 h-4 text-gray-400 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-gray-400 group-hover:text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -2060,7 +2316,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             <div className="space-y-4">
               <div className="p-4 bg-red-900/20 border border-red-800 rounded-lg">
                 <p className="text-sm text-red-300 mb-2">
-                  <strong>Warning:</strong> This action cannot be undone. This will permanently delete the room and remove all members.
+                  <strong>Warning:</strong> This action cannot be undone. This will permanently delete the room and
+                  remove all members.
                 </p>
               </div>
 
@@ -2112,10 +2369,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Leave Room Confirmation Modal */}
       {showLeaveConfirmModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowLeaveConfirmModal(null);
-        }}>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowLeaveConfirmModal(null);
+          }}
+        >
           <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -2126,7 +2386,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 onClick={() => setShowLeaveConfirmModal(null)}
                 className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
               >
-                <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -2134,9 +2399,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
             <div className="space-y-4">
               <p className="text-gray-400">
-                Are you sure you want to leave <span className="text-white font-medium">{showLeaveConfirmModal.name}</span>?
+                Are you sure you want to leave{" "}
+                <span className="text-white font-medium">{showLeaveConfirmModal.name}</span>?
               </p>
-              
+
               {showLeaveConfirmModal.type === "private" && (
                 <div className="p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg">
                   <p className="text-sm text-yellow-300">
@@ -2171,10 +2437,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Preferences Modal */}
       {showPreferencesModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowPreferencesModal(false);
-        }}>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowPreferencesModal(false);
+          }}
+        >
           <div
             className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -2185,7 +2454,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 onClick={() => setShowPreferencesModal(false)}
                 className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
               >
-                <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -2202,11 +2476,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     { value: "studying", label: "Studying" },
                     { value: "writing", label: "Writing" },
                     { value: "design", label: "Design" },
-                    { value: "research", label: "Research" }
-                  ].map(option => (
+                    { value: "research", label: "Research" },
+                  ].map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setPreferences({...preferences, activityType: option.value})}
+                      onClick={() => setPreferences({ ...preferences, activityType: option.value })}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         preferences.activityType === option.value
                           ? "bg-[#FFAA00] text-black"
@@ -2227,11 +2501,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     { value: "any", label: "Any Size" },
                     { value: "small", label: "Small (2-5)" },
                     { value: "medium", label: "Medium (6-10)" },
-                    { value: "large", label: "Large (11-20)" }
-                  ].map(option => (
+                    { value: "large", label: "Large (11-20)" },
+                  ].map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setPreferences({...preferences, roomSize: option.value})}
+                      onClick={() => setPreferences({ ...preferences, roomSize: option.value })}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         preferences.roomSize === option.value
                           ? "bg-[#FFAA00] text-black"
@@ -2252,11 +2526,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     { value: "any", label: "Any Style" },
                     { value: "quiet", label: "Quiet Focus" },
                     { value: "collaborative", label: "Collaborative" },
-                    { value: "pomodoro", label: "Pomodoro" }
-                  ].map(option => (
+                    { value: "pomodoro", label: "Pomodoro" },
+                  ].map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setPreferences({...preferences, workStyle: option.value})}
+                      onClick={() => setPreferences({ ...preferences, workStyle: option.value })}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         preferences.workStyle === option.value
                           ? "bg-[#FFAA00] text-black"
@@ -2288,94 +2562,105 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           </div>
         </div>
       )}
-      
-      {/* Profile Modal */}
-      {showProfileModal && (() => {
-        const profileUser = showProfileModal;
-        
-        return (
-          <div 
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowProfileModal(null);
-            }}
-          >
-            <div 
-              className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header with Close Button */}
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-[#FFAA00]">Profile</h3>
-                <button
-                  onClick={() => setShowProfileModal(null)}
-                  className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
-                >
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
 
-              {/* Profile Content */}
-              <div className="flex flex-col items-center">
-                {/* Avatar */}
-                <div className="relative mb-4">
-                  <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-2xl font-bold text-gray-300">
-                    {profileUser.avatar}
-                  </div>
-                  <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-gray-900 ${
-                    profileUser.status === "online" ? "bg-green-500" : 
-                    profileUser.status === "idle" ? "bg-yellow-500" : 
-                    "bg-gray-600"
-                  }`} />
+      {/* Profile Modal */}
+      {showProfileModal &&
+        (() => {
+          const profileUser = showProfileModal;
+
+          return (
+            <div
+              className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowProfileModal(null);
+              }}
+            >
+              <div
+                className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header with Close Button */}
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-[#FFAA00]">Profile</h3>
+                  <button
+                    onClick={() => setShowProfileModal(null)}
+                    className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+                  >
+                    <svg
+                      className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
 
-                {/* Name and Status */}
-                <h4 className="text-xl font-semibold text-gray-200 mb-1">{profileUser.name}</h4>
-                <p className="text-sm text-gray-500 mb-4">
-                  {(() => {
-                    if (profileUser.status === "online" && profileUser.currentTask) {
-                      if (profileUser.currentTask.includes("Do not disturb")) {
-                        return "Do not disturb";
-                      }
-                      return "Actively working";
-                    } else if (profileUser.status === "idle") {
-                      return "Standby";
-                    } else {
-                      return "Last seen 2h ago";
-                    }
-                  })()}
-                </p>
+                {/* Profile Content */}
+                <div className="flex flex-col items-center">
+                  {/* Avatar */}
+                  <div className="relative mb-4">
+                    <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-2xl font-bold text-gray-300">
+                      {profileUser.avatar}
+                    </div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-gray-900 ${
+                        profileUser.status === "online"
+                          ? "bg-green-500"
+                          : profileUser.status === "idle"
+                          ? "bg-yellow-500"
+                          : "bg-gray-600"
+                      }`}
+                    />
+                  </div>
 
-                {/* Mutual Friends */}
-                {profileUser.mutualFriends && (
+                  {/* Name and Status */}
+                  <h4 className="text-xl font-semibold text-gray-200 mb-1">{profileUser.name}</h4>
                   <p className="text-sm text-gray-500 mb-4">
-                    {profileUser.mutualFriends} mutual contacts
+                    {(() => {
+                      if (profileUser.status === "online" && profileUser.currentTask) {
+                        if (profileUser.currentTask.includes("Do not disturb")) {
+                          return "Do not disturb";
+                        }
+                        return "Actively working";
+                      } else if (profileUser.status === "idle") {
+                        return "Standby";
+                      } else {
+                        return "Last seen 2h ago";
+                      }
+                    })()}
                   </p>
-                )}
 
-                {/* Action Button */}
-                <button 
-                  onClick={() => setShowProfileModal(null)}
-                  className="w-full px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
-                >
-                  Message
-                </button>
+                  {/* Mutual Friends */}
+                  {profileUser.mutualFriends && (
+                    <p className="text-sm text-gray-500 mb-4">{profileUser.mutualFriends} mutual contacts</p>
+                  )}
+
+                  {/* Action Button */}
+                  <button
+                    onClick={() => setShowProfileModal(null)}
+                    className="w-full px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
+                  >
+                    Message
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* Team Invite Modal */}
       {showTeamInviteModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" onClick={(e) => {
-          e.stopPropagation();
-          setShowTeamInviteModal(false);
-          setInviteEmails("");
-        }}>
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowTeamInviteModal(false);
+            setInviteEmails("");
+          }}
+        >
           <div
             className="bg-gray-900 rounded-lg shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -2390,7 +2675,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   }}
                   className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
                 >
-                  <svg className="w-4 h-4 text-gray-500 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-4 h-4 text-gray-500 group-hover:text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -2399,9 +2689,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               <div className="space-y-6">
                 {/* Email Input Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">
-                    Invite by email
-                  </label>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Invite by email</label>
                   <textarea
                     placeholder="Enter email addresses (comma separated)"
                     value={inviteEmails}
@@ -2409,9 +2697,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors resize-none"
                     rows={3}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    You can invite multiple people at once
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">You can invite multiple people at once</p>
                 </div>
 
                 {/* Personal Message (Optional) */}
@@ -2439,7 +2725,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     disabled={!inviteEmails.trim()}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
                     </svg>
                     Send Invitations
                   </button>
