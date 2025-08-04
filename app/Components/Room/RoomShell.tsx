@@ -29,7 +29,7 @@ import Pomodoro from "./Pomodoro";
 import History from "./History";
 import Analytics from "./Analytics";
 // import Contacts from "./Contacts"; // People Modal - Feature deprioritized
-import Rooms from "./Rooms";
+import WorkSpace from "./WorkSpace";
 import Controls from "./Controls";
 import FlyingMessages from "./FlyingMessages";
 import Leaderboard from "./Leaderboard";
@@ -1592,7 +1592,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 People
               </span>
             </button> */}
-            {/* Rooms Section */}
+            {/* WorkSpace Section */}
             <button
               className="flex items-center gap-3 group relative cursor-pointer"
               onClick={() => {
@@ -1647,7 +1647,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
               <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
-                Rooms
+                WorkSpace
               </span>
             </button>
           </div>
@@ -1725,7 +1725,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setRequestsNotificationCount={setRequestsNotificationCount}
             />
           )} */}
-          {showRooms && <Rooms onClose={() => setShowRooms(false)} />}
+          {showRooms && <WorkSpace onClose={() => setShowRooms(false)} />}
           {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
         </div>
         {/* Invite Modal - rendered as separate overlay */}
