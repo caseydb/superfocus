@@ -483,7 +483,7 @@ function SortableTask({
               }}
               onPointerDown={(e) => e.stopPropagation()}
               className={`p-1 rounded transition-colors flex items-center justify-center w-6 h-6 cursor-pointer ${
-                isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+                isTimerRunning ? "bg-[#FFAA00] text-black hover:bg-[#FF9900]" : "text-[#FFAA00] border border-[#FFAA00] hover:border-[#FF9900]"
               }`}
               title={isTimerRunning ? "Pause timer" : "Resume timer"}
             >
@@ -516,7 +516,7 @@ function SortableTask({
                 handleStartTask(task.id, task.text, onStartTask, onPauseTimer);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+              className="p-1 rounded transition-colors flex items-center justify-center w-6 h-6 text-gray-400 hover:text-[#FFAA00] cursor-pointer border border-gray-600 hover:border-[#FFAA00]"
               title="Start timer for this task"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -633,18 +633,18 @@ function SortableTask({
                     }
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className={`p-1 rounded transition-all duration-200 flex items-center justify-center w-5 h-5 cursor-pointer ${
+                  className={`p-1.5 rounded transition-all duration-200 flex items-center justify-center w-7 h-7 cursor-pointer border border-transparent ${
                     isExpanded
-                      ? "text-[#FFAA00] hover:text-[#FF9900] bg-[#FFAA00]/10"
-                      : "text-gray-500 hover:text-[#FFAA00] hover:bg-gray-800"
+                      ? "text-[#FFAA00] bg-[#FFAA00]/20 hover:text-[#FF9900] hover:border-[#FFAA00]/30"
+                      : "text-gray-400 hover:text-[#FFAA00] hover:bg-gray-800 hover:border-[#FFAA00]"
                   }`}
                   title={isExpanded ? "Collapse notes" : "Expand to add notes"}
                 >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                     <path
                       d={isExpanded ? "M6 9l6 6 6-6" : "M9 6l6 6-6 6"}
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
