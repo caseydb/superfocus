@@ -244,8 +244,9 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               </span>
             </div>
           )}
-          <span className="cursor-pointer flex items-center gap-1">
-            <span>
+          <span className="cursor-pointer flex items-center gap-1.5 group">
+            {/* Name */}
+            <span className="font-medium text-white">
               {(() => {
                 // First try from leaderboard data (most up to date)
                 const leaderboardUserInfo = userInfoMap[u.id];
@@ -264,16 +265,26 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                 return displayValue;
               })()}
             </span>
+            
+            {/* Special badge */}
             {u.id === "BeAohINmeMfhjrgrhPZlmzVFvzn1" && (
               <Image src="/axe.png" alt="axe" width={16} height={16} className="inline-block" />
             )}
-            <span>
-              {" "}
-              is <span className="hidden sm:inline">actively </span>working
+            
+            {/* Status text with pulsing dot */}
+            <span className="flex items-center gap-1 text-gray-400">
+              <span className="text-xs">is</span>
+              <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full">
+                <div className="relative flex items-center justify-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="absolute w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                </div>
+                <span className="text-xs font-medium text-gray-300"><span className="hidden sm:inline">actively </span>working</span>
+              </span>
             </span>
           </span>
 
-          {/* Combined Tooltip & Add Contact */}
+          {/* Tooltip with Stats */}
           {hoveredUserId === u.id && (
             <div 
               className="absolute top-0 left-full" 
@@ -310,22 +321,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                     </div>
                   </div>
                 )}
-                
-                {/* Add Contact Button */}
-                <div className="p-2">
-                  <button
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:border-[#FFAA00] hover:text-[#FFAA00] font-medium transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Just UI proof of concept - no action needed
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    <span className="text-sm">Add Contact</span>
-                  </button>
-                </div>
               </div>
             </div>
           )}

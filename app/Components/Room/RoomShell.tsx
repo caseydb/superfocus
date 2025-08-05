@@ -1403,7 +1403,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           <Sounds roomId={currentInstance.id} localVolume={localVolume} currentUserId={user?.id} />
           <ActiveWorkers roomId={currentInstance.id} />
           {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}
-          <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center"}>
+          <div className="flex flex-col items-center justify-center">
             {/* Only show TaskInput when in Timer mode */}
             {!isPomodoroMode && (
               <div className="relative group">
@@ -1428,11 +1428,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             )}
           </div>
-          <div className={showHistory ? "" : "hidden"}>
-            <History onClose={() => setShowHistory(false)} />
-          </div>
-          {/* Timer/Pomodoro is always mounted, just hidden when history is open */}
-          <div className={showHistory ? "hidden" : "flex flex-col items-center justify-center w-full"}>
+          {/* Timer/Pomodoro is always mounted */}
+          <div className="flex flex-col items-center justify-center w-full">
             {/* Notes - inline above timer, only show when task exists */}
             {task.trim() && <Notes isOpen={showNotes} task={task} taskId={currentTaskId} />}
 

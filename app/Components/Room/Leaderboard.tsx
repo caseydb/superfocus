@@ -295,9 +295,9 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   // Don't show initial loading state to prevent flicker
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Keyboard Shortcut Tip - positioned at top left */}

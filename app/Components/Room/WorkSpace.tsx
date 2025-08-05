@@ -145,7 +145,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
           <div className="text-right text-xs text-gray-500">
             <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || 'Null'}</div>
             <div>{room.weeklyStats?.totalTasks || 0} tasks</div>
-            <div className="text-[10px] mt-1">this week</div>
+            <div className="text-[10px] mt-1">last 30 days</div>
           </div>
         </div>
       </div>
@@ -218,7 +218,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
             ) : roomUsers && roomUsers.length > 0 ? (
               <span className="text-gray-500">No one actively working</span>
             ) : (
-              <span className="text-gray-500">No one online</span>
+              <span className="text-gray-500">This room is empty</span>
             )}
           </span>
         </div>
@@ -1051,15 +1051,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70" onClick={onClose}>
       {/* Beta Disclaimer Popup */}
       {showBetaDisclaimer && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={() => setShowBetaDisclaimer(false)}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-md mx-4 border border-gray-700"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-md mx-4 border border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center space-y-4">
@@ -1091,7 +1091,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       )}
 
       <div
-        className={`bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative ${
+        className={`bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative ${
           showBetaDisclaimer ? "opacity-40 pointer-events-none" : ""
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -2120,7 +2120,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <div className="text-right text-xs text-gray-500">
                         <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || 'Null'}</div>
                         <div>{room.weeklyStats?.totalTasks || 0} tasks</div>
-                        <div className="text-[10px] mt-1">this week</div>
+                        <div className="text-[10px] mt-1">last 30 days</div>
                       </div>
                     </div>
                   </div>
@@ -2193,7 +2193,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                         ) : (roomUsers[room.id] || []).length > 0 ? (
                           <span className="text-gray-500">No one actively working</span>
                         ) : (
-                          <span className="text-gray-500">No one online</span>
+                          <span className="text-gray-500">This room is empty</span>
                         )}
                       </span>
                     </div>
@@ -2228,14 +2228,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Room Settings Modal */}
       {editingRoom && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setEditingRoom(null);
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-gray-800"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2354,7 +2354,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Members Management Modal */}
       {showMembersModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setShowMembersModal(null);
@@ -2362,7 +2362,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[700px] max-h-[90vh] overflow-y-auto border border-gray-800 custom-scrollbar"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[700px] max-h-[90vh] overflow-y-auto border border-gray-800 custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2516,14 +2516,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Invite Modal */}
       {showInviteModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setShowInviteModal(null);
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2613,14 +2613,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteModal(null);
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2700,14 +2700,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Leave Room Confirmation Modal */}
       {showLeaveConfirmModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setShowLeaveConfirmModal(null);
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2768,14 +2768,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Preferences Modal */}
       {showPreferencesModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setShowPreferencesModal(false);
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2900,14 +2900,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
           return (
             <div
-              className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
+              className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0a0b0b]/70"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowProfileModal(null);
               }}
             >
               <div
-                className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
+                className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Header with Close Button */}
@@ -2984,7 +2984,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Team Invite Modal */}
       {showTeamInviteModal && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0a0b0b]/70"
           onClick={(e) => {
             e.stopPropagation();
             setShowTeamInviteModal(false);
@@ -3082,7 +3082,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Create Team Modal - Now integrated into Teams tab */}
       {/* {showCreateTeamModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" onClick={(e) => {
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0a0b0b]/70" onClick={(e) => {
           e.stopPropagation();
           setShowCreateTeamModal(false);
           setNewTeamName("");
