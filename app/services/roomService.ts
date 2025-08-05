@@ -184,7 +184,7 @@ class RoomService {
         }
         
         console.log(`📊 Final GSD presence count: ${userCount} users`);
-        return userCount > 0;
+        return userCount > 10;
       } else {
         console.log("❌ No presence data exists");
       }
@@ -208,10 +208,10 @@ class RoomService {
       const gsdHasPresence = await this.checkGSDPresence();
       
       if (!gsdHasPresence) {
-        console.log("✅ GSD is empty - joining GSD room");
+        console.log("✅ GSD has ≤10 users - joining GSD room");
         return "gsd";
       } else {
-        console.log("👥 GSD has people - creating new ephemeral room");
+        console.log("👥 GSD has >10 users - creating new ephemeral room");
         const { url } = await this.createEphemeralRoom(userId);
         console.log(`🆕 Created new ephemeral room: ${url}`);
         return url;

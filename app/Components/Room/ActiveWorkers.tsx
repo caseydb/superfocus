@@ -276,7 +276,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <span className="text-xs">is</span>
               <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full">
                 <div className="relative flex items-center justify-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-sync-pulse"></div>
                   <div className="absolute w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
                 </div>
                 <span className="text-xs font-medium text-gray-300"><span className="hidden sm:inline">actively </span>working</span>

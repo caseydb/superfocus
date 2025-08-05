@@ -204,7 +204,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
                     </div>
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
-                        user.isActive ? 'bg-green-500' : 'bg-yellow-500'
+                        user.isActive ? 'bg-green-500 animate-sync-pulse' : 'bg-yellow-500'
                       }`}
                     />
                   </div>
@@ -250,7 +250,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
       >
         {isCurrentRoom ? (
           <span className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-sync-pulse" />
             Current Room
           </span>
         ) : (
@@ -845,16 +845,16 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         
         console.log(`  Permanent room ${room.url} (${room.id}): ${totalUsers} total users, ${activeUsers} active`);
         
-        if (totalUsers === 0) {
-          // Found an empty permanent room, join it
+        if (totalUsers <= 10) {
+          // Found a permanent room with 10 or fewer users, join it
           const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
-          console.log(`✅ Found empty permanent room: ${roomUrl} - joining it`);
+          console.log(`✅ Found permanent room with ≤10 users: ${roomUrl} - joining it`);
           handleJoinRoom(roomUrl);
           return;
         }
       }
       
-      // No empty permanent rooms found
+      // No permanent rooms with ≤10 users found
       // For ephemeral rooms, ONLY join if they have people (to ensure they still exist)
       for (const room of ephemeralRoomsFiltered) {
         const totalUsers = (roomUsers[room.id] || []).length;
@@ -863,10 +863,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         console.log(`  Ephemeral room ${room.url} (${room.id}): ${totalUsers} total users, ${activeUsers} active`);
         
         // Only consider ephemeral rooms that have at least 1 user (so we know they exist)
-        // AND have space for more users (assuming max 5 users per room)
-        if (totalUsers > 0 && totalUsers < 5) {
+        // AND have 10 or fewer users
+        if (totalUsers > 0 && totalUsers <= 10) {
           const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
-          console.log(`✅ Found ephemeral room with space: ${roomUrl} - joining it`);
+          console.log(`✅ Found ephemeral room with ≤10 users: ${roomUrl} - joining it`);
           handleJoinRoom(roomUrl);
           return;
         }
@@ -2052,7 +2052,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   >
                     {currentRoomUrl === room.url ? (
                       <span className="flex items-center justify-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-sync-pulse" />
                         Current Room
                       </span>
                     ) : (
