@@ -10,8 +10,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "userId is required" }, { status: 400 });
     }
 
-    // Fetch ALL rooms from the database
+    // Fetch rooms based on visibility rules:
+    // - All public rooms
+    // - Private rooms only where the user is a member
     const allRooms = await prisma.room.findMany({
+      where: {
+        OR: [
+          { type: 'public' },
+          {
+            type: 'private',
+            room_members: {
+              some: {
+                user_id: userId
+              }
+            }
+          }
+        ]
+      },
       include: {
         room_members: {
           include: {

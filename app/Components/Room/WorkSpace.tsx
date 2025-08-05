@@ -108,7 +108,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
                   : "bg-blue-500/20 text-blue-400"
               }`}
             >
-              {room.isEphemeral || room.id.startsWith('ephemeral-') ? "Temporary" : room.type === "private" ? "Vendorsage" : "Public"}
+              {room.isEphemeral || room.id.startsWith('ephemeral-') ? "Temporary" : room.type === "private" ? "Private" : "Public"}
             </span>
           </div>
           {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
@@ -2047,7 +2047,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 : "bg-blue-500/20 text-blue-400"
                             }`}
                           >
-                            {room.isEphemeral ? "Temporary" : room.type === "private" ? "Vendorsage" : "Public"}
+                            {room.isEphemeral ? "Temporary" : room.type === "private" ? "Private" : "Public"}
                           </span>
                         )}
                       </div>
