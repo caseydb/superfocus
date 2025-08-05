@@ -213,13 +213,12 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
             })()}
           </div>
           <span className="text-sm text-gray-400">
-            {roomUsers && roomUsers.length > 0 ? (
-              <>
-                <span className="text-gray-400">{roomUsers.length} in room</span>
-                {activeCount && activeCount > 0 && <span className="text-green-400"> • {activeCount} active</span>}
-              </>
+            {activeCount && activeCount > 0 ? (
+              <span className="text-green-400">{activeCount} actively working</span>
+            ) : roomUsers && roomUsers.length > 0 ? (
+              <span className="text-gray-500">No one actively working</span>
             ) : (
-              <span className="text-gray-500">Empty room</span>
+              <span className="text-gray-500">No one online</span>
             )}
           </span>
         </div>
@@ -537,13 +536,62 @@ const MOCK_ROOMS: Room[] = [
 let hasShownRoomsBetaDisclaimer = false;
 
 // Teams data structure
+// Mock rooms for teams tab
+const MOCK_TEAM_ROOMS: Room[] = [
+  {
+    id: "team-room-1",
+    name: "Engineering",
+    url: "/engineering",
+    type: "private",
+    members: MOCK_FRIENDS.slice(0, 3).map(f => ({ ...f, status: "online" as const, task: "Building features" })),
+    activeCount: 2,
+    weeklyStats: { totalTime: "127h 45m", totalTasks: 89 },
+    description: "Core engineering team workspace",
+    createdBy: "system",
+    isOwner: false,
+    isAdmin: false,
+    admins: ["user-1"],
+    maxMembers: 50,
+  },
+  {
+    id: "team-room-2",
+    name: "Design",
+    url: "/design",
+    type: "private",
+    members: MOCK_FRIENDS.slice(2, 5).map(f => ({ ...f, status: "idle" as const })),
+    activeCount: 1,
+    weeklyStats: { totalTime: "82h 30m", totalTasks: 45 },
+    description: "Creative design collaboration",
+    createdBy: "system",
+    isOwner: false,
+    isAdmin: false,
+    admins: ["user-2"],
+    maxMembers: 50,
+  },
+  {
+    id: "team-room-3",
+    name: "Marketing",
+    url: "/marketing",
+    type: "private",
+    members: MOCK_FRIENDS.slice(1, 4).map(f => ({ ...f, status: "offline" as const })),
+    activeCount: 0,
+    weeklyStats: { totalTime: "54h 15m", totalTasks: 67 },
+    description: "Marketing strategy and campaigns",
+    createdBy: "system",
+    isOwner: false,
+    isAdmin: false,
+    admins: ["user-3"],
+    maxMembers: 50,
+  },
+];
+
 const TEAMS_DATA = {
   vendorsage: {
     id: "vendorsage",
     name: "Vendorsage",
     description: "Your primary team workspace",
     members: MOCK_FRIENDS.slice(0, 4), // Use existing friends data
-    rooms: MOCK_ROOMS.filter((room) => room.type === "private"),
+    rooms: MOCK_TEAM_ROOMS,
     createdBy: "You",
     createdAt: "2024-01-15",
   },
@@ -571,7 +619,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
   const [newRoomType, setNewRoomType] = useState<"public" | "private">("public");
-  const [newRoomTeam, setNewRoomTeam] = useState(selectedTeam);
+  const [newRoomTeam, setNewRoomTeam] = useState("create");
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<Room | null>(null);
   const [showMembersModal, setShowMembersModal] = useState<Room | null>(null);
@@ -623,17 +671,22 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
     const allRoomIds = allRooms.map((room) => room.id);
     
-    // Update order if there are new rooms or rooms have been removed
-    const hasNewRooms = allRoomIds.some(id => !myRoomsOrder.includes(id));
-    const hasRemovedRooms = myRoomsOrder.some(id => !allRoomIds.includes(id));
-    
-    if (hasNewRooms || hasRemovedRooms) {
-      // Keep existing order for rooms that still exist, append new rooms
-      const existingOrder = myRoomsOrder.filter(id => allRoomIds.includes(id));
-      const newRoomIds = allRoomIds.filter(id => !myRoomsOrder.includes(id));
-      setMyRoomsOrder([...existingOrder, ...newRoomIds]);
-    }
-  }, [reduxRooms, ephemeralRooms, myRoomsOrder]);
+    setMyRoomsOrder(prevOrder => {
+      // Update order if there are new rooms or rooms have been removed
+      const hasNewRooms = allRoomIds.some(id => !prevOrder.includes(id));
+      const hasRemovedRooms = prevOrder.some(id => !allRoomIds.includes(id));
+      
+      if (hasNewRooms || hasRemovedRooms) {
+        // Keep existing order for rooms that still exist, append new rooms
+        const existingOrder = prevOrder.filter(id => allRoomIds.includes(id));
+        const newRoomIds = allRoomIds.filter(id => !prevOrder.includes(id));
+        return [...existingOrder, ...newRoomIds];
+      }
+      
+      // Return previous order if no changes needed
+      return prevOrder;
+    });
+  }, [reduxRooms, ephemeralRooms]);
 
   // Update newRoomTeam when selectedTeam changes
   useEffect(() => {
@@ -812,12 +865,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const filteredRooms = useMemo(() => {
     // Merge Redux rooms with ephemeral rooms
     const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
-    console.log('[WorkSpace] Filtering rooms:', {
-      reduxRoomsCount: reduxRooms.length,
-      ephemeralRoomsCount: ephemeralRooms.length,
-      allRoomsCount: allRooms.length,
-      ephemeralRooms: ephemeralRooms
-    });
     let filteredRooms = allRooms;
 
     // For experiment tab, show all rooms (both public and private/Vendorsage)
@@ -1341,19 +1388,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 </DndContext>
               </div>
             </div>
-          ) : filteredRooms.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-              </svg>
-              <p className="text-lg font-medium">No rooms found</p>
-              <p className="text-sm text-gray-600">Try a different search or create a new room</p>
-            </div>
           ) : activeTab === "team" ? (
             // Team Tab
             <div className="flex flex-col h-full">
@@ -1361,6 +1395,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 // Get current team data
                 const currentTeam = TEAMS_DATA[selectedTeam as keyof typeof TEAMS_DATA] || TEAMS_DATA.vendorsage;
                 const teamRooms = currentTeam.rooms;
+                
                 const allTeamMembers = new Map();
                 let totalActiveMembers = 0;
                 let totalTasks = 0;
@@ -2153,13 +2188,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                         })()}
                       </div>
                       <span className="text-sm text-gray-400">
-                        {(roomUsers[room.id] || []).length > 0 ? (
-                          <>
-                            <span className="text-gray-400">{(roomUsers[room.id] || []).length} in room</span>
-                            {(roomActiveCounts[room.id] || 0) > 0 && <span className="text-green-400"> • {roomActiveCounts[room.id]} active</span>}
-                          </>
+                        {(roomActiveCounts[room.id] || 0) > 0 ? (
+                          <span className="text-green-400">{roomActiveCounts[room.id]} actively working</span>
+                        ) : (roomUsers[room.id] || []).length > 0 ? (
+                          <span className="text-gray-500">No one actively working</span>
                         ) : (
-                          <span className="text-gray-500">Empty room</span>
+                          <span className="text-gray-500">No one online</span>
                         )}
                       </span>
                     </div>
