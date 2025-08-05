@@ -9,6 +9,8 @@ interface SessionData {
   tabVisible: boolean;
   device: string;
   connectedAt: number | object;
+  currentTaskId?: string | null;
+  currentTaskName?: string | null;
 }
 
 export interface PresenceSession extends SessionData {
@@ -75,8 +77,6 @@ export class PresenceService {
       // Set up onDisconnect for room index  
       this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
       await this.roomIndexDisconnectRef.remove();
-      
-      console.log('[PresenceService] onDisconnect handlers set up for immediate removal');
 
       // Now set the presence
       await set(this.sessionRef, sessionData);
@@ -146,36 +146,112 @@ export class PresenceService {
     }
 
     // Remove presence immediately (no grace period needed for explicit cleanup)
-    console.log('[PresenceService] Cleanup called - removing presence immediately');
     try {
       await remove(this.sessionRef);
       await remove(this.roomIndexRef);
-    } catch (error) {
+    } catch {
       // Session might already be removed
-      console.log('[PresenceService] Cleanup error (might be already removed):', error);
     }
 
     this.isInitialized = false;
+  }
+
+  async updateCurrentTask(taskId: string | null, taskName: string | null): Promise<void> {
+    if (!this.isInitialized || !this.sessionRef) return;
+    
+    try {
+      await update(this.sessionRef, {
+        currentTaskId: taskId,
+        currentTaskName: taskName,
+        lastSeen: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('[PresenceService] Failed to update current task:', error);
+    }
   }
 
   async setActive(isActive: boolean): Promise<void> {
     if (!this.isInitialized) return;
 
     try {
-      // Always update the session (for heartbeat/cleanup)
-      await update(this.sessionRef, {
-        isActive,
-        lastSeen: serverTimestamp()
-      });
-      
-      // Only update room index if active state actually changed
-      if (this.lastActiveState !== isActive) {
+      // If becoming active, ALWAYS deactivate all other sessions regardless of current state
+      if (isActive) {
+        const updates: Record<string, boolean | object | string | null> = {};
+        
+        // Get all sessions for this user
+        const allSessionsRef = ref(rtdb, `Presence/${this.userId}/sessions`);
+        const snapshot = await get(allSessionsRef);
+        
+        if (snapshot.exists()) {
+          const sessions = snapshot.val();
+          
+          // Set ALL sessions to inactive first (including this one temporarily)
+          for (const [sessionId, sessionData] of Object.entries(sessions)) {
+            const session = sessionData as SessionData;
+            // Deactivate ALL sessions, even in the same room
+            updates[`Presence/${this.userId}/sessions/${sessionId}/isActive`] = false;
+            updates[`Presence/${this.userId}/sessions/${sessionId}/lastSeen`] = serverTimestamp();
+            
+            // If this session has an active task and is in a different room, pause it
+            if (session.roomId !== this.roomId && session.currentTaskId) {
+              const taskRef = `TaskBuffer/${this.userId}/${session.currentTaskId}`;
+              const taskSnapshot = await get(ref(rtdb, taskRef));
+              
+              if (taskSnapshot.exists()) {
+                const taskData = taskSnapshot.val();
+                if (taskData.status === 'in_progress') {
+                  // Pause the task
+                  updates[`${taskRef}/status`] = 'paused';
+                  updates[`${taskRef}/pausedAt`] = serverTimestamp();
+                  
+                  // Update timer state if it exists
+                  const timerRef = `TaskBuffer/${this.userId}/timer`;
+                  const timerSnapshot = await get(ref(rtdb, timerRef));
+                  if (timerSnapshot.exists() && timerSnapshot.val().isRunning) {
+                    updates[`${timerRef}/isRunning`] = false;
+                    updates[`${timerRef}/lastPaused`] = serverTimestamp();
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Also update RoomIndex for ALL rooms (including current one)
+        const roomIndexRef = ref(rtdb, 'RoomIndex');
+        const roomIndexSnapshot = await get(roomIndexRef);
+        if (roomIndexSnapshot.exists()) {
+          const allRooms = roomIndexSnapshot.val();
+          for (const [roomId, users] of Object.entries(allRooms)) {
+            if (users && (users as Record<string, unknown>)[this.userId]) {
+              updates[`RoomIndex/${roomId}/${this.userId}/isActive`] = false;
+              updates[`RoomIndex/${roomId}/${this.userId}/lastUpdated`] = serverTimestamp();
+            }
+          }
+        }
+        
+        // Now set only the current session and room to active
+        updates[`Presence/${this.userId}/sessions/${this.sessionId}/isActive`] = true;
+        updates[`Presence/${this.userId}/sessions/${this.sessionId}/lastSeen`] = serverTimestamp();
+        updates[`RoomIndex/${this.roomId}/${this.userId}/isActive`] = true;
+        updates[`RoomIndex/${this.roomId}/${this.userId}/lastUpdated`] = serverTimestamp();
+        
+        // Apply all updates atomically
+        await update(ref(rtdb), updates);
+      } else {
+        // If deactivating, just update current session and room
+        await update(this.sessionRef, {
+          isActive: false,
+          lastSeen: serverTimestamp()
+        });
+        
         await update(this.roomIndexRef, {
-          isActive,
+          isActive: false,
           lastUpdated: serverTimestamp()
         });
-        this.lastActiveState = isActive;
       }
+      
+      this.lastActiveState = isActive;
     } catch (error) {
       console.error('[PresenceService] Failed to update active status:', error);
     }
@@ -320,6 +396,9 @@ export class PresenceService {
     return 'desktop';
   }
 
+
+
+
   // Static helper methods
 
   static listenToTotalOnlineUsers(callback: (count: number) => void): () => void {
@@ -439,6 +518,116 @@ export class PresenceService {
   static async getActiveWorkers(roomId: string): Promise<PresenceSession[]> {
     const roomSessions = await this.getRoomSessions(roomId);
     return roomSessions.filter(session => session.isActive);
+  }
+
+  // Static method to update presence for a specific user/room from anywhere (e.g., button hooks)
+  static async updateUserPresence(userId: string, roomId: string, isActive: boolean, taskInfo?: { taskId?: string; taskName?: string }): Promise<void> {
+    try {
+      const updates: Record<string, boolean | object | string | null> = {};
+      
+      // If becoming active, we need to deactivate all other rooms first
+      if (isActive) {
+        // Get all sessions for this user
+        const userPresenceRef = ref(rtdb, `Presence/${userId}/sessions`);
+        const snapshot = await get(userPresenceRef);
+        
+        if (snapshot.exists()) {
+          const sessions = snapshot.val();
+          
+          // Deactivate ALL sessions first
+          for (const [sessionId, sessionData] of Object.entries(sessions)) {
+            const session = sessionData as SessionData;
+            updates[`Presence/${userId}/sessions/${sessionId}/isActive`] = false;
+            updates[`Presence/${userId}/sessions/${sessionId}/lastSeen`] = serverTimestamp();
+            
+            // If session is in a different room and has active task, pause it
+            if (session.roomId !== roomId && session.currentTaskId) {
+              const taskRef = `TaskBuffer/${userId}/${session.currentTaskId}`;
+              const taskSnapshot = await get(ref(rtdb, taskRef));
+              
+              if (taskSnapshot.exists()) {
+                const taskData = taskSnapshot.val();
+                if (taskData.status === 'in_progress') {
+                  updates[`${taskRef}/status`] = 'paused';
+                  updates[`${taskRef}/pausedAt`] = serverTimestamp();
+                  
+                  const timerRef = `TaskBuffer/${userId}/timer`;
+                  const timerSnapshot = await get(ref(rtdb, timerRef));
+                  if (timerSnapshot.exists() && timerSnapshot.val().isRunning) {
+                    updates[`${timerRef}/isRunning`] = false;
+                    updates[`${timerRef}/lastPaused`] = serverTimestamp();
+                  }
+                }
+              }
+            }
+          }
+          
+          // Then activate only sessions in the target room
+          for (const [sessionId, sessionData] of Object.entries(sessions)) {
+            const session = sessionData as SessionData;
+            if (session.roomId === roomId) {
+              updates[`Presence/${userId}/sessions/${sessionId}/isActive`] = true;
+              updates[`Presence/${userId}/sessions/${sessionId}/lastSeen`] = serverTimestamp();
+              if (taskInfo?.taskId) {
+                updates[`Presence/${userId}/sessions/${sessionId}/currentTaskId`] = taskInfo.taskId;
+                updates[`Presence/${userId}/sessions/${sessionId}/currentTaskName`] = taskInfo.taskName || "Untitled Task";
+              }
+            }
+          }
+        }
+        
+        // Deactivate all room indexes first
+        const roomIndexRef = ref(rtdb, 'RoomIndex');
+        const roomIndexSnapshot = await get(roomIndexRef);
+        if (roomIndexSnapshot.exists()) {
+          const allRooms = roomIndexSnapshot.val();
+          for (const [rId, users] of Object.entries(allRooms)) {
+            if (users && (users as Record<string, unknown>)[userId]) {
+              updates[`RoomIndex/${rId}/${userId}/isActive`] = false;
+              updates[`RoomIndex/${rId}/${userId}/lastUpdated`] = serverTimestamp();
+            }
+          }
+        }
+        
+        // Then activate only the target room
+        updates[`RoomIndex/${roomId}/${userId}/isActive`] = true;
+        updates[`RoomIndex/${roomId}/${userId}/lastUpdated`] = serverTimestamp();
+        if (taskInfo?.taskId) {
+          updates[`RoomIndex/${roomId}/${userId}/currentTaskId`] = taskInfo.taskId;
+          updates[`RoomIndex/${roomId}/${userId}/currentTaskName`] = taskInfo.taskName || "Untitled Task";
+        }
+      } else {
+        // If deactivating, just update this room
+        updates[`RoomIndex/${roomId}/${userId}/isActive`] = false;
+        updates[`RoomIndex/${roomId}/${userId}/lastUpdated`] = serverTimestamp();
+        updates[`RoomIndex/${roomId}/${userId}/currentTaskId`] = null;
+        updates[`RoomIndex/${roomId}/${userId}/currentTaskName`] = null;
+        
+        // Update sessions in this room
+        const userPresenceRef = ref(rtdb, `Presence/${userId}/sessions`);
+        const snapshot = await get(userPresenceRef);
+        
+        if (snapshot.exists()) {
+          const sessions = snapshot.val();
+          for (const [sessionId, sessionData] of Object.entries(sessions)) {
+            const session = sessionData as SessionData;
+            if (session.roomId === roomId) {
+              updates[`Presence/${userId}/sessions/${sessionId}/isActive`] = false;
+              updates[`Presence/${userId}/sessions/${sessionId}/lastSeen`] = serverTimestamp();
+              updates[`Presence/${userId}/sessions/${sessionId}/currentTaskId`] = null;
+              updates[`Presence/${userId}/sessions/${sessionId}/currentTaskName`] = null;
+            }
+          }
+        }
+      }
+      
+      // Apply all updates atomically
+      if (Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+      }
+    } catch (error) {
+      console.error('[PresenceService] Failed to update user presence:', error);
+    }
   }
 
   static async getUserSessions(userId: string): Promise<PresenceSession[]> {

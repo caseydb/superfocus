@@ -10,7 +10,7 @@ import {
   setActiveTask,
 } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
-import { ref, set, remove, get, update } from "firebase/database";
+import { ref, set, remove, get, update, onValue, off, type DataSnapshot } from "firebase/database";
 import { useStartButton } from "../../hooks/StartButton";
 import { usePauseButton } from "../../hooks/PauseButton";
 import { useCompleteButton } from "../../hooks/CompleteButton";
@@ -45,16 +45,11 @@ export default function Timer({
   initialRunning?: boolean;
   isQuittingRef?: React.MutableRefObject<boolean>;
 }) {
-  const { user } = useInstance();
+  const { user, currentInstance } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
   const { currentInput: task, currentTaskId } = useSelector((state: RootState) => state.taskInput);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   
-  // Log mount/unmount
-  React.useEffect(() => {
-    return () => {
-    };
-  }, []);
   
   // Initialize from secondsRef if switching from Pomodoro
   const [seconds, setSeconds] = useState(secondsRef?.current || 0);
@@ -156,8 +151,6 @@ export default function Timer({
             timestamp: Date.now()
           });
         }
-        
-        // ActiveWorker removed - now handled by PresenceService
       }
     },
     [currentTaskId, activeTaskId, user?.id, isQuittingRef, task]
@@ -168,8 +161,6 @@ export default function Timer({
     if (user?.id) {
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
-      
-      // ActiveWorker removed - now handled by PresenceService
     }
   }, [user?.id]);
 
@@ -550,8 +541,6 @@ export default function Timer({
         // Save as paused state
         saveTimerState(false, seconds);
       }
-      
-      // ActiveWorker removed - now handled by PresenceService
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -701,6 +690,44 @@ export default function Timer({
       pauseRef.current = pauseTimer;
     }
   });
+  
+  // Listen for active state changes in other rooms and pause if needed
+  React.useEffect(() => {
+    if (!user?.id || !currentInstance?.id) return;
+    
+    // Listen to all room indexes to detect when user becomes active elsewhere
+    const roomIndexRef = ref(rtdb, 'RoomIndex');
+    
+    const handleActiveStateChange = (snapshot: DataSnapshot) => {
+      if (!snapshot.exists()) return;
+      
+      const allRooms = snapshot.val();
+      let userActiveElsewhere = false;
+      
+      // Check if user is active in any other room
+      for (const [roomId, users] of Object.entries(allRooms)) {
+        if (roomId !== currentInstance.id && users && (users as Record<string, unknown>)[user.id]) {
+          const userInRoom = (users as Record<string, { isActive?: boolean }>)[user.id];
+          if (userInRoom.isActive) {
+            userActiveElsewhere = true;
+            break;
+          }
+        }
+      }
+      
+      // If user is active elsewhere and timer is running here, pause it
+      if (userActiveElsewhere && running) {
+        console.log('[Timer] User became active in another room, pausing timer');
+        pauseTimer();
+      }
+    };
+    
+    onValue(roomIndexRef, handleActiveStateChange);
+    
+    return () => {
+      off(roomIndexRef, 'value', handleActiveStateChange);
+    };
+  }, [user?.id, currentInstance?.id, running, pauseTimer]);
 
   // Update secondsRef with the current seconds value
   React.useEffect(() => {

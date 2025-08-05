@@ -28,6 +28,7 @@ const initialState: LeaderboardState = {
   timeFilter: 'this_week',
 };
 
+
 // Async thunk to fetch leaderboard data
 export const fetchLeaderboard = createAsyncThunk(
   "leaderboard/fetch",

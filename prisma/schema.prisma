@@ -46,7 +46,7 @@ model preference {
 model task {
   id             String   @id @default(uuid())
   user_id        String
-  room_id        String
+  room_id        String?
   task_name      String
   status         String   @default("not_started")
   duration       Int      @default(0)
@@ -57,7 +57,7 @@ model task {
   order          Int      @default(0)
 
   user           user     @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
-  room           room     @relation(fields: [room_id], references: [id])
+  room           room?     @relation(fields: [room_id], references: [id])
   notes          note[]   @relation("TaskNotes")
 
   @@index([user_id, room_id, order])
@@ -98,8 +98,11 @@ model admin_setting {
 
 model room {
   id               String           @id @default(uuid())
+  firebase_id      String?
   name             String
+  description      String?
   slug             String           @unique
+  type             String           @default("public")
   picture          String
   created_at       DateTime         @default(now())
   owner            String

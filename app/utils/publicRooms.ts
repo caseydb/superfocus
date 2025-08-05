@@ -1,5 +1,5 @@
 import { rtdb } from "@/lib/firebase";
-import { ref, push, set, get, remove, runTransaction, onDisconnect } from "firebase/database";
+import { ref, push, set, get, remove, runTransaction, update } from "firebase/database";
 import type { PublicRoom, PublicRoomFromDB } from "@/app/types/publicRooms";
 
 function generateRoomUrl(): string {
@@ -12,15 +12,22 @@ function generateRoomUrl(): string {
 }
 
 export async function createPublicRoom(userId: string, customUrl?: string): Promise<PublicRoom> {
-  const publicRoomsRef = ref(rtdb, "PublicRooms");
-  const newRoomRef = push(publicRoomsRef);
+  const ephemeralRoomsRef = ref(rtdb, "EphemeralRooms");
+  const newRoomRef = push(ephemeralRoomsRef);
   const roomUrl = customUrl || generateRoomUrl();
+  
+  // Format the room name from URL (e.g., "calm-eagle-9" → "Calm Eagle 9")
+  const roomName = roomUrl
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
   
   const newRoom: PublicRoomFromDB = {
     url: roomUrl,
+    name: roomName,
     createdBy: userId,
     createdAt: Date.now(),
-    userCount: 0 // Will be tracked by presence system
+    userCount: 0
   };
   
   await set(newRoomRef, newRoom);
@@ -33,8 +40,8 @@ export async function createPublicRoom(userId: string, customUrl?: string): Prom
 }
 
 export async function getPublicRoomByUrl(url: string): Promise<PublicRoom | null> {
-  const publicRoomsRef = ref(rtdb, "PublicRooms");
-  const snapshot = await get(publicRoomsRef);
+  const ephemeralRoomsRef = ref(rtdb, "EphemeralRooms");
+  const snapshot = await get(ephemeralRoomsRef);
   
   if (!snapshot.exists()) {
     return null;
@@ -66,7 +73,7 @@ export async function getPublicRoomByUrl(url: string): Promise<PublicRoom | null
 }
 
 export async function getPublicRoomById(roomId: string): Promise<PublicRoom | null> {
-  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
+  const roomRef = ref(rtdb, `EphemeralRooms/${roomId}`);
   const snapshot = await get(roomRef);
   
   if (!snapshot.exists()) return null;
@@ -79,13 +86,13 @@ export async function getPublicRoomById(roomId: string): Promise<PublicRoom | nu
 }
 
 export async function deletePublicRoom(roomId: string): Promise<void> {
-  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
+  const roomRef = ref(rtdb, `EphemeralRooms/${roomId}`);
   await remove(roomRef);
 }
 
 export async function getAllPublicRooms(): Promise<PublicRoom[]> {
-  const publicRoomsRef = ref(rtdb, "PublicRooms");
-  const snapshot = await get(publicRoomsRef);
+  const ephemeralRoomsRef = ref(rtdb, "EphemeralRooms");
+  const snapshot = await get(ephemeralRoomsRef);
   
   if (!snapshot.exists()) return [];
   
@@ -100,7 +107,7 @@ export async function getAllPublicRooms(): Promise<PublicRoom[]> {
 }
 
 export async function incrementUserCount(roomId: string): Promise<boolean> {
-  const userCountRef = ref(rtdb, `PublicRooms/${roomId}/userCount`);
+  const userCountRef = ref(rtdb, `EphemeralRooms/${roomId}/userCount`);
   
   try {
     let canJoin = false;
@@ -130,7 +137,7 @@ export async function incrementUserCount(roomId: string): Promise<boolean> {
 }
 
 export async function decrementUserCount(roomId: string): Promise<void> {
-  const userCountRef = ref(rtdb, `PublicRooms/${roomId}/userCount`);
+  const userCountRef = ref(rtdb, `EphemeralRooms/${roomId}/userCount`);
   
   try {
     await runTransaction(userCountRef, (currentCount) => {
@@ -151,48 +158,25 @@ export async function decrementUserCount(roomId: string): Promise<void> {
 
 // Add user to public room
 export async function addUserToPublicRoom(roomId: string, userId: string, displayName: string): Promise<void> {
-  
-  // Add user to users list
-  const userRef = ref(rtdb, `PublicRooms/${roomId}/users/${userId}`);
+  // Just add the user, nothing else
+  const userRef = ref(rtdb, `EphemeralRooms/${roomId}/users/${userId}`);
   await set(userRef, { id: userId, displayName });
   
-  // Set up onDisconnect to remove user when they disconnect
-  await onDisconnect(userRef).remove();
-  
-  // Update the userCount based on actual users
-  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
+  // Update userCount
+  const roomRef = ref(rtdb, `EphemeralRooms/${roomId}`);
   const snapshot = await get(roomRef);
   if (snapshot.exists()) {
     const room = snapshot.val();
     const userCount = room.users ? Object.keys(room.users).length : 0;
-    await set(ref(rtdb, `PublicRooms/${roomId}/userCount`), userCount);
+    await update(roomRef, { userCount });
   }
 }
 
 // Remove user from public room
 export async function removeUserFromPublicRoom(roomId: string, userId: string): Promise<void> {
-  
-  // Remove user from users list
-  const userRef = ref(rtdb, `PublicRooms/${roomId}/users/${userId}`);
+  // Just remove the user
+  const userRef = ref(rtdb, `EphemeralRooms/${roomId}/users/${userId}`);
   await remove(userRef);
-  
-  // Update the userCount based on actual users
-  const roomRef = ref(rtdb, `PublicRooms/${roomId}`);
-  const snapshot = await get(roomRef);
-  if (snapshot.exists()) {
-    const room = snapshot.val();
-    const userCount = room.users ? Object.keys(room.users).length : 0;
-    await set(ref(rtdb, `PublicRooms/${roomId}/userCount`), userCount);
-    
-    // If no users left, delete the room
-    if (userCount === 0) {
-      await deletePublicRoom(roomId);
-      
-      // Also clean up presence data
-      const presenceRef = ref(rtdb, `PublicRoomPresence/${roomId}`);
-      await remove(presenceRef);
-    }
-  }
 }
 
 export async function getAvailablePublicRoom(): Promise<PublicRoom | null> {

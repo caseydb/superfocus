@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, onDisconnect, update, get, remove } from "firebase/database";
+import { ref, set, update, get, remove } from "firebase/database";
+import { PresenceService } from "../utils/presenceService";
 import { v4 as uuidv4 } from "uuid";
 import {
   updateTask,
@@ -266,22 +267,12 @@ export function useStartButton() {
 
         set(heartbeatRef, heartbeatData);
 
-        // Create ActiveWorker entry
+        // Update presence to active with task info
         if (currentInstance) {
-          const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-          const now = Date.now();
-          const activeWorkerData = {
-            userId: user.id,
-            roomId: currentInstance.id,
+          PresenceService.updateUserPresence(user.id, currentInstance.id, true, {
             taskId,
-            isActive: true,
-            lastSeen: now,
-            displayName: user.displayName || "Anonymous", // Keep for backward compatibility
-          };
-          set(activeWorkerRef, activeWorkerData);
-
-          // Set up onDisconnect to remove ActiveWorker if user disconnects
-          onDisconnect(activeWorkerRef).remove();
+            taskName: task?.trim() || "Untitled Task"
+          });
         }
 
         // Start heartbeat interval
@@ -304,26 +295,10 @@ export function useStartButton() {
             
             const now = Date.now();
 
-            // Update both heartbeat and ActiveWorker with error handling
-            Promise.all([
-              update(heartbeatRef, { last_seen: now }).catch(() => {
-                // Ignore heartbeat update errors
-              }),
-              currentInstance
-                ? update(ref(rtdb, `ActiveWorker/${user.id}`), { lastSeen: now }).catch(() => {
-                    // Try to recreate the ActiveWorker entry if update failed
-                    const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-                    set(activeWorkerRef, {
-                      userId: user.id,
-                      roomId: currentInstance.id,
-                      taskId,
-                      isActive: true,
-                      lastSeen: now,
-                      displayName: user.displayName || "Anonymous",
-                    }).catch(() => {});
-                  })
-                : Promise.resolve(),
-            ]);
+            // Update heartbeat with error handling
+            update(heartbeatRef, { last_seen: now }).catch(() => {
+              // Ignore heartbeat update errors
+            });
           }, 300000); // Update every 5 minutes to reduce Firebase writes
         }
       }

@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, remove, update, onDisconnect, get, set } from "firebase/database";
+import { ref, update, get, set } from "firebase/database";
+import { PresenceService } from "../utils/presenceService";
 import { updateTask } from "../store/taskSlice";
 
 interface PauseButtonOptions {
@@ -17,7 +18,7 @@ interface PauseButtonOptions {
 
 export function usePauseButton() {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useInstance();
+  const { user, currentInstance } = useInstance();
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const { currentTaskId } = useSelector((state: RootState) => state.taskInput);
 
@@ -87,10 +88,10 @@ export function usePauseButton() {
             last_seen: Date.now(),
           });
 
-          // Remove ActiveWorker when pausing
-          const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-          remove(activeWorkerRef);
-          onDisconnect(activeWorkerRef).cancel();
+          // Update presence to inactive
+          if (currentInstance) {
+            PresenceService.updateUserPresence(user.id, currentInstance.id, false);
+          }
         } else {
           // If no user, just save current seconds
           saveTimerState(false, seconds);
@@ -107,7 +108,7 @@ export function usePauseButton() {
       setRunning(false);
       setIsStarting(false);
     },
-    [dispatch, user, activeTaskId, currentTaskId]
+    [dispatch, user, activeTaskId, currentTaskId, currentInstance]
   );
 
   return { handleStop };

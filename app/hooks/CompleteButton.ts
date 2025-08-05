@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, remove, onDisconnect, get } from "firebase/database";
+import { ref, set, get } from "firebase/database";
+import { PresenceService } from "../utils/presenceService";
 import {
   updateTask,
   transferTaskToPostgres,
@@ -123,11 +124,9 @@ export function useCompleteButton() {
         notifyEvent("complete", seconds);
       }
 
-      // PRIORITY 4: Remove ActiveWorker to ensure clean state for global effects
-      if (user?.id) {
-        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        remove(activeWorkerRef);
-        onDisconnect(activeWorkerRef).cancel();
+      // PRIORITY 4: Update presence to inactive
+      if (user?.id && currentInstance) {
+        PresenceService.updateUserPresence(user.id, currentInstance.id, false);
       }
 
       // PRIORITY 5: Clear timer state
@@ -268,7 +267,7 @@ export function useCompleteButton() {
         }
       }
     },
-    [dispatch, user, reduxUser, reduxTasks, activeTaskId, currentTaskId, notifyEvent, showCompleteFeedback, currentInstance?.id]
+    [dispatch, user, reduxUser, reduxTasks, activeTaskId, currentTaskId, notifyEvent, showCompleteFeedback, currentInstance]
   );
 
   return { handleComplete, showCompleteFeedback };

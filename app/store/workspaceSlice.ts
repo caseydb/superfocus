@@ -1,0 +1,126 @@
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+
+interface RoomMember {
+  id: string;
+  name: string;
+  avatar: string;
+  status: "online" | "idle" | "offline";
+  task?: string;
+}
+
+interface Room {
+  id: string;
+  name: string;
+  url: string;
+  type: 'public' | 'private';
+  firebaseId?: string;
+  members?: RoomMember[];
+  activeCount: number;
+  weeklyStats: {
+    totalTime: string;
+    totalTasks: number;
+  };
+  description?: string;
+  createdBy: string;
+  isPinned?: boolean;
+  isOwner?: boolean;
+  isAdmin?: boolean;
+  admins?: string[];
+  maxMembers?: number;
+  isEphemeral?: boolean;
+  createdAt?: number;
+}
+
+interface RoomStats {
+  [roomId: string]: {
+    totalTime: string;
+    totalTasks: number;
+    activeUsers: number;
+  };
+}
+
+interface WorkspaceState {
+  rooms: Room[];
+  roomStats: RoomStats;
+  loading: boolean;
+  error: string | null;
+  lastFetched: number | null;
+}
+
+const initialState: WorkspaceState = {
+  rooms: [],
+  roomStats: {},
+  loading: false,
+  error: null,
+  lastFetched: null,
+};
+
+// Async thunk to fetch workspace data
+export const fetchWorkspace = createAsyncThunk(
+  'workspace/fetch',
+  async (_, { getState }) => {
+    const state = getState() as { user: { user_id: string } };
+    const userId = state.user.user_id;
+    
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    
+    const response = await fetch(`/api/workspace?userId=${userId}`);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch workspace');
+    }
+    
+    return data;
+  }
+);
+
+const workspaceSlice = createSlice({
+  name: 'workspace',
+  initialState,
+  reducers: {
+    updateRoomStats: (state, action: PayloadAction<{ roomId: string; stats: { totalTime: string; totalTasks: number; activeUsers: number } }>) => {
+      state.roomStats[action.payload.roomId] = action.payload.stats;
+      console.log('[workspaceSlice] Room stats updated:', {
+        roomId: action.payload.roomId,
+        stats: action.payload.stats
+      });
+    },
+    addRoom: (state, action: PayloadAction<Room>) => {
+      state.rooms.push(action.payload);
+      console.log('[workspaceSlice] Room added:', action.payload);
+    },
+    removeRoom: (state, action: PayloadAction<string>) => {
+      state.rooms = state.rooms.filter(room => room.id !== action.payload);
+      console.log('[workspaceSlice] Room removed:', action.payload);
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchWorkspace.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchWorkspace.fulfilled, (state, action) => {
+        state.loading = false;
+        state.rooms = action.payload.rooms || [];
+        state.roomStats = action.payload.roomStats || {};
+        state.lastFetched = Date.now();
+        console.log('[workspaceSlice] Workspace fetched:', {
+          roomsCount: state.rooms.length,
+          rooms: state.rooms,
+          roomStats: state.roomStats
+        });
+      })
+      .addCase(fetchWorkspace.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch workspace';
+        console.log('[workspaceSlice] Workspace fetch failed:', state.error);
+      });
+  },
+});
+
+export const { updateRoomStats, addRoom, removeRoom } = workspaceSlice.actions;
+export default workspaceSlice.reducer;

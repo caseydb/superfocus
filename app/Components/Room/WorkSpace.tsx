@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 import { PresenceService } from "@/app/utils/presenceService";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, off } from "firebase/database";
@@ -54,6 +56,9 @@ interface Room {
   isAdmin?: boolean;
   admins?: string[];
   maxMembers?: number;
+  isEphemeral?: boolean;
+  firebaseId?: string;
+  firebase_id?: string;
 }
 
 // Sortable Room Card Component
@@ -62,9 +67,11 @@ interface SortableRoomCardProps {
   currentRoomUrl: string;
   onJoinRoom: (url: string) => void;
   onSettingsClick: (room: Room) => void;
+  activeCount?: number;
+  roomUsers?: Array<{userId: string; firstName?: string; lastName?: string; isActive: boolean}>;
 }
 
-const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, onSettingsClick }) => {
+const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, onSettingsClick, activeCount, roomUsers }) => {
   const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: room.id,
     animateLayoutChanges: () => true,
@@ -78,22 +85,6 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
     willChange: isDragging ? "transform" : "auto",
     position: isDragging ? "relative" : "static",
   } as React.CSSProperties;
-
-  const getStatusColor = (status: "online" | "idle" | "offline", task?: string) => {
-    if (status === "online" && task && task.includes("Do not disturb")) {
-      return "bg-red-500";
-    }
-    switch (status) {
-      case "online":
-        return "bg-green-500";
-      case "idle":
-        return "bg-yellow-500";
-      case "offline":
-        return "bg-gray-600";
-      default:
-        return "bg-gray-600";
-    }
-  };
 
   return (
     <div
@@ -110,10 +101,14 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
             <h3 className="font-semibold text-gray-200">{room.name}</h3>
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
-                room.type === "private" ? "bg-purple-500/20 text-purple-400" : "bg-blue-500/20 text-blue-400"
+                room.isEphemeral || room.id.startsWith('ephemeral-')
+                  ? "bg-green-500/20 text-green-400" 
+                  : room.type === "private" 
+                  ? "bg-purple-500/20 text-purple-400" 
+                  : "bg-blue-500/20 text-blue-400"
               }`}
             >
-              {room.type === "private" ? "Vendorsage" : "Public"}
+              {room.isEphemeral || room.id.startsWith('ephemeral-') ? "Temporary" : room.type === "private" ? "Vendorsage" : "Public"}
             </span>
           </div>
           {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
@@ -148,8 +143,8 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
 
           {/* Quick Stats */}
           <div className="text-right text-xs text-gray-500">
-            <div className="font-medium text-gray-400">{room.weeklyStats.totalTime}</div>
-            <div>{room.weeklyStats.totalTasks} tasks</div>
+            <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || 'Null'}</div>
+            <div>{room.weeklyStats?.totalTasks || 0} tasks</div>
             <div className="text-[10px] mt-1">this week</div>
           </div>
         </div>
@@ -162,35 +157,41 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
           <div className="flex -space-x-2">
             {(() => {
               const displayItems = [];
+              const users = roomUsers || [];
               const maxVisible = 5;
-              const hasOverflow = room.members.length > maxVisible;
-              const membersToShow = hasOverflow ? 4 : room.members.length;
+              const hasOverflow = users.length > maxVisible;
+              const membersToShow = hasOverflow ? 4 : users.length;
 
-              // Sort members by status: online > idle > offline
-              const statusOrder = { online: 0, idle: 1, offline: 2 };
-              const sortedMembers = [...room.members].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+              // Sort users by status: active first, then idle
+              const sortedUsers = [...users].sort((a, b) => {
+                if (a.isActive && !b.isActive) return -1;
+                if (!a.isActive && b.isActive) return 1;
+                return 0;
+              });
 
               // Add member avatars
               for (let i = 0; i < membersToShow; i++) {
-                const member = sortedMembers[i];
+                const user = sortedUsers[i];
+                const firstName = user.firstName || '';
+                const lastName = user.lastName || '';
+                const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+                const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+                
                 displayItems.push(
                   <div
-                    key={member.id}
+                    key={user.userId}
                     className="relative"
-                    title={`${member.name}${member.task ? ` - ${member.task}` : ""}`}
+                    title={`${fullName}${user.isActive ? ' - Active' : ' - Idle'}`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
-                        member.status === "offline" ? "bg-gray-700 text-gray-400" : "bg-gray-600 text-gray-200"
-                      }`}
+                      className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
                     >
-                      {member.avatar}
+                      {initials}
                     </div>
                     <div
-                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(
-                        member.status,
-                        member.task
-                      )}`}
+                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
+                        user.isActive ? 'bg-green-500' : 'bg-yellow-500'
+                      }`}
                     />
                   </div>
                 );
@@ -198,7 +199,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
 
               // Add overflow indicator
               if (hasOverflow) {
-                const overflowCount = room.members.length - 4;
+                const overflowCount = users.length - 4;
                 displayItems.push(
                   <div key="overflow" className="relative">
                     <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
@@ -212,10 +213,13 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
             })()}
           </div>
           <span className="text-sm text-gray-400">
-            {room.activeCount > 0 ? (
-              <span className="text-green-400">{room.activeCount} active</span>
+            {roomUsers && roomUsers.length > 0 ? (
+              <>
+                <span className="text-gray-400">{roomUsers.length} in room</span>
+                {activeCount && activeCount > 0 && <span className="text-green-400"> • {activeCount} active</span>}
+              </>
             ) : (
-              <span className="text-gray-500">No one active</span>
+              <span className="text-gray-500">Empty room</span>
             )}
           </span>
         </div>
@@ -556,6 +560,10 @@ const TEAMS_DATA = {
 
 const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const router = useRouter();
+  
+  // Get rooms from Redux store
+  const { rooms: reduxRooms } = useSelector((state: RootState) => state.workspace);
+  
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
@@ -581,8 +589,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     workStyle: "any",
   });
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState<Room | null>(null);
-  const [myRoomsOrder, setMyRoomsOrder] = useState<string[]>(() => MOCK_ROOMS.map((room) => room.id));
+  const [myRoomsOrder, setMyRoomsOrder] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // Store active counts for each room
+  const [roomActiveCounts, setRoomActiveCounts] = useState<Record<string, number>>({});
+  // Store all users for each room (both active and idle)
+  const [roomUsers, setRoomUsers] = useState<Record<string, Array<{userId: string; firstName?: string; lastName?: string; isActive: boolean}>>>({});
+  // Store ephemeral rooms from Firebase
+  const [ephemeralRooms, setEphemeralRooms] = useState<Room[]>([]);
   const [showProfileModal, setShowProfileModal] = useState<{
     id: string;
     name: string;
@@ -602,15 +617,184 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     }
   }, [showBetaDisclaimer]);
 
+
+  // Update myRoomsOrder when rooms change
+  useEffect(() => {
+    const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
+    const allRoomIds = allRooms.map((room) => room.id);
+    
+    // Update order if there are new rooms or rooms have been removed
+    const hasNewRooms = allRoomIds.some(id => !myRoomsOrder.includes(id));
+    const hasRemovedRooms = myRoomsOrder.some(id => !allRoomIds.includes(id));
+    
+    if (hasNewRooms || hasRemovedRooms) {
+      // Keep existing order for rooms that still exist, append new rooms
+      const existingOrder = myRoomsOrder.filter(id => allRoomIds.includes(id));
+      const newRoomIds = allRoomIds.filter(id => !myRoomsOrder.includes(id));
+      setMyRoomsOrder([...existingOrder, ...newRoomIds]);
+    }
+  }, [reduxRooms, ephemeralRooms, myRoomsOrder]);
+
   // Update newRoomTeam when selectedTeam changes
   useEffect(() => {
     setNewRoomTeam(selectedTeam);
   }, [selectedTeam]);
+  
+  // Listen to Firebase Presence to get active user counts and user data for each room
+  useEffect(() => {
+    // Create listeners for both Presence and Users
+    const presenceRef = ref(rtdb, 'Presence');
+    const usersRef = ref(rtdb, 'Users');
+    
+    let presenceData: Record<string, { sessions?: Record<string, unknown> }> | null = null;
+    let usersData: Record<string, { firstName?: string; lastName?: string; picture?: string }> | null = null;
+    
+    const updateRoomData = () => {
+      if (!presenceData || !usersData) return;
+      
+      const roomCounts: Record<string, number> = {};
+      const roomUsers: Record<string, Array<{userId: string; firstName?: string; lastName?: string; isActive: boolean}>> = {};
+      
+      // Iterate through all users in Presence
+      for (const [userId, userData] of Object.entries(presenceData)) {
+        const userSessions = (userData as { sessions?: Record<string, unknown> }).sessions;
+        if (!userSessions) continue;
+        
+        // Get user data from Users collection
+        const userInfo = usersData[userId];
+        
+        // Check each session for this user
+        for (const [, sessionData] of Object.entries(userSessions)) {
+          const session = sessionData as { roomId?: string; isActive?: boolean; userId?: string; users?: Record<string, unknown> };
+          
+          // Process all sessions that have a roomId (both active and idle)
+          if (session.roomId) {
+            // Find the room that matches this Firebase roomId
+            const matchingReduxRoom = reduxRooms.find(r => r.firebaseId === session.roomId);
+            const matchingEphemeralRoom = ephemeralRooms.find(r => r.firebaseId === session.roomId);
+            const matchingRoom = matchingReduxRoom || matchingEphemeralRoom;
+            
+            if (matchingRoom) {
+              // Only increment count if session is active
+              if (session.isActive) {
+                roomCounts[matchingRoom.id] = (roomCounts[matchingRoom.id] || 0) + 1;
+              }
+              
+              // Initialize array if needed
+              if (!roomUsers[matchingRoom.id]) {
+                roomUsers[matchingRoom.id] = [];
+              }
+              
+              // Add user to room's users list (avoid duplicates)
+              const existingUser = roomUsers[matchingRoom.id].find(u => u.userId === userId);
+              if (!existingUser) {
+                roomUsers[matchingRoom.id].push({
+                  userId,
+                  firstName: userInfo?.firstName,
+                  lastName: userInfo?.lastName,
+                  isActive: session.isActive || false
+                });
+              } else if (session.isActive && !existingUser.isActive) {
+                // Update existing user to active if any of their sessions is active
+                existingUser.isActive = true;
+              }
+            }
+          }
+        }
+      }
+      
+      setRoomActiveCounts(roomCounts);
+      setRoomUsers(roomUsers);
+    };
+    
+    const handlePresenceUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
+      presenceData = snapshot.exists() ? snapshot.val() : {};
+      updateRoomData();
+    };
+    
+    const handleUsersUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
+      usersData = snapshot.exists() ? snapshot.val() : {};
+      updateRoomData();
+    };
+    
+    // Set up listeners
+    onValue(presenceRef, handlePresenceUpdate);
+    onValue(usersRef, handleUsersUpdate);
+    
+    // Cleanup
+    return () => {
+      off(presenceRef, 'value', handlePresenceUpdate);
+      off(usersRef, 'value', handleUsersUpdate);
+    };
+  }, [reduxRooms, ephemeralRooms]);
+
+  // Listen to Firebase EphemeralRooms for temporary rooms
+  useEffect(() => {
+    const ephemeralRoomsRef = ref(rtdb, 'EphemeralRooms');
+    
+    const handleRoomsUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
+      
+      if (!snapshot.exists()) {
+        setEphemeralRooms([]);
+        return;
+      }
+      
+      const ephemeralRoomsData = snapshot.val();
+      
+      const ephemeralRoomsList: Room[] = [];
+      
+      // Process each room from Firebase EphemeralRooms
+      for (const [roomId, roomData] of Object.entries(ephemeralRoomsData)) {
+        const room = roomData as { url?: string; name?: string; userCount?: number; createdBy?: string; createdAt?: number };
+        
+        // Extract room URL from the data
+        const roomUrl = room.url ? `/${room.url}` : `/${roomId}`;
+        
+        // Ephemeral rooms by definition don't exist in PostgreSQL
+        // Just add all ephemeral rooms from Firebase
+        if (room.url && room.name) {
+          const ephemeralRoom = {
+            id: `ephemeral-${roomId}`, // Prefix to avoid ID conflicts
+            name: room.name || room.url || `temp-room-${roomId.slice(-4)}`, // Use the formatted name
+            url: roomUrl,
+            type: 'public' as const,
+            firebaseId: roomId,
+            members: [],
+            activeCount: room.userCount || 0,
+            weeklyStats: {
+              totalTime: '0m',
+              totalTasks: 0
+            },
+            description: 'This room will close when empty',
+            createdBy: room.createdBy || 'Anonymous',
+            isPinned: false,
+            isOwner: false,
+            isAdmin: false,
+            admins: [],
+            maxMembers: 50,
+            isEphemeral: true, // Mark as ephemeral
+            createdAt: room.createdAt
+          };
+          ephemeralRoomsList.push(ephemeralRoom);
+        }
+      }
+      
+      setEphemeralRooms(ephemeralRoomsList);
+    };
+    
+    // Set up listener
+    onValue(ephemeralRoomsRef, handleRoomsUpdate);
+    
+    // Cleanup
+    return () => {
+      off(ephemeralRoomsRef, 'value', handleRoomsUpdate);
+    };
+  }, [reduxRooms]);
 
   // Get current room URL to highlight it
   // For demo purposes, default to the first room if not in a room
   const actualPathname = typeof window !== "undefined" ? window.location.pathname : "";
-  const currentRoomUrl = MOCK_ROOMS.some((room) => room.url === actualPathname) ? actualPathname : "/team-alpha"; // Default to Team Alpha Sprint room for demo
+  const currentRoomUrl = reduxRooms.some((room) => room.url === actualPathname) ? actualPathname : reduxRooms[0]?.url || "";
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -626,29 +810,51 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Filter rooms based on search and tab
   const filteredRooms = useMemo(() => {
-    let rooms = MOCK_ROOMS;
+    // Merge Redux rooms with ephemeral rooms
+    const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
+    console.log('[WorkSpace] Filtering rooms:', {
+      reduxRoomsCount: reduxRooms.length,
+      ephemeralRoomsCount: ephemeralRooms.length,
+      allRoomsCount: allRooms.length,
+      ephemeralRooms: ephemeralRooms
+    });
+    let filteredRooms = allRooms;
 
     // For experiment tab, show all rooms (both public and private/Vendorsage)
     if (activeTab === "experiment") {
-      rooms = MOCK_ROOMS;
+      filteredRooms = allRooms;
     }
 
     if (searchQuery) {
-      rooms = rooms.filter(
+      filteredRooms = filteredRooms.filter(
         (r) =>
           r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.members.some((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
+          (r.members || []).some((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
     // Sort based on tab
     if (activeTab === "experiment") {
-      // Sort by type (private/Vendorsage first), then pinned, then custom order
-      return rooms.sort((a, b) => {
-        // First, sort by type (private first)
-        if (a.type === "private" && b.type === "public") return -1;
-        if (a.type === "public" && b.type === "private") return 1;
+      // Sort by: 1) Current room, 2) Private, 3) Public, 4) Ephemeral
+      return [...filteredRooms].sort((a, b) => {
+        // Current room always first
+        const isCurrentA = a.url === currentRoomUrl;
+        const isCurrentB = b.url === currentRoomUrl;
+        if (isCurrentA && !isCurrentB) return -1;
+        if (!isCurrentA && isCurrentB) return 1;
+
+        // Then ephemeral rooms last
+        const isEphemeralA = a.isEphemeral || a.id.startsWith('ephemeral-');
+        const isEphemeralB = b.isEphemeral || b.id.startsWith('ephemeral-');
+        if (!isEphemeralA && isEphemeralB) return -1;
+        if (isEphemeralA && !isEphemeralB) return 1;
+
+        // Then sort by type (private first) - only for non-ephemeral rooms
+        if (!isEphemeralA && !isEphemeralB) {
+          if (a.type === "private" && b.type === "public") return -1;
+          if (a.type === "public" && b.type === "private") return 1;
+        }
 
         // Then by pinned status
         if (a.isPinned !== b.isPinned) {
@@ -661,15 +867,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         return indexA - indexB;
       });
     } else if (activeTab === "team") {
-      // For team tab, only show private rooms
-      return rooms.filter((r) => r.type === "private");
+      // For team tab, only show private rooms (exclude ephemeral)
+      return filteredRooms.filter((r) => r.type === "private" && !r.id.startsWith('ephemeral-'));
     } else {
       // Default sort by active count for quick-join
-      return rooms.sort((a, b) => b.activeCount - a.activeCount);
+      return [...filteredRooms].sort((a, b) => b.activeCount - a.activeCount);
     }
-  }, [activeTab, searchQuery, myRoomsOrder]);
+  }, [activeTab, searchQuery, myRoomsOrder, reduxRooms, ephemeralRooms, currentRoomUrl]);
 
-  // const totalActiveUsers = MOCK_ROOMS.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
+  // const totalActiveUsers = reduxRooms.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [globalActiveRooms, setGlobalActiveRooms] = useState(0);
   
@@ -746,8 +952,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   const handleQuickJoin = () => {
     // Get public rooms with available space
-    const availableRooms = MOCK_ROOMS.filter(
-      (room) => room.type === "public" && room.members.length < (room.maxMembers || 50)
+    const availableRooms = reduxRooms.filter(
+      (room) => room.type === "public" && (room.members?.length || 0) < (room.maxMembers || 50)
     );
 
     if (availableRooms.length > 0) {
@@ -845,7 +1051,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       >
         {/* Header */}
         <div className="relative flex items-center justify-center mb-4">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">WorkSpace</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Workspace</h2>
 
           {/* Close button */}
           <button
@@ -908,14 +1114,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <h3 className="font-semibold text-gray-200">Quick Join</h3>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-base text-gray-500">
                           <span className="text-green-500 font-bold">{globalActiveRooms}</span> rooms •{" "}
                           <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people
                           online
                         </p>
                       </div>
                       <p className="text-sm text-gray-400 mt-1">
-                        Instantly join a random public room with active workers and feel the momentum
+                        Instantly join a random room with active workers
                       </p>
                     </div>
                   </div>
@@ -1108,6 +1314,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             currentRoomUrl={currentRoomUrl}
                             onJoinRoom={handleJoinRoom}
                             onSettingsClick={setEditingRoom}
+                            activeCount={roomActiveCounts[room.id] || 0}
+                            roomUsers={roomUsers[room.id] || []}
                           />
                         );
                       })}
@@ -1160,7 +1368,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                 // Aggregate data from all team rooms
                 teamRooms.forEach((room) => {
-                  room.members.forEach((member) => {
+                  (room.members || []).forEach((member) => {
                     if (!allTeamMembers.has(member.id)) {
                       allTeamMembers.set(member.id, {
                         ...member,
@@ -1674,9 +1882,16 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                         </svg>
                                       </div>
                                       <div>
-                                        <h4 className="font-medium text-gray-200">{room.name}</h4>
+                                        <h4 className="font-medium text-gray-200 flex items-center gap-2">
+                                          {room.name}
+                                          {room.id.startsWith('ephemeral-') && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
+                                              Temp
+                                            </span>
+                                          )}
+                                        </h4>
                                         <p className="text-sm text-gray-500">
-                                          {room.activeCount} active • {room.members.length} members
+                                          {room.activeCount} active • {room.members?.length || 0} members
                                         </p>
                                       </div>
                                     </div>
@@ -1818,15 +2033,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-gray-200">{room.name}</h3>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${
-                            room.type === "private"
-                              ? "bg-purple-500/20 text-purple-400"
-                              : "bg-blue-500/20 text-blue-400"
-                          }`}
-                        >
-                          {room.type === "private" ? "Vendorsage" : "Public"}
-                        </span>
+                        {room.id.startsWith('ephemeral-') ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
+                            Temp
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              room.isEphemeral
+                                ? "bg-green-500/20 text-green-400"
+                                : room.type === "private"
+                                ? "bg-purple-500/20 text-purple-400"
+                                : "bg-blue-500/20 text-blue-400"
+                            }`}
+                          >
+                            {room.isEphemeral ? "Temporary" : room.type === "private" ? "Vendorsage" : "Public"}
+                          </span>
+                        )}
                       </div>
                       {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
                     </div>
@@ -1860,8 +2083,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                       {/* Quick Stats */}
                       <div className="text-right text-xs text-gray-500">
-                        <div className="font-medium text-gray-400">{room.weeklyStats.totalTime}</div>
-                        <div>{room.weeklyStats.totalTasks} tasks</div>
+                        <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || 'Null'}</div>
+                        <div>{room.weeklyStats?.totalTasks || 0} tasks</div>
                         <div className="text-[10px] mt-1">this week</div>
                       </div>
                     </div>
@@ -1874,39 +2097,41 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <div className="flex -space-x-2">
                         {(() => {
                           const displayItems = [];
+                          const users = roomUsers[room.id] || [];
                           const maxVisible = 5;
-                          const hasOverflow = room.members.length > maxVisible;
-                          const membersToShow = hasOverflow ? 4 : room.members.length;
+                          const hasOverflow = users.length > maxVisible;
+                          const membersToShow = hasOverflow ? 4 : users.length;
 
-                          // Sort members by status: online > idle > offline
-                          const statusOrder = { online: 0, idle: 1, offline: 2 };
-                          const sortedMembers = [...room.members].sort(
-                            (a, b) => statusOrder[a.status] - statusOrder[b.status]
-                          );
+                          // Sort users by status: active first, then idle
+                          const sortedUsers = [...users].sort((a, b) => {
+                            if (a.isActive && !b.isActive) return -1;
+                            if (!a.isActive && b.isActive) return 1;
+                            return 0;
+                          });
 
                           // Add member avatars
                           for (let i = 0; i < membersToShow; i++) {
-                            const member = sortedMembers[i];
+                            const user = sortedUsers[i];
+                            const firstName = user.firstName || '';
+                            const lastName = user.lastName || '';
+                            const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+                            const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+                            
                             displayItems.push(
                               <div
-                                key={member.id}
+                                key={user.userId}
                                 className="relative"
-                                title={`${member.name}${member.task ? ` - ${member.task}` : ""}`}
+                                title={`${fullName}${user.isActive ? ' - Active' : ' - Idle'}`}
                               >
                                 <div
-                                  className={`w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium ${
-                                    member.status === "offline"
-                                      ? "bg-gray-700 text-gray-400"
-                                      : "bg-gray-600 text-gray-200"
-                                  }`}
+                                  className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
                                 >
-                                  {member.avatar}
+                                  {initials}
                                 </div>
                                 <div
-                                  className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${getStatusColor(
-                                    member.status,
-                                    member.task
-                                  )}`}
+                                  className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
+                                    user.isActive ? 'bg-green-500' : 'bg-yellow-500'
+                                  }`}
                                 />
                               </div>
                             );
@@ -1914,7 +2139,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                           // Add overflow indicator as just another item in the sequence
                           if (hasOverflow) {
-                            const overflowCount = room.members.length - 4;
+                            const overflowCount = users.length - 4;
                             displayItems.push(
                               <div key="overflow" className="relative">
                                 <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
@@ -1928,10 +2153,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                         })()}
                       </div>
                       <span className="text-sm text-gray-400">
-                        {room.activeCount > 0 ? (
-                          <span className="text-green-400">{room.activeCount} active</span>
+                        {(roomUsers[room.id] || []).length > 0 ? (
+                          <>
+                            <span className="text-gray-400">{(roomUsers[room.id] || []).length} in room</span>
+                            {(roomActiveCounts[room.id] || 0) > 0 && <span className="text-green-400"> • {roomActiveCounts[room.id]} active</span>}
+                          </>
                         ) : (
-                          <span className="text-gray-500">No one active</span>
+                          <span className="text-gray-500">Empty room</span>
                         )}
                       </span>
                     </div>

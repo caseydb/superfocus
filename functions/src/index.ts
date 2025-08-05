@@ -52,39 +52,55 @@ export const cleanUpEmptyPublicRooms = functions.database
     return null;
   });
 
-// Clean up empty PublicRooms when users node is deleted
-export const cleanUpEmptyPublicRoomsNew = functions.database
-  .ref("/PublicRooms/{roomId}/users")
+// Clean up empty EphemeralRooms when users node is deleted
+// DISABLED FOR DEBUGGING
+/*
+export const cleanUpEmptyEphemeralRooms = functions.database
+  .ref("/EphemeralRooms/{roomId}/users")
   .onDelete(async (snapshot, context) => {
     const roomId = context.params.roomId;
-    const roomRef = admin.database().ref(`/PublicRooms/${roomId}`);
+    const roomRef = admin.database().ref(`/EphemeralRooms/${roomId}`);
+
+    // Small delay to ensure all operations are complete
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Get the room data
     const roomSnap = await roomRef.once("value");
+    
+    if (!roomSnap.exists()) {
+      // Room already deleted
+      return null;
+    }
+    
     const room = roomSnap.val();
 
-    if (room) {
-      // Check if users node is now empty or missing
-      if (!room.users || Object.keys(room.users).length === 0) {
-        // Also clean up any presence data
-        const presenceRef = admin.database().ref(`/PublicRoomPresence/${roomId}`);
-        await presenceRef.remove();
+    // If users node is missing or empty, delete the room
+    if (!room.users || (typeof room.users === 'object' && Object.keys(room.users).length === 0)) {
+      // Also clean up any presence data
+      const presenceRef = admin.database().ref(`/PublicRoomPresence/${roomId}`);
+      await presenceRef.remove();
 
-        // Delete the room
-        await roomRef.remove();
-      }
+      // Delete the room
+      await roomRef.remove();
     }
+    
     return null;
   });
+*/
 
-// Update PublicRoom userCount when users change
-export const updatePublicRoomUserCount = functions.database
-  .ref("/PublicRooms/{roomId}/users/{userId}")
+// Update EphemeralRoom userCount when users change
+// DISABLED FOR DEBUGGING
+/*
+export const updateEphemeralRoomUserCount = functions.database
+  .ref("/EphemeralRooms/{roomId}/users/{userId}")
   .onWrite(async (change, context) => {
     const roomId = context.params.roomId;
     
+    // Small delay to let any batch operations complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Get the room reference
-    const roomRef = admin.database().ref(`/PublicRooms/${roomId}`);
+    const roomRef = admin.database().ref(`/EphemeralRooms/${roomId}`);
     const roomSnapshot = await roomRef.once("value");
     
     if (!roomSnapshot.exists()) {
@@ -92,11 +108,17 @@ export const updatePublicRoomUserCount = functions.database
     }
     
     const room = roomSnapshot.val();
-    const userCount = room.users ? Object.keys(room.users).length : 0;
     
+    // If users node doesn't exist or is empty, set count to 0 and delete room
+    if (!room.users || typeof room.users !== 'object') {
+      await roomRef.remove();
+      return null;
+    }
+    
+    const userCount = Object.keys(room.users).length;
     
     // Update the user count
-    await roomRef.child("userCount").set(userCount);
+    await roomRef.update({ userCount });
     
     // If userCount is 0, delete the room
     if (userCount === 0) {
@@ -109,6 +131,7 @@ export const updatePublicRoomUserCount = functions.database
     
     return null;
   });
+*/
 
 // Clean up stale PrivateRoom users (runs every 1 minute for testing)
 export const cleanUpStalePrivateRoomUsers = functions.pubsub.schedule("every 1 minutes").onRun(async (context) => {
@@ -183,7 +206,49 @@ export const cleanUpStalePrivateRoomUsers = functions.pubsub.schedule("every 1 m
   return null;
 });
 
-// ActiveWorker cleanup removed - no longer using ActiveWorker system
+// Clean up empty EphemeralRooms (runs every 30 seconds)
+// DISABLED FOR DEBUGGING
+/*
+export const cleanUpEmptyEphemeralRoomsScheduled = functions.pubsub.schedule("every 30 seconds").onRun(async (context) => {
+  try {
+    const ephemeralRoomsRef = admin.database().ref("/EphemeralRooms");
+    const snapshot = await ephemeralRoomsRef.once("value");
+
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    const rooms = snapshot.val();
+    const roomsToDelete: string[] = [];
+
+    // Check each room
+    for (const [roomId, roomData] of Object.entries(rooms)) {
+      const room = roomData as any;
+      
+      // If room has no users or users is empty, mark for deletion
+      if (!room.users || (typeof room.users === 'object' && Object.keys(room.users).length === 0)) {
+        roomsToDelete.push(roomId);
+      }
+    }
+
+    // Delete empty rooms
+    const deletePromises = roomsToDelete.map(roomId => {
+      return admin.database().ref(`/EphemeralRooms/${roomId}`).remove();
+    });
+
+    await Promise.all(deletePromises);
+
+    if (roomsToDelete.length > 0) {
+      console.log(`[cleanUpEmptyEphemeralRooms] Deleted ${roomsToDelete.length} empty ephemeral rooms`);
+    }
+
+  } catch (error) {
+    console.error('[cleanUpEmptyEphemeralRooms] Error:', error);
+  }
+
+  return null;
+});
+*/
 
 // Clean up stale Presence sessions (runs every 1 minute for testing)
 export const cleanUpStalePresenceSessions = functions.pubsub.schedule("every 1 minutes").onRun(async (context) => {
@@ -278,6 +343,57 @@ export const cleanUpStalePresenceSessions = functions.pubsub.schedule("every 1 m
 
       await Promise.all(userCleanupPromises);
     }
+
+    // DISABLED FOR DEBUGGING - Don't touch EphemeralRooms
+    /*
+    // Also scan EphemeralRooms
+    const ephemeralRoomsRef = admin.database().ref("/EphemeralRooms");
+    const ephemeralRoomsSnapshot = await ephemeralRoomsRef.once("value");
+    
+    if (ephemeralRoomsSnapshot.exists()) {
+      const ephemeralRooms = ephemeralRoomsSnapshot.val();
+      const ephemeralCleanupPromises: Promise<void>[] = [];
+      
+      for (const [roomId, room] of Object.entries(ephemeralRooms)) {
+        const roomData = room as any;
+        if (!roomData.users) continue;
+        
+        // Check each user in the room
+        for (const [userId] of Object.entries(roomData.users)) {
+          // Check if user has an active presence session in this room
+          const userSessions = presenceSnapshot.child(userId).child("sessions").val();
+          let hasActiveSession = false;
+          
+          if (userSessions) {
+            for (const sessionData of Object.values(userSessions)) {
+              const session = sessionData as any;
+              // Match by room URL since roomId in presence might be the URL
+              const roomUrl = roomData.url || roomId;
+              if ((session.roomId === roomUrl || session.roomId === `/${roomUrl}` || session.roomId === roomId) && 
+                  typeof session.lastSeen === 'number' && 
+                  (now - session.lastSeen) < STALE_THRESHOLD) {
+                hasActiveSession = true;
+                break;
+              }
+            }
+          }
+          
+          // If no active session, remove user from ephemeral room
+          if (!hasActiveSession) {
+            ephemeralCleanupPromises.push(
+              admin.database().ref(`/EphemeralRooms/${roomId}/users/${userId}`).remove()
+            );
+          }
+        }
+      }
+      
+      await Promise.all(ephemeralCleanupPromises);
+      
+      if (ephemeralCleanupPromises.length > 0) {
+        console.log(`[cleanUpStalePresenceSessions] Cleaned up ${ephemeralCleanupPromises.length} stale ephemeral room users`);
+      }
+    }
+    */
 
     console.log(`[cleanUpStalePresenceSessions] Cleaned up ${cleanupPromises.length} stale entries`);
   } catch (error) {

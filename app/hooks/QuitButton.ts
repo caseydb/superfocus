@@ -4,6 +4,7 @@ import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
 import { ref, set, push, remove, get } from "firebase/database";
+import { PresenceService } from "../utils/presenceService";
 import {
   updateTask,
   setActiveTask,
@@ -147,9 +148,10 @@ export function useQuitButton() {
           remove(flyingMessageRef);
         }, 7000);
 
-        // Remove ActiveWorker immediately when quitting
-        const activeWorkerRef = ref(rtdb, `ActiveWorker/${user.id}`);
-        remove(activeWorkerRef);
+        // Update presence to inactive
+        if (currentInstance) {
+          PresenceService.updateUserPresence(user.id, currentInstance.id, false);
+        }
       }
 
       // STEP 2: KILL THE HEARTBEAT FIRST

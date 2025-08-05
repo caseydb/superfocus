@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       task: task.task_name,
       duration: task.duration,
       completedAt: task.completed_at,
-      roomSlug: task.room.slug,
+      roomSlug: task.room?.slug || '',
       formattedDuration: formatDuration(task.duration)
     }));
 

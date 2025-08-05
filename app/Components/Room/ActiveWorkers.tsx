@@ -191,8 +191,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       const currentState = `active:${activeIds}|idle:${idleIds}`;
       
       if (currentState !== previousStateRef.current) {
-        console.log('[ActiveWorkers] Active workers:', active.length, active);
-        console.log('[ActiveWorkers] Idle workers:', idle.length, idle);
         previousStateRef.current = currentState;
       }
     });

@@ -24,6 +24,7 @@ const initialState: HistoryState = {
   roomSlug: null,
 };
 
+
 // Async thunk to fetch history
 export const fetchHistory = createAsyncThunk(
   "history/fetch",

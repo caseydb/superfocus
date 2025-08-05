@@ -1482,6 +1482,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 initialRunning={timerRunning}
                 onClearClick={handleClearButton}
                 setShowTaskList={setShowTaskList}
+                onTaskRestore={(taskName, isRunning, taskId) => {
+                  dispatch(setCurrentInput(taskName));
+                  if (taskId) {
+                    dispatch(setCurrentTask({ id: taskId, name: taskName }));
+                    dispatch(setActiveTask(taskId));
+                  }
+                  if (isRunning) {
+                    dispatch(lockInput());
+                  }
+                  dispatch(setHasStartedRedux(true));
+                }}
               />
             )}
           </div>
@@ -1651,7 +1662,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
               <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
-                WorkSpace
+                Workspace
               </span>
             </button>
           </div>

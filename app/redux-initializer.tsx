@@ -8,6 +8,7 @@ import { fetchTasks, checkForActiveTask } from "./store/taskSlice";
 import { fetchPreferences } from "./store/preferenceSlice";
 import { fetchHistory } from "./store/historySlice";
 import { fetchLeaderboard } from "./store/leaderboardSlice";
+import { fetchWorkspace } from "./store/workspaceSlice";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, rtdb } from "@/lib/firebase";
 import { ref, set, get } from "firebase/database";
@@ -79,6 +80,13 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               await dispatch(fetchPreferences(userData.user_id)).unwrap();
             } catch (error) {
               console.error("[ReduxInitializer] Failed to fetch preferences:", error);
+            }
+
+            // Fetch workspace data (all rooms)
+            try {
+              await dispatch(fetchWorkspace()).unwrap();
+            } catch (error) {
+              console.error("[ReduxInitializer] Failed to fetch workspace:", error);
             }
 
             // Fetch history and leaderboard if we're on a room page
@@ -166,6 +174,13 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                   await dispatch(fetchPreferences(userData.user_id)).unwrap();
                 } catch (error) {
                   console.error("[ReduxInitializer] Failed to fetch preferences on retry:", error);
+                }
+
+                // Fetch workspace data (all rooms) on retry
+                try {
+                  await dispatch(fetchWorkspace()).unwrap();
+                } catch (error) {
+                  console.error("[ReduxInitializer] Failed to fetch workspace on retry:", error);
                 }
 
                 // Fetch history and leaderboard if we're on a room page

@@ -7,7 +7,7 @@ import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { rtdb } from "../../../lib/firebase";
-import { ref, remove, set, update } from "firebase/database";
+import { ref, remove, set, update, get } from "firebase/database";
 import { setCurrentInput, lockInput, setHasStarted, resetInput } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
@@ -25,6 +25,7 @@ interface PomodoroProps {
   initialRunning?: boolean;
   onClearClick?: () => void;
   setShowTaskList?: (show: boolean) => void;
+  onTaskRestore?: (taskName: string, isRunning: boolean, taskId?: string) => void;
 }
 
 export default function Pomodoro({
@@ -40,6 +41,7 @@ export default function Pomodoro({
   initialRunning = false,
   onClearClick,
   setShowTaskList,
+  onTaskRestore,
 }: PomodoroProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
@@ -71,6 +73,7 @@ export default function Pomodoro({
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
   const [showNoTaskFeedback, setShowNoTaskFeedback] = useState(false);
   const hasPlayedZeroNotificationRef = useRef(false);
+  const isInitializedRef = useRef(false);
   
   // Filter out completed tasks and sort by most recent
   const availableTasks = reduxTasks
@@ -111,6 +114,58 @@ export default function Pomodoro({
       setRemainingSeconds(seconds);
     }
   }, [selectedMinutes, isRunning, isPaused]);
+
+  // One-time restoration from Firebase on mount
+  useEffect(() => {
+    if (!user?.id || isInitializedRef.current) {
+      return;
+    }
+
+    // Skip restoration if there's already an active timer
+    if ((hasStarted && secondsRef?.current && secondsRef.current > 0) || elapsedSeconds > 0) {
+      isInitializedRef.current = true;
+      return;
+    }
+
+    // Wait a bit to ensure Redux has loaded tasks
+    const initTimer = setTimeout(async () => {
+      // First check for LastTask
+      const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+      const lastTaskSnapshot = await get(lastTaskRef);
+      
+      if (lastTaskSnapshot.exists()) {
+        const lastTaskData = lastTaskSnapshot.val();
+        
+        // Load this task's data from TaskBuffer
+        const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
+        const taskSnapshot = await get(taskRef);
+        
+        if (taskSnapshot.exists()) {
+          const taskData = taskSnapshot.val();
+          const totalTime = taskData.total_time || 0;
+          
+          // Set the elapsed seconds to this task's time
+          setElapsedSeconds(totalTime);
+          if (secondsRef) {
+            secondsRef.current = totalTime;
+          }
+          
+          // Set this as the active task
+          dispatch(setActiveTask(lastTaskData.taskId));
+          
+          // Restore the task name in the input
+          if (onTaskRestore) {
+            onTaskRestore(lastTaskData.taskName || taskData.name, false, lastTaskData.taskId);
+          }
+          
+          // Mark as initialized
+          isInitializedRef.current = true;
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(initTimer);
+  }, [user?.id, hasStarted, secondsRef, elapsedSeconds, dispatch, onTaskRestore]);
 
   // Countdown timer
   useEffect(() => {
@@ -360,8 +415,6 @@ export default function Pomodoro({
     if (user?.id) {
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
-      
-      // ActiveWorker removed - now handled by PresenceService
     }
   }, [user?.id]);
 
@@ -373,8 +426,6 @@ export default function Pomodoro({
         // Save as paused state with current elapsed seconds
         saveTimerState(false, elapsedSeconds);
       }
-      
-      // ActiveWorker removed - now handled by PresenceService
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -457,8 +508,6 @@ export default function Pomodoro({
     }
 
     // Otherwise, just clear without quit modal
-    // ActiveWorker removed - now handled by PresenceService
-
     // Clear heartbeat interval
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
