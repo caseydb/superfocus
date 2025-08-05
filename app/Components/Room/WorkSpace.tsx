@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 import { PresenceService } from "@/app/utils/presenceService";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, off } from "firebase/database";
+import { roomService } from "@/app/services/roomService";
 import {
   DndContext,
   closestCenter,
@@ -58,7 +59,7 @@ interface Room {
   maxMembers?: number;
   isEphemeral?: boolean;
   firebaseId?: string;
-  firebase_id?: string;
+  firebase_id?: string; // Alternative field name from workspaceSlice
 }
 
 // Sortable Room Card Component
@@ -86,16 +87,23 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
     position: isDragging ? "relative" : "static",
   } as React.CSSProperties;
 
+  // Check if this is the current room (handle both with and without leading slash)
+  const isCurrentRoom = currentRoomUrl === room.url || 
+                       currentRoomUrl === room.url.replace(/^\//, '') || 
+                       `/${currentRoomUrl}` === room.url;
+  
+  // Debug logging removed to prevent infinite loop
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-4 bg-gray-800/50 rounded-lg border transition-all duration-200 group flex flex-col min-h-[200px] ${
-        currentRoomUrl === room.url ? "border-[#FFAA00] bg-gray-800/70" : "border-gray-700 hover:border-gray-600"
+      className={`p-3 bg-gray-800/50 rounded-lg border transition-all duration-200 group flex flex-col min-h-[180px] ${
+        isCurrentRoom ? "border-[#FFAA00] bg-gray-800/70" : "border-gray-700 hover:border-gray-600"
       } ${isDragging ? "shadow-2xl shadow-[#FFAA00]/20" : ""}`}
     >
       {/* Room Header */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-gray-200">{room.name}</h3>
@@ -111,7 +119,13 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
               {room.isEphemeral || room.id.startsWith('ephemeral-') ? "Temporary" : room.type === "private" ? "Private" : "Public"}
             </span>
           </div>
-          {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
+          {/* Elegant URL display */}
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span className="font-mono text-xs">locked-in{room.url.startsWith('/') ? room.url : `/${room.url}`}</span>
+          </div>
         </div>
 
         <div className="flex items-start gap-2">
@@ -153,7 +167,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
       {/* Content Section - Flex grow to push button down */}
       <div className="flex-1">
         {/* Active Members */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <div className="flex -space-x-2">
             {(() => {
               const displayItems = [];
@@ -227,14 +241,14 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
       {/* Join Button - Always at bottom */}
       <button
         onClick={() => onJoinRoom(room.url)}
-        className={`w-full py-2 rounded-lg font-medium transition-all duration-200 ${
-          currentRoomUrl === room.url
+        className={`w-full py-1.5 rounded-lg font-medium transition-all duration-200 ${
+          isCurrentRoom
             ? "bg-gray-700 text-gray-400 cursor-default"
             : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black"
         }`}
-        disabled={currentRoomUrl === room.url}
+        disabled={isCurrentRoom}
       >
-        {currentRoomUrl === room.url ? (
+        {isCurrentRoom ? (
           <span className="flex items-center justify-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             Current Room
@@ -295,245 +309,6 @@ const MOCK_FRIENDS = [
   },
 ];
 
-// Mock data for rooms with various members and activities
-const MOCK_ROOMS: Room[] = [
-  {
-    id: "1",
-    name: "Focus Flow",
-    url: "/focus-flow",
-    type: "public",
-    activeCount: 3,
-    isPinned: true,
-    members: [
-      {
-        id: "1",
-        name: "Alex Chen",
-        avatar: "AC",
-        status: "online",
-        task: "Building React components",
-        duration: "45m",
-      },
-      { id: "6", name: "Lisa Anderson", avatar: "LA", status: "online", task: "UI/UX design", duration: "30m" },
-      {
-        id: "20",
-        name: "Ashley Rodriguez",
-        avatar: "AR",
-        status: "online",
-        task: "Marketing strategy",
-        duration: "1h 5m",
-      },
-      { id: "21", name: "Sam Wilson", avatar: "SW", status: "idle" },
-      { id: "22", name: "Jordan Lee", avatar: "JL", status: "offline" },
-      // Adding many more offline/idle members to reach 113 total
-      ...Array.from({ length: 108 }, (_, i) => ({
-        id: `ff-${i + 100}`,
-        name: `User ${i + 100}`,
-        avatar: `U${i % 99}`,
-        status: "offline" as const,
-      })),
-    ],
-    weeklyStats: {
-      totalTime: "127h 45m",
-      totalTasks: 234,
-    },
-    description: "High-intensity focus for deep work",
-    isOwner: true,
-    admins: ["Alex Chen", "Lisa Anderson"],
-    maxMembers: 150,
-  },
-  {
-    id: "2",
-    name: "Deep Work",
-    url: "/deep-work",
-    type: "public",
-    activeCount: 2,
-    members: [
-      { id: "2", name: "Sarah Johnson", avatar: "SJ", status: "online", task: "Do not disturb", duration: "1h 23m" },
-      { id: "8", name: "Jennifer Taylor", avatar: "JT", status: "online", task: "Data analysis", duration: "1h 45m" },
-      { id: "23", name: "Chris Martin", avatar: "CM", status: "idle" },
-      { id: "24", name: "Pat Brown", avatar: "PB", status: "offline" },
-    ],
-    weeklyStats: {
-      totalTime: "89h 30m",
-      totalTasks: 156,
-    },
-    description: "Distraction-free complex task zone",
-  },
-  {
-    id: "3",
-    name: "Study Hall",
-    url: "/study-hall",
-    type: "public",
-    activeCount: 2,
-    members: [
-      {
-        id: "4",
-        name: "Emma Davis",
-        avatar: "ED",
-        status: "online",
-        task: "Machine learning research",
-        duration: "2h 10m",
-      },
-      { id: "11", name: "Chris Lee", avatar: "CL", status: "idle" },
-      { id: "25", name: "Morgan Taylor", avatar: "MT", status: "online", task: "Reading papers", duration: "55m" },
-      { id: "26", name: "Jamie Kim", avatar: "JK", status: "offline" },
-      { id: "27", name: "Drew Smith", avatar: "DS", status: "offline" },
-      { id: "28", name: "Casey Jones", avatar: "CJ", status: "offline" },
-    ],
-    weeklyStats: {
-      totalTime: "156h 20m",
-      totalTasks: 289,
-    },
-    description: "Academic focus & research collab",
-  },
-  {
-    id: "4",
-    name: "Productivity Lab",
-    url: "/productivity-lab",
-    type: "public",
-    activeCount: 1,
-    members: [
-      { id: "3", name: "Mike Williams", avatar: "MW", status: "idle" },
-      {
-        id: "14",
-        name: "Rachel Green",
-        avatar: "RG",
-        status: "online",
-        task: "Do not disturb - Deep focus",
-        duration: "40m",
-      },
-      { id: "29", name: "Alex Park", avatar: "AP", status: "offline" },
-    ],
-    weeklyStats: {
-      totalTime: "67h 15m",
-      totalTasks: 123,
-    },
-    description: "Test new productivity techniques",
-  },
-  {
-    id: "5",
-    name: "Grind Time",
-    url: "/grind-time",
-    type: "public",
-    activeCount: 2,
-    members: [
-      { id: "7", name: "David Brown", avatar: "DB", status: "idle" },
-      { id: "18", name: "Jessica Lewis", avatar: "JL", status: "online", task: "Research paper", duration: "2h 30m" },
-      { id: "30", name: "Tony Stark", avatar: "TS", status: "online", task: "Building AI", duration: "4h 20m" },
-      { id: "31", name: "Bruce Wayne", avatar: "BW", status: "offline" },
-    ],
-    weeklyStats: {
-      totalTime: "203h 40m",
-      totalTasks: 412,
-    },
-    description: "Marathon work sessions, push limits",
-  },
-  {
-    id: "6",
-    name: "Team Alpha Sprint",
-    url: "/team-alpha",
-    type: "private",
-    activeCount: 6,
-    isPinned: true,
-    members: [
-      { id: "32", name: "Elena Rodriguez", avatar: "ER", status: "online", task: "Sprint planning", duration: "25m" },
-      { id: "33", name: "Marcus Chen", avatar: "MC", status: "online", task: "Code review", duration: "1h 10m" },
-      { id: "34", name: "Priya Patel", avatar: "PP", status: "online", task: "API development", duration: "3h 45m" },
-      { id: "35", name: "James Wilson", avatar: "JW", status: "online", task: "Do not disturb", duration: "2h 20m" },
-      { id: "36", name: "Sofia Martinez", avatar: "SM", status: "online", task: "Database migration", duration: "45m" },
-      {
-        id: "37",
-        name: "Alex Thompson",
-        avatar: "AT",
-        status: "online",
-        task: "Frontend refactor",
-        duration: "1h 30m",
-      },
-      { id: "38", name: "Nina Patel", avatar: "NP", status: "idle", task: "Documentation", duration: "55m" },
-      { id: "39", name: "Carlos Ruiz", avatar: "CR", status: "idle" },
-    ],
-    weeklyStats: {
-      totalTime: "312h 50m",
-      totalTasks: 567,
-    },
-    description: "Alpha team's private sprint room",
-    createdBy: "Elena Rodriguez",
-    isAdmin: true,
-    admins: ["Elena Rodriguez", "Marcus Chen"],
-    maxMembers: 10,
-  },
-  {
-    id: "7",
-    name: "Creative Studio",
-    url: "/creative-studio",
-    type: "public",
-    activeCount: 1,
-    members: [
-      { id: "16", name: "Nicole Adams", avatar: "NA", status: "online", task: "Video editing", duration: "1h 15m" },
-      { id: "37", name: "Maya Johnson", avatar: "MJ", status: "offline" },
-      { id: "38", name: "Leo Wang", avatar: "LW", status: "offline" },
-    ],
-    weeklyStats: {
-      totalTime: "45h 30m",
-      totalTasks: 78,
-    },
-    description: "Designers, artists & creators hub",
-  },
-  {
-    id: "8",
-    name: "Coding Dojo",
-    url: "/coding-dojo",
-    type: "private",
-    activeCount: 3,
-    members: [
-      {
-        id: "10",
-        name: "Maria Garcia",
-        avatar: "MG",
-        status: "online",
-        task: "Backend development",
-        duration: "3h 20m",
-      },
-      {
-        id: "391",
-        name: "Ryan Thompson",
-        avatar: "RT",
-        status: "online",
-        task: "Frontend debugging",
-        duration: "1h 45m",
-      },
-      { id: "40", name: "Zoe Chen", avatar: "ZC", status: "online", task: "Code optimization", duration: "2h 10m" },
-      { id: "41", name: "Omar Hassan", avatar: "OH", status: "offline" },
-      { id: "42", name: "Kim Lee", avatar: "KL", status: "offline" },
-    ],
-    weeklyStats: {
-      totalTime: "189h 25m",
-      totalTasks: 345,
-    },
-    description: "Master coding skills together",
-  },
-  {
-    id: "9",
-    name: "Writers' Room",
-    url: "/writers-room",
-    type: "public",
-    activeCount: 0,
-    members: [
-      { id: "43", name: "Emily Chen", avatar: "EC", status: "offline" },
-      { id: "44", name: "Noah Williams", avatar: "NW", status: "offline" },
-      { id: "45", name: "Ava Brown", avatar: "AB", status: "idle" },
-    ],
-    weeklyStats: {
-      totalTime: "23h 10m",
-      totalTasks: 42,
-    },
-    description: "Focused writing sessions space",
-    createdBy: "Emily Chen",
-  },
-];
-
-// Track if beta disclaimer has been shown this session
-let hasShownRoomsBetaDisclaimer = false;
 
 // Teams data structure
 // Mock rooms for teams tab
@@ -611,6 +386,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   
   // Get rooms from Redux store
   const { rooms: reduxRooms } = useSelector((state: RootState) => state.workspace);
+  const user = useSelector((state: RootState) => state.user);
   
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
@@ -630,7 +406,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [newTeamName, setNewTeamName] = useState("");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
-  const [showBetaDisclaimer, setShowBetaDisclaimer] = useState(!hasShownRoomsBetaDisclaimer);
   const [preferences, setPreferences] = useState({
     activityType: "any",
     roomSize: "any",
@@ -660,10 +435,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Update flag when disclaimer is dismissed
   useEffect(() => {
-    if (!showBetaDisclaimer && !hasShownRoomsBetaDisclaimer) {
-      hasShownRoomsBetaDisclaimer = true;
-    }
-  }, [showBetaDisclaimer]);
+  }, []);
 
 
   // Update myRoomsOrder when rooms change
@@ -844,10 +616,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     };
   }, [reduxRooms]);
 
-  // Get current room URL to highlight it
-  // For demo purposes, default to the first room if not in a room
-  const actualPathname = typeof window !== "undefined" ? window.location.pathname : "";
-  const currentRoomUrl = reduxRooms.some((room) => room.url === actualPathname) ? actualPathname : reduxRooms[0]?.url || "";
+  // Get pathname using Next.js hook
+  const pathname = usePathname();
+  
+  // Simple approach: Get current room from URL
+  const currentRoomUrl = useMemo(() => {
+    // Remove the leading slash to get the room URL
+    const roomUrl = pathname ? pathname.substring(1) : ""; // e.g., "/test" becomes "test"
+    return roomUrl;
+  }, [pathname]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -885,33 +662,50 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     if (activeTab === "experiment") {
       // Sort by: 1) Current room, 2) Private, 3) Public, 4) Ephemeral
       return [...filteredRooms].sort((a, b) => {
+        // Helper functions to check room properties (handle URLs with or without slash)
+        const cleanUrlA = a.url.replace(/^\//, '').toLowerCase();
+        const cleanUrlB = b.url.replace(/^\//, '').toLowerCase();
+        const cleanCurrentUrl = currentRoomUrl.replace(/^\//, '').toLowerCase();
+        
+        const isCurrentA = cleanUrlA === cleanCurrentUrl;
+        const isCurrentB = cleanUrlB === cleanCurrentUrl;
+        
+        // Debug logging removed to prevent infinite loop
+        
         // Current room always first
-        const isCurrentA = a.url === currentRoomUrl;
-        const isCurrentB = b.url === currentRoomUrl;
         if (isCurrentA && !isCurrentB) return -1;
         if (!isCurrentA && isCurrentB) return 1;
 
-        // Then ephemeral rooms last
+        // If neither is current room, sort by type: private -> public -> ephemeral
+        const isPrivateA = a.type === "private";
+        const isPrivateB = b.type === "private";
+        const isPublicA = a.type === "public" && !a.isEphemeral && !a.id.startsWith('ephemeral-');
+        const isPublicB = b.type === "public" && !b.isEphemeral && !b.id.startsWith('ephemeral-');
         const isEphemeralA = a.isEphemeral || a.id.startsWith('ephemeral-');
         const isEphemeralB = b.isEphemeral || b.id.startsWith('ephemeral-');
-        if (!isEphemeralA && isEphemeralB) return -1;
-        if (isEphemeralA && !isEphemeralB) return 1;
-
-        // Then sort by type (private first) - only for non-ephemeral rooms
-        if (!isEphemeralA && !isEphemeralB) {
-          if (a.type === "private" && b.type === "public") return -1;
-          if (a.type === "public" && b.type === "private") return 1;
-        }
-
-        // Then by pinned status
+        
+        // Private rooms come first (after current room)
+        if (isPrivateA && !isPrivateB) return -1;
+        if (!isPrivateA && isPrivateB) return 1;
+        
+        // Then public rooms (non-ephemeral)
+        if (isPublicA && isEphemeralB) return -1;
+        if (isEphemeralA && isPublicB) return 1;
+        
+        // Within same category, sort by pinned status
         if (a.isPinned !== b.isPinned) {
           return a.isPinned ? -1 : 1;
         }
 
-        // Then by custom order
+        // Then by custom order if available
         const indexA = myRoomsOrder.indexOf(a.id);
         const indexB = myRoomsOrder.indexOf(b.id);
-        return indexA - indexB;
+        if (indexA !== -1 && indexB !== -1) {
+          return indexA - indexB;
+        }
+        
+        // Finally by name
+        return a.name.localeCompare(b.name);
       });
     } else if (activeTab === "team") {
       // For team tab, only show private rooms (exclude ephemeral)
@@ -921,6 +715,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       return [...filteredRooms].sort((a, b) => b.activeCount - a.activeCount);
     }
   }, [activeTab, searchQuery, myRoomsOrder, reduxRooms, ephemeralRooms, currentRoomUrl]);
+
+  // Debug effect to log sorting result (runs only when filteredRooms or currentRoomUrl changes)
+  useEffect(() => {
+    if (filteredRooms.length > 0 && currentRoomUrl) {
+      const currentRoomIndex = filteredRooms.findIndex(r => 
+        r.url.replace(/^\//, '').toLowerCase() === currentRoomUrl.replace(/^\//, '').toLowerCase()
+      );
+      console.log('✅ [WorkSpace] Sorting result:', {
+        currentRoomUrl,
+        currentRoomIndex,
+        firstRoom: filteredRooms[0]?.name,
+        firstRoomUrl: filteredRooms[0]?.url,
+        isCurrentRoomFirst: currentRoomIndex === 0,
+        totalRooms: filteredRooms.length
+      });
+    }
+  }, [filteredRooms, currentRoomUrl]);
 
   // const totalActiveUsers = reduxRooms.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
@@ -997,18 +808,79 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     router.push(roomUrl as any);
   };
 
-  const handleQuickJoin = () => {
-    // Get public rooms with available space
-    const availableRooms = reduxRooms.filter(
-      (room) => room.type === "public" && (room.members?.length || 0) < (room.maxMembers || 50)
-    );
-
-    if (availableRooms.length > 0) {
-      // Pick a random room from available ones
-      const randomRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)];
-      handleJoinRoom(randomRoom.url);
-    } else {
-      console.log("No available rooms to join");
+  const handleQuickJoin = async () => {
+    try {
+      // Get current user ID
+      const userId = user?.user_id || 'anonymous';
+      console.log("🎯 WorkSpace Quick Join initiated with userId:", userId);
+      
+      // Get all public rooms (combining redux rooms and ephemeral rooms)
+      const allPublicRooms = [...reduxRooms, ...ephemeralRooms].filter(room => 
+        room.type === "public" || !room.type // Some rooms might not have type specified
+      );
+      
+      console.log(`🔍 Found ${allPublicRooms.length} public rooms to check`);
+      
+      // Separate permanent rooms (like GSD) from ephemeral rooms
+      const permanentRooms = allPublicRooms.filter(room => 
+        room.url === "gsd" || room.url === "/gsd" || reduxRooms.some(r => r.id === room.id)
+      );
+      const ephemeralRoomsFiltered = allPublicRooms.filter(room => 
+        ephemeralRooms.some(e => e.id === room.id) && room.url !== "gsd" && room.url !== "/gsd"
+      );
+      
+      console.log(`  ${permanentRooms.length} permanent rooms, ${ephemeralRoomsFiltered.length} ephemeral rooms`);
+      
+      // First, check permanent rooms (like GSD) for empty ones
+      // Sort to prioritize GSD first
+      const sortedPermanentRooms = permanentRooms.sort((a, b) => {
+        if (a.url === "gsd" || a.url === "/gsd") return -1;
+        if (b.url === "gsd" || b.url === "/gsd") return 1;
+        return 0;
+      });
+      
+      for (const room of sortedPermanentRooms) {
+        const totalUsers = (roomUsers[room.id] || []).length;
+        const activeUsers = roomActiveCounts[room.id] || 0;
+        
+        console.log(`  Permanent room ${room.url} (${room.id}): ${totalUsers} total users, ${activeUsers} active`);
+        
+        if (totalUsers === 0) {
+          // Found an empty permanent room, join it
+          const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
+          console.log(`✅ Found empty permanent room: ${roomUrl} - joining it`);
+          handleJoinRoom(roomUrl);
+          return;
+        }
+      }
+      
+      // No empty permanent rooms found
+      // For ephemeral rooms, ONLY join if they have people (to ensure they still exist)
+      for (const room of ephemeralRoomsFiltered) {
+        const totalUsers = (roomUsers[room.id] || []).length;
+        const activeUsers = roomActiveCounts[room.id] || 0;
+        
+        console.log(`  Ephemeral room ${room.url} (${room.id}): ${totalUsers} total users, ${activeUsers} active`);
+        
+        // Only consider ephemeral rooms that have at least 1 user (so we know they exist)
+        // AND have space for more users (assuming max 5 users per room)
+        if (totalUsers > 0 && totalUsers < 5) {
+          const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
+          console.log(`✅ Found ephemeral room with space: ${roomUrl} - joining it`);
+          handleJoinRoom(roomUrl);
+          return;
+        }
+      }
+      
+      // No suitable rooms found, create a new ephemeral room
+      console.log("🆕 No suitable rooms found - creating new ephemeral room");
+      await roomService.createRoomAndNavigate(userId);
+      
+    } catch (error) {
+      console.error("Error in Quick Join:", error);
+      // Fallback: try to join GSD
+      console.log("⚠️ Error occurred, falling back to GSD");
+      handleJoinRoom("gsd");
     }
   };
 
@@ -1024,11 +896,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      setMyRoomsOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over?.id as string);
-        return arrayMove(items, oldIndex, newIndex);
-      });
+      // Get the current order from filteredRooms
+      const currentOrder = filteredRooms.map(r => r.id);
+      const oldIndex = currentOrder.indexOf(active.id as string);
+      const newIndex = currentOrder.indexOf(over?.id as string);
+      
+      // Update myRoomsOrder with the new arrangement
+      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+      setMyRoomsOrder(newOrder);
     }
 
     setActiveId(null);
@@ -1051,49 +926,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70" onClick={onClose}>
-      {/* Beta Disclaimer Popup */}
-      {showBetaDisclaimer && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0a0b0b]/70"
-          onClick={() => setShowBetaDisclaimer(false)}
-        >
-          <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-md mx-4 border border-gray-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-[#FFAA00]/20 rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-[#FFAA00]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-200">Beta Preview</h3>
-              <p className="text-gray-400 leading-relaxed">
-                This is a prototype demonstration with simulated data for user experience testing and feedback
-                collection.
-              </p>
-              <p className="text-sm text-gray-500">Real-time functionality coming soon.</p>
-              <button
-                onClick={() => setShowBetaDisclaimer(false)}
-                className="px-6 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
-              >
-                Got it, let&apos;s explore!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
 
       <div
-        className={`bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative ${
-          showBetaDisclaimer ? "opacity-40 pointer-events-none" : ""
-        }`}
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1348,10 +1184,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     },
                   }}
                 >
-                  <SortableContext items={myRoomsOrder} strategy={rectSortingStrategy}>
+                  <SortableContext items={filteredRooms.map(r => r.id)} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {myRoomsOrder.map((roomId) => {
-                        const room = filteredRooms.find((r) => r.id === roomId);
+                      {filteredRooms.map((room) => {
                         if (!room) return null;
 
                         return (
@@ -2086,7 +1921,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           </span>
                         )}
                       </div>
-                      {room.description && <p className="text-sm text-gray-500 line-clamp-2">{room.description}</p>}
+                      {/* Elegant URL display */}
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span className="font-mono text-xs">locked-in{room.url.startsWith('/') ? room.url : `/${room.url}`}</span>
+          </div>
                     </div>
 
                     <div className="flex items-start gap-2">
@@ -2228,14 +2069,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Room Settings Modal */}
       {editingRoom && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setEditingRoom(null);
           }}
         >
           <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-gray-800"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2271,12 +2112,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
-                      <textarea
-                        defaultValue={editingRoom.description}
-                        rows={2}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-[#FFAA00] resize-none"
-                      />
+                      <label className="block text-sm font-medium text-gray-400 mb-2">Room URL</label>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <span className="text-gray-300 font-mono text-sm">locked-in{editingRoom.url.startsWith('/') ? editingRoom.url : `/${editingRoom.url}`}</span>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -2354,7 +2196,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Members Management Modal */}
       {showMembersModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setShowMembersModal(null);
@@ -2362,7 +2204,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           }}
         >
           <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[700px] max-h-[90vh] overflow-y-auto border border-gray-800 custom-scrollbar"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[700px] max-h-[90vh] overflow-y-auto border border-gray-800 custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2516,14 +2358,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Invite Modal */}
       {showInviteModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setShowInviteModal(null);
           }}
         >
           <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2613,14 +2455,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteModal(null);
           }}
         >
           <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2700,14 +2542,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Leave Room Confirmation Modal */}
       {showLeaveConfirmModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setShowLeaveConfirmModal(null);
           }}
         >
           <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[450px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2768,14 +2610,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Preferences Modal */}
       {showPreferencesModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setShowPreferencesModal(false);
           }}
         >
           <div
-            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[95%] max-w-[500px] border border-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2900,14 +2742,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
           return (
             <div
-              className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0a0b0b]/70"
+              className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowProfileModal(null);
               }}
             >
               <div
-                className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
+                className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Header with Close Button */}
@@ -2984,7 +2826,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       {/* Team Invite Modal */}
       {showTeamInviteModal && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0a0b0b]/70"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
           onClick={(e) => {
             e.stopPropagation();
             setShowTeamInviteModal(false);
@@ -3082,7 +2924,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       {/* Create Team Modal - Now integrated into Teams tab */}
       {/* {showCreateTeamModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0a0b0b]/70" onClick={(e) => {
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" onClick={(e) => {
           e.stopPropagation();
           setShowCreateTeamModal(false);
           setNewTeamName("");

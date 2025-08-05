@@ -57,8 +57,13 @@ export async function getPublicRoomByUrl(url: string): Promise<PublicRoom | null
       const presenceSnapshot = await get(presenceRef);
       
       if (!presenceSnapshot.exists()) {
-        await deletePublicRoom(id);
-        continue; // Check next room
+        // Give newly created rooms a 5 second grace period before deletion
+        const roomAge = Date.now() - (roomData.createdAt || 0);
+        if (roomAge > 5000) { // 5 seconds
+          await deletePublicRoom(id);
+          continue; // Check next room
+        }
+        // Room is new, allow it to exist during grace period
       }
       
       const result = {

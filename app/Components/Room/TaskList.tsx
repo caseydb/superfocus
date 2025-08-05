@@ -1225,11 +1225,11 @@ export default function TaskList({
 
   return (
     <div className="fixed inset-0 z-[70] pointer-events-none animate-in fade-in duration-300">
-      {/* Click-outside-to-close backdrop */}
+      {/* Click-outside-to-close invisible area */}
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
 
       <div
-        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] max-h-[calc(100vh-8rem)] bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
+        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] min-h-[400px] max-h-[calc(100vh-8rem)] bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1333,7 +1333,7 @@ export default function TaskList({
         </div>
 
         {/* Task List */}
-        <div className="max-h-[40vh] overflow-y-auto custom-scrollbar">
+        <div className="max-h-[42vh] overflow-y-auto custom-scrollbar">
           {filteredTasks.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3 opacity-50">

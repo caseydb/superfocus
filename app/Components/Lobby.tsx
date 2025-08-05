@@ -1,8 +1,9 @@
 "use client";
 
 import { useInstance } from "../Components/Instances";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQuickJoin } from "../hooks/useQuickJoin";
 import SignIn from "./SignIn";
 import { signInWithGoogle, signOutUser } from "@/lib/auth";
 import Image from "next/image";
@@ -105,10 +106,35 @@ export default function Lobby() {
     setRoomNameError("");
   };
 
-  const handleQuickJoin = () => {
+  const { quickJoin } = useQuickJoin();
+  
+  const handleQuickJoin = useCallback(() => {
     setIsJoiningRoom(true);
-    createInstance("public");
-  };
+    quickJoin();
+  }, [quickJoin]);
+  
+  // Check for auto-join or auto-create flags from WorkSpace redirect
+  useEffect(() => {
+    const shouldAutoJoin = sessionStorage.getItem('autoQuickJoin');
+    const shouldAutoCreate = sessionStorage.getItem('autoCreateRoom');
+    
+    if (userReady && !currentInstance) {
+      if (shouldAutoJoin === 'true') {
+        sessionStorage.removeItem('autoQuickJoin');
+        // Small delay to ensure everything is loaded
+        setTimeout(() => {
+          handleQuickJoin();
+        }, 100);
+      } else if (shouldAutoCreate === 'true') {
+        sessionStorage.removeItem('autoCreateRoom');
+        // Create a new public room directly
+        setTimeout(() => {
+          setIsJoiningRoom(true);
+          createInstance("public");
+        }, 100);
+      }
+    }
+  }, [userReady, currentInstance, createInstance, handleQuickJoin]);
 
   // Show loading screen when joining a room
   if (isJoiningRoom || currentInstance) {

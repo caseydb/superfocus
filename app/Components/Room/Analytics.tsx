@@ -784,11 +784,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70 animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn"
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}

@@ -332,7 +332,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70 animate-fadeIn">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn">
         <DotSpinner size="40" speed="0.9" color="#FFAA00" />
       </div>
     );
@@ -340,9 +340,9 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   if (history.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70 animate-fadeIn" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn" onClick={onClose}>
         <div
-          className={`bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar animate-slideUp`}
+          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar animate-slideUp`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex flex-col items-center w-full relative">
@@ -435,9 +435,9 @@ export default function History({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/70 animate-fadeIn" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn" onClick={onClose}>
       <div
-        className={`bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar animate-slideUp`}
+        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar animate-slideUp`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center w-full relative">
