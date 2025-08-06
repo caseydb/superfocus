@@ -378,7 +378,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                     <img 
                       src={profileImage} 
                       alt="Profile" 
-                      className="w-7 h-7 rounded-full object-cover border border-gray-700"
+                      className="w-7 h-7 rounded-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         const fallback = e.currentTarget.nextElementSibling as HTMLElement;
@@ -387,7 +387,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                     />
                   ) : null}
                   <div 
-                    className={`w-7 h-7 rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 ${
+                    className={`w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 ${
                       profileImage ? 'hidden' : 'flex'
                     }`}
                   >
@@ -430,10 +430,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <Image src="/axe.png" alt="axe" width={16} height={16} className="inline-block" />
             )}
             
-            {/* Status text with pulsing dot */}
+            {/* Status text with pulsing dot - temporarily hidden */}
             <span className="flex items-center gap-1 text-gray-400">
               <span className="text-xs">is</span>
               <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full">
+                {/* Pulsing dot temporarily commented out
                 <div className="relative flex items-center justify-center">
                   <div 
                     className="w-2 h-2 bg-green-500 rounded-full transition-opacity duration-100"
@@ -443,6 +444,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                     <div className="absolute w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
                   )}
                 </div>
+                */}
                 <span className="text-xs font-medium text-gray-300"><span className="hidden sm:inline">actively </span>working</span>
               </span>
             </span>

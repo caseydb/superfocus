@@ -339,7 +339,7 @@ export default function Controls({
                 <img 
                   src={reduxUser.profile_image} 
                   alt="Profile" 
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-7 h-7 rounded-full object-cover"
                   onError={(e) => {
                     // Fallback to initials if image fails to load
                     e.currentTarget.style.display = 'none';
@@ -347,7 +347,7 @@ export default function Controls({
                   }}
                 />
               ) : null}
-              <div className={`w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${reduxUser.profile_image ? 'hidden' : ''}`}>
+              <div className={`w-7 h-7 bg-gray-700 rounded-full flex items-center justify-center text-xs font-medium text-gray-300 ${reduxUser.profile_image ? 'hidden' : ''}`}>
                 {(() => {
                   const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
                   const lastLetter = reduxUser.last_name?.charAt(0) || '';
