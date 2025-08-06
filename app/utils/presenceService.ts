@@ -36,6 +36,7 @@ export class PresenceService {
   private visibilityHandler: (() => void) | null = null;
   private connectionHandler: ((snap: DataSnapshot) => void) | null = null;
   private beforeUnloadHandler: (() => void) | null = null;
+  private sessionMonitorHandler: ((snap: DataSnapshot) => void) | null = null;
   private disconnectRef: ReturnType<typeof onDisconnect> | null = null;
   private roomIndexDisconnectRef: ReturnType<typeof onDisconnect> | null = null;
   private isInitialized = false;
@@ -43,6 +44,9 @@ export class PresenceService {
   private lastActiveState: boolean | null = null;
 
   constructor(userId: string, roomId: string) {
+    if (!userId || !roomId) {
+      console.error('[PresenceService] Invalid constructor params:', { userId, roomId });
+    }
     this.userId = userId;
     this.roomId = roomId;
     // Generate a unique session ID
@@ -93,6 +97,9 @@ export class PresenceService {
       
       // Set up beforeunload handler for immediate cleanup
       this.setupBeforeUnloadHandler();
+      
+      // Set up self-healing listener for this session
+      this.setupSessionMonitor();
 
       // Start heartbeat
       this.startHeartbeat();
@@ -132,6 +139,11 @@ export class PresenceService {
       const connectedRef = ref(rtdb, '.info/connected');
       off(connectedRef, 'value', this.connectionHandler);
       this.connectionHandler = null;
+    }
+    
+    if (this.sessionMonitorHandler) {
+      off(this.sessionRef, 'value', this.sessionMonitorHandler);
+      this.sessionMonitorHandler = null;
     }
 
     // Cancel onDisconnect handlers first
@@ -277,10 +289,11 @@ export class PresenceService {
         this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
         await this.roomIndexDisconnectRef.remove();
         
-        // Update our presence
+        // Update our presence (always include roomId to prevent loss)
         await update(this.sessionRef, {
           lastSeen: serverTimestamp(),
-          tabVisible: document.visibilityState === 'visible'
+          tabVisible: document.visibilityState === 'visible',
+          roomId: this.roomId  // Ensure roomId is never lost
         });
         
         // Restart heartbeat if it was stopped
@@ -307,7 +320,8 @@ export class PresenceService {
       
       update(this.sessionRef, {
         tabVisible: isVisible,
-        lastSeen: serverTimestamp()
+        lastSeen: serverTimestamp(),
+        roomId: this.roomId  // Ensure roomId is never lost
       }).catch(() => {
         // Failed to update visibility
       });
@@ -343,8 +357,10 @@ export class PresenceService {
     if (!this.isInitialized) return;
 
     try {
+      // Always include roomId in heartbeat to ensure it's never lost
       await update(this.sessionRef, {
-        lastSeen: serverTimestamp()
+        lastSeen: serverTimestamp(),
+        roomId: this.roomId  // Ensure roomId is always present
       });
     } catch (error) {
       console.error('[PresenceService] Heartbeat failed:', error);
@@ -388,6 +404,38 @@ export class PresenceService {
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
     window.addEventListener('pagehide', this.beforeUnloadHandler); // Better for mobile
   }
+  
+  private setupSessionMonitor(): void {
+    // Listen to this specific session for changes
+    this.sessionMonitorHandler = async (snapshot: DataSnapshot) => {
+      if (!snapshot.exists()) return;
+      
+      const sessionData = snapshot.val();
+      
+      // If roomId is missing, fix it immediately
+      if (!sessionData.roomId && this.roomId) {
+        console.warn('[PresenceService] Session lost roomId, self-healing...', {
+          sessionId: this.sessionId,
+          userId: this.userId,
+          expectedRoomId: this.roomId
+        });
+        
+        try {
+          // Restore all session data with the correct roomId
+          await update(this.sessionRef, {
+            ...sessionData,
+            roomId: this.roomId,
+            lastSeen: serverTimestamp()
+          });
+          console.log('[PresenceService] Successfully restored roomId');
+        } catch (error) {
+          console.error('[PresenceService] Failed to restore roomId:', error);
+        }
+      }
+    };
+    
+    onValue(this.sessionRef, this.sessionMonitorHandler);
+  }
 
   private getDeviceInfo(): string {
     const ua = navigator.userAgent;
@@ -400,6 +448,63 @@ export class PresenceService {
 
 
   // Static helper methods
+  
+  // TEST FUNCTION: Manually remove roomId to test auto-healing
+  static async testRemoveRoomId(userId: string, sessionId: string): Promise<void> {
+    try {
+      const sessionRef = ref(rtdb, `Presence/${userId}/sessions/${sessionId}`);
+      console.log('🧪 TEST: Removing roomId from session', { userId, sessionId });
+      await update(sessionRef, {
+        roomId: null
+      });
+      console.log('🧪 TEST: roomId removed - auto-healing should trigger soon');
+    } catch (error) {
+      console.error('🧪 TEST: Failed to remove roomId:', error);
+    }
+  }
+  
+  // Fix orphaned sessions without roomId
+  static async fixOrphanedSessions(): Promise<void> {
+    try {
+      const presenceRef = ref(rtdb, 'Presence');
+      const snapshot = await get(presenceRef);
+      
+      if (!snapshot.exists()) return;
+      
+      const allUsers = snapshot.val();
+      const updates: Record<string, null> = {};
+      
+      for (const [userId, userData] of Object.entries(allUsers)) {
+        const userSessions = (userData as { sessions?: Record<string, SessionData> }).sessions;
+        if (!userSessions) continue;
+        
+        for (const [sessionId, sessionData] of Object.entries(userSessions)) {
+          const session = sessionData as SessionData & { roomId?: string; lastSeen?: number };
+          
+          // If session has no roomId but is recent (within 2 minutes), remove it
+          if (!session.roomId && typeof session.lastSeen === 'number') {
+            const now = Date.now();
+            if (now - session.lastSeen < 120000) {
+              // Recent orphaned session - just remove it
+              console.warn('[PresenceService] Removing orphaned session:', {
+                userId,
+                sessionId,
+                lastSeen: new Date(session.lastSeen).toISOString()
+              });
+              updates[`Presence/${userId}/sessions/${sessionId}`] = null;
+            }
+          }
+        }
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+        console.log(`[PresenceService] Fixed ${Object.keys(updates).length} orphaned sessions`);
+      }
+    } catch (error) {
+      console.error('[PresenceService] Failed to fix orphaned sessions:', error);
+    }
+  }
 
   static listenToTotalOnlineUsers(callback: (count: number) => void): () => void {
     const presenceRef = ref(rtdb, 'Presence');

@@ -15,7 +15,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -103,8 +103,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   }}
                   className="w-full md:w-auto border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 md:min-w-[200px] text-center"
                 >
-                  <option value="dropdown" className="bg-gray-900 text-gray-100 cursor-pointer">Dropdown List</option>
-                  <option value="sidebar" className="bg-gray-900 text-gray-100 cursor-pointer">Task Sidebar</option>
+                  <option value="dropdown" className="bg-[#0E1119] text-gray-100 cursor-pointer">Dropdown List</option>
+                  <option value="sidebar" className="bg-[#0E1119] text-gray-100 cursor-pointer">Task Sidebar</option>
                 </select>
                 {/* Custom Chevron Icon */}
                 <svg
@@ -145,11 +145,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   }}
                   className="w-full md:w-auto border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 md:min-w-[180px] text-center"
                 >
-                  <option value="15" className="bg-gray-900 text-gray-100 cursor-pointer">15 minutes</option>
-                  <option value="30" className="bg-gray-900 text-gray-100 cursor-pointer">30 minutes</option>
-                  <option value="45" className="bg-gray-900 text-gray-100 cursor-pointer">45 minutes</option>
-                  <option value="60" className="bg-gray-900 text-gray-100 cursor-pointer">1 hour</option>
-                  <option value="120" className="bg-gray-900 text-gray-100 cursor-pointer">2 hours</option>
+                  <option value="15" className="bg-[#0E1119] text-gray-100 cursor-pointer">15 minutes</option>
+                  <option value="30" className="bg-[#0E1119] text-gray-100 cursor-pointer">30 minutes</option>
+                  <option value="45" className="bg-[#0E1119] text-gray-100 cursor-pointer">45 minutes</option>
+                  <option value="60" className="bg-[#0E1119] text-gray-100 cursor-pointer">1 hour</option>
+                  <option value="120" className="bg-[#0E1119] text-gray-100 cursor-pointer">2 hours</option>
                 </select>
                 {/* Custom Chevron Icon */}
                 <svg

@@ -11,7 +11,7 @@ import { fetchLeaderboard } from "./store/leaderboardSlice";
 import { fetchWorkspace } from "./store/workspaceSlice";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, rtdb } from "@/lib/firebase";
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, update } from "firebase/database";
 
 export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch<AppDispatch>();
@@ -54,22 +54,37 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
           
           // If user data is fetched successfully, fetch tasks and preferences from PostgreSQL
           if (userData && userData.user_id) {
-            // Initialize Firebase Users if not exists
-            if (userData.first_name) {
-              try {
-                const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
-                const snapshot = await get(userRef);
-                if (!snapshot.exists()) {
-                  // Create Firebase Users entry
-                  await set(userRef, {
-                    firstName: userData.first_name,
-                    lastName: userData.last_name || null,
-                    updatedAt: Date.now()
-                  });
+            // Initialize Firebase Users for ALL users (even without names)
+            try {
+              const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
+              const snapshot = await get(userRef);
+              if (!snapshot.exists()) {
+                // Create Firebase Users entry with whatever data we have
+                await set(userRef, {
+                  firstName: userData.first_name || '',
+                  lastName: userData.last_name || '',
+                  picture: userData.profile_image || null,
+                  updatedAt: Date.now()
+                });
+              } else {
+                // Update existing entry with latest data (including picture)
+                const existingData = snapshot.val();
+                const updates: Record<string, string | number | null> = {
+                  firstName: userData.first_name || '',
+                  lastName: userData.last_name || '',
+                  updatedAt: Date.now()
+                };
+                
+                // Update picture if it exists in Redux but not in Firebase, or if it's changed
+                if (userData.profile_image && existingData.picture !== userData.profile_image) {
+                  updates.picture = userData.profile_image;
+                  console.log(`📸 Updating Firebase picture for user ${firebaseUser.uid}`);
                 }
-              } catch (error) {
-                console.error("[ReduxInitializer] Failed to initialize Firebase Users:", error);
+                
+                await update(userRef, updates);
               }
+            } catch (error) {
+              console.error("[ReduxInitializer] Failed to initialize Firebase Users:", error);
             }
             
             // Fetch tasks
@@ -148,22 +163,21 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               
               // If user data is fetched successfully, fetch tasks and preferences from PostgreSQL
               if (userData && userData.user_id) {
-                // Initialize Firebase Users if not exists
-                if (userData.first_name) {
-                  try {
-                    const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
-                    const snapshot = await get(userRef);
-                    if (!snapshot.exists()) {
-                      // Create Firebase Users entry
-                      await set(userRef, {
-                        firstName: userData.first_name,
-                        lastName: userData.last_name || null,
-                        updatedAt: Date.now()
-                      });
-                    }
-                  } catch (error) {
-                    console.error("[ReduxInitializer Retry] Failed to initialize Firebase Users:", error);
+                // Initialize Firebase Users for ALL users (even without names)
+                try {
+                  const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
+                  const snapshot = await get(userRef);
+                  if (!snapshot.exists()) {
+                    // Create Firebase Users entry with whatever data we have
+                    await set(userRef, {
+                      firstName: userData.first_name || '',
+                      lastName: userData.last_name || '',
+                      picture: userData.profile_image || null,
+                      updatedAt: Date.now()
+                    });
                   }
+                } catch (error) {
+                  console.error("[ReduxInitializer Retry] Failed to initialize Firebase Users:", error);
                 }
                 
                 // Fetch tasks

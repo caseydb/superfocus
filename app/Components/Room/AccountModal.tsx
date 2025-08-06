@@ -44,7 +44,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
       onClick={onClose}
     >
       <div 
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative overflow-y-auto"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

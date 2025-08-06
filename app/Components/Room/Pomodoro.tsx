@@ -644,7 +644,7 @@ export default function Pomodoro({
         {/* Task suggestions dropdown */}
         {showTaskSuggestions && filteredTasks.length > 0 && (
           <div
-            className="absolute mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
+            className="absolute mt-2 bg-[#0E1119]/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
             style={{
               width: "600px",
               maxWidth: "90vw",

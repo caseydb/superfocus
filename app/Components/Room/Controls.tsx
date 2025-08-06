@@ -243,7 +243,7 @@ export default function Controls({
 
           {/* Dropdown Menu */}
           {showTimerDropdown && (
-            <div className="absolute top-full mt-2 right-0 w-64 bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="absolute top-full mt-2 right-0 w-64 bg-[#0E1119]/90 backdrop-blur-sm border border-gray-800 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
               <div className="p-1">
                 {/* Timer Option */}
                 <button
@@ -334,7 +334,19 @@ export default function Controls({
           >
             {/* Avatar with status indicator */}
             <div className="relative">
-              <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+              {reduxUser.profile_image ? (
+                <img 
+                  src={reduxUser.profile_image} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-full object-cover"
+                  onError={(e) => {
+                    // Fallback to initials if image fails to load
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${reduxUser.profile_image ? 'hidden' : ''}`}>
                 {(() => {
                   const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
                   const lastLetter = reduxUser.last_name?.charAt(0) || '';
@@ -371,13 +383,25 @@ export default function Controls({
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 bg-gray-900/95 backdrop-blur-sm text-gray-400 rounded-lg shadow-2xl py-4 px-2 min-w-[320px] border border-gray-700 z-50 hidden sm:block animate-in slide-in-from-top-2 fade-in duration-200"
+          className="absolute right-0 mt-2 bg-[#0E1119]/90 backdrop-blur-sm text-gray-400 rounded-lg shadow-2xl py-4 px-2 min-w-[320px] border border-gray-800 z-50 hidden sm:block animate-in slide-in-from-top-2 fade-in duration-200"
         >
           {/* User Header */}
           <div className="flex items-center mb-4 mx-3 pb-3 border-b border-gray-700/50">
             {/* Avatar with status indicator - matching controls bar design */}
             <div className="relative">
-              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+              {reduxUser.profile_image ? (
+                <img 
+                  src={reduxUser.profile_image} 
+                  alt="Profile" 
+                  className="w-10 h-10 rounded-full object-cover"
+                  onError={(e) => {
+                    // Fallback to initials if image fails to load
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${reduxUser.profile_image ? 'hidden' : ''}`}>
                 {(() => {
                   const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
                   const lastLetter = reduxUser.last_name?.charAt(0) || '';
@@ -619,9 +643,9 @@ export default function Controls({
       )}
       {/* History tooltip for public rooms */}
       {showHistoryTooltip && (
-        <div className="fixed bottom-20 left-8 z-50 bg-[#181A1B] text-white px-4 py-2 rounded-lg shadow-lg border border-[#23272b] text-sm font-mono">
+        <div className="fixed bottom-20 left-8 z-50 bg-[#0E1119]/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg border border-gray-800 text-sm font-mono">
           History is only available in private rooms.
-          <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#181A1B] border-r border-b border-[#23272b] transform rotate-45"></div>
+          <div className="absolute -bottom-1 left-4 w-2 h-2 bg-[#0E1119] border-r border-b border-gray-800 transform rotate-45"></div>
         </div>
       )}
 
@@ -632,7 +656,7 @@ export default function Controls({
           onClick={() => setShowNameModal(false)}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-800 relative"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-800 relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
@@ -705,7 +729,19 @@ export default function Controls({
               <div className="flex items-center mt-8">
                 {/* Avatar with status indicator - matching controls bar design */}
                 <div className="relative">
-                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
+                  {reduxUser.profile_image ? (
+                    <img 
+                      src={reduxUser.profile_image} 
+                      alt="Profile" 
+                      className="w-12 h-12 rounded-full object-cover"
+                      onError={(e) => {
+                        // Fallback to initials if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 ${reduxUser.profile_image ? 'hidden' : ''}`}>
                     {(() => {
                       const firstLetter = reduxUser.first_name?.charAt(0) || user.displayName?.charAt(0) || 'U';
                       const lastLetter = reduxUser.last_name?.charAt(0) || '';
@@ -1034,7 +1070,7 @@ export default function Controls({
           }}
         >
           <div
-            className="bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-gray-800 relative"
+            className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-gray-800 relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button - matching People modal design */}

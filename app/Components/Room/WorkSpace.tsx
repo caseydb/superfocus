@@ -69,7 +69,7 @@ interface SortableRoomCardProps {
   onJoinRoom: (url: string) => void;
   onSettingsClick: (room: Room) => void;
   activeCount?: number;
-  roomUsers?: Array<{userId: string; firstName?: string; lastName?: string; isActive: boolean}>;
+  roomUsers?: Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>;
 }
 
 const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, onSettingsClick, activeCount, roomUsers }) => {
@@ -188,8 +188,10 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
                 const user = sortedUsers[i];
                 const firstName = user.firstName || '';
                 const lastName = user.lastName || '';
-                const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+                const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+                const displayInitials = initials.trim() || 'U';
                 const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+                
                 
                 displayItems.push(
                   <div
@@ -197,11 +199,29 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
                     className="relative"
                     title={`${fullName}${user.isActive ? ' - Active' : ' - Idle'}`}
                   >
-                    <div
-                      className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
-                    >
-                      {initials}
-                    </div>
+                    {user.picture && user.picture.trim() !== '' ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={user.picture}
+                        alt={fullName}
+                        className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover"
+                        onError={(e) => {
+                          // If image fails to load, hide it and show initials instead
+                          const imgElement = e.currentTarget;
+                          const parent = imgElement.parentElement;
+                          if (parent) {
+                            // Replace img with initials div
+                            parent.innerHTML = `<div class="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200">${displayInitials}</div>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
+                      >
+                        {displayInitials}
+                      </div>
+                    )}
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
                         user.isActive ? 'bg-green-500 animate-sync-pulse' : 'bg-yellow-500'
@@ -418,7 +438,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   // Store active counts for each room
   const [roomActiveCounts, setRoomActiveCounts] = useState<Record<string, number>>({});
   // Store all users for each room (both active and idle)
-  const [roomUsers, setRoomUsers] = useState<Record<string, Array<{userId: string; firstName?: string; lastName?: string; isActive: boolean}>>>({});
+  const [roomUsers, setRoomUsers] = useState<Record<string, Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>>>({});
   // Store ephemeral rooms from Firebase
   const [ephemeralRooms, setEphemeralRooms] = useState<Room[]>([]);
   const [showProfileModal, setShowProfileModal] = useState<{
@@ -473,20 +493,49 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     
     let presenceData: Record<string, { sessions?: Record<string, unknown> }> | null = null;
     let usersData: Record<string, { firstName?: string; lastName?: string; picture?: string }> | null = null;
+    let postgresUsers: Record<string, { firstName: string; lastName: string; profileImage: string | null }> | null = null;
     
-    const updateRoomData = () => {
+    const updateRoomData = async () => {
       if (!presenceData || !usersData) return;
       
+      // Fetch PostgreSQL users if we haven't already or if presence data changed
+      if (!postgresUsers && presenceData) {
+        const authIds = Object.keys(presenceData);
+        if (authIds.length > 0) {
+          try {
+            const response = await fetch('/api/users/by-auth-ids', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ authIds })
+            });
+            if (response.ok) {
+              const data = await response.json();
+              postgresUsers = data.users || {};
+            }
+          } catch (error) {
+            console.error('Failed to fetch PostgreSQL users:', error);
+          }
+        }
+      }
+      
       const roomCounts: Record<string, number> = {};
-      const roomUsers: Record<string, Array<{userId: string; firstName?: string; lastName?: string; isActive: boolean}>> = {};
+      const roomUsers: Record<string, Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>> = {};
       
       // Iterate through all users in Presence
       for (const [userId, userData] of Object.entries(presenceData)) {
         const userSessions = (userData as { sessions?: Record<string, unknown> }).sessions;
         if (!userSessions) continue;
         
-        // Get user data from Users collection
-        const userInfo = usersData[userId];
+        
+        // Get user data - prefer PostgreSQL, fallback to Firebase Users
+        const pgUser = postgresUsers?.[userId];
+        const fbUser = usersData[userId];
+        const userInfo = pgUser ? {
+          firstName: pgUser.firstName,
+          lastName: pgUser.lastName,
+          picture: pgUser.profileImage
+        } : fbUser;
+        
         
         // Check each session for this user
         for (const [, sessionData] of Object.entries(userSessions)) {
@@ -515,8 +564,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               if (!existingUser) {
                 roomUsers[matchingRoom.id].push({
                   userId,
-                  firstName: userInfo?.firstName,
-                  lastName: userInfo?.lastName,
+                  firstName: userInfo?.firstName || '',
+                  lastName: userInfo?.lastName || '',
+                  picture: userInfo?.picture || null,
                   isActive: session.isActive || false
                 });
               } else if (session.isActive && !existingUser.isActive) {
@@ -528,12 +578,26 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         }
       }
       
+      
       setRoomActiveCounts(roomCounts);
       setRoomUsers(roomUsers);
     };
     
     const handlePresenceUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
-      presenceData = snapshot.exists() ? snapshot.val() : {};
+      const newPresenceData = snapshot.exists() ? snapshot.val() : {};
+      const oldUserIds = presenceData ? Object.keys(presenceData) : [];
+      const newUserIds = Object.keys(newPresenceData);
+      
+      // Only reset PostgreSQL users if the user list actually changed
+      const usersChanged = oldUserIds.length !== newUserIds.length || 
+                          !oldUserIds.every(id => newUserIds.includes(id));
+      
+      presenceData = newPresenceData;
+      
+      if (usersChanged) {
+        postgresUsers = null; // Only reset if users actually changed
+      }
+      
       updateRoomData();
     };
     
@@ -716,22 +780,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     }
   }, [activeTab, searchQuery, myRoomsOrder, reduxRooms, ephemeralRooms, currentRoomUrl]);
 
-  // Debug effect to log sorting result (runs only when filteredRooms or currentRoomUrl changes)
-  useEffect(() => {
-    if (filteredRooms.length > 0 && currentRoomUrl) {
-      const currentRoomIndex = filteredRooms.findIndex(r => 
-        r.url.replace(/^\//, '').toLowerCase() === currentRoomUrl.replace(/^\//, '').toLowerCase()
-      );
-      console.log('✅ [WorkSpace] Sorting result:', {
-        currentRoomUrl,
-        currentRoomIndex,
-        firstRoom: filteredRooms[0]?.name,
-        firstRoomUrl: filteredRooms[0]?.url,
-        isCurrentRoomFirst: currentRoomIndex === 0,
-        totalRooms: filteredRooms.length
-      });
-    }
-  }, [filteredRooms, currentRoomUrl]);
 
   // const totalActiveUsers = reduxRooms.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
@@ -744,6 +792,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       try {
         const count = await PresenceService.getTotalOnlineUsers();
         setGlobalActiveUsers(count);
+        
+        // Also fix any orphaned sessions
+        await PresenceService.fixOrphanedSessions();
       } catch (error) {
         console.error('Failed to fetch online users:', error);
       }
@@ -812,14 +863,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     try {
       // Get current user ID
       const userId = user?.user_id || 'anonymous';
-      console.log("🎯 WorkSpace Quick Join initiated with userId:", userId);
       
       // Get all public rooms (combining redux rooms and ephemeral rooms)
       const allPublicRooms = [...reduxRooms, ...ephemeralRooms].filter(room => 
         room.type === "public" || !room.type // Some rooms might not have type specified
       );
       
-      console.log(`🔍 Found ${allPublicRooms.length} public rooms to check`);
       
       // Separate permanent rooms (like GSD) from ephemeral rooms
       const permanentRooms = allPublicRooms.filter(room => 
@@ -829,7 +878,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         ephemeralRooms.some(e => e.id === room.id) && room.url !== "gsd" && room.url !== "/gsd"
       );
       
-      console.log(`  ${permanentRooms.length} permanent rooms, ${ephemeralRoomsFiltered.length} ephemeral rooms`);
       
       // First, check permanent rooms (like GSD) for empty ones
       // Sort to prioritize GSD first
@@ -841,14 +889,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       
       for (const room of sortedPermanentRooms) {
         const totalUsers = (roomUsers[room.id] || []).length;
-        const activeUsers = roomActiveCounts[room.id] || 0;
-        
-        console.log(`  Permanent room ${room.url} (${room.id}): ${totalUsers} total users, ${activeUsers} active`);
         
         if (totalUsers <= 10) {
           // Found a permanent room with 10 or fewer users, join it
           const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
-          console.log(`✅ Found permanent room with ≤10 users: ${roomUrl} - joining it`);
           handleJoinRoom(roomUrl);
           return;
         }
@@ -858,28 +902,22 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       // For ephemeral rooms, ONLY join if they have people (to ensure they still exist)
       for (const room of ephemeralRoomsFiltered) {
         const totalUsers = (roomUsers[room.id] || []).length;
-        const activeUsers = roomActiveCounts[room.id] || 0;
-        
-        console.log(`  Ephemeral room ${room.url} (${room.id}): ${totalUsers} total users, ${activeUsers} active`);
         
         // Only consider ephemeral rooms that have at least 1 user (so we know they exist)
         // AND have 10 or fewer users
         if (totalUsers > 0 && totalUsers <= 10) {
           const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
-          console.log(`✅ Found ephemeral room with ≤10 users: ${roomUrl} - joining it`);
           handleJoinRoom(roomUrl);
           return;
         }
       }
       
       // No suitable rooms found, create a new ephemeral room
-      console.log("🆕 No suitable rooms found - creating new ephemeral room");
       await roomService.createRoomAndNavigate(userId);
       
     } catch (error) {
       console.error("Error in Quick Join:", error);
       // Fallback: try to join GSD
-      console.log("⚠️ Error occurred, falling back to GSD");
       handleJoinRoom("gsd");
     }
   };
@@ -1144,12 +1182,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
                           onClick={() => {
                             // Handle create room
-                            console.log("Creating room:", {
-                              name: newRoomName,
-                              description: newRoomDescription,
-                              type: newRoomType,
-                              team: newRoomType === "private" ? newRoomTeam : null,
-                            });
                             setNewRoomName("");
                             setNewRoomDescription("");
                             setNewRoomTeam(selectedTeam);
@@ -1592,7 +1624,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             disabled={!newTeamName.trim()}
                             onClick={() => {
                               // Handle create team
-                              console.log("Creating team:", newTeamName, "with invites:", inviteEmails);
                               setSelectedTeam("vendorsage"); // Or switch to the new team
                               setNewTeamName("");
                               setInviteEmails("");
@@ -1990,7 +2021,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             const user = sortedUsers[i];
                             const firstName = user.firstName || '';
                             const lastName = user.lastName || '';
-                            const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+                            const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+                const displayInitials = initials.trim() || 'U';
                             const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
                             
                             displayItems.push(
@@ -1999,11 +2031,29 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 className="relative"
                                 title={`${fullName}${user.isActive ? ' - Active' : ' - Idle'}`}
                               >
-                                <div
-                                  className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
-                                >
-                                  {initials}
-                                </div>
+                                {user.picture && user.picture.trim() !== '' ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={user.picture}
+                                    alt={fullName}
+                                    className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover"
+                                    onError={(e) => {
+                                      // If image fails to load, hide it and show initials instead
+                                      const imgElement = e.currentTarget;
+                                      const parent = imgElement.parentElement;
+                                      if (parent) {
+                                        // Replace img with initials div
+                                        parent.innerHTML = `<div class="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200">${displayInitials}</div>`;
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
+                                  >
+                                    {displayInitials}
+                                  </div>
+                                )}
                                 <div
                                   className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
                                     user.isActive ? 'bg-green-500' : 'bg-yellow-500'
@@ -2587,7 +2637,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 <button
                   onClick={() => {
                     // Handle leaving the room
-                    console.log(`Leaving room: ${showLeaveConfirmModal.name}`);
                     setShowLeaveConfirmModal(null);
                     // TODO: Implement actual leave logic
                   }}
@@ -2889,7 +2938,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   <button
                     onClick={() => {
                       // Handle send invitations
-                      console.log("Sending invites to:", inviteEmails);
                       setShowTeamInviteModal(false);
                       setInviteEmails("");
                     }}

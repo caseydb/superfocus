@@ -13,7 +13,7 @@ const BillingModal: React.FC<BillingModalProps> = ({ onClose }) => {
       onClick={onClose}
     >
       <div 
-        className="bg-gray-900 rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -45,7 +45,8 @@ const BillingModal: React.FC<BillingModalProps> = ({ onClose }) => {
             
             {/* Coming Soon Message */}
             <div className="space-y-3">
-              <h3 className="text-3xl font-bold text-white">Coming Soon</h3>
+              <h3 className="text-3xl font-bold text-white">Individual Premium</h3>
+              <h4 className="text-2xl font-semibold text-[#FFAA00]">Coming Soon</h4>
               <p className="text-gray-400 text-lg leading-relaxed">
                 We&apos;re working on bringing you flexible plans and billing options. 
                 Stay tuned for updates!
