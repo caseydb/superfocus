@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
                 id: true,
                 first_name: true,
                 last_name: true,
+                profile_image: true,
+                auth_id: true,
               },
             },
           },
@@ -111,6 +113,10 @@ export async function GET(req: NextRequest) {
             avatar: 'XY', // Hardcoded for now
             status: 'offline' as const,
             task: null,
+            profileImage: rm.user.profile_image,
+            firstName: rm.user.first_name,
+            lastName: rm.user.last_name,
+            authId: rm.user.auth_id,
           })),
           activeCount: 0, // Will be updated from Firebase
           weeklyStats: {

@@ -6,6 +6,10 @@ interface RoomMember {
   avatar: string;
   status: "online" | "idle" | "offline";
   task?: string;
+  profileImage?: string | null;
+  firstName?: string;
+  lastName?: string;
+  authId?: string;
 }
 
 interface Room {

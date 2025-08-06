@@ -37,6 +37,10 @@ interface RoomMember {
   status: "online" | "idle" | "offline";
   task?: string;
   duration?: string;
+  authId?: string;
+  profileImage?: string | null;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface Room {
@@ -72,7 +76,7 @@ interface SortableRoomCardProps {
   roomUsers?: Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>;
 }
 
-const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, onSettingsClick, activeCount, roomUsers }) => {
+const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, activeCount, roomUsers }) => {
   const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: room.id,
     animateLayoutChanges: () => true,
@@ -129,8 +133,8 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
         </div>
 
         <div className="flex items-start gap-2">
-          {/* Settings Menu - Available for all users */}
-          <div className="relative group/menu">
+          {/* Settings Menu - Available for all users - COMMENTED OUT */}
+          {/* <div className="relative group/menu">
             <button
               className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-gray-700 rounded-lg transition-all opacity-0 group-hover:opacity-100"
               onClick={(e) => {
@@ -153,7 +157,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
                 />
               </svg>
             </button>
-          </div>
+          </div> */}
 
           {/* Quick Stats */}
           <div className="text-right text-xs text-gray-500">
@@ -282,6 +286,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
 };
 
 // Mock friends data for profile modal
+/*
 const MOCK_FRIENDS = [
   {
     id: "1",
@@ -328,10 +333,12 @@ const MOCK_FRIENDS = [
     mutualFriends: 5,
   },
 ];
+*/
 
 
 // Teams data structure
 // Mock rooms for teams tab
+/*
 const MOCK_TEAM_ROOMS: Room[] = [
   {
     id: "team-room-1",
@@ -379,26 +386,92 @@ const MOCK_TEAM_ROOMS: Room[] = [
     maxMembers: 50,
   },
 ];
+*/
 
-const TEAMS_DATA = {
-  vendorsage: {
-    id: "vendorsage",
-    name: "Vendorsage",
-    description: "Your primary team workspace",
-    members: MOCK_FRIENDS.slice(0, 4), // Use existing friends data
-    rooms: MOCK_TEAM_ROOMS,
-    createdBy: "You",
-    createdAt: "2024-01-15",
-  },
-  nexus: {
-    id: "nexus",
-    name: "Nexus",
-    description: "New team workspace",
-    members: [MOCK_FRIENDS[0]], // Only the creator
-    rooms: [], // No rooms yet
-    createdBy: MOCK_FRIENDS[0].name,
-    createdAt: new Date().toISOString().split("T")[0],
-  },
+// Derive teams from actual rooms data - only private rooms the user is part of
+const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
+  const teams: Record<string, {
+    id: string;
+    name: string;
+    description: string;
+    members: RoomMember[];
+    rooms: Room[];
+    createdBy: string;
+    createdAt: string;
+  }> = {};
+  
+  // Filter to only private rooms where user is a member
+  const privateRooms = rooms.filter(room => {
+    // Check if room is private
+    if (room.type !== 'private') return false;
+    
+    // Check if user is owner
+    if (room.createdBy === userId || room.isOwner) return true;
+    
+    // Check if user is admin
+    if (room.isAdmin || (room.admins && room.admins.includes(userId))) return true;
+    
+    // Check if user is a member
+    const isMember = room.members?.some(member => member.id === userId);
+    return isMember;
+  });
+  
+  // Group private rooms by owner to create teams
+  const roomsByOwner = privateRooms.reduce((acc, room) => {
+    const owner = room.createdBy || 'unknown';
+    if (!acc[owner]) {
+      acc[owner] = [];
+    }
+    acc[owner].push(room);
+    return acc;
+  }, {} as Record<string, Room[]>);
+  
+  // Create teams from grouped rooms
+  Object.entries(roomsByOwner).forEach(([owner, ownerRooms]) => {
+    // Create a team ID based on owner
+    const teamId = owner === userId ? 'my-team' : `team-${owner.substring(0, 8)}`;
+    
+    // Aggregate all unique members from all rooms
+    const allMembers = new Set<string>();
+    const memberDetails: RoomMember[] = [];
+    
+    ownerRooms.forEach(room => {
+      (room.members || []).forEach(member => {
+        if (!allMembers.has(member.id)) {
+          allMembers.add(member.id);
+          memberDetails.push(member);
+        }
+      });
+    });
+    
+    // Filter out superadmin from member count for description
+    const filteredMemberCount = memberDetails.filter(m => m.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a').length;
+    
+    teams[teamId] = {
+      id: teamId,
+      name: owner === userId ? 'My Workspace' : `Team ${ownerRooms[0]?.name || 'Workspace'}`,
+      description: owner === userId ? 'Your personal workspace and rooms' : `Shared workspace with ${filteredMemberCount} members`,
+      members: memberDetails,
+      rooms: ownerRooms,
+      createdBy: owner === userId ? 'You' : owner,
+      createdAt: new Date().toISOString(),
+    };
+  });
+  
+  // If no teams exist, create a default one
+  if (Object.keys(teams).length === 0) {
+    teams['default'] = {
+      id: 'default',
+      name: 'My Workspace',
+      description: 'Your workspace',
+      members: [],
+      rooms: [],
+      createdBy: 'You',
+      createdAt: new Date().toISOString(),
+    };
+  }
+  
+  return teams;
 };
 
 const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
@@ -411,9 +484,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState("create");
+  
+  // Derive teams from actual rooms
+  const derivedTeams = React.useMemo(() => {
+    const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] }))];
+    return deriveTeamsFromRooms(allRooms, user.user_id || '');
+  }, [reduxRooms, user.user_id]);
+  const teamIds = Object.keys(derivedTeams);
+  const [selectedTeam, setSelectedTeam] = useState(teamIds[0] || "create");
   const [newRoomName, setNewRoomName] = useState("");
-  const [newRoomDescription, setNewRoomDescription] = useState("");
   const [newRoomType, setNewRoomType] = useState<"public" | "private">("public");
   const [newRoomTeam, setNewRoomTeam] = useState("create");
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -441,22 +520,173 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [roomUsers, setRoomUsers] = useState<Record<string, Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>>>({});
   // Store ephemeral rooms from Firebase
   const [ephemeralRooms, setEphemeralRooms] = useState<Room[]>([]);
-  const [showProfileModal, setShowProfileModal] = useState<{
-    id: string;
-    name: string;
-    firstName: string;
-    lastName: string;
-    status: string;
-    currentTask?: string;
-    avatar: string;
-    lastMessage?: string | null;
-    mutualFriends: number;
-  } | null>(null);
+  
+  // Store user last active data from PostgreSQL
+  const [userLastActiveData, setUserLastActiveData] = useState<Record<string, {
+    last_active: string;
+    auth_id: string;
+    first_name: string;
+    last_name: string;
+    profile_image: string | null;
+  }>>({});
+  
+  // Store user presence status from Firebase
+  const [userPresenceStatus, setUserPresenceStatus] = useState<Record<string, {
+    isOnline: boolean;
+    isActive: boolean;
+  }>>({});
 
   // Update flag when disclaimer is dismissed
   useEffect(() => {
   }, []);
 
+  // Fetch user last_active data once when teams tab opens
+  useEffect(() => {
+    if (activeTab !== 'team') {
+      return;
+    }
+
+    const fetchUserLastActive = async () => {
+      // Get all unique user IDs from team members
+      const userIds = new Set<string>();
+      Object.values(derivedTeams).forEach(team => {
+        team.members?.forEach(member => {
+          if (member.id) {
+            userIds.add(member.id);
+          }
+        });
+      });
+
+      if (userIds.size === 0) return;
+
+      try {
+        const response = await fetch('/api/users/last-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userIds: Array.from(userIds) })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserLastActiveData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user last active data:', error);
+      }
+    };
+
+    // Fetch once when switching to Teams tab
+    if (Object.keys(derivedTeams).length > 0) {
+      fetchUserLastActive();
+    }
+  }, [activeTab, derivedTeams]); // Depend on activeTab and derivedTeams
+
+  // Fetch Firebase Presence for team members with real-time updates
+  useEffect(() => {
+    if (activeTab !== 'team') {
+      // Clear presence data when leaving Teams tab
+      setUserPresenceStatus({});
+      return;
+    }
+
+    // Get all team members' authIds from current state
+    const teamMemberAuthIds = new Set<string>();
+    Object.values(derivedTeams).forEach(team => {
+      team.members?.forEach(member => {
+        if (member.authId) {
+          teamMemberAuthIds.add(member.authId);
+        }
+      });
+    });
+
+    if (teamMemberAuthIds.size === 0) {
+      return;
+    }
+
+    // Store listeners for cleanup
+    const listeners: Array<() => void> = [];
+
+    // Set up real-time listeners for each team member
+    teamMemberAuthIds.forEach(authId => {
+      const presenceRef = ref(rtdb, `Presence/${authId}`);
+      
+      const handlePresenceUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
+        if (snapshot.exists()) {
+          const presenceData = snapshot.val();
+          
+          let isOnline = false;
+          let isActive = false;
+          
+          // Check if user has any sessions
+          if (presenceData.sessions) {
+            const now = Date.now();
+            Object.values(presenceData.sessions).forEach((session: unknown) => {
+              const sessionData = session as { lastSeen?: number; isActive?: boolean };
+              // Consider online if lastSeen is within 65 seconds
+              if (typeof sessionData.lastSeen === 'number' && now - sessionData.lastSeen < 65000) {
+                isOnline = true;
+                if (sessionData.isActive === true) {
+                  isActive = true;
+                }
+              }
+            });
+          }
+          
+          // Only update if status actually changed
+          setUserPresenceStatus(prev => {
+            const currentStatus = prev[authId];
+            if (!currentStatus || currentStatus.isOnline !== isOnline || currentStatus.isActive !== isActive) {
+              // Status changed, update it
+              return {
+                ...prev,
+                [authId]: { isOnline, isActive }
+              };
+            }
+            // No change, return previous state
+            return prev;
+          });
+        } else {
+          // User has no presence data
+          setUserPresenceStatus(prev => ({
+            ...prev,
+            [authId]: { isOnline: false, isActive: false }
+          }));
+        }
+      };
+      
+      // Set up listener
+      onValue(presenceRef, handlePresenceUpdate);
+      
+      // Store cleanup function
+      listeners.push(() => off(presenceRef, 'value', handlePresenceUpdate));
+    });
+
+    // Cleanup function
+    return () => {
+      listeners.forEach(cleanup => cleanup());
+      setUserPresenceStatus({});
+    };
+  }, [activeTab, derivedTeams]); // Depend on activeTab and derivedTeams
+
+  // Helper function to format relative time
+  const formatRelativeTime = (lastActiveStr: string): string => {
+    const lastActive = new Date(lastActiveStr);
+    const now = new Date();
+    const diffMs = now.getTime() - lastActive.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return '1d ago';
+    if (diffDays < 30) return `${diffDays}d ago`;
+    
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return '1mo ago';
+    return `${diffMonths}mo ago`;
+  };
 
   // Update myRoomsOrder when rooms change
   useEffect(() => {
@@ -783,7 +1013,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // const totalActiveUsers = reduxRooms.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
-  const [globalActiveRooms, setGlobalActiveRooms] = useState(0);
+  // const [globalActiveRooms, setGlobalActiveRooms] = useState(0);
   
   // Listen to real-time online user count and public room count
   useEffect(() => {
@@ -792,9 +1022,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       try {
         const count = await PresenceService.getTotalOnlineUsers();
         setGlobalActiveUsers(count);
-        
-        // Also fix any orphaned sessions
-        await PresenceService.fixOrphanedSessions();
       } catch (error) {
         console.error('Failed to fetch online users:', error);
       }
@@ -811,36 +1038,36 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     const publicRoomsRef = ref(rtdb, 'PublicRooms');
     const privateRoomsRef = ref(rtdb, 'PrivateRooms');
     
-    let publicCount = 0;
-    let privateWithUsersCount = 0;
+    // let publicCount = 0;
+    // let privateWithUsersCount = 0;
     
-    const updateTotalRooms = () => {
-      setGlobalActiveRooms(publicCount + privateWithUsersCount);
-    };
+    // const updateTotalRooms = () => {
+    //   setGlobalActiveRooms(publicCount + privateWithUsersCount);
+    // };
     
     // Listen to public rooms
     const publicRoomHandler = (snapshot: { exists: () => boolean; val: () => Record<string, unknown> }) => {
       if (snapshot.exists()) {
-        const rooms = snapshot.val();
-        publicCount = Object.keys(rooms).length;
+        // const rooms = snapshot.val();
+        // publicCount = Object.keys(rooms).length;
       } else {
-        publicCount = 0;
+        // publicCount = 0;
       }
-      updateTotalRooms();
+      // updateTotalRooms();
     };
     
     // Listen to private rooms
     const privateRoomHandler = (snapshot: { exists: () => boolean; val: () => Record<string, unknown> }) => {
       if (snapshot.exists()) {
-        const rooms = snapshot.val();
+        // const rooms = snapshot.val();
         // Count private rooms with at least 1 user
-        privateWithUsersCount = Object.values(rooms).filter((room) => 
-          (room as { userCount?: number }).userCount && (room as { userCount?: number }).userCount! > 0
-        ).length;
+        // privateWithUsersCount = Object.values(rooms).filter((room) => 
+        //   (room as { userCount?: number }).userCount && (room as { userCount?: number }).userCount! > 0
+        // ).length;
       } else {
-        privateWithUsersCount = 0;
+        // privateWithUsersCount = 0;
       }
-      updateTotalRooms();
+      // updateTotalRooms();
     };
     
     onValue(publicRoomsRef, publicRoomHandler);
@@ -947,21 +1174,21 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     setActiveId(null);
   };
 
-  const getStatusColor = (status: "online" | "idle" | "offline", task?: string) => {
-    if (status === "online" && task && task.includes("Do not disturb")) {
-      return "bg-red-500";
-    }
-    switch (status) {
-      case "online":
-        return "bg-green-500";
-      case "idle":
-        return "bg-yellow-500";
-      case "offline":
-        return "bg-gray-600";
-      default:
-        return "bg-gray-600";
-    }
-  };
+  // const getStatusColor = (status: "online" | "idle" | "offline", task?: string) => {
+  //   if (status === "online" && task && task.includes("Do not disturb")) {
+  //     return "bg-red-500";
+  //   }
+  //   switch (status) {
+  //     case "online":
+  //       return "bg-green-500";
+  //     case "idle":
+  //       return "bg-yellow-500";
+  //     case "offline":
+  //       return "bg-gray-600";
+  //     default:
+  //       return "bg-gray-600";
+  //   }
+  // };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -1036,9 +1263,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <div className="flex items-center gap-3">
                         <h3 className="font-semibold text-gray-200">Quick Join</h3>
                         <p className="text-base text-gray-500">
-                          <span className="text-green-500 font-bold">{globalActiveRooms}</span> rooms •{" "}
-                          <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people
-                          online
+                          <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people online
                         </p>
                       </div>
                       <p className="text-sm text-gray-400 mt-1">
@@ -1119,19 +1344,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           {newRoomName.length}/20
                         </span>
                       </div>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Enter Description"
-                          value={newRoomDescription}
-                          onChange={(e) => setNewRoomDescription(e.target.value.slice(0, 40))}
-                          maxLength={40}
-                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                          {newRoomDescription.length}/40
-                        </span>
-                      </div>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -1143,15 +1355,16 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           />
                           <span className="text-sm text-gray-300">Public Room</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
+                        <label className="flex items-center gap-2 cursor-not-allowed opacity-50">
                           <input
                             type="radio"
                             name="roomType"
                             checked={newRoomType === "private"}
                             onChange={() => setNewRoomType("private")}
                             className="text-[#FFAA00]"
+                            disabled
                           />
-                          <span className="text-sm text-gray-300">Private Room</span>
+                          <span className="text-sm text-gray-500">Private Room (Teams Only)</span>
                         </label>
                       </div>
                       {newRoomType === "private" && (
@@ -1183,7 +1396,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           onClick={() => {
                             // Handle create room
                             setNewRoomName("");
-                            setNewRoomDescription("");
                             setNewRoomTeam(selectedTeam);
                             setShowCreateRoom(false);
                           }}
@@ -1195,7 +1407,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           onClick={() => {
                             setShowCreateRoom(false);
                             setNewRoomName("");
-                            setNewRoomDescription("");
                             setNewRoomTeam(selectedTeam);
                           }}
                         >
@@ -1260,7 +1471,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             <div className="flex flex-col h-full">
               {(() => {
                 // Get current team data
-                const currentTeam = TEAMS_DATA[selectedTeam as keyof typeof TEAMS_DATA] || TEAMS_DATA.vendorsage;
+                const currentTeam = derivedTeams[selectedTeam] || derivedTeams[teamIds[0]] || { 
+                  rooms: [], 
+                  members: [], 
+                  description: 'Your workspace' 
+                };
                 const teamRooms = currentTeam.rooms;
                 
                 const allTeamMembers = new Map();
@@ -1289,9 +1504,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   }
                 });
 
-                // For Nexus team, use the team members instead of room members
+                // Use the team members
                 const teamMembers =
-                  selectedTeam === "nexus"
+                  currentTeam.members.length > 0
                     ? currentTeam.members.map((member) => ({
                         ...member,
                         rooms: [], // Nexus team members aren't in any rooms yet
@@ -1623,10 +1838,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           <button
                             disabled={!newTeamName.trim()}
                             onClick={() => {
-                              // Handle create team
-                              setSelectedTeam("vendorsage"); // Or switch to the new team
-                              setNewTeamName("");
-                              setInviteEmails("");
+                              // Redirect to Stripe checkout for team creation
+                              window.open('https://buy.stripe.com/28EdRb2Rhd6W8Ii75Q0Fi05', '_blank');
                             }}
                             className="px-6 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                           >
@@ -1647,20 +1860,30 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     ) : (
                       <>
                         {/* Team Overview Header */}
-                        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                          <div className="flex items-start justify-between mb-4">
+                        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                          <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
                                 <div className="relative inline-flex items-center">
                                   <select
                                     value={selectedTeam}
                                     onChange={(e) => {
-                                      setSelectedTeam(e.target.value);
+                                      if (e.target.value === 'create') {
+                                        // When selecting "Create Team", redirect to Stripe
+                                        window.open('https://buy.stripe.com/28EdRb2Rhd6W8Ii75Q0Fi05', '_blank');
+                                        // Keep the current selection
+                                        e.target.value = selectedTeam;
+                                      } else {
+                                        setSelectedTeam(e.target.value);
+                                      }
                                     }}
                                     className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer"
                                   >
-                                    <option value="vendorsage">Vendorsage</option>
-                                    <option value="nexus">Nexus</option>
+                                    {teamIds.map(teamId => (
+                                      <option key={teamId} value={teamId}>
+                                        {derivedTeams[teamId].name}
+                                      </option>
+                                    ))}
                                     <option value="create">+ Create Team</option>
                                   </select>
                                   <svg
@@ -1679,9 +1902,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 </div>
                               </div>
                               <p className="text-gray-400">
-                                {selectedTeam === "nexus"
-                                  ? "Your new team workspace - invite members to get started"
-                                  : currentTeam.description}
+                                {currentTeam.description}
                               </p>
                             </div>
                             <button
@@ -1701,26 +1922,26 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           </div>
 
                           {/* Team Stats */}
-                          <div className="grid grid-cols-4 gap-4 mt-6">
+                          <div className="grid grid-cols-4 gap-4 mt-4">
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-400">
-                                {selectedTeam === "nexus" ? 0 : totalActiveMembers}
+                              <p className="text-xl font-bold text-green-400">
+                                {totalActiveMembers}
                               </p>
                               <p className="text-sm text-gray-500">Active Now</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-400">{teamMembers.length}</p>
+                              <p className="text-xl font-bold text-green-400">{teamMembers.filter(m => m.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a').length}</p>
                               <p className="text-sm text-gray-500">Total Team Members</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-400">
-                                {selectedTeam === "nexus" ? "0h 0m" : formatTotalTime(totalTime)}
+                              <p className="text-xl font-bold text-green-400">
+                                {formatTotalTime(totalTime)}
                               </p>
                               <p className="text-sm text-gray-500">Total Time This Week</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-400">
-                                {selectedTeam === "nexus" ? 0 : totalTasks}
+                              <p className="text-xl font-bold text-green-400">
+                                {totalTasks}
                               </p>
                               <p className="text-sm text-gray-500">Tasks Completed</p>
                             </div>
@@ -1729,7 +1950,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                         {/* Team Workspaces */}
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Team Rooms ({teamRooms.length})</h3>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-3">Team Rooms ({teamRooms.length})</h3>
                           {teamRooms.length === 0 ? (
                             <div className="bg-gray-800/30 rounded-lg p-8 border border-gray-700 border-dashed text-center mb-6">
                               <svg
@@ -1792,7 +2013,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                           )}
                                         </h4>
                                         <p className="text-sm text-gray-500">
-                                          {room.activeCount} active • {room.members?.length || 0} members
+                                          {room.activeCount} active • {room.members?.filter(m => m.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a').length || 0} members
                                         </p>
                                       </div>
                                     </div>
@@ -1811,87 +2032,89 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                         {/* Team Members */}
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Team Members</h3>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-3">Team Members</h3>
                           <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                            {sortedMembers.map((member) => (
+                            {sortedMembers
+                              .filter(member => member.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a')
+                              .map((member) => (
                               <div
                                 key={member.id}
-                                className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all group"
+                                className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-all group"
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
-                                    <button
-                                      onClick={() => {
-                                        const friend = MOCK_FRIENDS.find((f) => f.name === member.name) || {
-                                          id: member.id,
-                                          name: member.name,
-                                          firstName: member.name.split(" ")[0],
-                                          lastName: member.name.split(" ")[1] || "",
-                                          status: member.status,
-                                          currentTask: member.task,
-                                          avatar: member.avatar,
-                                          lastMessage: null,
-                                          mutualFriends: Math.floor(Math.random() * 20) + 1,
-                                        };
-                                        setShowProfileModal(friend);
-                                      }}
-                                      className="relative hover:opacity-80 transition-opacity"
-                                    >
-                                      <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all">
-                                        {member.avatar}
+                                    <div className="relative">
+                                      {(() => {
+                                        // Get profile picture from PostgreSQL data first
+                                        const userData = userLastActiveData[member.id];
+                                        const profilePicture = userData?.profile_image || member.picture || member.profileImage;
+                                        // const firstName = userData?.first_name || member.firstName || member.name.split(" ")[0] || '';
+                                        // const lastName = userData?.last_name || member.lastName || member.name.split(" ")[1] || '';
+                                        // const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || member.avatar || 'U';
+                                        
+                                        if (profilePicture && profilePicture.trim() !== '') {
+                                          return (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img
+                                              src={profilePicture}
+                                              alt={member.name}
+                                              className="w-12 h-12 rounded-full object-cover hover:ring-2 hover:ring-[#FFAA00] transition-all"
+                                              onError={(e) => {
+                                                // If image fails to load, hide it and show initials
+                                                e.currentTarget.style.display = 'none';
+                                                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                                if (fallback) fallback.style.display = 'flex';
+                                              }}
+                                            />
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                      <div 
+                                        className={`w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all ${
+                                          (userLastActiveData[member.id]?.profile_image || member.picture || member.profileImage) ? 'hidden' : 'flex'
+                                        }`}
+                                      >
+                                        {(() => {
+                                          const userData = userLastActiveData[member.id];
+                                          const firstName = userData?.first_name || member.firstName || member.name.split(" ")[0] || '';
+                                          const lastName = userData?.last_name || member.lastName || member.name.split(" ")[1] || '';
+                                          const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+                                          return initials.trim() || member.avatar || 'U';
+                                        })()}
                                       </div>
                                       <div
-                                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${getStatusColor(
-                                          member.status,
-                                          member.task
-                                        )}`}
+                                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${(() => {
+                                          const presence = userPresenceStatus[member.authId || ''];
+                                          if (presence?.isActive) {
+                                            return 'bg-green-500 animate-pulse';
+                                          } else if (presence?.isOnline) {
+                                            return 'bg-yellow-500';
+                                          }
+                                          return 'bg-gray-600';
+                                        })()}`}
                                       />
-                                    </button>
+                                    </div>
                                     <div className="flex-1">
-                                      <button
-                                        onClick={() => {
-                                          const friend = MOCK_FRIENDS.find((f) => f.name === member.name) || {
-                                            id: member.id,
-                                            name: member.name,
-                                            firstName: member.name.split(" ")[0],
-                                            lastName: member.name.split(" ")[1] || "",
-                                            status: member.status,
-                                            currentTask: member.task,
-                                            avatar: member.avatar,
-                                            lastMessage: null,
-                                            mutualFriends: Math.floor(Math.random() * 20) + 1,
-                                          };
-                                          setShowProfileModal(friend);
-                                        }}
-                                        className="text-left"
-                                      >
-                                        <h4 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">
-                                          {member.name}
-                                        </h4>
-                                      </button>
+                                      <h4 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">
+                                        {member.name}
+                                      </h4>
                                       <div className="flex items-center gap-2 text-sm">
                                         <p className="text-gray-500">
                                           {(() => {
-                                            if (member.status === "online" && member.task) {
-                                              if (member.task.includes("Do not disturb")) {
-                                                return "Do not disturb";
-                                              }
+                                            const presence = userPresenceStatus[member.authId || ''];
+                                            if (presence?.isActive) {
                                               return "Actively working";
-                                            } else if (member.status === "idle") {
+                                            } else if (presence?.isOnline) {
                                               return "Standby";
                                             } else {
-                                              // Offline - show last seen with fixed times based on member ID
-                                              const lastSeenMap: Record<string, string> = {
-                                                "9": "5m ago",
-                                                "13": "30m ago",
-                                                "17": "1h ago",
-                                                "21": "2h ago",
-                                                "24": "5h ago",
-                                                "27": "1d ago",
-                                                "29": "3h ago",
-                                                "30": "45m ago",
-                                              };
-                                              return `Last seen ${lastSeenMap[member.id] || "2h ago"}`;
+                                              // Offline - show last seen from actual data
+                                              const userData = userLastActiveData[member.id];
+                                              if (userData?.last_active) {
+                                                return `Last seen ${formatRelativeTime(userData.last_active)}`;
+                                              }
+                                              // Fallback if no data available
+                                              return `Last seen recently`;
                                             }
                                           })()}
                                         </p>
@@ -1904,9 +2127,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                       </div>
                                     </div>
                                   </div>
-                                  <button className="opacity-0 group-hover:opacity-100 px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all">
-                                    Message
-                                  </button>
                                 </div>
                               </div>
                             ))}
@@ -2364,7 +2584,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               // Idle status represents completed task
                               return `Completed task ${member.duration || "5m ago"}`;
                             } else {
-                              return `Last seen ${member.duration || "2h ago"}`;
+                              const userData = userLastActiveData[member.id];
+                              if (userData?.last_active) {
+                                return `Last seen ${formatRelativeTime(userData.last_active)}`;
+                              }
+                              return `Last seen ${member.duration || "recently"}`;
                             }
                           })()}
                         </p>
@@ -2784,93 +3008,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         </div>
       )}
 
-      {/* Profile Modal */}
-      {showProfileModal &&
-        (() => {
-          const profileUser = showProfileModal;
-
-          return (
-            <div
-              className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowProfileModal(null);
-              }}
-            >
-              <div
-                className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-[90%] max-w-[400px] border border-gray-800"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Header with Close Button */}
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-[#FFAA00]">Profile</h3>
-                  <button
-                    onClick={() => setShowProfileModal(null)}
-                    className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
-                  >
-                    <svg
-                      className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Profile Content */}
-                <div className="flex flex-col items-center">
-                  {/* Avatar */}
-                  <div className="relative mb-4">
-                    <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-2xl font-bold text-gray-300">
-                      {profileUser.avatar}
-                    </div>
-                    <div
-                      className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-gray-900 ${
-                        profileUser.status === "online"
-                          ? "bg-green-500"
-                          : profileUser.status === "idle"
-                          ? "bg-yellow-500"
-                          : "bg-gray-600"
-                      }`}
-                    />
-                  </div>
-
-                  {/* Name and Status */}
-                  <h4 className="text-xl font-semibold text-gray-200 mb-1">{profileUser.name}</h4>
-                  <p className="text-sm text-gray-500 mb-4">
-                    {(() => {
-                      if (profileUser.status === "online" && profileUser.currentTask) {
-                        if (profileUser.currentTask.includes("Do not disturb")) {
-                          return "Do not disturb";
-                        }
-                        return "Actively working";
-                      } else if (profileUser.status === "idle") {
-                        return "Standby";
-                      } else {
-                        return "Last seen 2h ago";
-                      }
-                    })()}
-                  </p>
-
-                  {/* Mutual Friends */}
-                  {profileUser.mutualFriends && (
-                    <p className="text-sm text-gray-500 mb-4">{profileUser.mutualFriends} mutual contacts</p>
-                  )}
-
-                  {/* Action Button */}
-                  <button
-                    onClick={() => setShowProfileModal(null)}
-                    className="w-full px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
-                  >
-                    Message
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
 
       {/* Team Invite Modal */}
       {showTeamInviteModal && (
@@ -2937,9 +3074,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
-                      // Handle send invitations
-                      setShowTeamInviteModal(false);
-                      setInviteEmails("");
+                      // Show coming soon message
+                      alert("Feature coming soon!");
                     }}
                     className="flex-1 px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors flex items-center justify-center gap-2"
                     disabled={!inviteEmails.trim()}

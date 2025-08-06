@@ -216,12 +216,13 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           const data = await response.json();
           const newPostgresUsers: Record<string, PostgresUser> = {};
           
-          data.users.forEach((user: PostgresUser) => {
-            newPostgresUsers[user.auth_id] = {
-              auth_id: user.auth_id,
+          // data.users is an object/map, not an array
+          Object.entries(data.users as Record<string, { firstName: string; lastName: string; profileImage: string | null }>).forEach(([authId, user]) => {
+            newPostgresUsers[authId] = {
+              auth_id: authId,
               firstName: user.firstName,
               lastName: user.lastName,
-              profile_image: user.profile_image
+              profile_image: user.profileImage
             };
           });
           

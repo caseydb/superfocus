@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useInstance } from "../Instances";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set } from "firebase/database";
@@ -21,9 +21,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
   const [lastName, setLastName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameError, setNameError] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize names from Redux user data
   useEffect(() => {
@@ -71,47 +69,36 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
               onMouseEnter={() => setIsHoveringAvatar(true)}
               onMouseLeave={() => setIsHoveringAvatar(false)}
             >
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setSelectedImage(reader.result as string);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
-              
               {/* Avatar Container - matching app design */}
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => alert("Coming Soon!")}
                 className="relative w-24 h-24 rounded-full overflow-hidden transition-transform duration-200 hover:scale-105 cursor-pointer"
               >
-                {selectedImage ? (
+                {reduxUser.profile_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img 
-                    src={selectedImage} 
+                    src={reduxUser.profile_image} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // If image fails to load, hide it and show initials
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                    <span className="text-2xl font-medium text-gray-300">
-                      {(() => {
-                        const firstLetter = firstName?.charAt(0) || reduxUser.first_name?.charAt(0) || 'U';
-                        const lastLetter = lastName?.charAt(0) || reduxUser.last_name?.charAt(0) || '';
-                        return (firstLetter + lastLetter).toUpperCase();
-                      })()}
-                    </span>
-                  </div>
-                )}
+                ) : null}
+                <div className={`w-full h-full bg-gray-700 flex items-center justify-center ${
+                  reduxUser.profile_image ? 'hidden' : 'flex'
+                }`}>
+                  <span className="text-2xl font-medium text-gray-300">
+                    {(() => {
+                      const firstLetter = firstName?.charAt(0) || reduxUser.first_name?.charAt(0) || 'U';
+                      const lastLetter = lastName?.charAt(0) || reduxUser.last_name?.charAt(0) || '';
+                      return (firstLetter + lastLetter).toUpperCase();
+                    })()}
+                  </span>
+                </div>
                 
                 {/* Hover Overlay */}
                 <div className={`absolute inset-0 bg-black/70 flex flex-col items-center justify-center transition-opacity duration-200 ${
@@ -125,27 +112,6 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                 </div>
               </button>
             </div>
-            
-            {/* Action Buttons (shown when image is selected) */}
-            {selectedImage && (
-              <div className="flex gap-2 mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <button
-                  onClick={() => {
-                    // TODO: Save to S3 when ready
-                    console.log("Would save image to S3");
-                  }}
-                  className="px-3 py-1.5 bg-[#FFAA00] text-black text-sm font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => setSelectedImage(null)}
-                  className="px-3 py-1.5 bg-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Personal Information Section */}
