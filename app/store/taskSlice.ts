@@ -452,12 +452,22 @@ export const checkForActiveTask = createAsyncThunk(
     if (tasksData.LastTask) {
       const lastTaskData = tasksData.LastTask;
       const lastTaskId = lastTaskData.taskId;
+      const lastTaskTimestamp = lastTaskData.timestamp;
       
       // Check if this task exists in the TaskBuffer
       if (tasksData[lastTaskId]) {
         const task = tasksData[lastTaskId] as Record<string, unknown>;
         const taskTotalTime = (task.total_time as number) || 0;
         
+        // Don't restore LastTask if it was set very recently (within last 10 seconds)
+        // This prevents restoration of tasks that were just completed
+        const timeSinceLastTask = Date.now() - (lastTaskTimestamp || 0);
+        if (timeSinceLastTask < 10000) { // 10 seconds
+          // Remove the stale LastTask entry
+          const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
+          await remove(lastTaskRef);
+          return null;
+        }
         
         // Return the LastTask as the active task
         return {
