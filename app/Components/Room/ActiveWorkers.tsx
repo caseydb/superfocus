@@ -1,9 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { rtdb } from "../../../lib/firebase";
 import { ref, onValue, off, get } from "firebase/database";
 import Image from "next/image";
 import { PresenceService } from "@/app/utils/presenceService";
+import GlobalPulseTicker from "@/app/utils/globalPulseTicker";
 
 interface WeeklyLeaderboardEntry {
   user_id: string;
@@ -15,18 +16,85 @@ interface WeeklyLeaderboardEntry {
   total_duration: number;
 }
 
+interface PostgresUser {
+  auth_id: string;
+  firstName: string;
+  lastName: string;
+  profile_image: string | null;
+}
+
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<WeeklyLeaderboardEntry[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
   const [firebaseUserNames, setFirebaseUserNames] = useState<Record<string, { firstName: string; lastName: string | null }>>({});
+  const [postgresUsers, setPostgresUsers] = useState<Record<string, PostgresUser>>({});
+  const [globalDotOpacity, setGlobalDotOpacity] = useState(1);
+  const [syncedUsers, setSyncedUsers] = useState<Set<string>>(new Set());
+  
+  // Subscribe to the global singleton pulse ticker
+  useEffect(() => {
+    const ticker = GlobalPulseTicker.getInstance();
+    const unsubscribe = ticker.subscribe((opacity) => {
+      setGlobalDotOpacity(opacity);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []); // Empty deps - subscribe once on mount
+  
+  // Track if we're in sync window to avoid multiple syncs
+  const inSyncWindowRef = useRef(false);
+  
+  // Watch for start of pulse cycle to sync waiting users
+  useEffect(() => {
+    // Clean up synced users who are no longer active
+    const activeUserIds = new Set(activeUsers.map(u => u.id));
+    setSyncedUsers(prev => {
+      const updated = new Set<string>();
+      prev.forEach(id => {
+        if (activeUserIds.has(id)) {
+          updated.add(id);
+        }
+      });
+      return updated;
+    });
+  }, [activeUsers]);
+  
+  // Use the global ticker to detect cycle starts
+  useEffect(() => {
+    const now = Date.now();
+    const cyclePosition = (now % 2000) / 2000;
+    
+    // Check if we're in the sync window (first 5% of cycle)
+    const isInSyncWindow = cyclePosition < 0.05;
+    
+    // Detect when we enter the sync window
+    if (isInSyncWindow && !inSyncWindowRef.current) {
+      inSyncWindowRef.current = true;
+      
+      // Sync any unsynced users
+      const allUserIds = new Set(activeUsers.map(u => u.id));
+      const unsyncedUsers = Array.from(allUserIds).filter(id => !syncedUsers.has(id));
+      
+      if (unsyncedUsers.length > 0) {
+        setSyncedUsers(allUserIds);
+      }
+    } else if (!isInSyncWindow && inSyncWindowRef.current) {
+      // We've left the sync window
+      inSyncWindowRef.current = false;
+    }
+  }, [globalDotOpacity, activeUsers, syncedUsers]); // Check on every opacity update
+  
 
   // Create a mapping of firebase auth UID to rank, stats, and user info from weekly leaderboard
   // Always uses 'this_week' data regardless of main leaderboard filter
-  const { userRankMap, userWeeklyStats, userInfoMap } = React.useMemo(() => {
+  const { userRankMap, userWeeklyStats, userInfoMap, userProfileImages } = React.useMemo(() => {
     const rankMap: Record<string, number> = {};
     const statsMap: Record<string, { totalTasks: number; totalDuration: number }> = {};
     const infoMap: Record<string, { firstName: string; lastName: string }> = {};
+    const profileImages: Record<string, string | null> = {};
     
     weeklyLeaderboard.forEach((entry, index) => {
       // Map auth_id to rank (index + 1 for 1-based ranking)
@@ -41,9 +109,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         firstName: entry.first_name,
         lastName: entry.last_name
       };
+      // Map auth_id to profile image
+      profileImages[entry.auth_id] = entry.profile_image;
     });
     
-    return { userRankMap: rankMap, userWeeklyStats: statsMap, userInfoMap: infoMap };
+    return { userRankMap: rankMap, userWeeklyStats: statsMap, userInfoMap: infoMap, userProfileImages: profileImages };
   }, [weeklyLeaderboard]);
 
   // Format time display
@@ -59,6 +129,23 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       return `0m`;
     }
   };
+
+  // Get ordinal suffix for rank - commented out for now
+  // const getOrdinalSuffix = (rank: number): string => {
+  //   const j = rank % 10;
+  //   const k = rank % 100;
+  //   
+  //   if (j === 1 && k !== 11) {
+  //     return rank + "st";
+  //   }
+  //   if (j === 2 && k !== 12) {
+  //     return rank + "nd";
+  //   }
+  //   if (j === 3 && k !== 13) {
+  //     return rank + "rd";
+  //   }
+  //   return rank + "th";
+  // };
 
 
   // Fetch weekly leaderboard data
@@ -106,6 +193,48 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     () => activeUsers.map(u => u.id).sort().join(','),
     [activeUsers]
   );
+
+  // Fetch PostgreSQL users for profile images when active users change
+  useEffect(() => {
+    if (activeUsers.length === 0) return;
+    
+    const fetchPostgresUsers = async () => {
+      // Filter users not already in userProfileImages from leaderboard
+      const usersToFetch = activeUsers.filter(u => !userProfileImages[u.id]);
+      
+      if (usersToFetch.length === 0) return;
+      
+      try {
+        const authIds = usersToFetch.map(u => u.id);
+        const response = await fetch('/api/users/by-auth-ids', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ authIds })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const newPostgresUsers: Record<string, PostgresUser> = {};
+          
+          data.users.forEach((user: PostgresUser) => {
+            newPostgresUsers[user.auth_id] = {
+              auth_id: user.auth_id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              profile_image: user.profile_image
+            };
+          });
+          
+          setPostgresUsers(prev => ({ ...prev, ...newPostgresUsers }));
+        }
+      } catch (error) {
+        console.error('[ActiveWorkers] Failed to fetch PostgreSQL users:', error);
+      }
+    };
+    
+    fetchPostgresUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUserIdsKey, userProfileImages]);
 
   // Fetch user names from Firebase Users instead of API
   useEffect(() => {
@@ -201,14 +330,16 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
 
 
 
-  if (activeUsers.length === 0) return null;
-
   // Sort users by their weekly rank (lowest rank first)
   const sortedUsers = [...activeUsers].sort((a, b) => {
     const rankA = userRankMap[a.id] || 999; // Default to 999 if no rank
     const rankB = userRankMap[b.id] || 999;
     return rankA - rankB;
   });
+
+  // Log render details with component ID - removed to reduce console noise
+
+  if (activeUsers.length === 0) return null;
 
   return (
     <div className="fixed top-4 left-8 z-40 text-base font-mono opacity-70 select-none">
@@ -231,38 +362,66 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               setHoveredUserId(null);
             }}
           >
-          {userRankMap[u.id] && (
-            <div
-              className={`w-5 h-5 rounded-full flex items-center justify-center mr-2 border ${
-                userRankMap[u.id] <= 5 ? "border-[#FFAA00]" : "border-gray-400"
-              }`}
-            >
-              <span
-                className="text-xs font-bold font-sans text-[#9CA3AF]"
-              >
-                {userRankMap[u.id]}
-              </span>
-            </div>
-          )}
+          {/* Profile picture */}
+          <div className="relative mr-2">
+            {(() => {
+              const profileImage = userProfileImages[u.id] || postgresUsers[u.id]?.profile_image;
+              const userInfo = userInfoMap[u.id] || firebaseUserNames[u.id] || postgresUsers[u.id];
+              const firstName = userInfo?.firstName || u.displayName.split(' ')[0] || 'U';
+              const lastName = userInfo?.lastName || '';
+              const initials = (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
+              
+              return (
+                <>
+                  {profileImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img 
+                      src={profileImage} 
+                      alt="Profile" 
+                      className="w-7 h-7 rounded-full object-cover border border-gray-700"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className={`w-7 h-7 rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 ${
+                      profileImage ? 'hidden' : 'flex'
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
           <span className="cursor-pointer flex items-center gap-1.5 group">
-            {/* Name */}
+            {/* Rank and Name */}
             <span className="font-medium text-white">
               {(() => {
+                // const rank = userRankMap[u.id]; // Commented out - not used currently
                 // First try from leaderboard data (most up to date)
                 const leaderboardUserInfo = userInfoMap[u.id];
                 // Then try from Firebase Users
                 const firebaseUserInfo = firebaseUserNames[u.id];
+                // Then try from PostgreSQL
+                const postgresUserInfo = postgresUsers[u.id];
                 
-                let displayValue;
+                let displayName;
                 if (leaderboardUserInfo) {
-                  displayValue = `${leaderboardUserInfo.firstName}${leaderboardUserInfo.lastName ? ' ' + leaderboardUserInfo.lastName : ''}`;
+                  displayName = `${leaderboardUserInfo.firstName}${leaderboardUserInfo.lastName ? ' ' + leaderboardUserInfo.lastName : ''}`;
+                } else if (postgresUserInfo) {
+                  displayName = `${postgresUserInfo.firstName}${postgresUserInfo.lastName ? ' ' + postgresUserInfo.lastName : ''}`;
                 } else if (firebaseUserInfo) {
-                  displayValue = `${firebaseUserInfo.firstName}${firebaseUserInfo.lastName ? ' ' + firebaseUserInfo.lastName : ''}`;
+                  displayName = `${firebaseUserInfo.firstName}${firebaseUserInfo.lastName ? ' ' + firebaseUserInfo.lastName : ''}`;
                 } else {
-                  displayValue = u.displayName;
+                  displayName = u.displayName;
                 }
                 
-                return displayValue;
+                // Show name without rank prefix
+                return displayName;
               })()}
             </span>
             
@@ -276,8 +435,13 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <span className="text-xs">is</span>
               <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full">
                 <div className="relative flex items-center justify-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-sync-pulse"></div>
-                  <div className="absolute w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  <div 
+                    className="w-2 h-2 bg-green-500 rounded-full transition-opacity duration-100"
+                    style={{ opacity: syncedUsers.has(u.id) ? globalDotOpacity : 1 }}
+                  ></div>
+                  {syncedUsers.has(u.id) && (
+                    <div className="absolute w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  )}
                 </div>
                 <span className="text-xs font-medium text-gray-300"><span className="hidden sm:inline">actively </span>working</span>
               </span>

@@ -335,6 +335,7 @@ export default function Controls({
             {/* Avatar with status indicator */}
             <div className="relative">
               {reduxUser.profile_image ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img 
                   src={reduxUser.profile_image} 
                   alt="Profile" 
@@ -390,6 +391,7 @@ export default function Controls({
             {/* Avatar with status indicator - matching controls bar design */}
             <div className="relative">
               {reduxUser.profile_image ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img 
                   src={reduxUser.profile_image} 
                   alt="Profile" 
@@ -730,6 +732,7 @@ export default function Controls({
                 {/* Avatar with status indicator - matching controls bar design */}
                 <div className="relative">
                   {reduxUser.profile_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={reduxUser.profile_image} 
                       alt="Profile" 

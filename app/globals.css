@@ -409,8 +409,16 @@ body,
   }
 }
 
+/* Global synchronized pulse - all elements with this class pulse in perfect sync */
 .animate-sync-pulse {
   animation: sync-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Force synchronization by using a massive negative delay */
+/* This ensures all dots sync to the same point regardless of render time */
+.pulse-dot-sync {
+  animation: sync-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation-delay: -100000s;
 }
 
 /* Custom date picker styles for dark theme */
