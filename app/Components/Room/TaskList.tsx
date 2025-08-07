@@ -1225,11 +1225,11 @@ export default function TaskList({
 
   return (
     <div className="fixed inset-0 z-[70] pointer-events-none animate-in fade-in duration-300">
-      {/* Click-outside-to-close invisible area */}
+      {/* Click-outside-to-close backdrop */}
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
 
       <div
-        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] min-h-[400px] max-h-[calc(100vh-8rem)] bg-[#141821]/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
+        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] min-h-[400px] max-h-[calc(100vh-8rem)] bg-[#141821]/95 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1260,7 +1260,7 @@ export default function TaskList({
                   </svg>
                 </button>
                 {showClearMenu && (
-                  <div className="absolute right-0 top-8 bg-[#0E1119]/95 backdrop-blur-sm border border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px]">
+                  <div className="absolute right-0 top-8 bg-[#0E1119]/95 border border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px]">
                     <button
                       onClick={clearAll}
                       disabled={incompleteTasks === 0}
