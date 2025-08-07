@@ -27,35 +27,97 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get completed tasks - if userId is provided, get ALL their tasks across all rooms
-    // Otherwise, get only tasks from the current room
-    const completedTasks = await prisma.task.findMany({
-      where: {
-        ...(userId ? { user_id: userId } : { room_id: room.id }),
-        status: 'completed'
-      },
-      select: {
-        id: true,
-        task_name: true,
-        duration: true,
-        completed_at: true,
-        room: {
-          select: {
-            slug: true
+    // Get completed tasks
+    let completedTasks;
+    
+    if (userId) {
+      // If userId is provided, get ALL their tasks across all rooms
+      completedTasks = await prisma.task.findMany({
+        where: {
+          user_id: userId,
+          status: 'completed'
+        },
+        select: {
+          id: true,
+          task_name: true,
+          duration: true,
+          completed_at: true,
+          room: {
+            select: {
+              slug: true
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true
+            }
           }
         },
-        user: {
-          select: {
-            id: true,
-            first_name: true,
-            last_name: true
-          }
+        orderBy: {
+          completed_at: 'desc'
         }
-      },
-      orderBy: {
-        completed_at: 'desc'
-      }
-    });
+      });
+    } else {
+      // Get all completed tasks from the room first
+      const allTasks = await prisma.task.findMany({
+        where: {
+          room_id: room.id,
+          status: 'completed'
+        },
+        select: {
+          id: true,
+          task_name: true,
+          duration: true,
+          completed_at: true,
+          user_id: true,
+          room: {
+            select: {
+              slug: true
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true
+            }
+          }
+        },
+        orderBy: {
+          completed_at: 'desc'
+        }
+      });
+
+      // Get user preferences for filtering
+      const userIds = [...new Set(allTasks.map(t => t.user_id))];
+      const preferences = await prisma.preference.findMany({
+        where: {
+          user_id: { in: userIds }
+        },
+        select: {
+          user_id: true,
+          history_user_filter: true
+        }
+      });
+
+      // Create a map of user preferences
+      const userPrefsMap = new Map(preferences.map(p => [p.user_id, p.history_user_filter]));
+
+      // Show all tasks but mask task names for users with 'my_tasks' preference
+      completedTasks = allTasks.map(task => {
+        const pref = userPrefsMap.get(task.user_id);
+        // If user has 'my_tasks' preference, hide their task name
+        if (pref === 'my_tasks') {
+          return {
+            ...task,
+            task_name: 'Successfully completed a task'
+          };
+        }
+        return task;
+      });
+    }
 
     // Format the response
     const history = completedTasks.map(task => ({
@@ -75,7 +137,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("[History API] Error:", error);
+    console.error("[History API] Full Error:", error);
+    console.error("[History API] Error Message:", error instanceof Error ? error.message : String(error));
+    if (error instanceof Error && 'code' in error) {
+      console.error("[History API] Error Code:", (error as unknown as { code: string }).code);
+    }
     return NextResponse.json(
       { 
         error: "Failed to fetch history",

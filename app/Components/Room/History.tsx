@@ -79,6 +79,8 @@ export default function History({ onClose }: { onClose?: () => void }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(3); // Default to 3
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
+  const [showPrivacyWarning, setShowPrivacyWarning] = useState(false);
+  const [showPublicToPrivateWarning, setShowPublicToPrivateWarning] = useState(false);
 
   // Fetch history when component mounts or room changes
   useEffect(() => {
@@ -130,8 +132,56 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   // Handlers for filter changes
   const handleUserFilterChange = (value: string) => {
+    // If switching from private to public, show warning
+    if (showOnlyMine && value === "all") {
+      setShowPrivacyWarning(true);
+      return;
+    }
+
+    // If switching from public to private, show warning
+    if (!showOnlyMine && value === "mine") {
+      setShowPublicToPrivateWarning(true);
+      return;
+    }
+
     const filterValue = value === "mine" ? "my_tasks" : "all_tasks";
     setShowOnlyMine(value === "mine");
+
+    // Update preferences
+    if (currentUser?.user_id) {
+      dispatch(setPreference({ key: "history_user_filter", value: filterValue }));
+      dispatch(
+        updatePreferences({
+          userId: currentUser.user_id,
+          updates: { history_user_filter: filterValue },
+        })
+      );
+    }
+  };
+
+  // Handle privacy warning confirmation (private to public)
+  const handlePrivacyConfirm = () => {
+    setShowPrivacyWarning(false);
+    const filterValue = "all_tasks";
+    setShowOnlyMine(false);
+
+    // Update preferences
+    if (currentUser?.user_id) {
+      dispatch(setPreference({ key: "history_user_filter", value: filterValue }));
+      dispatch(
+        updatePreferences({
+          userId: currentUser.user_id,
+          updates: { history_user_filter: filterValue },
+        })
+      );
+    }
+  };
+
+  // Handle public to private warning confirmation
+  const handlePublicToPrivateConfirm = () => {
+    setShowPublicToPrivateWarning(false);
+    const filterValue = "my_tasks";
+    setShowOnlyMine(true);
 
     // Update preferences
     if (currentUser?.user_id) {
@@ -277,10 +327,15 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   const filteredHistory = filterByDateRange(userFilteredHistory);
 
-  // Calculate total time for filtered tasks (excluding quit tasks)
+  // Calculate total time based on privacy mode
   const calculateTotalTime = () => {
     let totalSeconds = 0;
-    const tasksToCalculate = filteredHistory.filter((entry) => !entry.task.toLowerCase().includes("quit early"));
+    
+    // In private mode (showOnlyMine=true): total is only user's tasks
+    // In public mode (showOnlyMine=false): total is all tasks regardless of privacy
+    // Since the API already filters based on showOnlyMine, we just use the filtered history
+    const tasksForTotal = filterByDateRange(history);
+    const tasksToCalculate = tasksForTotal.filter((entry) => !entry.task.toLowerCase().includes("quit early"));
 
     tasksToCalculate.forEach((entry) => {
       totalSeconds += entry.duration;
@@ -364,10 +419,10 @@ export default function History({ onClose }: { onClose?: () => void }) {
                       onChange={(e) => handleUserFilterChange(e.target.value)}
                     >
                       <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
-                        All Tasks
+                        Public Mode
                       </option>
                       <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
-                        My Tasks
+                        Private Mode
                       </option>
                     </select>
                     {/* Custom Chevron Icon */}
@@ -460,10 +515,10 @@ export default function History({ onClose }: { onClose?: () => void }) {
                     onChange={(e) => handleUserFilterChange(e.target.value)}
                   >
                     <option value="all" className="bg-gray-900 text-gray-100 cursor-pointer">
-                      All Tasks
+                      Public Mode
                     </option>
                     <option value="mine" className="bg-gray-900 text-gray-100 cursor-pointer">
-                      My Tasks
+                      Private Mode
                     </option>
                   </select>
                   {/* Custom Chevron Icon */}
@@ -646,6 +701,144 @@ export default function History({ onClose }: { onClose?: () => void }) {
           </div>
         )}
       </div>
+
+      {/* Privacy Warning Modal - Private to Public */}
+      {showPrivacyWarning && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 animate-fadeIn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowPrivacyWarning(false);
+          }}
+        >
+          <div 
+            className="bg-[#0E1119] rounded-2xl shadow-2xl p-6 max-w-[34rem] mx-4 border border-gray-800 animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Warning Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-[#FFAA00]/10 flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-[#FFAA00]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-[#FFAA00] text-center mb-3">
+              Switch to Public Mode?
+            </h3>
+
+            {/* Message */}
+            <p className="text-gray-300 text-center mb-6 leading-relaxed">
+              Your task history will become <span className="text-white font-semibold">visible to all members</span> in this room. 
+              Others will be able to see your completed tasks.
+            </p>
+
+            {/* Note */}
+            <div className="bg-gray-800/50 rounded-lg p-2 mb-6">
+              <p className="text-sm text-gray-400 text-center">
+                <span className="text-[#FFAA00]">💡</span> You can return to Private Mode at any time to hide all tasks.
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPrivacyWarning(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 text-gray-300 font-medium hover:bg-gray-700 transition-all duration-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePrivacyConfirm}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#FFAA00] text-black font-bold hover:bg-[#FFB820] transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+              >
+                Make Public
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy Warning Modal - Public to Private */}
+      {showPublicToPrivateWarning && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 animate-fadeIn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowPublicToPrivateWarning(false);
+          }}
+        >
+          <div 
+            className="bg-[#0E1119] rounded-2xl shadow-2xl p-6 max-w-[34rem] mx-4 border border-gray-800 animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Lock Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-[#FFAA00]/10 flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-[#FFAA00]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-[#FFAA00] text-center mb-3">
+              Switch to Private Mode?
+            </h3>
+
+            {/* Message */}
+            <p className="text-gray-300 text-center mb-6 leading-relaxed">
+              Your task details will become <span className="text-white font-semibold">anonymous</span> to other members. 
+              They&apos;ll see your name and time, but not what you were working on.
+            </p>
+
+            {/* Note */}
+            <div className="bg-gray-800/50 rounded-lg p-2 mb-6">
+              <p className="text-sm text-gray-400 text-center">
+                <span className="text-[#FFAA00]">💡</span> You can return to Public Mode at any time to share task details again.
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPublicToPrivateWarning(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 text-gray-300 font-medium hover:bg-gray-700 transition-all duration-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePublicToPrivateConfirm}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#FFAA00] text-black font-bold hover:bg-[#FFB820] transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+              >
+                Make Private
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add scrollbar styling */}
       <style jsx>{`
