@@ -518,30 +518,51 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               <div className="absolute inset-y-0 -left-2 w-4" />
               <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 overflow-hidden w-64 ml-2">
                 {/* Stats Section */}
-                {userWeeklyStats[u.id] && (
-                  <div className="px-4 py-3 border-b border-gray-800/50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-baseline gap-2 mb-1">
-                          <span className="text-2xl font-bold text-white">#{userRankMap[u.id]}</span>
-                          <span className="text-xs text-gray-500 font-medium">THIS WEEK</span>
-                        </div>
-                        <div className="flex gap-4 text-sm">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 bg-[#FFAA00] rounded-full"></div>
-                            <span className="text-gray-400">Time:</span>
-                            <span className="text-white font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span>
+                <div className="px-4 py-3 border-b border-gray-800/50">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      {userWeeklyStats[u.id] ? (
+                        <>
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-2xl font-bold text-white">#{userRankMap[u.id]}</span>
+                            <span className="text-xs text-gray-500 font-medium">THIS WEEK</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                            <span className="text-gray-400">Tasks:</span>
-                            <span className="text-white font-medium">{userWeeklyStats[u.id].totalTasks}</span>
+                          <div className="flex gap-4 text-sm">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                              <span className="text-gray-400">Time:</span>
+                              <span className="text-white font-medium">{formatTime(userWeeklyStats[u.id].totalDuration)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                              <span className="text-gray-400">Tasks:</span>
+                              <span className="text-white font-medium">{userWeeklyStats[u.id].totalTasks}</span>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-xl font-bold text-gray-500">Unranked</span>
+                            <span className="text-xs text-gray-500 font-medium">THIS WEEK</span>
+                          </div>
+                          <div className="flex gap-4 text-sm">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div>
+                              <span className="text-gray-400">Time:</span>
+                              <span className="text-gray-500 font-medium">0h 0m</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-gray-600 rounded-full"></div>
+                              <span className="text-gray-400">Tasks:</span>
+                              <span className="text-gray-500 font-medium">0</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}

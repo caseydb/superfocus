@@ -1972,7 +1972,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             </div>
                             <div className="text-center">
                               <p className="text-xl font-bold text-green-400">{formatTotalTime(totalTime)}</p>
-                              <p className="text-sm text-gray-500">Total Time This Week</p>
+                              <p className="text-sm text-gray-500">Total Time Last 30 Days</p>
                             </div>
                             <div className="text-center">
                               <p className="text-xl font-bold text-green-400">{totalTasks}</p>
