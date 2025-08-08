@@ -16,6 +16,30 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: true,
   serverExternalPackages: ["firebase-admin"],
   devIndicators: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'media.licdn.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.licdn.com',
+        pathname: '/**',
+      }
+    ],
+  },
 };
 
 export default nextConfig;

@@ -112,16 +112,10 @@ const workspaceSlice = createSlice({
         state.rooms = action.payload.rooms || [];
         state.roomStats = action.payload.roomStats || {};
         state.lastFetched = Date.now();
-        console.log('[workspaceSlice] Workspace fetched:', {
-          roomsCount: state.rooms.length,
-          rooms: state.rooms,
-          roomStats: state.roomStats
-        });
       })
       .addCase(fetchWorkspace.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch workspace';
-        console.log('[workspaceSlice] Workspace fetch failed:', state.error);
       });
   },
 });

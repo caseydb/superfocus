@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, update, get, remove } from "firebase/database";
+import { ref, set, update, remove, get } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -73,20 +73,9 @@ export function useStartButton() {
   const notifyEvent = useCallback(
     async (type: "start") => {
       if (currentInstance && user?.id) {
-        // Try to get firstName/lastName from Firebase Users
-        let firstName = "";
-        let lastName = "";
-        try {
-          const userRef = ref(rtdb, `Users/${user.id}`);
-          const snapshot = await get(userRef);
-          if (snapshot.exists()) {
-            const userData = snapshot.val();
-            firstName = userData.firstName || "";
-            lastName = userData.lastName || "";
-          }
-        } catch (error) {
-          console.error('[StartButton] Failed to fetch user data from Firebase:', error);
-        }
+        // Use Redux user data which is already loaded and accurate
+        const firstName = reduxUser?.first_name || "";
+        const lastName = reduxUser?.last_name || "";
         
         const eventId = `${user.id}-${type}-${Date.now()}`;
         const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
@@ -95,6 +84,7 @@ export function useStartButton() {
           firstName,
           lastName,
           userId: user.id,
+          authId: reduxUser?.auth_id, // Add auth ID to event data
           type,
           timestamp: Date.now(),
         };
@@ -110,7 +100,7 @@ export function useStartButton() {
         }, 10000);
       }
     },
-    [currentInstance, user]
+    [currentInstance, user, reduxUser]
   );
 
   const handleStart = useCallback(

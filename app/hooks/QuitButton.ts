@@ -29,25 +29,15 @@ export function useQuitButton() {
   const dispatch = useDispatch<AppDispatch>();
   const { user, currentInstance } = useInstance();
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
+  const reduxUser = useSelector((state: RootState) => state.user);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
 
   const notifyEvent = useCallback(
     async (type: "quit", duration: number) => {
       if (currentInstance && user?.id) {
-        // Try to get firstName/lastName from Firebase Users
-        let firstName = "";
-        let lastName = "";
-        try {
-          const userRef = ref(rtdb, `Users/${user.id}`);
-          const snapshot = await get(userRef);
-          if (snapshot.exists()) {
-            const userData = snapshot.val();
-            firstName = userData.firstName || "";
-            lastName = userData.lastName || "";
-          }
-        } catch (error) {
-          console.error('[QuitButton] Failed to fetch user data from Firebase:', error);
-        }
+        // Use Redux user data which is already loaded and accurate
+        const firstName = reduxUser?.first_name || "";
+        const lastName = reduxUser?.last_name || "";
         
         const eventId = `${user.id}-${type}-${Date.now()}`;
         const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
@@ -56,6 +46,7 @@ export function useQuitButton() {
           firstName,
           lastName,
           userId: user.id,
+          authId: reduxUser?.auth_id, // Add auth ID to event data
           type,
           timestamp: Date.now(),
           duration,
@@ -71,7 +62,7 @@ export function useQuitButton() {
         }, 10000);
       }
     },
-    [currentInstance, user]
+    [currentInstance, user, reduxUser]
   );
 
   const handleQuitConfirm = useCallback(

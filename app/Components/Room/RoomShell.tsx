@@ -828,6 +828,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Listen for event notifications (🥊🏆💀) from GlobalEffects
   useEffect(() => {
     if (!currentInstance) return;
+    
     // Only fetch recent events to avoid processing old ones
     const eventsQuery = query(
       ref(rtdb, `GlobalEffects/${currentInstance.id}/events`),
@@ -850,7 +851,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
 
       // Find new events we haven't processed yet
-      Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string }>).forEach(([eventId, event]) => {
+      Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string; userId?: string; authId?: string; duration?: number }>).forEach(([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
 
@@ -871,7 +872,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               name = "Someone";
             }
             
-            document.title = `${emoji} ${name}`;
+            // Update browser title to show action and name
+            // This will be seen by ALL users in the room
+            if (event.type === "start") {
+              document.title = `${emoji} ${name} started`;
+            } else if (event.type === "complete") {
+              document.title = `${emoji} ${name} completed`;
+            } else if (event.type === "quit") {
+              document.title = `${emoji} ${name} quit`;
+            } else {
+              document.title = `${emoji} ${name}`;
+            }
 
             if (timeout) clearTimeout(timeout);
             timeout = setTimeout(() => {

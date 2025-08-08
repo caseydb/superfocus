@@ -214,6 +214,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         
         if (response.ok) {
           const data = await response.json();
+          console.log('[ActiveWorkers] Fetched PostgreSQL users:', data.users);
           const newPostgresUsers: Record<string, PostgresUser> = {};
           
           // data.users is an object/map, not an array
@@ -224,6 +225,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               lastName: user.lastName,
               profile_image: user.profileImage
             };
+            console.log(`[ActiveWorkers] Mapped user ${authId}:`, {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              profile_image: user.profileImage
+            });
           });
           
           setPostgresUsers(prev => ({ ...prev, ...newPostgresUsers }));
@@ -366,24 +372,72 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           {/* Profile picture */}
           <div className="relative mr-2">
             {(() => {
-              const profileImage = userProfileImages[u.id] || postgresUsers[u.id]?.profile_image;
+              let profileImage = userProfileImages[u.id] || postgresUsers[u.id]?.profile_image;
+              
+              // Debug: Check the raw URL
+              if (profileImage) {
+                console.log(`[ActiveWorkers] Raw profile URL for ${u.displayName}:`, {
+                  url: profileImage,
+                  length: profileImage.length,
+                  includesGoogle: profileImage.includes('googleusercontent.com'),
+                  includesLinkedIn: profileImage.includes('licdn.com'),
+                  startsWithHttp: profileImage.startsWith('http'),
+                  hasEquals: profileImage.includes('='),
+                  urlEncoded: encodeURI(profileImage) !== profileImage
+                });
+              }
+              
+              // Process Google profile image URLs to ensure consistent size
+              if (profileImage && profileImage.includes('googleusercontent.com')) {
+                // Remove any existing size parameter and add our own
+                profileImage = profileImage.replace(/=s\d+-c/, '=s200-c');
+                // If no size parameter exists, add one
+                if (!profileImage.includes('=s')) {
+                  profileImage += '=s200-c';
+                }
+                console.log(`[ActiveWorkers] Processed Google URL:`, profileImage);
+              }
+              
               const userInfo = userInfoMap[u.id] || firebaseUserNames[u.id] || postgresUsers[u.id];
               const firstName = userInfo?.firstName || u.displayName.split(' ')[0] || 'U';
               const lastName = userInfo?.lastName || '';
               const initials = (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
               
+              console.log(`[ActiveWorkers] Profile image check for ${u.displayName}:`, {
+                firebaseUserId: u.id,
+                profileImageFromLeaderboard: userProfileImages[u.id],
+                postgresUser: postgresUsers[u.id],
+                profileImageFromPostgres: postgresUsers[u.id]?.profile_image,
+                processedProfileImage: profileImage,
+                originalUrl: userProfileImages[u.id] || postgresUsers[u.id]?.profile_image,
+                initials,
+                willShowImage: !!profileImage
+              });
+              
               return (
                 <>
                   {profileImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
+                    <Image 
                       src={profileImage} 
                       alt="Profile" 
-                      className="w-7 h-7 rounded-full object-cover"
+                      width={28}
+                      height={28}
+                      className="rounded-full object-cover"
+                      unoptimized={true}
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        console.error(`[ActiveWorkers] Failed to load profile image for ${u.displayName}:`, {
+                          failedUrl: profileImage,
+                          firebaseUserId: u.id,
+                          error: 'Image load error'
+                        });
+                        // Hide this image and show fallback
+                        const imgElement = e.currentTarget as HTMLImageElement;
+                        imgElement.style.display = 'none';
+                        const fallback = imgElement.nextElementSibling as HTMLElement;
                         if (fallback) fallback.style.display = 'flex';
+                      }}
+                      onLoad={() => {
+                        console.log(`[ActiveWorkers] Successfully loaded profile image for ${u.displayName}:`, profileImage);
                       }}
                     />
                   ) : null}

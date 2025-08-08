@@ -106,6 +106,16 @@ const userSlice = createSlice({
         state.email = action.payload.email;
         state.profile_image = action.payload.profile_image;
         state.timezone = action.payload.timezone;
+        
+        console.log('[userSlice] User data loaded:', {
+          user_id: state.user_id,
+          auth_id: state.auth_id,
+          first_name: state.first_name,
+          last_name: state.last_name,
+          email: state.email,
+          profile_image: state.profile_image,
+          timezone: state.timezone
+        });
       })
       .addCase(fetchUserData.rejected, (state, action) => {
         state.loading = false;

@@ -26,7 +26,7 @@ export function usePauseButton() {
     async (options: PauseButtonOptions) => {
       const { seconds, saveTimerState, setRunning, setIsStarting, heartbeatIntervalRef } = options;
 
-      // Use activeTaskId or currentTaskId instead of finding by name
+// Use activeTaskId or currentTaskId instead of finding by name
       const taskId = activeTaskId || currentTaskId;
       
       if (taskId) {
