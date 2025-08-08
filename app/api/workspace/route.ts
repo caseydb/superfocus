@@ -10,23 +10,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "userId is required" }, { status: 400 });
     }
 
+    // Define superadmin ID
+    const SUPERADMIN_USER_ID = "df3aed2a-ad51-457f-b0cd-f7d4225143d4";
+    const isSuperadmin = userId === SUPERADMIN_USER_ID;
+
     // Fetch rooms based on visibility rules:
     // - All public rooms
-    // - Private rooms only where the user is a member
-    const allRooms = await prisma.room.findMany({
-      where: {
-        OR: [
-          { type: 'public' },
-          {
-            type: 'private',
-            room_members: {
-              some: {
-                user_id: userId
+    // - Private rooms: all for superadmin, only where member for others
+    const whereClause = isSuperadmin
+      ? {} // Superadmin sees all rooms (public and private)
+      : {
+          OR: [
+            { type: 'public' },
+            {
+              type: 'private',
+              room_members: {
+                some: {
+                  user_id: userId
+                }
               }
             }
-          }
-        ]
-      },
+          ]
+        };
+
+    const allRooms = await prisma.room.findMany({
+      where: whereClause,
       include: {
         room_members: {
           include: {
@@ -97,6 +105,22 @@ export async function GET(req: NextRequest) {
           activeUsers: 0, // Will be updated from Firebase
         };
 
+        // IMPORTANT: Always exclude superadmin from ALL room member lists
+        // The superadmin should be completely invisible in member counts
+        const membersToShow = room.room_members.filter(rm => rm.user_id !== SUPERADMIN_USER_ID);
+        
+        const filteredMembers = membersToShow.map(rm => ({
+          id: rm.user.id,
+          name: `${rm.user.first_name} ${rm.user.last_name}`.trim(),
+          avatar: 'XY', // Hardcoded for now
+          status: 'offline' as const,
+          task: null,
+          profileImage: rm.user.profile_image,
+          firstName: rm.user.first_name,
+          lastName: rm.user.last_name,
+          authId: rm.user.auth_id,
+        }));
+
         return {
           id: room.id,
           firebase_id: room.firebase_id || undefined,
@@ -107,17 +131,7 @@ export async function GET(req: NextRequest) {
           type: room.type as 'public' | 'private',
           description: room.description || undefined,
           url: `/${room.slug}`,
-          members: room.room_members.map(rm => ({
-            id: rm.user.id,
-            name: `${rm.user.first_name} ${rm.user.last_name}`.trim(),
-            avatar: 'XY', // Hardcoded for now
-            status: 'offline' as const,
-            task: null,
-            profileImage: rm.user.profile_image,
-            firstName: rm.user.first_name,
-            lastName: rm.user.last_name,
-            authId: rm.user.auth_id,
-          })),
+          members: filteredMembers,
           activeCount: 0, // Will be updated from Firebase
           weeklyStats: {
             totalTime: formatDuration(totalMonthlyTime),

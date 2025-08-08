@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../store/store";
+import { fetchWorkspace } from "../../store/workspaceSlice";
 import { PresenceService } from "@/app/utils/presenceService";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, off } from "firebase/database";
@@ -406,7 +407,7 @@ const MOCK_TEAM_ROOMS: Room[] = [
 ];
 */
 
-// Derive teams from actual rooms data - only private rooms the user is part of
+// Derive teams from actual rooms data - only private rooms the user is part of (or all for superadmin)
 const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
   const teams: Record<
     string,
@@ -421,10 +422,17 @@ const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
     }
   > = {};
 
-  // Filter to only private rooms where user is a member
+  // Check if user is superadmin
+  const SUPERADMIN_USER_ID = "df3aed2a-ad51-457f-b0cd-f7d4225143d4";
+  const isSuperadmin = userId === SUPERADMIN_USER_ID;
+
+  // Filter to only private rooms where user is a member (or all private rooms for superadmin)
   const privateRooms = rooms.filter((room) => {
     // Check if room is private
     if (room.type !== "private") return false;
+
+    // Superadmin sees all private rooms
+    if (isSuperadmin) return true;
 
     // Check if user is owner
     if (room.createdBy === userId || room.isOwner) return true;
@@ -442,10 +450,19 @@ const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
     // Use the room's slug or ID as the team ID
     const teamId = room.url || room.id;
     
+    // Members list is already filtered by API to exclude superadmin from private rooms
+    const memberCount = room.members?.length || 0;
+    
+    // For superadmin, always show "(viewing as admin)" for private rooms
+    // since they're hidden from the member count
+    const description = isSuperadmin && room.type === 'private'
+      ? `${memberCount} members (viewing as admin)`
+      : `${memberCount} members`;
+    
     teams[teamId] = {
       id: teamId,
       name: room.name || room.url || "Unnamed Team",
-      description: `${room.members?.length || 0} members`,
+      description,
       members: room.members || [],
       rooms: [room],
       createdBy: room.createdBy || "Unknown",
@@ -460,10 +477,16 @@ const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
 
 const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
 
   // Get rooms from Redux store
   const { rooms: reduxRooms } = useSelector((state: RootState) => state.workspace);
   const user = useSelector((state: RootState) => state.user);
+
+  // Force refresh workspace data when component mounts to ensure we have latest data
+  React.useEffect(() => {
+    dispatch(fetchWorkspace());
+  }, [dispatch]);
 
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1507,13 +1530,17 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 });
 
                 // Use the team members
-                const teamMembers =
-                  currentTeam.members.length > 0
+                const rawMembers = currentTeam.members.length > 0
                     ? currentTeam.members.map((member) => ({
                         ...member,
                         rooms: [], // Nexus team members aren't in any rooms yet
                       }))
                     : Array.from(allTeamMembers.values());
+                
+                // The API should have already filtered out the superadmin
+                // This is just for safety - filter out the superadmin ID if it somehow appears
+                const SUPERADMIN_ID = "df3aed2a-ad51-457f-b0cd-f7d4225143d4";
+                const teamMembers = rawMembers.filter(m => m.id !== SUPERADMIN_ID);
 
                 const formatTotalTime = (minutes: number) => {
                   const hours = Math.floor(minutes / 60);
@@ -1966,7 +1993,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             </div>
                             <div className="text-center">
                               <p className="text-xl font-bold text-green-400">
-                                {teamMembers.filter((m) => m.id !== "6e756c03-9596-41bc-96ae-d8ede249a27a").length}
+                                {teamMembers.length}
                               </p>
                               <p className="text-sm text-gray-500">Total Team Members</p>
                             </div>
@@ -1976,7 +2003,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             </div>
                             <div className="text-center">
                               <p className="text-xl font-bold text-green-400">{totalTasks}</p>
-                              <p className="text-sm text-gray-500">Tasks Completed</p>
+                              <p className="text-sm text-gray-500">Tasks Last 30 Days</p>
                             </div>
                           </div>
                         </div>

@@ -478,6 +478,26 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Only join if we're not already in this room
           if (!privateRoomId || privateRoomId !== privateRoom.id) {
             try {
+              // Check if the user is the superadmin
+              const SUPERADMIN_USER_ID = "df3aed2a-ad51-457f-b0cd-f7d4225143d4";
+              const isSuperadmin = reduxUser.user_id === SUPERADMIN_USER_ID;
+              
+              // Check if user is a member of this private room (for superadmin visibility logic)
+              let isMember = true; // Default to true for non-superadmin users
+              if (isSuperadmin) {
+                try {
+                  const membershipResponse = await fetch(
+                    `/api/check-room-membership?userId=${reduxUser.user_id}&roomSlug=${roomUrl}`
+                  );
+                  if (membershipResponse.ok) {
+                    const membershipData = await membershipResponse.json();
+                    isMember = membershipData.isMember;
+                  }
+                } catch (error) {
+                  console.error("Failed to check room membership:", error);
+                }
+              }
+              
               // Create presence manager for private rooms
               const presence = new PresenceService(user.id, privateRoom.id);
               const initialized = await presence.initialize();
@@ -486,8 +506,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 // Store presence manager
                 setRoomPresence(presence);
 
-                // Add user to PrivateRoom users list and update count
-                await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
+                // Only add user to PrivateRoom users list if they're not superadmin OR if they're a member
+                // This prevents superadmin from appearing in the room unless they're actually a member
+                if (!isSuperadmin || isMember) {
+                  await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
+                }
                 
                 // Store the private room ID for cleanup later
                 setPrivateRoomId(privateRoom.id);
@@ -603,6 +626,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           }
 
           // Also remove from PrivateRooms if this is a private room
+          // The removeUserFromPrivateRoom function will handle it gracefully if user wasn't in the room
+          // (superadmin viewing without membership won't be in the room, so removal will be a no-op)
           if (currentInstance.type === "private" && privateRoomId) {
             removeUserFromPrivateRoom(privateRoomId, user.id);
           }
