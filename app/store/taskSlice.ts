@@ -265,10 +265,16 @@ export const transferTaskToPostgres = createAsyncThunk(
       // Remove the specific task
       await remove(taskRef);
 
-      // Always remove LastTask when any task is completed
-      // This ensures the input field stays empty after completing any task
+      // Only remove LastTask if it belongs to the completed task
+      // This prevents race conditions where a new task starts before the transfer completes
       const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
-      await remove(lastTaskRef);
+      const lastTaskSnapshot = await get(lastTaskRef);
+      if (lastTaskSnapshot.exists()) {
+        const lastTaskData = lastTaskSnapshot.val();
+        if (lastTaskData.taskId === taskData.id) {
+          await remove(lastTaskRef);
+        }
+      }
 
       // Set a flag indicating task was just completed to prevent auto-selection on reload
       const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
