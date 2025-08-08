@@ -8,6 +8,8 @@ import { PresenceService } from "@/app/utils/presenceService";
 import { rtdb } from "@/lib/firebase";
 import { ref, onValue, off } from "firebase/database";
 import { roomService } from "@/app/services/roomService";
+import { createPrivateRoom } from "@/app/utils/privateRooms";
+import { createTeamRoom } from "@/app/utils/teamRooms";
 import {
   DndContext,
   closestCenter,
@@ -73,10 +75,22 @@ interface SortableRoomCardProps {
   onJoinRoom: (url: string) => void;
   onSettingsClick: (room: Room) => void;
   activeCount?: number;
-  roomUsers?: Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>;
+  roomUsers?: Array<{
+    userId: string;
+    firstName?: string;
+    lastName?: string;
+    picture?: string | null;
+    isActive: boolean;
+  }>;
 }
 
-const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUrl, onJoinRoom, activeCount, roomUsers }) => {
+const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
+  room,
+  currentRoomUrl,
+  onJoinRoom,
+  activeCount,
+  roomUsers,
+}) => {
   const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: room.id,
     animateLayoutChanges: () => true,
@@ -92,10 +106,9 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
   } as React.CSSProperties;
 
   // Check if this is the current room (handle both with and without leading slash)
-  const isCurrentRoom = currentRoomUrl === room.url || 
-                       currentRoomUrl === room.url.replace(/^\//, '') || 
-                       `/${currentRoomUrl}` === room.url;
-  
+  const isCurrentRoom =
+    currentRoomUrl === room.url || currentRoomUrl === room.url.replace(/^\//, "") || `/${currentRoomUrl}` === room.url;
+
   // Debug logging removed to prevent infinite loop
 
   return (
@@ -113,22 +126,31 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
             <h3 className="font-semibold text-gray-200">{room.name}</h3>
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
-                room.isEphemeral || room.id.startsWith('ephemeral-')
-                  ? "bg-green-500/20 text-green-400" 
-                  : room.type === "private" 
-                  ? "bg-purple-500/20 text-purple-400" 
+                room.isEphemeral || room.id.startsWith("ephemeral-")
+                  ? "bg-green-500/20 text-green-400"
+                  : room.type === "private"
+                  ? "bg-purple-500/20 text-purple-400"
                   : "bg-blue-500/20 text-blue-400"
               }`}
             >
-              {room.isEphemeral || room.id.startsWith('ephemeral-') ? "Temporary" : room.type === "private" ? "Private" : "Public"}
+              {room.isEphemeral || room.id.startsWith("ephemeral-")
+                ? "Temporary"
+                : room.type === "private"
+                ? "Private"
+                : "Public"}
             </span>
           </div>
           {/* Elegant URL display */}
           <div className="flex items-center gap-1.5 text-sm text-gray-500">
             <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
             </svg>
-            <span className="font-mono text-xs">locked-in{room.url.startsWith('/') ? room.url : `/${room.url}`}</span>
+            <span className="font-mono text-xs">locked-in{room.url.startsWith("/") ? room.url : `/${room.url}`}</span>
           </div>
         </div>
 
@@ -161,7 +183,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
 
           {/* Quick Stats */}
           <div className="text-right text-xs text-gray-500">
-            <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || 'Null'}</div>
+            <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || "Null"}</div>
             <div>{room.weeklyStats?.totalTasks || 0} tasks</div>
             <div className="text-[10px] mt-1">last 30 days</div>
           </div>
@@ -190,20 +212,19 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
               // Add member avatars
               for (let i = 0; i < membersToShow; i++) {
                 const user = sortedUsers[i];
-                const firstName = user.firstName || '';
-                const lastName = user.lastName || '';
+                const firstName = user.firstName || "";
+                const lastName = user.lastName || "";
                 const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-                const displayInitials = initials.trim() || 'U';
-                const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
-                
-                
+                const displayInitials = initials.trim() || "U";
+                const fullName = `${firstName} ${lastName}`.trim() || "Unknown User";
+
                 displayItems.push(
                   <div
                     key={user.userId}
                     className="relative"
-                    title={`${fullName}${user.isActive ? ' - Active' : ' - Idle'}`}
+                    title={`${fullName}${user.isActive ? " - Active" : " - Idle"}`}
                   >
-                    {user.picture && user.picture.trim() !== '' ? (
+                    {user.picture && user.picture.trim() !== "" ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={user.picture}
@@ -220,15 +241,13 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({ room, currentRoomUr
                         }}
                       />
                     ) : (
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
-                      >
+                      <div className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200">
                         {displayInitials}
                       </div>
                     )}
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
-                        user.isActive ? 'bg-green-500 animate-sync-pulse' : 'bg-yellow-500'
+                        user.isActive ? "bg-green-500 animate-sync-pulse" : "bg-yellow-500"
                       }`}
                     />
                   </div>
@@ -335,7 +354,6 @@ const MOCK_FRIENDS = [
 ];
 */
 
-
 // Teams data structure
 // Mock rooms for teams tab
 /*
@@ -390,111 +408,77 @@ const MOCK_TEAM_ROOMS: Room[] = [
 
 // Derive teams from actual rooms data - only private rooms the user is part of
 const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
-  const teams: Record<string, {
-    id: string;
-    name: string;
-    description: string;
-    members: RoomMember[];
-    rooms: Room[];
-    createdBy: string;
-    createdAt: string;
-  }> = {};
-  
+  const teams: Record<
+    string,
+    {
+      id: string;
+      name: string;
+      description: string;
+      members: RoomMember[];
+      rooms: Room[];
+      createdBy: string;
+      createdAt: string;
+    }
+  > = {};
+
   // Filter to only private rooms where user is a member
-  const privateRooms = rooms.filter(room => {
+  const privateRooms = rooms.filter((room) => {
     // Check if room is private
-    if (room.type !== 'private') return false;
-    
+    if (room.type !== "private") return false;
+
     // Check if user is owner
     if (room.createdBy === userId || room.isOwner) return true;
-    
+
     // Check if user is admin
     if (room.isAdmin || (room.admins && room.admins.includes(userId))) return true;
-    
+
     // Check if user is a member
-    const isMember = room.members?.some(member => member.id === userId);
+    const isMember = room.members?.some((member) => member.id === userId);
     return isMember;
   });
-  
-  // Group private rooms by owner to create teams
-  const roomsByOwner = privateRooms.reduce((acc, room) => {
-    const owner = room.createdBy || 'unknown';
-    if (!acc[owner]) {
-      acc[owner] = [];
-    }
-    acc[owner].push(room);
-    return acc;
-  }, {} as Record<string, Room[]>);
-  
-  // Create teams from grouped rooms
-  Object.entries(roomsByOwner).forEach(([owner, ownerRooms]) => {
-    // Create a team ID based on owner
-    const teamId = owner === userId ? 'my-team' : `team-${owner.substring(0, 8)}`;
-    
-    // Aggregate all unique members from all rooms
-    const allMembers = new Set<string>();
-    const memberDetails: RoomMember[] = [];
-    
-    ownerRooms.forEach(room => {
-      (room.members || []).forEach(member => {
-        if (!allMembers.has(member.id)) {
-          allMembers.add(member.id);
-          memberDetails.push(member);
-        }
-      });
-    });
-    
-    // Filter out superadmin from member count for description
-    const filteredMemberCount = memberDetails.filter(m => m.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a').length;
+
+  // Create teams from actual private rooms - each room is its own team
+  privateRooms.forEach((room) => {
+    // Use the room's slug or ID as the team ID
+    const teamId = room.url || room.id;
     
     teams[teamId] = {
       id: teamId,
-      name: owner === userId ? 'My Workspace' : `Team ${ownerRooms[0]?.name || 'Workspace'}`,
-      description: owner === userId ? 'Your personal workspace and rooms' : `Shared workspace with ${filteredMemberCount} members`,
-      members: memberDetails,
-      rooms: ownerRooms,
-      createdBy: owner === userId ? 'You' : owner,
+      name: room.name || room.url || "Unnamed Team",
+      description: `${room.members?.length || 0} members`,
+      members: room.members || [],
+      rooms: [room],
+      createdBy: room.createdBy || "Unknown",
       createdAt: new Date().toISOString(),
     };
   });
-  
-  // If no teams exist, create a default one
-  if (Object.keys(teams).length === 0) {
-    teams['default'] = {
-      id: 'default',
-      name: 'My Workspace',
-      description: 'Your workspace',
-      members: [],
-      rooms: [],
-      createdBy: 'You',
-      createdAt: new Date().toISOString(),
-    };
-  }
-  
+
+  // Don't create any default teams - if no teams exist, return empty object
+
   return teams;
 };
 
 const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const router = useRouter();
-  
+
   // Get rooms from Redux store
   const { rooms: reduxRooms } = useSelector((state: RootState) => state.workspace);
   const user = useSelector((state: RootState) => state.user);
-  
+
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
-  
+
   // Derive teams from actual rooms
   const derivedTeams = React.useMemo(() => {
-    const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] }))];
-    return deriveTeamsFromRooms(allRooms, user.user_id || '');
+    const allRooms = [...reduxRooms.map((r) => ({ ...r, members: r.members || [] }))];
+    return deriveTeamsFromRooms(allRooms, user.user_id || "");
   }, [reduxRooms, user.user_id]);
   const teamIds = Object.keys(derivedTeams);
-  const [selectedTeam, setSelectedTeam] = useState(teamIds[0] || "create");
+  // Default to "create" if user has no teams
+  const [selectedTeam, setSelectedTeam] = useState(teamIds.length > 0 ? teamIds[0] : "create");
   const [newRoomName, setNewRoomName] = useState("");
-  const [newRoomType, setNewRoomType] = useState<"public" | "private">("public");
-  const [newRoomTeam, setNewRoomTeam] = useState("create");
+  const [roomCreationError, setRoomCreationError] = useState("");
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [showInviteModal, setShowInviteModal] = useState<Room | null>(null);
   const [showMembersModal, setShowMembersModal] = useState<Room | null>(null);
@@ -503,6 +487,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [inviteEmails, setInviteEmails] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState<Room | null>(null);
   const [newTeamName, setNewTeamName] = useState("");
+  const [teamCreationError, setTeamCreationError] = useState("");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -513,44 +498,58 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState<Room | null>(null);
   const [myRoomsOrder, setMyRoomsOrder] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  
+
   // Store active counts for each room
   const [roomActiveCounts, setRoomActiveCounts] = useState<Record<string, number>>({});
   // Store all users for each room (both active and idle)
-  const [roomUsers, setRoomUsers] = useState<Record<string, Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>>>({});
+  const [roomUsers, setRoomUsers] = useState<
+    Record<
+      string,
+      Array<{ userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean }>
+    >
+  >({});
   // Store ephemeral rooms from Firebase
   const [ephemeralRooms, setEphemeralRooms] = useState<Room[]>([]);
-  
+
   // Store user last active data from PostgreSQL
-  const [userLastActiveData, setUserLastActiveData] = useState<Record<string, {
-    last_active: string;
-    auth_id: string;
-    first_name: string;
-    last_name: string;
-    profile_image: string | null;
-  }>>({});
-  
+  const [userLastActiveData, setUserLastActiveData] = useState<
+    Record<
+      string,
+      {
+        last_active: string;
+        auth_id: string;
+        first_name: string;
+        last_name: string;
+        profile_image: string | null;
+      }
+    >
+  >({});
+
   // Store user presence status from Firebase
-  const [userPresenceStatus, setUserPresenceStatus] = useState<Record<string, {
-    isOnline: boolean;
-    isActive: boolean;
-  }>>({});
+  const [userPresenceStatus, setUserPresenceStatus] = useState<
+    Record<
+      string,
+      {
+        isOnline: boolean;
+        isActive: boolean;
+      }
+    >
+  >({});
 
   // Update flag when disclaimer is dismissed
-  useEffect(() => {
-  }, []);
+  useEffect(() => {}, []);
 
   // Fetch user last_active data once when teams tab opens
   useEffect(() => {
-    if (activeTab !== 'team') {
+    if (activeTab !== "team") {
       return;
     }
 
     const fetchUserLastActive = async () => {
       // Get all unique user IDs from team members
       const userIds = new Set<string>();
-      Object.values(derivedTeams).forEach(team => {
-        team.members?.forEach(member => {
+      Object.values(derivedTeams).forEach((team) => {
+        team.members?.forEach((member) => {
           if (member.id) {
             userIds.add(member.id);
           }
@@ -560,10 +559,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       if (userIds.size === 0) return;
 
       try {
-        const response = await fetch('/api/users/last-active', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userIds: Array.from(userIds) })
+        const response = await fetch("/api/users/last-active", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userIds: Array.from(userIds) }),
         });
 
         if (response.ok) {
@@ -571,7 +570,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           setUserLastActiveData(data);
         }
       } catch (error) {
-        console.error('Failed to fetch user last active data:', error);
+        console.error("Failed to fetch user last active data:", error);
       }
     };
 
@@ -583,7 +582,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Fetch Firebase Presence for team members with real-time updates
   useEffect(() => {
-    if (activeTab !== 'team') {
+    if (activeTab !== "team") {
       // Clear presence data when leaving Teams tab
       setUserPresenceStatus({});
       return;
@@ -591,8 +590,8 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
     // Get all team members' authIds from current state
     const teamMemberAuthIds = new Set<string>();
-    Object.values(derivedTeams).forEach(team => {
-      team.members?.forEach(member => {
+    Object.values(derivedTeams).forEach((team) => {
+      team.members?.forEach((member) => {
         if (member.authId) {
           teamMemberAuthIds.add(member.authId);
         }
@@ -607,23 +606,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     const listeners: Array<() => void> = [];
 
     // Set up real-time listeners for each team member
-    teamMemberAuthIds.forEach(authId => {
+    teamMemberAuthIds.forEach((authId) => {
       const presenceRef = ref(rtdb, `Presence/${authId}`);
-      
+
       const handlePresenceUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
         if (snapshot.exists()) {
           const presenceData = snapshot.val();
-          
+
           let isOnline = false;
           let isActive = false;
-          
+
           // Check if user has any sessions
           if (presenceData.sessions) {
             const now = Date.now();
             Object.values(presenceData.sessions).forEach((session: unknown) => {
               const sessionData = session as { lastSeen?: number; isActive?: boolean };
               // Consider online if lastSeen is within 65 seconds
-              if (typeof sessionData.lastSeen === 'number' && now - sessionData.lastSeen < 65000) {
+              if (typeof sessionData.lastSeen === "number" && now - sessionData.lastSeen < 65000) {
                 isOnline = true;
                 if (sessionData.isActive === true) {
                   isActive = true;
@@ -631,15 +630,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               }
             });
           }
-          
+
           // Only update if status actually changed
-          setUserPresenceStatus(prev => {
+          setUserPresenceStatus((prev) => {
             const currentStatus = prev[authId];
             if (!currentStatus || currentStatus.isOnline !== isOnline || currentStatus.isActive !== isActive) {
               // Status changed, update it
               return {
                 ...prev,
-                [authId]: { isOnline, isActive }
+                [authId]: { isOnline, isActive },
               };
             }
             // No change, return previous state
@@ -647,23 +646,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           });
         } else {
           // User has no presence data
-          setUserPresenceStatus(prev => ({
+          setUserPresenceStatus((prev) => ({
             ...prev,
-            [authId]: { isOnline: false, isActive: false }
+            [authId]: { isOnline: false, isActive: false },
           }));
         }
       };
-      
+
       // Set up listener
       onValue(presenceRef, handlePresenceUpdate);
-      
+
       // Store cleanup function
-      listeners.push(() => off(presenceRef, 'value', handlePresenceUpdate));
+      listeners.push(() => off(presenceRef, "value", handlePresenceUpdate));
     });
 
     // Cleanup function
     return () => {
-      listeners.forEach(cleanup => cleanup());
+      listeners.forEach((cleanup) => cleanup());
       setUserPresenceStatus({});
     };
   }, [activeTab, derivedTeams]); // Depend on activeTab and derivedTeams
@@ -677,127 +676,131 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 1) return "Just now";
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return '1d ago';
+    if (diffDays === 1) return "1d ago";
     if (diffDays < 30) return `${diffDays}d ago`;
-    
+
     const diffMonths = Math.floor(diffDays / 30);
-    if (diffMonths === 1) return '1mo ago';
+    if (diffMonths === 1) return "1mo ago";
     return `${diffMonths}mo ago`;
   };
 
   // Update myRoomsOrder when rooms change
   useEffect(() => {
-    const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
+    const allRooms = [...reduxRooms.map((r) => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
     const allRoomIds = allRooms.map((room) => room.id);
-    
-    setMyRoomsOrder(prevOrder => {
+
+    setMyRoomsOrder((prevOrder) => {
       // Update order if there are new rooms or rooms have been removed
-      const hasNewRooms = allRoomIds.some(id => !prevOrder.includes(id));
-      const hasRemovedRooms = prevOrder.some(id => !allRoomIds.includes(id));
-      
+      const hasNewRooms = allRoomIds.some((id) => !prevOrder.includes(id));
+      const hasRemovedRooms = prevOrder.some((id) => !allRoomIds.includes(id));
+
       if (hasNewRooms || hasRemovedRooms) {
         // Keep existing order for rooms that still exist, append new rooms
-        const existingOrder = prevOrder.filter(id => allRoomIds.includes(id));
-        const newRoomIds = allRoomIds.filter(id => !prevOrder.includes(id));
+        const existingOrder = prevOrder.filter((id) => allRoomIds.includes(id));
+        const newRoomIds = allRoomIds.filter((id) => !prevOrder.includes(id));
         return [...existingOrder, ...newRoomIds];
       }
-      
+
       // Return previous order if no changes needed
       return prevOrder;
     });
   }, [reduxRooms, ephemeralRooms]);
 
-  // Update newRoomTeam when selectedTeam changes
-  useEffect(() => {
-    setNewRoomTeam(selectedTeam);
-  }, [selectedTeam]);
-  
   // Listen to Firebase Presence to get active user counts and user data for each room
   useEffect(() => {
     // Create listeners for both Presence and Users
-    const presenceRef = ref(rtdb, 'Presence');
-    const usersRef = ref(rtdb, 'Users');
-    
+    const presenceRef = ref(rtdb, "Presence");
+    const usersRef = ref(rtdb, "Users");
+
     let presenceData: Record<string, { sessions?: Record<string, unknown> }> | null = null;
     let usersData: Record<string, { firstName?: string; lastName?: string; picture?: string }> | null = null;
-    let postgresUsers: Record<string, { firstName: string; lastName: string; profileImage: string | null }> | null = null;
-    
+    let postgresUsers: Record<string, { firstName: string; lastName: string; profileImage: string | null }> | null =
+      null;
+
     const updateRoomData = async () => {
       if (!presenceData || !usersData) return;
-      
+
       // Fetch PostgreSQL users if we haven't already or if presence data changed
       if (!postgresUsers && presenceData) {
         const authIds = Object.keys(presenceData);
         if (authIds.length > 0) {
           try {
-            const response = await fetch('/api/users/by-auth-ids', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ authIds })
+            const response = await fetch("/api/users/by-auth-ids", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ authIds }),
             });
             if (response.ok) {
               const data = await response.json();
               postgresUsers = data.users || {};
             }
           } catch (error) {
-            console.error('Failed to fetch PostgreSQL users:', error);
+            console.error("Failed to fetch PostgreSQL users:", error);
           }
         }
       }
-      
+
       const roomCounts: Record<string, number> = {};
-      const roomUsers: Record<string, Array<{userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean}>> = {};
-      
+      const roomUsers: Record<
+        string,
+        Array<{ userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean }>
+      > = {};
+
       // Iterate through all users in Presence
       for (const [userId, userData] of Object.entries(presenceData)) {
         const userSessions = (userData as { sessions?: Record<string, unknown> }).sessions;
         if (!userSessions) continue;
-        
-        
+
         // Get user data - prefer PostgreSQL, fallback to Firebase Users
         const pgUser = postgresUsers?.[userId];
         const fbUser = usersData[userId];
-        const userInfo = pgUser ? {
-          firstName: pgUser.firstName,
-          lastName: pgUser.lastName,
-          picture: pgUser.profileImage
-        } : fbUser;
-        
-        
+        const userInfo = pgUser
+          ? {
+              firstName: pgUser.firstName,
+              lastName: pgUser.lastName,
+              picture: pgUser.profileImage,
+            }
+          : fbUser;
+
         // Check each session for this user
         for (const [, sessionData] of Object.entries(userSessions)) {
-          const session = sessionData as { roomId?: string; isActive?: boolean; userId?: string; users?: Record<string, unknown> };
-          
+          const session = sessionData as {
+            roomId?: string;
+            isActive?: boolean;
+            userId?: string;
+            users?: Record<string, unknown>;
+          };
+
           // Process all sessions that have a roomId (both active and idle)
           if (session.roomId) {
             // Find the room that matches this Firebase roomId
-            const matchingReduxRoom = reduxRooms.find(r => r.firebaseId === session.roomId);
-            const matchingEphemeralRoom = ephemeralRooms.find(r => r.firebaseId === session.roomId);
+            const matchingReduxRoom = reduxRooms.find((r) => r.firebaseId === session.roomId);
+            const matchingEphemeralRoom = ephemeralRooms.find((r) => r.firebaseId === session.roomId);
             const matchingRoom = matchingReduxRoom || matchingEphemeralRoom;
-            
+
             if (matchingRoom) {
               // Only increment count if session is active
               if (session.isActive) {
                 roomCounts[matchingRoom.id] = (roomCounts[matchingRoom.id] || 0) + 1;
               }
-              
+
               // Initialize array if needed
               if (!roomUsers[matchingRoom.id]) {
                 roomUsers[matchingRoom.id] = [];
               }
-              
+
               // Add user to room's users list (avoid duplicates)
-              const existingUser = roomUsers[matchingRoom.id].find(u => u.userId === userId);
+              const existingUser = roomUsers[matchingRoom.id].find((u) => u.userId === userId);
               if (!existingUser) {
                 roomUsers[matchingRoom.id].push({
                   userId,
-                  firstName: userInfo?.firstName || '',
-                  lastName: userInfo?.lastName || '',
+                  firstName: userInfo?.firstName || "",
+                  lastName: userInfo?.lastName || "",
                   picture: userInfo?.picture || null,
-                  isActive: session.isActive || false
+                  isActive: session.isActive || false,
                 });
               } else if (session.isActive && !existingUser.isActive) {
                 // Update existing user to active if any of their sessions is active
@@ -807,68 +810,72 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           }
         }
       }
-      
-      
+
       setRoomActiveCounts(roomCounts);
       setRoomUsers(roomUsers);
     };
-    
+
     const handlePresenceUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
       const newPresenceData = snapshot.exists() ? snapshot.val() : {};
       const oldUserIds = presenceData ? Object.keys(presenceData) : [];
       const newUserIds = Object.keys(newPresenceData);
-      
+
       // Only reset PostgreSQL users if the user list actually changed
-      const usersChanged = oldUserIds.length !== newUserIds.length || 
-                          !oldUserIds.every(id => newUserIds.includes(id));
-      
+      const usersChanged =
+        oldUserIds.length !== newUserIds.length || !oldUserIds.every((id) => newUserIds.includes(id));
+
       presenceData = newPresenceData;
-      
+
       if (usersChanged) {
         postgresUsers = null; // Only reset if users actually changed
       }
-      
+
       updateRoomData();
     };
-    
+
     const handleUsersUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
       usersData = snapshot.exists() ? snapshot.val() : {};
       updateRoomData();
     };
-    
+
     // Set up listeners
     onValue(presenceRef, handlePresenceUpdate);
     onValue(usersRef, handleUsersUpdate);
-    
+
     // Cleanup
     return () => {
-      off(presenceRef, 'value', handlePresenceUpdate);
-      off(usersRef, 'value', handleUsersUpdate);
+      off(presenceRef, "value", handlePresenceUpdate);
+      off(usersRef, "value", handleUsersUpdate);
     };
   }, [reduxRooms, ephemeralRooms]);
 
   // Listen to Firebase EphemeralRooms for temporary rooms
   useEffect(() => {
-    const ephemeralRoomsRef = ref(rtdb, 'EphemeralRooms');
-    
+    const ephemeralRoomsRef = ref(rtdb, "EphemeralRooms");
+
     const handleRoomsUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
-      
       if (!snapshot.exists()) {
         setEphemeralRooms([]);
         return;
       }
-      
+
       const ephemeralRoomsData = snapshot.val();
-      
+
       const ephemeralRoomsList: Room[] = [];
-      
+
       // Process each room from Firebase EphemeralRooms
       for (const [roomId, roomData] of Object.entries(ephemeralRoomsData)) {
-        const room = roomData as { url?: string; name?: string; userCount?: number; createdBy?: string; createdAt?: number };
-        
+        const room = roomData as {
+          url?: string;
+          name?: string;
+          userCount?: number;
+          createdBy?: string;
+          createdAt?: number;
+        };
+
         // Extract room URL from the data
         const roomUrl = room.url ? `/${room.url}` : `/${roomId}`;
-        
+
         // Ephemeral rooms by definition don't exist in PostgreSQL
         // Just add all ephemeral rooms from Firebase
         if (room.url && room.name) {
@@ -876,43 +883,43 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             id: `ephemeral-${roomId}`, // Prefix to avoid ID conflicts
             name: room.name || room.url || `temp-room-${roomId.slice(-4)}`, // Use the formatted name
             url: roomUrl,
-            type: 'public' as const,
+            type: "public" as const,
             firebaseId: roomId,
             members: [],
             activeCount: room.userCount || 0,
             weeklyStats: {
-              totalTime: '0m',
-              totalTasks: 0
+              totalTime: "0m",
+              totalTasks: 0,
             },
-            description: 'This room will close when empty',
-            createdBy: room.createdBy || 'Anonymous',
+            description: "This room will close when empty",
+            createdBy: room.createdBy || "Anonymous",
             isPinned: false,
             isOwner: false,
             isAdmin: false,
             admins: [],
             maxMembers: 50,
             isEphemeral: true, // Mark as ephemeral
-            createdAt: room.createdAt
+            createdAt: room.createdAt,
           };
           ephemeralRoomsList.push(ephemeralRoom);
         }
       }
-      
+
       setEphemeralRooms(ephemeralRoomsList);
     };
-    
+
     // Set up listener
     onValue(ephemeralRoomsRef, handleRoomsUpdate);
-    
+
     // Cleanup
     return () => {
-      off(ephemeralRoomsRef, 'value', handleRoomsUpdate);
+      off(ephemeralRoomsRef, "value", handleRoomsUpdate);
     };
   }, [reduxRooms]);
 
   // Get pathname using Next.js hook
   const pathname = usePathname();
-  
+
   // Simple approach: Get current room from URL
   const currentRoomUrl = useMemo(() => {
     // Remove the leading slash to get the room URL
@@ -935,7 +942,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   // Filter rooms based on search and tab
   const filteredRooms = useMemo(() => {
     // Merge Redux rooms with ephemeral rooms
-    const allRooms = [...reduxRooms.map(r => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
+    const allRooms = [...reduxRooms.map((r) => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
     let filteredRooms = allRooms;
 
     // For experiment tab, show all rooms (both public and private/Vendorsage)
@@ -957,15 +964,15 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       // Sort by: 1) Current room, 2) Private, 3) Public, 4) Ephemeral
       return [...filteredRooms].sort((a, b) => {
         // Helper functions to check room properties (handle URLs with or without slash)
-        const cleanUrlA = a.url.replace(/^\//, '').toLowerCase();
-        const cleanUrlB = b.url.replace(/^\//, '').toLowerCase();
-        const cleanCurrentUrl = currentRoomUrl.replace(/^\//, '').toLowerCase();
-        
+        const cleanUrlA = a.url.replace(/^\//, "").toLowerCase();
+        const cleanUrlB = b.url.replace(/^\//, "").toLowerCase();
+        const cleanCurrentUrl = currentRoomUrl.replace(/^\//, "").toLowerCase();
+
         const isCurrentA = cleanUrlA === cleanCurrentUrl;
         const isCurrentB = cleanUrlB === cleanCurrentUrl;
-        
+
         // Debug logging removed to prevent infinite loop
-        
+
         // Current room always first
         if (isCurrentA && !isCurrentB) return -1;
         if (!isCurrentA && isCurrentB) return 1;
@@ -973,19 +980,19 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         // If neither is current room, sort by type: private -> public -> ephemeral
         const isPrivateA = a.type === "private";
         const isPrivateB = b.type === "private";
-        const isPublicA = a.type === "public" && !a.isEphemeral && !a.id.startsWith('ephemeral-');
-        const isPublicB = b.type === "public" && !b.isEphemeral && !b.id.startsWith('ephemeral-');
-        const isEphemeralA = a.isEphemeral || a.id.startsWith('ephemeral-');
-        const isEphemeralB = b.isEphemeral || b.id.startsWith('ephemeral-');
-        
+        const isPublicA = a.type === "public" && !a.isEphemeral && !a.id.startsWith("ephemeral-");
+        const isPublicB = b.type === "public" && !b.isEphemeral && !b.id.startsWith("ephemeral-");
+        const isEphemeralA = a.isEphemeral || a.id.startsWith("ephemeral-");
+        const isEphemeralB = b.isEphemeral || b.id.startsWith("ephemeral-");
+
         // Private rooms come first (after current room)
         if (isPrivateA && !isPrivateB) return -1;
         if (!isPrivateA && isPrivateB) return 1;
-        
+
         // Then public rooms (non-ephemeral)
         if (isPublicA && isEphemeralB) return -1;
         if (isEphemeralA && isPublicB) return 1;
-        
+
         // Within same category, sort by pinned status
         if (a.isPinned !== b.isPinned) {
           return a.isPinned ? -1 : 1;
@@ -997,24 +1004,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         if (indexA !== -1 && indexB !== -1) {
           return indexA - indexB;
         }
-        
+
         // Finally by name
         return a.name.localeCompare(b.name);
       });
     } else if (activeTab === "team") {
       // For team tab, only show private rooms (exclude ephemeral)
-      return filteredRooms.filter((r) => r.type === "private" && !r.id.startsWith('ephemeral-'));
+      return filteredRooms.filter((r) => r.type === "private" && !r.id.startsWith("ephemeral-"));
     } else {
       // Default sort by active count for quick-join
       return [...filteredRooms].sort((a, b) => b.activeCount - a.activeCount);
     }
   }, [activeTab, searchQuery, myRoomsOrder, reduxRooms, ephemeralRooms, currentRoomUrl]);
 
-
   // const totalActiveUsers = reduxRooms.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   // const [globalActiveRooms, setGlobalActiveRooms] = useState(0);
-  
+
   // Listen to real-time online user count and public room count
   useEffect(() => {
     // Initial fetch for online users
@@ -1023,28 +1029,28 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         const count = await PresenceService.getTotalOnlineUsers();
         setGlobalActiveUsers(count);
       } catch (error) {
-        console.error('Failed to fetch online users:', error);
+        console.error("Failed to fetch online users:", error);
       }
     };
-    
+
     fetchOnlineUsers();
-    
+
     // Listen to real-time user changes
     const unsubscribeUsers = PresenceService.listenToTotalOnlineUsers((count) => {
       setGlobalActiveUsers(count);
     });
-    
+
     // Listen to real-time room count (public + active private)
-    const publicRoomsRef = ref(rtdb, 'PublicRooms');
-    const privateRoomsRef = ref(rtdb, 'PrivateRooms');
-    
+    const publicRoomsRef = ref(rtdb, "PublicRooms");
+    const privateRoomsRef = ref(rtdb, "PrivateRooms");
+
     // let publicCount = 0;
     // let privateWithUsersCount = 0;
-    
+
     // const updateTotalRooms = () => {
     //   setGlobalActiveRooms(publicCount + privateWithUsersCount);
     // };
-    
+
     // Listen to public rooms
     const publicRoomHandler = (snapshot: { exists: () => boolean; val: () => Record<string, unknown> }) => {
       if (snapshot.exists()) {
@@ -1055,13 +1061,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       }
       // updateTotalRooms();
     };
-    
+
     // Listen to private rooms
     const privateRoomHandler = (snapshot: { exists: () => boolean; val: () => Record<string, unknown> }) => {
       if (snapshot.exists()) {
         // const rooms = snapshot.val();
         // Count private rooms with at least 1 user
-        // privateWithUsersCount = Object.values(rooms).filter((room) => 
+        // privateWithUsersCount = Object.values(rooms).filter((room) =>
         //   (room as { userCount?: number }).userCount && (room as { userCount?: number }).userCount! > 0
         // ).length;
       } else {
@@ -1069,16 +1075,16 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       }
       // updateTotalRooms();
     };
-    
+
     onValue(publicRoomsRef, publicRoomHandler);
     onValue(privateRoomsRef, privateRoomHandler);
-    
+
     return () => {
       unsubscribeUsers();
-      off(publicRoomsRef, 'value', publicRoomHandler);
-      off(privateRoomsRef, 'value', privateRoomHandler);
+      off(publicRoomsRef, "value", publicRoomHandler);
+      off(privateRoomsRef, "value", privateRoomHandler);
     };
-  }, [])
+  }, []);
 
   const handleJoinRoom = (roomUrl: string) => {
     onClose();
@@ -1089,23 +1095,21 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const handleQuickJoin = async () => {
     try {
       // Get current user ID
-      const userId = user?.user_id || 'anonymous';
-      
+      const userId = user?.user_id || "anonymous";
+
       // Get all public rooms (combining redux rooms and ephemeral rooms)
-      const allPublicRooms = [...reduxRooms, ...ephemeralRooms].filter(room => 
-        room.type === "public" || !room.type // Some rooms might not have type specified
+      const allPublicRooms = [...reduxRooms, ...ephemeralRooms].filter(
+        (room) => room.type === "public" || !room.type // Some rooms might not have type specified
       );
-      
-      
+
       // Separate permanent rooms (like GSD) from ephemeral rooms
-      const permanentRooms = allPublicRooms.filter(room => 
-        room.url === "gsd" || room.url === "/gsd" || reduxRooms.some(r => r.id === room.id)
+      const permanentRooms = allPublicRooms.filter(
+        (room) => room.url === "gsd" || room.url === "/gsd" || reduxRooms.some((r) => r.id === room.id)
       );
-      const ephemeralRoomsFiltered = allPublicRooms.filter(room => 
-        ephemeralRooms.some(e => e.id === room.id) && room.url !== "gsd" && room.url !== "/gsd"
+      const ephemeralRoomsFiltered = allPublicRooms.filter(
+        (room) => ephemeralRooms.some((e) => e.id === room.id) && room.url !== "gsd" && room.url !== "/gsd"
       );
-      
-      
+
       // First, check permanent rooms (like GSD) for empty ones
       // Sort to prioritize GSD first
       const sortedPermanentRooms = permanentRooms.sort((a, b) => {
@@ -1113,35 +1117,34 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         if (b.url === "gsd" || b.url === "/gsd") return 1;
         return 0;
       });
-      
+
       for (const room of sortedPermanentRooms) {
         const totalUsers = (roomUsers[room.id] || []).length;
-        
+
         if (totalUsers <= 10) {
           // Found a permanent room with 10 or fewer users, join it
-          const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
+          const roomUrl = room.url.startsWith("/") ? room.url.substring(1) : room.url;
           handleJoinRoom(roomUrl);
           return;
         }
       }
-      
+
       // No permanent rooms with ≤10 users found
       // For ephemeral rooms, ONLY join if they have people (to ensure they still exist)
       for (const room of ephemeralRoomsFiltered) {
         const totalUsers = (roomUsers[room.id] || []).length;
-        
+
         // Only consider ephemeral rooms that have at least 1 user (so we know they exist)
         // AND have 10 or fewer users
         if (totalUsers > 0 && totalUsers <= 10) {
-          const roomUrl = room.url.startsWith('/') ? room.url.substring(1) : room.url;
+          const roomUrl = room.url.startsWith("/") ? room.url.substring(1) : room.url;
           handleJoinRoom(roomUrl);
           return;
         }
       }
-      
+
       // No suitable rooms found, create a new ephemeral room
       await roomService.createRoomAndNavigate(userId);
-      
     } catch (error) {
       console.error("Error in Quick Join:", error);
       // Fallback: try to join GSD
@@ -1162,10 +1165,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
     if (active.id !== over?.id) {
       // Get the current order from filteredRooms
-      const currentOrder = filteredRooms.map(r => r.id);
+      const currentOrder = filteredRooms.map((r) => r.id);
       const oldIndex = currentOrder.indexOf(active.id as string);
       const newIndex = currentOrder.indexOf(over?.id as string);
-      
+
       // Update myRoomsOrder with the new arrangement
       const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
       setMyRoomsOrder(newOrder);
@@ -1192,7 +1195,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-
       <div
         className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative"
         onClick={(e) => e.stopPropagation()}
@@ -1263,12 +1265,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <div className="flex items-center gap-3">
                         <h3 className="font-semibold text-gray-200">Quick Join</h3>
                         <p className="text-base text-gray-500">
-                          <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people online
+                          <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people
+                          online
                         </p>
                       </div>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Instantly join a random room with active workers
-                      </p>
+                      <p className="text-sm text-gray-400 mt-1">Instantly join a random room with active workers</p>
                     </div>
                   </div>
                   <button
@@ -1331,83 +1332,83 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 {showCreateRoom && (
                   <div className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                     <div className="space-y-3">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Enter Room Name"
-                          value={newRoomName}
-                          onChange={(e) => setNewRoomName(e.target.value.slice(0, 20))}
-                          maxLength={20}
-                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                          {newRoomName.length}/20
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-1">Room Name</label>
+                        <div className="relative">
                           <input
-                            type="radio"
-                            name="roomType"
-                            checked={newRoomType === "public"}
-                            onChange={() => setNewRoomType("public")}
-                            className="text-[#FFAA00]"
+                            type="text"
+                            placeholder="My Awesome Room"
+                            value={newRoomName}
+                            onChange={(e) => {
+                              // Allow letters, numbers, spaces, but no special characters
+                              const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, "");
+                              setNewRoomName(value.slice(0, 30));
+                              setRoomCreationError(""); // Clear error when typing
+                            }}
+                            maxLength={30}
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
                           />
-                          <span className="text-sm text-gray-300">Public Room</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-not-allowed opacity-50">
-                          <input
-                            type="radio"
-                            name="roomType"
-                            checked={newRoomType === "private"}
-                            onChange={() => setNewRoomType("private")}
-                            className="text-[#FFAA00]"
-                            disabled
-                          />
-                          <span className="text-sm text-gray-500">Private Room (Teams Only)</span>
-                        </label>
-                      </div>
-                      {newRoomType === "private" && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">Select Team</label>
-                          <div className="relative">
-                            <select
-                              value={newRoomTeam}
-                              onChange={(e) => setNewRoomTeam(e.target.value)}
-                              className="w-full px-3 py-2 pr-10 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-[#FFAA00] transition-colors appearance-none"
-                            >
-                              <option value="vendorsage">Vendorsage</option>
-                              <option value="nexus">Nexus</option>
-                            </select>
-                            <svg
-                              className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                            {newRoomName.length}/30
+                          </span>
                         </div>
-                      )}
+                        {roomCreationError && (
+                          <p className="text-xs text-red-500 mt-1">{roomCreationError}</p>
+                        )}
+                        {newRoomName && !roomCreationError && (
+                          <>
+                            <p className="text-xs text-gray-500 mt-1">
+                              URL slug:{" "}
+                              {newRoomName
+                                .toLowerCase()
+                                .replace(/\s+/g, "-")
+                                .replace(/[^a-z0-9-]/g, "")}
+                            </p>
+                            <p className="text-xs text-[#FFAA00] mt-1">
+                              Room URL: https://locked-in.work/
+                              {newRoomName
+                                .toLowerCase()
+                                .replace(/\s+/g, "-")
+                                .replace(/[^a-z0-9-]/g, "")}
+                            </p>
+                          </>
+                        )}
+                      </div>
                       <div className="flex gap-2">
                         <button
-                          className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors"
-                          onClick={() => {
-                            // Handle create room
-                            setNewRoomName("");
-                            setNewRoomTeam(selectedTeam);
-                            setShowCreateRoom(false);
+                          className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!newRoomName || newRoomName.length < 3}
+                          onClick={async () => {
+                            if (!newRoomName || newRoomName.length < 3) return;
+
+                            // Convert to slug format for URL
+                            const roomSlug = newRoomName
+                              .toLowerCase()
+                              .replace(/\s+/g, "-")
+                              .replace(/[^a-z0-9-]/g, "");
+
+                            setRoomCreationError(""); // Clear any previous error
+                            
+                            try {
+                              // Create the private room with both name and slug, using Firebase auth_id
+                              await createPrivateRoom(user?.auth_id || "", roomSlug, newRoomName);
+
+                              // Navigate to the new room
+                              window.location.href = `/${roomSlug}`;
+                            } catch (error) {
+                              console.error("Error creating room:", error);
+                              setRoomCreationError(`"${newRoomName}" is already taken. Please choose a different name.`);
+                            }
                           }}
                         >
-                          Create
+                          Create Room
                         </button>
                         <button
                           className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                           onClick={() => {
                             setShowCreateRoom(false);
                             setNewRoomName("");
-                            setNewRoomTeam(selectedTeam);
+                            setRoomCreationError("");
                           }}
                         >
                           Cancel
@@ -1427,7 +1428,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     },
                   }}
                 >
-                  <SortableContext items={filteredRooms.map(r => r.id)} strategy={rectSortingStrategy}>
+                  <SortableContext items={filteredRooms.map((r) => r.id)} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {filteredRooms.map((room) => {
                         if (!room) return null;
@@ -1471,13 +1472,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             <div className="flex flex-col h-full">
               {(() => {
                 // Get current team data
-                const currentTeam = derivedTeams[selectedTeam] || derivedTeams[teamIds[0]] || { 
-                  rooms: [], 
-                  members: [], 
-                  description: 'Your workspace' 
-                };
+                const currentTeam = derivedTeams[selectedTeam] ||
+                  derivedTeams[teamIds[0]] || {
+                    rooms: [],
+                    members: [],
+                    description: "Your workspace",
+                  };
                 const teamRooms = currentTeam.rooms;
-                
+
                 const allTeamMembers = new Map();
                 let totalActiveMembers = 0;
                 let totalTasks = 0;
@@ -1546,28 +1548,32 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <div className="bg-gray-800/50 rounded-lg px-6 py-4 border border-gray-700">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-xl font-bold text-[#FFAA00]">Create New Team</h3>
-                          <button
-                            onClick={() => {
-                              setSelectedTeam("vendorsage");
-                              setNewTeamName("");
-                              setInviteEmails("");
-                            }}
-                            className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
-                          >
-                            <svg
-                              className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                          {/* Only show X button if user has teams to go back to */}
+                          {teamIds.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setSelectedTeam(teamIds[0]);
+                                setNewTeamName("");
+                                setTeamCreationError("");
+                                setInviteEmails("");
+                              }}
+                              className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
+                              <svg
+                                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          )}
                         </div>
 
                         {/* Value Proposition */}
@@ -1824,9 +1830,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             <div className="relative">
                               <input
                                 type="text"
-                                placeholder="Enter team name"
+                                placeholder="My Awesome Team"
                                 value={newTeamName}
-                                onChange={(e) => setNewTeamName(e.target.value.slice(0, 30))}
+                                onChange={(e) => {
+                                  // Allow letters, numbers, spaces, but no special characters
+                                  const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '');
+                                  setNewTeamName(value.slice(0, 30));
+                                  setTeamCreationError(""); // Clear error when typing
+                                }}
                                 maxLength={30}
                                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
                               />
@@ -1834,27 +1845,62 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 {newTeamName.length}/30
                               </span>
                             </div>
+                            {teamCreationError && (
+                              <p className="text-xs text-red-500 mt-1">{teamCreationError}</p>
+                            )}
+                            {newTeamName && !teamCreationError && (
+                              <>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  URL slug: {newTeamName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}
+                                </p>
+                                <p className="text-xs text-[#FFAA00] mt-1">
+                                  Team URL: https://locked-in.work/{newTeamName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}
+                                </p>
+                              </>
+                            )}
                           </div>
                           <button
-                            disabled={!newTeamName.trim()}
-                            onClick={() => {
-                              // Redirect to Stripe checkout for team creation
-                              window.open('https://buy.stripe.com/28EdRb2Rhd6W8Ii75Q0Fi05', '_blank');
+                            disabled={!newTeamName.trim() || newTeamName.trim().length < 3}
+                            onClick={async () => {
+                              if (!newTeamName.trim() || newTeamName.trim().length < 3) return;
+                              
+                              // Convert to slug format for URL
+                              const teamSlug = newTeamName
+                                .toLowerCase()
+                                .replace(/\s+/g, "-")
+                                .replace(/[^a-z0-9-]/g, "");
+                              
+                              setTeamCreationError(""); // Clear any previous error
+                              
+                              try {
+                                // Create the team room with type='private'
+                                await createTeamRoom(user?.auth_id || "", teamSlug, newTeamName);
+                                
+                                // Navigate to the new team room
+                                window.location.href = `/${teamSlug}`;
+                              } catch (error) {
+                                console.error("Error creating team:", error);
+                                setTeamCreationError(`"${newTeamName}" is already taken. Please choose a different name.`);
+                              }
                             }}
                             className="px-6 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                           >
                             Create Team
                           </button>
-                          <button
-                            onClick={() => {
-                              setSelectedTeam("vendorsage");
-                              setNewTeamName("");
-                              setInviteEmails("");
-                            }}
-                            className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                          {/* Only show Cancel button if user has teams to go back to */}
+                          {teamIds.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setSelectedTeam(teamIds[0]);
+                                setNewTeamName("");
+                                setTeamCreationError("");
+                                setInviteEmails("");
+                              }}
+                              className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -1868,18 +1914,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                   <select
                                     value={selectedTeam}
                                     onChange={(e) => {
-                                      if (e.target.value === 'create') {
-                                        // When selecting "Create Team", redirect to Stripe
-                                        window.open('https://buy.stripe.com/28EdRb2Rhd6W8Ii75Q0Fi05', '_blank');
-                                        // Keep the current selection
-                                        e.target.value = selectedTeam;
-                                      } else {
-                                        setSelectedTeam(e.target.value);
-                                      }
+                                      setSelectedTeam(e.target.value);
                                     }}
                                     className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer"
                                   >
-                                    {teamIds.map(teamId => (
+                                    {teamIds.map((teamId) => (
                                       <option key={teamId} value={teamId}>
                                         {derivedTeams[teamId].name}
                                       </option>
@@ -1901,9 +1940,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                   </svg>
                                 </div>
                               </div>
-                              <p className="text-gray-400">
-                                {currentTeam.description}
-                              </p>
+                              <p className="text-gray-400">{currentTeam.description}</p>
                             </div>
                             <button
                               onClick={() => setShowTeamInviteModal(true)}
@@ -1924,25 +1961,21 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           {/* Team Stats */}
                           <div className="grid grid-cols-4 gap-4 mt-4">
                             <div className="text-center">
-                              <p className="text-xl font-bold text-green-400">
-                                {totalActiveMembers}
-                              </p>
+                              <p className="text-xl font-bold text-green-400">{totalActiveMembers}</p>
                               <p className="text-sm text-gray-500">Active Now</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-xl font-bold text-green-400">{teamMembers.filter(m => m.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a').length}</p>
+                              <p className="text-xl font-bold text-green-400">
+                                {teamMembers.filter((m) => m.id !== "6e756c03-9596-41bc-96ae-d8ede249a27a").length}
+                              </p>
                               <p className="text-sm text-gray-500">Total Team Members</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-xl font-bold text-green-400">
-                                {formatTotalTime(totalTime)}
-                              </p>
+                              <p className="text-xl font-bold text-green-400">{formatTotalTime(totalTime)}</p>
                               <p className="text-sm text-gray-500">Total Time This Week</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-xl font-bold text-green-400">
-                                {totalTasks}
-                              </p>
+                              <p className="text-xl font-bold text-green-400">{totalTasks}</p>
                               <p className="text-sm text-gray-500">Tasks Completed</p>
                             </div>
                           </div>
@@ -1971,8 +2004,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 onClick={() => {
                                   setActiveTab("experiment");
                                   setShowCreateRoom(true);
-                                  setNewRoomType("private");
-                                  setNewRoomTeam(selectedTeam);
                                 }}
                                 className="px-4 py-2 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
                               >
@@ -2006,14 +2037,17 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                       <div>
                                         <h4 className="font-medium text-gray-200 flex items-center gap-2">
                                           {room.name}
-                                          {room.id.startsWith('ephemeral-') && (
+                                          {room.id.startsWith("ephemeral-") && (
                                             <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
                                               Temp
                                             </span>
                                           )}
                                         </h4>
                                         <p className="text-sm text-gray-500">
-                                          {room.activeCount} active • {room.members?.filter(m => m.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a').length || 0} members
+                                          {room.activeCount} active •{" "}
+                                          {room.members?.filter((m) => m.id !== "6e756c03-9596-41bc-96ae-d8ede249a27a")
+                                            .length || 0}{" "}
+                                          members
                                         </p>
                                       </div>
                                     </div>
@@ -2035,101 +2069,113 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           <h3 className="text-lg font-semibold text-gray-200 mb-3">Team Members</h3>
                           <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
                             {sortedMembers
-                              .filter(member => member.id !== '6e756c03-9596-41bc-96ae-d8ede249a27a')
+                              .filter((member) => member.id !== "6e756c03-9596-41bc-96ae-d8ede249a27a")
                               .map((member) => (
-                              <div
-                                key={member.id}
-                                className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-all group"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                      {(() => {
-                                        // Get profile picture from PostgreSQL data first
-                                        const userData = userLastActiveData[member.id];
-                                        const profilePicture = userData?.profile_image || member.picture || member.profileImage;
-                                        // const firstName = userData?.first_name || member.firstName || member.name.split(" ")[0] || '';
-                                        // const lastName = userData?.last_name || member.lastName || member.name.split(" ")[1] || '';
-                                        // const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || member.avatar || 'U';
-                                        
-                                        if (profilePicture && profilePicture.trim() !== '') {
-                                          return (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img
-                                              src={profilePicture}
-                                              alt={member.name}
-                                              className="w-12 h-12 rounded-full object-cover hover:ring-2 hover:ring-[#FFAA00] transition-all"
-                                              onError={(e) => {
-                                                // If image fails to load, hide it and show initials
-                                                e.currentTarget.style.display = 'none';
-                                                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                                                if (fallback) fallback.style.display = 'flex';
-                                              }}
-                                            />
-                                          );
-                                        }
-                                        return null;
-                                      })()}
-                                      <div 
-                                        className={`w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all ${
-                                          (userLastActiveData[member.id]?.profile_image || member.picture || member.profileImage) ? 'hidden' : 'flex'
-                                        }`}
-                                      >
+                                <div
+                                  key={member.id}
+                                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-all group"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="relative">
                                         {(() => {
+                                          // Get profile picture from PostgreSQL data first
                                           const userData = userLastActiveData[member.id];
-                                          const firstName = userData?.first_name || member.firstName || member.name.split(" ")[0] || '';
-                                          const lastName = userData?.last_name || member.lastName || member.name.split(" ")[1] || '';
-                                          const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-                                          return initials.trim() || member.avatar || 'U';
-                                        })()}
-                                      </div>
-                                      <div
-                                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${(() => {
-                                          const presence = userPresenceStatus[member.authId || ''];
-                                          if (presence?.isActive) {
-                                            return 'bg-green-500 animate-pulse';
-                                          } else if (presence?.isOnline) {
-                                            return 'bg-yellow-500';
+                                          const profilePicture =
+                                            userData?.profile_image || member.picture || member.profileImage;
+                                          // const firstName = userData?.first_name || member.firstName || member.name.split(" ")[0] || '';
+                                          // const lastName = userData?.last_name || member.lastName || member.name.split(" ")[1] || '';
+                                          // const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || member.avatar || 'U';
+
+                                          if (profilePicture && profilePicture.trim() !== "") {
+                                            return (
+                                              // eslint-disable-next-line @next/next/no-img-element
+                                              <img
+                                                src={profilePicture}
+                                                alt={member.name}
+                                                className="w-12 h-12 rounded-full object-cover hover:ring-2 hover:ring-[#FFAA00] transition-all"
+                                                onError={(e) => {
+                                                  // If image fails to load, hide it and show initials
+                                                  e.currentTarget.style.display = "none";
+                                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                                  if (fallback) fallback.style.display = "flex";
+                                                }}
+                                              />
+                                            );
                                           }
-                                          return 'bg-gray-600';
-                                        })()}`}
-                                      />
-                                    </div>
-                                    <div className="flex-1">
-                                      <h4 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">
-                                        {member.name}
-                                      </h4>
-                                      <div className="flex items-center gap-2 text-sm">
-                                        <p className="text-gray-500">
+                                          return null;
+                                        })()}
+                                        <div
+                                          className={`w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all ${
+                                            userLastActiveData[member.id]?.profile_image ||
+                                            member.picture ||
+                                            member.profileImage
+                                              ? "hidden"
+                                              : "flex"
+                                          }`}
+                                        >
                                           {(() => {
-                                            const presence = userPresenceStatus[member.authId || ''];
-                                            if (presence?.isActive) {
-                                              return "Actively working";
-                                            } else if (presence?.isOnline) {
-                                              return "Standby";
-                                            } else {
-                                              // Offline - show last seen from actual data
-                                              const userData = userLastActiveData[member.id];
-                                              if (userData?.last_active) {
-                                                return `Last seen ${formatRelativeTime(userData.last_active)}`;
-                                              }
-                                              // Fallback if no data available
-                                              return `Last seen recently`;
-                                            }
+                                            const userData = userLastActiveData[member.id];
+                                            const firstName =
+                                              userData?.first_name ||
+                                              member.firstName ||
+                                              member.name.split(" ")[0] ||
+                                              "";
+                                            const lastName =
+                                              userData?.last_name || member.lastName || member.name.split(" ")[1] || "";
+                                            const initials = `${firstName.charAt(0)}${lastName.charAt(
+                                              0
+                                            )}`.toUpperCase();
+                                            return initials.trim() || member.avatar || "U";
                                           })()}
-                                        </p>
-                                        {member.rooms && member.rooms.length > 0 && (
-                                          <>
-                                            <span className="text-gray-600">•</span>
-                                            <p className="text-gray-500 text-xs">{member.rooms.join(", ")}</p>
-                                          </>
-                                        )}
+                                        </div>
+                                        <div
+                                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${(() => {
+                                            const presence = userPresenceStatus[member.authId || ""];
+                                            if (presence?.isActive) {
+                                              return "bg-green-500 animate-pulse";
+                                            } else if (presence?.isOnline) {
+                                              return "bg-yellow-500";
+                                            }
+                                            return "bg-gray-600";
+                                          })()}`}
+                                        />
+                                      </div>
+                                      <div className="flex-1">
+                                        <h4 className="font-medium text-gray-200 hover:text-[#FFAA00] transition-colors">
+                                          {member.name}
+                                        </h4>
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <p className="text-gray-500">
+                                            {(() => {
+                                              const presence = userPresenceStatus[member.authId || ""];
+                                              if (presence?.isActive) {
+                                                return "Actively working";
+                                              } else if (presence?.isOnline) {
+                                                return "Standby";
+                                              } else {
+                                                // Offline - show last seen from actual data
+                                                const userData = userLastActiveData[member.id];
+                                                if (userData?.last_active) {
+                                                  return `Last seen ${formatRelativeTime(userData.last_active)}`;
+                                                }
+                                                // Fallback if no data available
+                                                return `Last seen recently`;
+                                              }
+                                            })()}
+                                          </p>
+                                          {member.rooms && member.rooms.length > 0 && (
+                                            <>
+                                              <span className="text-gray-600">•</span>
+                                              <p className="text-gray-500 text-xs">{member.rooms.join(", ")}</p>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
                           </div>
                         </div>
                       </>
@@ -2154,7 +2200,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-gray-200">{room.name}</h3>
-                        {room.id.startsWith('ephemeral-') ? (
+                        {room.id.startsWith("ephemeral-") ? (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
                             Temp
                           </span>
@@ -2173,12 +2219,24 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                         )}
                       </div>
                       {/* Elegant URL display */}
-          <div className="flex items-center gap-1.5 text-sm text-gray-500">
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            <span className="font-mono text-xs">locked-in{room.url.startsWith('/') ? room.url : `/${room.url}`}</span>
-          </div>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                        <svg
+                          className="w-3.5 h-3.5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                          />
+                        </svg>
+                        <span className="font-mono text-xs">
+                          locked-in{room.url.startsWith("/") ? room.url : `/${room.url}`}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-start gap-2">
@@ -2210,7 +2268,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                       {/* Quick Stats */}
                       <div className="text-right text-xs text-gray-500">
-                        <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || 'Null'}</div>
+                        <div className="font-medium text-gray-400">{room.weeklyStats?.totalTime || "Null"}</div>
                         <div>{room.weeklyStats?.totalTasks || 0} tasks</div>
                         <div className="text-[10px] mt-1">last 30 days</div>
                       </div>
@@ -2239,19 +2297,19 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           // Add member avatars
                           for (let i = 0; i < membersToShow; i++) {
                             const user = sortedUsers[i];
-                            const firstName = user.firstName || '';
-                            const lastName = user.lastName || '';
+                            const firstName = user.firstName || "";
+                            const lastName = user.lastName || "";
                             const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-                const displayInitials = initials.trim() || 'U';
-                            const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
-                            
+                            const displayInitials = initials.trim() || "U";
+                            const fullName = `${firstName} ${lastName}`.trim() || "Unknown User";
+
                             displayItems.push(
                               <div
                                 key={user.userId}
                                 className="relative"
-                                title={`${fullName}${user.isActive ? ' - Active' : ' - Idle'}`}
+                                title={`${fullName}${user.isActive ? " - Active" : " - Idle"}`}
                               >
-                                {user.picture && user.picture.trim() !== '' ? (
+                                {user.picture && user.picture.trim() !== "" ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={user.picture}
@@ -2268,15 +2326,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                     }}
                                   />
                                 ) : (
-                                  <div
-                                    className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200"
-                                  >
+                                  <div className="w-8 h-8 rounded-full border-2 border-gray-900 flex items-center justify-center text-xs font-medium bg-gray-600 text-gray-200">
                                     {displayInitials}
                                   </div>
                                 )}
                                 <div
                                   className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
-                                    user.isActive ? 'bg-green-500' : 'bg-yellow-500'
+                                    user.isActive ? "bg-green-500" : "bg-yellow-500"
                                   }`}
                                 />
                               </div>
@@ -2385,9 +2441,16 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       <label className="block text-sm font-medium text-gray-400 mb-2">Room URL</label>
                       <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
                         <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                          />
                         </svg>
-                        <span className="text-gray-300 font-mono text-sm">locked-in{editingRoom.url.startsWith('/') ? editingRoom.url : `/${editingRoom.url}`}</span>
+                        <span className="text-gray-300 font-mono text-sm">
+                          locked-in{editingRoom.url.startsWith("/") ? editingRoom.url : `/${editingRoom.url}`}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -3007,7 +3070,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           </div>
         </div>
       )}
-
 
       {/* Team Invite Modal */}
       {showTeamInviteModal && (

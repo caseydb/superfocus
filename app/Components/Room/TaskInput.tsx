@@ -5,7 +5,7 @@ import { RootState } from "../../store/store";
 import { setCurrentInput, setCurrentTask } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
 
-const maxLen = 69;
+const maxLen = 100;
 
 interface Task {
   id: string;
@@ -189,7 +189,7 @@ export default function TaskInput({
           const currentLength = task.length;
           const newLength = Math.min(newValue.length, maxLen);
           
-          // Show popup when first reaching the limit (going from <69 to 69)
+          // Show popup when first reaching the limit (going from <100 to 100)
           if (currentLength < maxLen && newLength === maxLen) {
             setShowLimitPopup(true);
           }
@@ -402,7 +402,7 @@ export default function TaskInput({
                   <h3 className="text-lg font-semibold text-white text-center">Character Limit</h3>
                 </div>
                 <p className="text-gray-300 mb-6 text-center">
-                  Be compendious! You&apos;ve reached the 69 character limit.
+                  Be compendious! You&apos;ve reached the 100 character limit.
                 </p>
                 <button
                   onClick={() => setShowLimitPopup(false)}

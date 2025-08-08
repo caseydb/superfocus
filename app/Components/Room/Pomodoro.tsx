@@ -549,7 +549,7 @@ export default function Pomodoro({
           value={task}
           onChange={(e) => {
             const newValue = e.target.value;
-            if (newValue.length <= 69) {
+            if (newValue.length <= 100) {
               dispatch(setCurrentInput(newValue));
               // Clear activeTaskId if user clears the input
               if (!newValue.trim() && activeTaskId) {
@@ -601,7 +601,7 @@ export default function Pomodoro({
           }}
           placeholder="What are you focusing on?"
           disabled={inputLocked}
-          maxLength={69}
+          maxLength={100}
           className={`text-center text-2xl md:text-3xl font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 w-full min-w-[280px] md:min-w-[400px] max-w-[600px] ${
             inputLocked ? "cursor-not-allowed" : "bg-transparent"
           }`}

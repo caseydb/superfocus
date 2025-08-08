@@ -21,7 +21,7 @@ export async function isPrivateRoomUrlTaken(url: string): Promise<boolean> {
 }
 
 // Create a new private room with custom URL
-export async function createPrivateRoom(userId: string, customUrl: string): Promise<PrivateRoom> {
+export async function createPrivateRoom(userId: string, customUrl: string, roomName?: string): Promise<PrivateRoom> {
   
   try {
     // Check if URL is already taken in Firebase RTDB
@@ -47,7 +47,10 @@ export async function createPrivateRoom(userId: string, customUrl: string): Prom
           "Content-Type": "application/json",
           "Authorization": `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ roomSlug: customUrl }),
+        body: JSON.stringify({ 
+          roomSlug: customUrl,
+          roomName: roomName || customUrl // Use provided name or fall back to slug
+        }),
       });
       
       if (!response.ok) {
@@ -79,6 +82,35 @@ export async function createPrivateRoom(userId: string, customUrl: string): Prom
     
     await set(newRoomRef, roomData);
     console.log("Firebase RTDB room created:", roomId);
+    
+    // Update PostgreSQL with the Firebase ID if we have a pgRoomId
+    if (pgRoomId) {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const idToken = await user.getIdToken();
+          
+          const updateResponse = await fetch("/api/update-room-firebase-id", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+              roomId: pgRoomId,
+              firebaseId: roomId
+            }),
+          });
+          
+          if (updateResponse.ok) {
+            console.log("PostgreSQL room updated with Firebase ID");
+          }
+        }
+      } catch (error) {
+        console.error("Error updating PostgreSQL with Firebase ID:", error);
+        // Continue - room is created, just missing the link
+      }
+    }
     
     return {
       id: roomId,

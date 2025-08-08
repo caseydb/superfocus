@@ -541,7 +541,7 @@ function SortableTask({
                   type="text"
                   value={editingText}
                   onChange={(e) => {
-                    if (e.target.value.length <= 69) {
+                    if (e.target.value.length <= 100) {
                       onEditTextChange(e.target.value);
                     }
                   }}
@@ -567,11 +567,11 @@ function SortableTask({
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   className="w-full bg-gray-800 text-white px-2 py-1 pr-14 rounded border border-[#FFAA00] focus:outline-none text-sm"
-                  maxLength={69}
+                  maxLength={100}
                   autoFocus
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                  {editingText.length}/69
+                  {editingText.length}/100
                 </div>
               </div>
             ) : (
@@ -1288,7 +1288,7 @@ export default function TaskList({
                 ref={inputRef}
                 value={newTaskText}
                 onChange={(e) => {
-                  if (e.target.value.length <= 69) {
+                  if (e.target.value.length <= 100) {
                     setNewTaskText(e.target.value);
                     // Force immediate height recalculation
                     setTimeout(() => {
@@ -1318,7 +1318,7 @@ export default function TaskList({
               />
               {newTaskText.length > 0 && (
                 <div className="absolute right-3 bottom-3 text-xs text-gray-400">
-                  {newTaskText.length}/69
+                  {newTaskText.length}/100
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-// Sync private room to Postgres when created from Firebase
+// Update the firebase_id for a room after Firebase RTDB creation
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -23,18 +23,10 @@ export const POST = async (req: NextRequest) => {
     const decoded = await adminAuth.verifyIdToken(idToken);
     const { uid } = decoded;
 
-    const { roomSlug, roomName } = await req.json();
+    const { roomId, firebaseId } = await req.json();
     
-    if (!roomSlug) {
-      return NextResponse.json({ error: "Missing room slug" }, { status: 400 });
-    }
-
-    // Check if slug is already taken in PostgreSQL
-    const existingRoom = await prisma.room.findUnique({
-      where: { slug: roomSlug }
-    });
-    if (existingRoom) {
-      return NextResponse.json({ error: "Room URL already taken" }, { status: 409 });
+    if (!roomId || !firebaseId) {
+      return NextResponse.json({ error: "Missing room ID or Firebase ID" }, { status: 400 });
     }
 
     // Get the PostgreSQL user ID from Firebase auth ID
@@ -47,38 +39,21 @@ export const POST = async (req: NextRequest) => {
       return NextResponse.json({ error: "User not found in database" }, { status: 404 });
     }
 
-    // Create room in PostgreSQL
-    const pgRoom = await prisma.room.create({
-      data: {
-        name: roomName || roomSlug, // Use provided name or fall back to slug
-        slug: roomSlug,
-        picture: "/default-room-avatar.png", // Default room picture
-        owner: pgUser.id,
-        created_at: new Date()
-        // type defaults to "public" in the database
-      }
+    // Update the room with firebase_id
+    const updatedRoom = await prisma.room.update({
+      where: { id: roomId },
+      data: { firebase_id: firebaseId }
     });
 
-    // Add the creator as an admin member of the room
-    await prisma.room_member.create({
-      data: {
-        room_id: pgRoom.id,
-        user_id: pgUser.id,
-        role: "admin"
-      }
-    });
-
-    // Return the room with a note that firebase_id will be updated separately
     return NextResponse.json({ 
       status: "ok", 
-      room: pgRoom,
-      message: "Room created and creator added as admin. Firebase ID will be linked after Firebase RTDB creation."
+      room: updatedRoom 
     });
   } catch (error) {
-    console.error("Error creating private room in PostgreSQL:", error);
+    console.error("Error updating room firebase_id:", error);
     return NextResponse.json(
       {
-        error: "Failed to create room",
+        error: "Failed to update room",
         details:
           process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : String(error)) : undefined,
       },

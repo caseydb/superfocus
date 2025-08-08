@@ -1,4 +1,4 @@
-// Sync private room to Postgres when created from Firebase
+// Sync team room to Postgres when created from Firebase
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -26,6 +26,7 @@ export const POST = async (req: NextRequest) => {
     const { roomSlug, roomName } = await req.json();
     
     if (!roomSlug) {
+      console.error("[team-room-sync] Missing room slug");
       return NextResponse.json({ error: "Missing room slug" }, { status: 400 });
     }
 
@@ -47,19 +48,19 @@ export const POST = async (req: NextRequest) => {
       return NextResponse.json({ error: "User not found in database" }, { status: 404 });
     }
 
-    // Create room in PostgreSQL
+    // Create room in PostgreSQL with type = 'private' for teams
     const pgRoom = await prisma.room.create({
       data: {
         name: roomName || roomSlug, // Use provided name or fall back to slug
         slug: roomSlug,
         picture: "/default-room-avatar.png", // Default room picture
         owner: pgUser.id,
-        created_at: new Date()
-        // type defaults to "public" in the database
+        created_at: new Date(),
+        type: "private" // Teams are always private
       }
     });
 
-    // Add the creator as an admin member of the room
+    // Add the creator as an admin member of the team room
     await prisma.room_member.create({
       data: {
         room_id: pgRoom.id,
@@ -72,13 +73,13 @@ export const POST = async (req: NextRequest) => {
     return NextResponse.json({ 
       status: "ok", 
       room: pgRoom,
-      message: "Room created and creator added as admin. Firebase ID will be linked after Firebase RTDB creation."
+      message: "Team room created and creator added as admin. Firebase ID will be linked after Firebase RTDB creation."
     });
   } catch (error) {
-    console.error("Error creating private room in PostgreSQL:", error);
+    console.error("Error creating team room in PostgreSQL:", error);
     return NextResponse.json(
       {
-        error: "Failed to create room",
+        error: "Failed to create team room",
         details:
           process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : String(error)) : undefined,
       },

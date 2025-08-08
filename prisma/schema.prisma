@@ -119,7 +119,7 @@ model room_member {
   role      String   @default("member")
   joined    DateTime @default(now())
 
-  room      room     @relation(fields: [room_id], references: [id])
+  room      room     @relation(fields: [room_id], references: [id], onDelete: Cascade)
   user      user     @relation(fields: [user_id], references: [id])
 }
 
