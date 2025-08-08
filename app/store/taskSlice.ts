@@ -20,6 +20,7 @@ interface TaskState {
   activeTaskId: string | null;
   loading: boolean;
   error: string | null;
+  checkingTaskBuffer: boolean;
 }
 
 const initialState: TaskState = {
@@ -27,6 +28,7 @@ const initialState: TaskState = {
   activeTaskId: null,
   loading: false,
   error: null,
+  checkingTaskBuffer: false,
 };
 
 // Thunk for adding a task to Firebase TaskBuffer when it's started
@@ -1036,10 +1038,12 @@ const taskSlice = createSlice({
         state.error = action.error.message || "Failed to fetch tasks";
       })
       // Handle checkForActiveTask
-      .addCase(checkForActiveTask.pending, () => {
+      .addCase(checkForActiveTask.pending, (state) => {
         // Checking for active task
+        state.checkingTaskBuffer = true;
       })
       .addCase(checkForActiveTask.fulfilled, (state, action) => {
+        state.checkingTaskBuffer = false;
         if (action.payload) {
           const { task } = action.payload;
           // Set the active task
@@ -1054,8 +1058,9 @@ const taskSlice = createSlice({
           }
         }
       })
-      .addCase(checkForActiveTask.rejected, () => {
+      .addCase(checkForActiveTask.rejected, (state) => {
         // Silently fail - not critical if we can't restore active task
+        state.checkingTaskBuffer = false;
       })
       // Handle updateTaskStatusThunk
       .addCase(updateTaskStatusThunk.pending, (state, action) => {

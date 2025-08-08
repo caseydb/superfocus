@@ -374,19 +374,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             {(() => {
               let profileImage = userProfileImages[u.id] || postgresUsers[u.id]?.profile_image;
               
-              // Debug: Check the raw URL
-              if (profileImage) {
-                console.log(`[ActiveWorkers] Raw profile URL for ${u.displayName}:`, {
-                  url: profileImage,
-                  length: profileImage.length,
-                  includesGoogle: profileImage.includes('googleusercontent.com'),
-                  includesLinkedIn: profileImage.includes('licdn.com'),
-                  startsWithHttp: profileImage.startsWith('http'),
-                  hasEquals: profileImage.includes('='),
-                  urlEncoded: encodeURI(profileImage) !== profileImage
-                });
-              }
-              
               // Process Google profile image URLs to ensure consistent size
               if (profileImage && profileImage.includes('googleusercontent.com')) {
                 // Remove any existing size parameter and add our own
@@ -395,24 +382,12 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                 if (!profileImage.includes('=s')) {
                   profileImage += '=s200-c';
                 }
-                console.log(`[ActiveWorkers] Processed Google URL:`, profileImage);
               }
               
               const userInfo = userInfoMap[u.id] || firebaseUserNames[u.id] || postgresUsers[u.id];
               const firstName = userInfo?.firstName || u.displayName.split(' ')[0] || 'U';
               const lastName = userInfo?.lastName || '';
               const initials = (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
-              
-              console.log(`[ActiveWorkers] Profile image check for ${u.displayName}:`, {
-                firebaseUserId: u.id,
-                profileImageFromLeaderboard: userProfileImages[u.id],
-                postgresUser: postgresUsers[u.id],
-                profileImageFromPostgres: postgresUsers[u.id]?.profile_image,
-                processedProfileImage: profileImage,
-                originalUrl: userProfileImages[u.id] || postgresUsers[u.id]?.profile_image,
-                initials,
-                willShowImage: !!profileImage
-              });
               
               return (
                 <>

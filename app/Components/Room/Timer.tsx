@@ -49,6 +49,7 @@ export default function Timer({
   const dispatch = useDispatch<AppDispatch>();
   const { currentInput: task, currentTaskId } = useSelector((state: RootState) => state.taskInput);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  const checkingTaskBuffer = useSelector((state: RootState) => state.tasks.checkingTaskBuffer);
   
   
   // Initialize from secondsRef if switching from Pomodoro
@@ -72,7 +73,7 @@ export default function Timer({
   const { handleComplete, showCompleteFeedback } = useCompleteButton();
   const [isStarting, setIsStarting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
-  const isInitializedRef = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
@@ -181,14 +182,14 @@ export default function Timer({
 
   // One-time restoration from Firebase on mount
   useEffect(() => {
-    if (!user?.id || isInitializedRef.current) {
+    if (!user?.id || isInitialized) {
       return;
     }
 
     // Skip restoration if there's already an active timer (from Pomodoro)
     // Check if secondsRef has a value OR we already have seconds, indicating an active timer
     if ((hasStarted && secondsRef?.current && secondsRef.current > 0) || seconds > 0) {
-      isInitializedRef.current = true;
+      setIsInitialized(true);
       // If coming from Pomodoro with an active timer, set running state based on timerRunning
       // The running state is managed by RoomShell through onActiveChange
       return;
@@ -211,7 +212,6 @@ export default function Timer({
           const taskData = taskSnapshot.val();
           const totalTime = taskData.total_time || 0;
           
-          
           // Set the timer to this task's time
           setSeconds(totalTime);
           if (secondsRef) {
@@ -227,7 +227,7 @@ export default function Timer({
           }
           
           // Mark as initialized
-          isInitializedRef.current = true;
+          setIsInitialized(true);
           return;
         }
       }
@@ -319,9 +319,9 @@ export default function Timer({
         }
       }
       
-      isInitializedRef.current = true;
+      setIsInitialized(true);
     }).catch(() => {
-      isInitializedRef.current = true;
+      setIsInitialized(true);
     });
     }, 1000); // Wait 1 second for Redux to load
     
@@ -346,7 +346,7 @@ export default function Timer({
       return;
     }
     
-    if (!user?.id || !isInitializedRef.current) {
+    if (!user?.id || !isInitialized) {
       return;
     }
     
@@ -551,6 +551,11 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState, user?.id, activeTaskId]);
 
   async function startTimer() {
+    // Prevent starting if TaskBuffer is still being checked OR Timer hasn't initialized
+    // This ensures we don't override timer state before restoration completes
+    if (checkingTaskBuffer || !isInitialized) {
+      return;
+    }
 
     // Check if task is empty and provide feedback
     if (!task.trim()) {
@@ -761,12 +766,15 @@ export default function Timer({
           <div className="flex flex-col items-center gap-2">
             <button
               className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer ${
-                !task.trim() ? "opacity-60" : ""
+                !task.trim() || checkingTaskBuffer || !isInitialized ? "opacity-60" : ""
               }`}
               onClick={startTimer}
-              disabled={disabled}
+              disabled={disabled || checkingTaskBuffer || !isInitialized}
             >
               {(() => {
+                if (checkingTaskBuffer || !isInitialized) {
+                  return "Loading...";
+                }
                 if (activeTaskId) {
                   const activeTask = reduxTasks.find(t => t.id === activeTaskId);
                   return (activeTask?.timeSpent || 0) > 0 || seconds > 0 ? "Resume" : "Start";
