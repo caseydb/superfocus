@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import DateRangePicker from "../DateRangePicker";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
@@ -8,7 +8,6 @@ import type { Task } from "../../store/taskSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
-import { auth } from '@/lib/firebase';
 import FirecapeSquare from "../FirecapeSquare";
 
 interface AnalyticsProps {
@@ -24,24 +23,20 @@ interface DayActivity {
   totalSeconds: number;
 }
 
-interface SuperadminUser {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  completed_tasks_count: number;
-  display_name: string;
-  timezone?: string;
-  tasks?: Task[];
-}
-
 const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
-  const [superadminUsers, setSuperadminUsers] = useState<SuperadminUser[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>("personal");
-  const hasLoadedUsers = useRef(false);
+  
+  interface LeaderboardEntry {
+    user_id: string;
+    first_name: string;
+    last_name: string;
+    total_duration: number;
+    total_tasks: number;
+  }
+  
+  const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<LeaderboardEntry[]>([]);
   
   // Get data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
@@ -59,6 +54,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     setColorByTime(savedAnalyticsOverview === "time");
   }, [savedAnalyticsOverview]);
   
+  // Fetch both weekly and all-time leaderboard data on component mount
+  useEffect(() => {
+    const fetchBothLeaderboards = async () => {
+      try {
+        // Fetch weekly leaderboard
+        const weeklyResponse = await fetch('/api/leaderboard?timeFilter=this_week');
+        const weeklyData = await weeklyResponse.json();
+        if (weeklyData.success && weeklyData.data) {
+          setWeeklyLeaderboard(weeklyData.data);
+        }
+        
+        // Fetch all-time leaderboard
+        const allTimeResponse = await fetch('/api/leaderboard?timeFilter=all_time');
+        const allTimeData = await allTimeResponse.json();
+        if (allTimeData.success && allTimeData.data) {
+          setAllTimeLeaderboard(allTimeData.data);
+        }
+      } catch (error) {
+        console.error('[Analytics] Failed to fetch leaderboards:', error);
+      }
+    };
+    
+    fetchBothLeaderboards();
+  }, []);
+  
   // Handler for toggle change
   const handleToggleChange = () => {
     const newValue = !colorByTime ? "time" : "tasks";
@@ -75,30 +95,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   };
   
   // Filter for completed tasks only - memoized to prevent infinite re-renders
-  // Get selected user data when viewing another user
-  const selectedUserData = useMemo(() => {
-    if (selectedUserId === "personal" || !superadminUsers.length) return null;
-    return superadminUsers.find(user => user.id === selectedUserId);
-  }, [selectedUserId, superadminUsers]);
+  // Use user's own timezone
+  const displayTimezone = userTimezone;
 
-  // Determine which tasks and user info to use
-  const isViewingOtherUser = selectedUserId !== "personal" && selectedUserData;
-  // const displayUser = isViewingOtherUser ? selectedUserData : reduxUser;
-  const displayTimezone = isViewingOtherUser ? selectedUserData.timezone : userTimezone;
-
-  // Get tasks based on viewing mode
+  // Get completed tasks from Redux store
   const completedTasks = useMemo(() => {
-    if (isViewingOtherUser && selectedUserData) {
-      // Use selected user's tasks - they're already filtered for completed status
-      return selectedUserData.tasks || [];
-    } else {
-      // Use Redux store tasks for personal view
-      const completed = tasks.filter((task: Task) => task.status === "completed");
-      
-      
-      return completed;
-    }
-  }, [tasks, isViewingOtherUser, selectedUserData]);
+    const completed = tasks.filter((task: Task) => task.status === "completed");
+    return completed;
+  }, [tasks]);
 
   // Helper function to get first task date early
   const getFirstTaskDateEarly = useCallback(() => {
@@ -195,43 +199,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     setMounted(true);
   }, []);
 
-  // Fetch superadmin users when dropdown is clicked
-  const fetchSuperadminUsers = useCallback(async () => {
-    if (hasLoadedUsers.current || isLoadingUsers) {
-      return;
-    }
-    
-    setIsLoadingUsers(true);
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.error("No authenticated user");
-        return;
-      }
-
-      const token = await currentUser.getIdToken();
-      
-      const response = await fetch('/api/superadmin/analytics', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.error("Failed to fetch superadmin users - Status:", response.status);
-        return;
-      }
-
-      const data = await response.json();
-      
-      setSuperadminUsers(data.users || []);
-      hasLoadedUsers.current = true;
-    } catch (error) {
-      console.error("Error fetching superadmin users:", error);
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  }, [isLoadingUsers]);
 
   // Update date range when tasks or saved preference changes
   useEffect(() => {
@@ -527,93 +494,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     
     const uniqueDateStrings = Array.from(new Set(streakDates));
     const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    
-    // Calculate last 30 days and check for streaks
-    if (selectedUserId !== "personal" && selectedUserData) {
-      const now = Date.now();
-      // const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-      
-      console.log("Last 30 days:");
-      console.log(`User timezone: ${displayTimezone}`);
-      
-      // Debug: Show what's happening with specific tasks
-      console.log("\n=== TIMEZONE DEBUGGING ===");
-      
-      // Find tasks that should be on July 21st based on your database
-      const suspectTasks = completedTasks.filter(t => {
-        const taskName = t.name.toLowerCase();
-        return taskName.includes('adjust instance') || 
-               taskName.includes('add icons') || 
-               taskName.includes('cover images') ||
-               taskName.includes('assign task to email');
-      });
-      
-      if (suspectTasks.length > 0) {
-        console.log(`\nAnalyzing tasks that should be on July 21st:`);
-        suspectTasks.forEach(task => {
-          const timestamp = toTimestamp(task.completedAt || task.createdAt);
-          const date = new Date(timestamp);
-          const streakDate = getStreakDate(timestamp);
-          
-          // Show what the date would be in Pacific/Auckland
-          const aucklandDate = date.toLocaleString('en-US', { 
-            timeZone: 'Pacific/Auckland',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          });
-          
-          console.log(`\nTask: "${task.name}"`);
-          console.log(`  Raw completedAt: ${task.completedAt}`);
-          console.log(`  Timestamp: ${timestamp}`);
-          console.log(`  As UTC: ${date.toISOString()}`);
-          console.log(`  In Auckland: ${aucklandDate}`);
-          console.log(`  Streak date calculated: ${streakDate}`);
-          console.log(`  Task timezone field: ${(task as { timezone?: string }).timezone || 'Not set'}`);
-        });
-      }
-      
-      console.log(`\nAll unique task dates: ${sortedDateStrings.join(', ')}`);
-      
-      // Check if any tasks might be showing on July 20th or 22nd instead
-      const nearbyDates = ['2025-07-20', '2025-07-21', '2025-07-22'];
-      nearbyDates.forEach(dateStr => {
-        const tasksOnDate = completedTasks.filter(t => {
-          const timestamp = toTimestamp(t.completedAt || t.createdAt);
-          const taskDate = getStreakDate(timestamp);
-          return taskDate === dateStr;
-        });
-        if (tasksOnDate.length > 0) {
-          console.log(`\nTasks on ${dateStr}: ${tasksOnDate.length} tasks`);
-          tasksOnDate.slice(0, 2).forEach(task => {
-            const timestamp = toTimestamp(task.completedAt || task.createdAt);
-            const date = new Date(timestamp);
-            console.log(`  - "${task.name}" at ${date.toISOString()}`);
-          });
-        }
-      });
-      
-      // Create array of all dates in last 30 days
-      const last30Days = [];
-      for (let i = 29; i >= 0; i--) {
-        const dayTimestamp = now - (i * 24 * 60 * 60 * 1000);
-        const dayStr = getStreakDate(dayTimestamp);
-        const hasTask = uniqueDateStrings.includes(dayStr);
-        last30Days.push({ date: dayStr, hasTask });
-      }
-      
-      // Log each day and whether it counts towards a streak
-      console.log("\nDay by day breakdown:");
-      last30Days.forEach((day) => {
-        console.log(`${day.date}: ${day.hasTask}`);
-      });
-    }
-    
-    
 
     let longestStreak = 0;
     let currentStreak = 0;
@@ -709,6 +589,39 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   // Calculate streaks only on client side
   const streakMetrics = mounted ? calculateStreaks() : { currentStreak: 0, longestStreak: 0 };
+  
+  // Calculate user's rank from both leaderboards
+  const calculateUserRank = useMemo(() => {
+    if (!reduxUser?.user_id) {
+      return { weeklyRank: '-', globalRank: '-' };
+    }
+    
+    // Calculate weekly rank
+    let weeklyRank = '-';
+    if (weeklyLeaderboard.length > 0) {
+      const weeklyIndex = weeklyLeaderboard.findIndex(entry => entry.user_id === reduxUser.user_id);
+      if (weeklyIndex !== -1) {
+        weeklyRank = String(weeklyIndex + 1);
+      } else {
+        // User not in leaderboard, they would be last + 1
+        weeklyRank = String(weeklyLeaderboard.length + 1);
+      }
+    }
+    
+    // Calculate all-time rank
+    let globalRank = '-';
+    if (allTimeLeaderboard.length > 0) {
+      const allTimeIndex = allTimeLeaderboard.findIndex(entry => entry.user_id === reduxUser.user_id);
+      if (allTimeIndex !== -1) {
+        globalRank = String(allTimeIndex + 1);
+      } else {
+        // User not in leaderboard, they would be last + 1
+        globalRank = String(allTimeLeaderboard.length + 1);
+      }
+    }
+    
+    return { weeklyRank, globalRank };
+  }, [reduxUser?.user_id, weeklyLeaderboard, allTimeLeaderboard]);
 
   // Calculate all-time metrics (using current room data only, matching History component)
   const calculateAllTimeMetrics = () => {
@@ -792,11 +705,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
-        <div className="mb-2 text-center relative">
+        <div className="mb-6 text-center relative">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
-            {isViewingOtherUser && selectedUserData 
-              ? `${selectedUserData.first_name}'s Analytics`
-              : reduxUser.first_name 
+            {reduxUser.first_name 
                 ? `${reduxUser.first_name}'s Analytics` 
                 : displayName 
                   ? `${displayName.split(" ")[0]}'s Analytics` 
@@ -830,31 +741,32 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           <div>
             {/* GitHub-style Activity Chart */}
             <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="relative flex items-center justify-between mb-2">
                 <h3 className="text-lg font-bold text-white">{currentYear} Overview</h3>
                 
-                {/* Special dropdown for specific user */}
-                {reduxUser.user_id === "df3aed2a-ad51-457f-b0cd-f7d4225143d4" && (
-                  <div className="flex items-center gap-4">
-                    <select 
-                      className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1.5 border border-gray-700 hover:border-gray-600 focus:border-[#FFAA00] focus:outline-none transition-colors cursor-pointer"
-                      value={selectedUserId}
-                      onChange={(e) => setSelectedUserId(e.target.value)}
-                      onFocus={fetchSuperadminUsers}
-                      onClick={fetchSuperadminUsers}
-                    >
-                      <option value="personal">Analytics</option>
-                      {isLoadingUsers && superadminUsers.length === 0 && (
-                        <option disabled>Loading users...</option>
-                      )}
-                      {superadminUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.display_name} ({user.completed_tasks_count})
-                        </option>
-                      ))}
-                    </select>
+                {/* Hero Stats inline - centered */}
+                <div className="absolute left-1/2 transform -translate-x-1/2 inline-flex items-center gap-4">
+                  {/* Rank */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">👑</span>
+                    <span className="text-xs text-gray-400">
+                      {calculateUserRank.weeklyRank !== '-' ? 'Weekly Rank' : ''}
+                    </span>
+                    <span className="text-base font-black text-[#FFAA00]">
+                      {calculateUserRank.weeklyRank !== '-' ? `#${calculateUserRank.weeklyRank}` : 'Unranked'}
+                    </span>
                   </div>
-                )}
+
+                  {/* Divider */}
+                  <div className="h-5 w-px bg-gray-700"></div>
+
+                  {/* Streak */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">🔥</span>
+                    <span className="text-xs text-gray-400">Streak</span>
+                    <span className="text-base font-black text-[#FFAA00]">{streakMetrics.currentStreak}</span>
+                  </div>
+                </div>
                 
                 {/* Toggle switch */}
                 <button
@@ -1098,7 +1010,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div>
               {mounted && firstTaskDate && clientDateRange.start && firstTaskDate > clientDateRange.start && (
                 <div className="text-center mt-2 text-xs text-gray-400">
-                  Calculated from {isViewingOtherUser ? "their" : "your"} first task on {firstTaskDate.toLocaleDateString("en-US", { timeZone: displayTimezone || undefined })}
+                  Calculated from your first task on {firstTaskDate.toLocaleDateString("en-US", { timeZone: displayTimezone || undefined })}
                 </div>
               )}
             </div>
@@ -1109,21 +1021,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-lg p-3 border border-blue-700/50 backdrop-blur transform hover:scale-105 transition-transform text-center">
                 <div className="text-blue-400 text-xs font-semibold">Avg Tasks/Day</div>
                 <div className="text-2xl font-black text-white">{Math.round(metrics.avgTasksPerDay)}</div>
-                <div className="text-gray-400 text-xs">Daily average</div>
+                <div className="text-gray-400 text-xs">Daily Average</div>
               </div>
 
               {/* Average Time per Day */}
               <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur transform hover:scale-105 transition-transform text-center">
                 <div className="text-purple-400 text-xs font-semibold">Avg Time/Day</div>
                 <div className="text-2xl font-black text-white">{formatTime(metrics.avgTimePerDay)}</div>
-                <div className="text-gray-400 text-xs">Daily focus time</div>
+                <div className="text-gray-400 text-xs">Daily Focus Time</div>
               </div>
 
               {/* Average Time per Task */}
               <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-lg p-3 border border-green-700/50 backdrop-blur transform hover:scale-105 transition-transform text-center">
                 <div className="text-green-400 text-xs font-semibold">Avg Time/Task</div>
                 <div className="text-2xl font-black text-white">{formatTime(metrics.avgTimePerTask)}</div>
-                <div className="text-gray-400 text-xs">Per task average</div>
+                <div className="text-gray-400 text-xs">Per Task Average</div>
               </div>
             </div>
 
@@ -1145,28 +1057,48 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div>
             </div>
 
-            {/* Streak Analytics - Always shows all-time data */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {/* Streak Analytics & Rank - Always shows all-time data */}
+            {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               {/* Current Streak */}
-              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
                 <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">🔥</span>
                   <h4 className="text-sm font-bold text-white">Current Streak</h4>
                 </div>
                 <div className="text-xl font-black text-[#FFAA00]">{streakMetrics.currentStreak} days</div>
-                <div className="text-gray-400 text-xs">Keep it going!</div>
-              </div>
+                <div className="text-gray-400 text-xs">Keep It Going!</div>
+              </div> */}
 
               {/* Longest Streak */}
-              <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
                 <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">🏆</span>
                   <h4 className="text-sm font-bold text-white">Best Streak</h4>
                 </div>
                 <div className="text-xl font-black text-[#FFAA00]">{streakMetrics.longestStreak} days</div>
-                <div className="text-gray-400 text-xs">Personal record</div>
+                <div className="text-gray-400 text-xs">Personal Record</div>
+              </div> */}
+
+              {/* Weekly Rank */}
+              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+                <div className="flex items-center gap-2 mb-1 justify-center">
+                  <span className="text-lg">📈</span>
+                  <h4 className="text-sm font-bold text-white">This Week</h4>
+                </div>
+                <div className="text-xl font-black text-[#FFAA00]">#{calculateUserRank.weeklyRank}</div>
+                <div className="text-gray-400 text-xs">Weekly Rank</div>
+              </div> */}
+
+              {/* All-Time Rank */}
+              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+                <div className="flex items-center gap-2 mb-1 justify-center">
+                  <span className="text-lg">👑</span>
+                  <h4 className="text-sm font-bold text-white">All Time</h4>
+                </div>
+                <div className="text-xl font-black text-[#FFAA00]">#{calculateUserRank.globalRank}</div>
+                <div className="text-gray-400 text-xs">Global Rank</div>
               </div>
-            </div>
+            </div> */}
 
           </div>
         )}
