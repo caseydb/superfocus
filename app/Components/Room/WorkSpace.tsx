@@ -699,12 +699,23 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
 
+    // Less than 1 minute
     if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    // 1-60 minutes: show in minutes
+    if (diffMinutes === 1) return "1 minute ago";
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+    
+    // 1-72 hours: show in hours (rounded up)
+    const roundedUpHours = Math.ceil(diffMinutes / 60);
+    if (roundedUpHours === 1) return "1 hour ago";
+    if (roundedUpHours <= 72) return `${roundedUpHours} hours ago`;
+    
+    // After 72 hours: show in days
     if (diffDays === 1) return "1d ago";
     if (diffDays < 30) return `${diffDays}d ago`;
 
+    // After 30 days: show in months
     const diffMonths = Math.floor(diffDays / 30);
     if (diffMonths === 1) return "1mo ago";
     return `${diffMonths}mo ago`;
