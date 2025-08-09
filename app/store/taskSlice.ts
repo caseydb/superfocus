@@ -263,9 +263,12 @@ export const transferTaskToPostgres = createAsyncThunk(
       const savedTask = await response.json();
 
       // 3. On success, only delete the completed task from TaskBuffer
-
+      console.log('[transferTaskToPostgres] About to remove task from TaskBuffer');
+      console.log('[transferTaskToPostgres] Task ID:', taskData.id);
+      
       // Remove the specific task
       await remove(taskRef);
+      console.log('[transferTaskToPostgres] Task removed from TaskBuffer');
 
       // Only remove LastTask if it belongs to the completed task
       // This prevents race conditions where a new task starts before the transfer completes
@@ -279,11 +282,13 @@ export const transferTaskToPostgres = createAsyncThunk(
       }
 
       // Set a flag indicating task was just completed to prevent auto-selection on reload
+      console.log('[transferTaskToPostgres] Setting justCompletedTask flag to prevent race condition');
       const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
       await set(completedFlagRef, {
         timestamp: Date.now(),
         completedTaskId: taskData.id
       });
+      console.log('[transferTaskToPostgres] justCompletedTask flag set');
 
       // Clean up timer state only if it belongs to this task
       const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
@@ -439,17 +444,23 @@ export const fetchTasksFromBuffer = createAsyncThunk(
 export const checkForActiveTask = createAsyncThunk(
   "tasks/checkForActiveTask",
   async ({ firebaseUserId }: { firebaseUserId: string; userId: string }) => {
+    console.log('[checkForActiveTask] Called to check for active tasks');
+    console.log('[checkForActiveTask] Firebase user ID:', firebaseUserId);
     const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
     const snapshot = await get(userRef);
 
     if (!snapshot.exists()) {
+      console.log('[checkForActiveTask] No TaskBuffer data found for user');
       return null;
     }
 
     const tasksData = snapshot.val();
+    console.log('[checkForActiveTask] TaskBuffer data found:', Object.keys(tasksData));
 
     // Check if user just completed a task - if so, don't auto-select anything
     if (tasksData.justCompletedTask) {
+      console.log('[checkForActiveTask] justCompletedTask flag found - not restoring');
+      console.log('[checkForActiveTask] Completed task ID:', tasksData.justCompletedTask.completedTaskId);
       // Clean up the flag after checking
       const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
       await remove(completedFlagRef);
@@ -819,6 +830,8 @@ const taskSlice = createSlice({
       state.tasks = state.tasks.filter((task) => task.id !== action.payload);
     },
     setActiveTask: (state, action: PayloadAction<string | null>) => {
+      console.log('[taskSlice] setActiveTask called with:', action.payload);
+      console.log('[taskSlice] Previous activeTaskId:', state.activeTaskId);
       state.activeTaskId = action.payload;
     },
     toggleTaskComplete: (state, action: PayloadAction<string>) => {

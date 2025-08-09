@@ -197,6 +197,7 @@ export default function Timer({
 
     // Wait a bit to ensure Redux has loaded tasks
     const initTimer = setTimeout(async () => {
+      console.log('[Timer] Init timer effect running');
       // First check for LastTask
       const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
       const lastTaskSnapshot = await get(lastTaskRef);
@@ -219,6 +220,7 @@ export default function Timer({
           }
           
           // Set this as the active task
+          console.log('[Timer] ⚠️ RESTORING active task from LastTask:', lastTaskData.taskId);
           dispatch(setActiveTask(lastTaskData.taskId));
           
           // Restore the task name in the input
@@ -273,6 +275,7 @@ export default function Timer({
               return;
             }
             // Set this as the active task
+            console.log('[Timer] ⚠️ RESTORING active task from timer_state:', timerState.taskId);
             dispatch(setActiveTask(timerState.taskId));
             // Update task status based on timer state
             dispatch(updateTask({
@@ -301,6 +304,7 @@ export default function Timer({
                   }));
                 }
                 // Always set as active task and restore name
+                console.log('[Timer] ⚠️ RESTORING active task from TaskBuffer lookup:', timerState.taskId);
                 dispatch(setActiveTask(timerState.taskId));
                 dispatch(updateTask({
                   id: timerState.taskId,

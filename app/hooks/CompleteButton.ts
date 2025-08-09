@@ -3,11 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set } from "firebase/database";
+import { ref, set, remove } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import {
   updateTask,
   transferTaskToPostgres,
+  setActiveTask,
 } from "../store/taskSlice";
 import { setIsActive } from "../store/realtimeSlice";
 import { addHistoryEntry } from "../store/historySlice";
@@ -119,10 +120,28 @@ export function useCompleteButton() {
         PresenceService.updateUserPresence(user.id, currentInstance.id, false);
       }
 
-      // PRIORITY 5: Clear timer state
+      // PRIORITY 5: Clear timer state AND LastTask immediately
+      const taskId = activeTaskId || currentTaskId;  // Define taskId early for logging
+      console.log('[CompleteButton] About to clear timer state and reset input');
+      console.log('[CompleteButton] Task duration (seconds):', seconds);
+      console.log('[CompleteButton] Task ID:', taskId);
+      console.log('[CompleteButton] Task text:', task);
+      
+      // CRITICAL: Remove LastTask immediately to prevent Timer from restoring it after Fast Refresh
+      if (user?.id) {
+        const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+        remove(lastTaskRef).then(() => {
+          console.log('[CompleteButton] LastTask removed immediately');
+        }).catch((error) => {
+          console.error('[CompleteButton] Failed to remove LastTask:', error);
+        });
+      }
+      
       clearTimerState();
       dispatch(setIsActive(false));
+      console.log('[CompleteButton] Calling resetInput() to clear the input field');
       dispatch(resetInput());
+      console.log('[CompleteButton] Input should now be cleared');
 
       // Mark today as completed for streak tracking
       if (typeof window !== "undefined") {
@@ -133,7 +152,7 @@ export function useCompleteButton() {
       }
 
       // Optimistically update task status to completed
-      const taskId = activeTaskId || currentTaskId;
+      // taskId already defined above for logging
       if (taskId) {
         dispatch(
           updateTask({
@@ -141,6 +160,8 @@ export function useCompleteButton() {
             updates: { status: "completed" as const, completed: true },
           })
         );
+        // IMPORTANT: Clear activeTaskId immediately to prevent RoomShell from restoring the input
+        dispatch(setActiveTask(null));
       }
 
       // Always call onComplete callback immediately for UI updates
@@ -186,6 +207,9 @@ export function useCompleteButton() {
       const taskIdForTransfer = activeTaskId || currentTaskId;
 
       if (taskIdForTransfer && user?.id) {
+        console.log('[CompleteButton] Starting async transfer to Postgres');
+        console.log('[CompleteButton] Task will be removed from TaskBuffer after transfer');
+        console.log('[CompleteButton] TaskBuffer removal is ASYNC - there is a race condition window here');
         if (typeof window !== "undefined") {
           const token = localStorage.getItem("firebase_token") || "";
 
@@ -201,11 +225,15 @@ export function useCompleteButton() {
           )
             .unwrap()
             .then(async (result) => {
+              console.log('[CompleteButton] Transfer to Postgres completed');
+              console.log('[CompleteButton] Transfer result:', result);
               // Handle success in background
               if (result && result.alreadyCompleted) {
+                console.log('[CompleteButton] Task was already completed - this is normal behavior');
                 // Task was already completed - this is normal behavior
                 return;
               }
+              console.log('[CompleteButton] Task successfully transferred and removed from TaskBuffer');
               
               if (result && result.savedTask && reduxUser?.user_id) {
                 // Get task name from the saved task or find it in Redux
@@ -250,6 +278,7 @@ export function useCompleteButton() {
             .catch((error) => {
               // Log error but don't block UI
               console.error("[CompleteButton] Background task save failed:", error);
+              console.error('[CompleteButton] This means task is still in TaskBuffer!');
               const errorMessage = error instanceof Error ? error.message : "Unknown error";
               // Optional: Show a non-blocking notification instead of alert
               console.warn(`Failed to save task completion: ${errorMessage}`);

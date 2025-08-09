@@ -24,6 +24,16 @@ export default function TaskInput({
 }) {
   const dispatch = useDispatch();
   const { currentInput: task, isLocked: disabled } = useSelector((state: RootState) => state.taskInput);
+  
+  // Log whenever task value changes
+  React.useEffect(() => {
+    console.log('[TaskInput] Input value changed to:', task);
+    console.log('[TaskInput] Input is locked:', disabled);
+    if (task && task.length > 0) {
+      console.log('[TaskInput] ⚠️ Input has text - checking if this is expected');
+      console.trace('[TaskInput] Stack trace for non-empty input');
+    }
+  }, [task, disabled]);
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
