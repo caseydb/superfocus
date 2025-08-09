@@ -19,7 +19,6 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
   
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [isEditingName, setIsEditingName] = useState(false);
   const [nameError, setNameError] = useState("");
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
 
@@ -38,21 +37,21 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65" 
       onClick={onClose}
     >
       <div 
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative overflow-y-auto"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative flex items-center justify-center mb-4">
+        <div className="relative flex items-center justify-center px-6 py-6 border-b border-gray-800/50">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Account</h2>
           
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
           >
             <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -61,9 +60,10 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto space-y-6">
-          {/* Avatar Upload Section */}
-          <div className="flex flex-col items-center">
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="flex flex-col gap-6 max-w-3xl mx-auto">
+            {/* Avatar Upload Section */}
+            <div className="flex flex-col items-center">
             <div 
               className="relative group"
               onMouseEnter={() => setIsHoveringAvatar(true)}
@@ -114,39 +114,14 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Personal Information Section */}
-          <div className="bg-gray-800/50 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-white">Personal Information</h3>
-              {!isEditingName && (
-                <button
-                  onClick={() => {
-                    setIsEditingName(true);
-                    setNameError("");
-                  }}
-                  className="text-sm text-[#FFAA00] hover:text-[#FFB700] transition-colors flex items-center gap-1"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Edit
-                </button>
-              )}
-            </div>
-
-            {!isEditingName ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Name</span>
-                  <span className="text-sm text-gray-200 font-medium">
-                    {firstName || reduxUser.first_name || "Not set"} {lastName || reduxUser.last_name || ""}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
+            {/* Personal Information Section */}
+            <div className="bg-gray-800/50 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-white mb-6">Personal Information</h3>
+              
+              <div className="space-y-4">
+                {/* First Name Field */}
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
                   <input
                     type="text"
                     value={firstName}
@@ -154,114 +129,133 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                       setFirstName(e.target.value);
                       setNameError("");
                     }}
-                    className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none text-sm"
-                    placeholder="Enter first name"
+                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500"
+                    placeholder="Enter your first name"
                     maxLength={32}
-                    autoFocus
                   />
                 </div>
+
+                {/* Last Name Field */}
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
                   <input
                     type="text"
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] outline-none text-sm"
-                    placeholder="Enter last name (optional)"
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      setNameError("");
+                    }}
+                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500"
+                    placeholder="Enter your last name (optional)"
                     maxLength={32}
                   />
                 </div>
-              </div>
-            )}
 
-            {/* Error message */}
-            {nameError && (
-              <p className="text-red-400 text-sm mt-2">{nameError}</p>
-            )}
+                {/* Error message */}
+                {nameError && (
+                  <div className="flex items-center gap-2 text-red-400 text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{nameError}</span>
+                  </div>
+                )}
 
-            {/* Save/Cancel buttons */}
-            {isEditingName && (
-              <div className="flex gap-2 mt-4 justify-end">
-                <button
-                  onClick={async () => {
-                    // Validate first name
-                    if (!firstName.trim()) {
-                      setNameError("First name is required");
-                      return;
-                    }
-
-                    const trimmedFirstName = firstName.trim();
-                    const trimmedLastName = lastName.trim();
-
-                    // Optimistic update to Redux
-                    dispatch(
-                      updateUser({
-                        first_name: trimmedFirstName,
-                        last_name: trimmedLastName || null,
-                      })
-                    );
-
-                    // Update PostgreSQL via API
-                    try {
-                      await dispatch(
-                        updateUserData({
-                          first_name: trimmedFirstName,
-                          last_name: trimmedLastName || undefined,
-                        })
-                      ).unwrap();
-                      
-                      // Update Firebase Users with the new name
-                      if (user?.id) {
-                        const userRef = ref(rtdb, `Users/${user.id}`);
-                        await set(userRef, {
-                          firstName: trimmedFirstName,
-                          lastName: trimmedLastName || null,
-                          updatedAt: Date.now()
-                        });
+                {/* Save button - always visible */}
+                <div className="pt-2">
+                  <button
+                    onClick={async () => {
+                      // Validate first name
+                      if (!firstName.trim()) {
+                        setNameError("First name is required");
+                        return;
                       }
-                      
-                      setIsEditingName(false);
-                      setNameError("");
-                    } catch {
-                      setNameError("Failed to update name. Please try again.");
-                      // Revert optimistic update on failure
+
+                      const trimmedFirstName = firstName.trim();
+                      const trimmedLastName = lastName.trim();
+
+                      // Check if values actually changed
+                      if (trimmedFirstName === reduxUser.first_name && trimmedLastName === (reduxUser.last_name || '')) {
+                        setNameError("");
+                        return; // No changes to save
+                      }
+
+                      // Optimistic update to Redux
                       dispatch(
                         updateUser({
-                          first_name: reduxUser.first_name,
-                          last_name: reduxUser.last_name,
+                          first_name: trimmedFirstName,
+                          last_name: trimmedLastName || null,
                         })
                       );
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#FFAA00] text-black rounded-lg hover:bg-[#FFB833] transition-colors font-semibold cursor-pointer"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    // Reset to current Redux state
-                    setFirstName(reduxUser.first_name || "");
-                    setLastName(reduxUser.last_name || "");
-                    setIsEditingName(false);
-                    setNameError("");
-                  }}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
+
+                      // Update PostgreSQL via API
+                      try {
+                        await dispatch(
+                          updateUserData({
+                            first_name: trimmedFirstName,
+                            last_name: trimmedLastName || undefined,
+                          })
+                        ).unwrap();
+                        
+                        // Update Firebase Users with the new name
+                        if (user?.id) {
+                          const userRef = ref(rtdb, `Users/${user.id}`);
+                          await set(userRef, {
+                            firstName: trimmedFirstName,
+                            lastName: trimmedLastName || null,
+                            updatedAt: Date.now()
+                          });
+                        }
+                        
+                        setNameError("");
+                        
+                        // Show success feedback (optional)
+                        const button = document.getElementById('save-account-btn');
+                        if (button) {
+                          const originalText = button.innerHTML;
+                          button.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Saved!';
+                          button.classList.add('bg-green-600', 'hover:bg-green-700');
+                          button.classList.remove('bg-gray-700', 'hover:bg-[#FFAA00]', 'hover:text-black');
+                          button.classList.add('text-white');
+                          setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                            button.classList.add('bg-gray-700', 'hover:bg-[#FFAA00]', 'hover:text-black');
+                          }, 2000);
+                        }
+                      } catch {
+                        setNameError("Failed to update. Please try again.");
+                        // Revert optimistic update on failure
+                        dispatch(
+                          updateUser({
+                            first_name: reduxUser.first_name,
+                            last_name: reduxUser.last_name,
+                          })
+                        );
+                      }
+                    }}
+                    id="save-account-btn"
+                    className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 font-semibold cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Changes
+                  </button>
+                </div>
               </div>
-            )}
           </div>
 
-          {/* Email Section */}
-          <div className="bg-gray-800/50 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4">Email Address</h3>
+            {/* Email Section */}
+            <div className="bg-gray-800/50 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-white mb-6">Email Address</h3>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">Email</span>
               <span className="text-sm text-gray-200 font-mono">
                 {reduxUser.email || "No email available"}
               </span>
             </div>
+          </div>
           </div>
         </div>
       </div>
