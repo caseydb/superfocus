@@ -140,8 +140,10 @@ export default function Controls({
     <div className={className + " select-none relative"}>
       <div className="flex items-center">
         {/* Speaker icon - leftmost */}
-        <span
-          className="cursor-pointer flex items-center px-2 mr-3"
+        <button
+          className={`group relative flex items-center px-4 py-2 mr-3 rounded-lg transition-all duration-300 cursor-pointer ${
+            localVolume === 0 ? "border border-[#ef4444]/50" : "border border-transparent hover:border-[#FFAA00]/50"
+          }`}
           onClick={() => {
             if (localVolume === 0) {
               // Unmute: restore previous volume
@@ -216,7 +218,7 @@ export default function Controls({
               </g>
             </svg>
           )}
-        </span>
+        </button>
         
         {/* Beautiful Timer Mode Dropdown - second */}
         <div className="relative mr-2" ref={timerDropdownRef}>
