@@ -183,14 +183,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Check for active timer state on mount and lock input immediately
   useEffect(() => {
-    console.log('[RoomShell] LastTask/timer_state check effect running');
     if (user?.id) {
       // First check for LastTask
       const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
       get(lastTaskRef).then(async (lastTaskSnapshot) => {
         if (lastTaskSnapshot.exists()) {
           const lastTaskData = lastTaskSnapshot.val();
-          console.log('[RoomShell] Found LastTask:', lastTaskData);
           
           // Check if this task exists in TaskBuffer
           const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
@@ -200,7 +198,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             const taskData = taskSnapshot.val();
             
             // Set the task input and active task
-            console.log('[RoomShell] ⚠️ RESTORING LastTask from TaskBuffer:', lastTaskData.taskName || taskData.name);
             dispatch(setCurrentInput(lastTaskData.taskName || taskData.name));
             dispatch(setCurrentTask({ id: lastTaskData.taskId, name: lastTaskData.taskName || taskData.name }));
             dispatch(setActiveTask(lastTaskData.taskId));
@@ -244,10 +241,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             get(taskRef).then((taskSnapshot) => {
               const taskData = taskSnapshot.val();
               if (taskData && taskData.name) {
-                console.log('[RoomShell] ⚠️ RESTORING task from timer_state:', taskData.name);
                 dispatch(setCurrentInput(taskData.name));
               } else {
-                console.log('[RoomShell] Task data not found for timer_state taskId:', timerState.taskId);
               }
             });
           } else {
@@ -277,22 +272,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Restore active task from Redux when page loads or activeTaskId changes
   useEffect(() => {
-    console.log('[RoomShell] Task restore effect running');
-    console.log('[RoomShell] activeTaskId:', activeTaskId);
-    console.log('[RoomShell] current task:', task);
-    console.log('[RoomShell] reduxTasks count:', reduxTasks.length);
-    
     if (activeTaskId && !task) {
-      console.log('[RoomShell] Attempting to restore task with ID:', activeTaskId);
       // Find the active task in Redux tasks
       const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
-      console.log('[RoomShell] Found task:', activeTask);
-      
       // Only restore if task is not completed
       if (activeTask && activeTask.status !== "completed" && !activeTask.completed) {
-        console.log('[RoomShell] ⚠️ RESTORING TASK INPUT:', activeTask.name);
-        console.log('[RoomShell] Task status:', activeTask.status);
-        console.log('[RoomShell] Task completed:', activeTask.completed);
         dispatch(setCurrentInput(activeTask.name));
         setCurrentTaskId(activeTask.id);
 
@@ -301,8 +285,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           dispatch(lockInput());
           dispatch(setHasStartedRedux(true));
         }
-      } else if (activeTask) {
-        console.log('[RoomShell] Task is completed, not restoring. Status:', activeTask.status, 'Completed:', activeTask.completed);
       }
     }
   }, [activeTaskId, reduxTasks, task, dispatch]);

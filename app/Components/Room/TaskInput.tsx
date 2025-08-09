@@ -24,16 +24,6 @@ export default function TaskInput({
 }) {
   const dispatch = useDispatch();
   const { currentInput: task, isLocked: disabled } = useSelector((state: RootState) => state.taskInput);
-  
-  // Log whenever task value changes
-  React.useEffect(() => {
-    console.log('[TaskInput] Input value changed to:', task);
-    console.log('[TaskInput] Input is locked:', disabled);
-    if (task && task.length > 0) {
-      console.log('[TaskInput] ⚠️ Input has text - checking if this is expected');
-      console.trace('[TaskInput] Stack trace for non-empty input');
-    }
-  }, [task, disabled]);
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -273,7 +263,6 @@ export default function TaskInput({
             if (showTaskSuggestions && selectedTaskIndex >= 0 && filteredTasks[selectedTaskIndex]) {
               const selectedTask = filteredTasks[selectedTaskIndex];
               // Set both the text and the task ID
-              console.log('[TaskInput] Setting active task from keyboard selection:', selectedTask.id, selectedTask.text);
               dispatch(setCurrentTask({ id: selectedTask.id, name: selectedTask.text }));
               dispatch(setActiveTask(selectedTask.id));
               setShowTaskSuggestions(false);
@@ -362,7 +351,6 @@ export default function TaskInput({
                 key={taskItem.id}
                 onClick={() => {
                   // Set both the text and the task ID
-                  console.log('[TaskInput] Setting active task from click:', taskItem.id, taskItem.text);
                   dispatch(setCurrentTask({ id: taskItem.id, name: taskItem.text }));
                   dispatch(setActiveTask(taskItem.id));
                   setShowTaskSuggestions(false);

@@ -317,26 +317,24 @@ export function useStartButton() {
         saveTimerState(true, seconds);
       }, 50);
 
-      // Only play start sound and notify if this is an initial start (not a resume)
-      if (!isResume) {
-        // Always play start sound locally
-        const startAudio = new Audio("/started.mp3");
-        startAudio.volume = localVolume;
-        startAudio.play();
+      // Play start sound and notify for both start and resume
+      // Always play start sound locally (for both start and resume)
+      const startAudio = new Audio("/started.mp3");
+      startAudio.volume = localVolume;
+      startAudio.play();
 
-        // Notify parent that a new task is starting
-        if (onNewTaskStart) {
-          onNewTaskStart();
-        }
+      // Notify parent that a task is starting/resuming
+      if (onNewTaskStart) {
+        onNewTaskStart();
+      }
 
-        // Check cooldown using prop value
-        const now = Date.now();
-        const timeSinceLastStart = lastStartTime > 0 ? now - lastStartTime : COOLDOWN_MS;
+      // Check cooldown using prop value (applies to both start and resume)
+      const now = Date.now();
+      const timeSinceLastStart = lastStartTime > 0 ? now - lastStartTime : COOLDOWN_MS;
 
-        // Only send start event to RTDB if cooldown has passed
-        if (timeSinceLastStart >= COOLDOWN_MS) {
-          notifyEvent("start");
-        }
+      // Only send start event to RTDB if cooldown has passed (for both start and resume)
+      if (timeSinceLastStart >= COOLDOWN_MS) {
+        notifyEvent("start");
       }
     },
     [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, moveTaskToTop, notifyEvent]
