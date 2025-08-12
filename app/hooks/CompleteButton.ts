@@ -87,6 +87,14 @@ export function useCompleteButton() {
     async (options: CompleteButtonOptions) => {
       const { task, seconds, localVolume, clearTimerState, onComplete, setIsCompleting, heartbeatIntervalRef } =
         options;
+      
+      console.log('[COMPLETE BUTTON DEBUG] Task completion started:', {
+        task,
+        seconds,
+        activeTaskId,
+        currentTaskId,
+        timestamp: new Date().toISOString()
+      });
 
       // Prevent multiple clicks
       if (showCompleteFeedback) {

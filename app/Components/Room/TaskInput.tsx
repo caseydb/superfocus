@@ -4,6 +4,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
 import { setCurrentInput, setCurrentTask } from "../../store/taskInputSlice";
 import { setActiveTask } from "../../store/taskSlice";
+import { rtdb } from "../../../lib/firebase";
+import { ref, remove } from "firebase/database";
+import { useInstance } from "../Instances";
 
 const maxLen = 100;
 
@@ -23,6 +26,7 @@ export default function TaskInput({
   setShowTaskList?: (show: boolean) => void;
 }) {
   const dispatch = useDispatch();
+  const { user } = useInstance();
   const { currentInput: task, isLocked: disabled } = useSelector((state: RootState) => state.taskInput);
   const [inputWidth, setInputWidth] = React.useState("95%");
   const spanRef = React.useRef<HTMLSpanElement>(null);
@@ -38,6 +42,18 @@ export default function TaskInput({
   // Get tasks and preferences from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const preferences = useSelector((state: RootState) => state.preferences);
+  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  
+  // Helper function to clear the justCompletedTask flag
+  const clearJustCompletedFlag = React.useCallback(async () => {
+    if (user?.id) {
+      console.log('[TASK INPUT DEBUG] Clearing justCompletedTask flag');
+      const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
+      await remove(completedFlagRef).catch((error) => {
+        console.log('[TASK INPUT DEBUG] justCompletedTask flag clear failed (probably does not exist):', error.message);
+      });
+    }
+  }, [user]);
   
   // Filter and sort available tasks from Redux
   React.useEffect(() => {
@@ -262,6 +278,14 @@ export default function TaskInput({
             // If a task is selected in dropdown, use it
             if (showTaskSuggestions && selectedTaskIndex >= 0 && filteredTasks[selectedTaskIndex]) {
               const selectedTask = filteredTasks[selectedTaskIndex];
+              console.log('[TASK INPUT DEBUG] Task selected from dropdown (Enter key):', {
+                taskId: selectedTask.id,
+                taskName: selectedTask.text,
+                previousActiveTaskId: activeTaskId,
+                timestamp: new Date().toISOString()
+              });
+              // Clear the justCompletedTask flag when selecting a new task
+              clearJustCompletedFlag();
               // Set both the text and the task ID
               dispatch(setCurrentTask({ id: selectedTask.id, name: selectedTask.text }));
               dispatch(setActiveTask(selectedTask.id));
@@ -350,6 +374,14 @@ export default function TaskInput({
               <button
                 key={taskItem.id}
                 onClick={() => {
+                  console.log('[TASK INPUT DEBUG] Task selected from dropdown (click):', {
+                    taskId: taskItem.id,
+                    taskName: taskItem.text,
+                    previousActiveTaskId: activeTaskId,
+                    timestamp: new Date().toISOString()
+                  });
+                  // Clear the justCompletedTask flag when selecting a new task
+                  clearJustCompletedFlag();
                   // Set both the text and the task ID
                   dispatch(setCurrentTask({ id: taskItem.id, name: taskItem.text }));
                   dispatch(setActiveTask(taskItem.id));

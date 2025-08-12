@@ -131,6 +131,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
             // Check for any active tasks in Firebase TaskBuffer
             console.log('[ReduxInitializer] Checking for active tasks on initial load');
+            console.log('[REDUX INIT DEBUG] Dispatching checkForActiveTask');
             await dispatch(
               checkForActiveTask({
                 firebaseUserId: firebaseUser.uid,

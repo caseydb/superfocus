@@ -3,9 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store/store";
 import { setActiveTask } from "../../store/taskSlice";
 import { setCurrentTask } from "../../store/taskInputSlice";
+import { rtdb } from "../../../lib/firebase";
+import { ref, remove } from "firebase/database";
+import { useInstance } from "../../Components/Instances";
 
 export function useStartTaskButton() {
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useInstance();
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const isTimerActive = useSelector((state: RootState) => state.realtime.isActive);
   
@@ -32,6 +36,15 @@ export function useStartTaskButton() {
         // Then wait and start the new task
         setTimeout(() => {
           console.log('[StartTaskButton] After pause delay, setting task and starting');
+          
+          // Clear the justCompletedTask flag when selecting a new task
+          if (user?.id) {
+            const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
+            remove(completedFlagRef).catch(() => {
+              // Silently fail if flag doesn't exist
+            });
+          }
+          
           // Set the current task ID and name in Redux
           dispatch(setCurrentTask({ id: taskId, name: taskText }));
           dispatch(setActiveTask(taskId));
@@ -43,6 +56,15 @@ export function useStartTaskButton() {
         }, 500); // Increased delay to ensure pause completes
       } else {
         console.log('[StartTaskButton] No pause needed, starting directly');
+        
+        // Clear the justCompletedTask flag when selecting a new task
+        if (user?.id) {
+          const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
+          remove(completedFlagRef).catch(() => {
+            // Silently fail if flag doesn't exist
+          });
+        }
+        
         // No need to pause, just start
         dispatch(setCurrentTask({ id: taskId, name: taskText }));
         dispatch(setActiveTask(taskId));
@@ -53,7 +75,7 @@ export function useStartTaskButton() {
         }
       }
     },
-    [dispatch, activeTaskId, isTimerActive]
+    [dispatch, activeTaskId, isTimerActive, user]
   );
 
   return { handleStartTask };

@@ -282,13 +282,16 @@ export const transferTaskToPostgres = createAsyncThunk(
       }
 
       // Set a flag indicating task was just completed to prevent auto-selection on reload
-      console.log('[transferTaskToPostgres] Setting justCompletedTask flag to prevent race condition');
+      console.log('[TASK SLICE DEBUG] Setting justCompletedTask flag to prevent race condition');
       const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
       await set(completedFlagRef, {
         timestamp: Date.now(),
         completedTaskId: taskData.id
       });
-      console.log('[transferTaskToPostgres] justCompletedTask flag set');
+      console.log('[TASK SLICE DEBUG] justCompletedTask flag set:', {
+        taskId: taskData.id,
+        timestamp: Date.now()
+      });
 
       // Clean up timer state only if it belongs to this task
       const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
@@ -459,11 +462,15 @@ export const checkForActiveTask = createAsyncThunk(
 
     // Check if user just completed a task - if so, don't auto-select anything
     if (tasksData.justCompletedTask) {
-      console.log('[checkForActiveTask] justCompletedTask flag found - not restoring');
-      console.log('[checkForActiveTask] Completed task ID:', tasksData.justCompletedTask.completedTaskId);
+      console.log('[TASK SLICE DEBUG] justCompletedTask flag found - not restoring:', {
+        completedTaskId: tasksData.justCompletedTask.completedTaskId,
+        flagTimestamp: tasksData.justCompletedTask.timestamp,
+        timeSinceFlag: Date.now() - (tasksData.justCompletedTask.timestamp || 0)
+      });
       // Clean up the flag after checking
       const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
       await remove(completedFlagRef);
+      console.log('[TASK SLICE DEBUG] justCompletedTask flag removed');
       return null;
     }
 
@@ -1053,9 +1060,14 @@ const taskSlice = createSlice({
       // Handle checkForActiveTask
       .addCase(checkForActiveTask.pending, (state) => {
         // Checking for active task
+        console.log('[TASK SLICE DEBUG] checkForActiveTask.pending - setting checkingTaskBuffer to true');
         state.checkingTaskBuffer = true;
       })
       .addCase(checkForActiveTask.fulfilled, (state, action) => {
+        console.log('[TASK SLICE DEBUG] checkForActiveTask.fulfilled - setting checkingTaskBuffer to false', {
+          hasPayload: !!action.payload,
+          payload: action.payload
+        });
         state.checkingTaskBuffer = false;
         if (action.payload) {
           const { task } = action.payload;
@@ -1071,8 +1083,11 @@ const taskSlice = createSlice({
           }
         }
       })
-      .addCase(checkForActiveTask.rejected, (state) => {
+      .addCase(checkForActiveTask.rejected, (state, action) => {
         // Silently fail - not critical if we can't restore active task
+        console.log('[TASK SLICE DEBUG] checkForActiveTask.rejected - setting checkingTaskBuffer to false', {
+          error: action.error
+        });
         state.checkingTaskBuffer = false;
       })
       // Handle updateTaskStatusThunk

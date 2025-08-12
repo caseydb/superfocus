@@ -51,6 +51,17 @@ export default function Timer({
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const checkingTaskBuffer = useSelector((state: RootState) => state.tasks.checkingTaskBuffer);
   
+  // Log checkingTaskBuffer changes
+  React.useEffect(() => {
+    console.log('[TIMER DEBUG] checkingTaskBuffer changed:', {
+      checkingTaskBuffer,
+      task: task?.trim(),
+      activeTaskId,
+      currentTaskId,
+      timestamp: new Date().toISOString()
+    });
+  }, [checkingTaskBuffer]);
+  
   
   // Initialize from secondsRef if switching from Pomodoro
   const [seconds, setSeconds] = useState(secondsRef?.current || 0);
@@ -77,6 +88,29 @@ export default function Timer({
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
+  
+  // Log isInitialized changes
+  React.useEffect(() => {
+    console.log('[TIMER DEBUG] isInitialized changed:', {
+      isInitialized,
+      task: task?.trim(),
+      activeTaskId,
+      timestamp: new Date().toISOString()
+    });
+  }, [isInitialized]);
+  
+  // Mark as initialized once we have a user
+  // This is now just for tracking, not for blocking the start button
+  React.useEffect(() => {
+    if (user?.id && !isInitialized) {
+      const initTimeout = setTimeout(() => {
+        console.log('[TIMER DEBUG] Marking Timer as initialized');
+        setIsInitialized(true);
+      }, 500);
+      
+      return () => clearTimeout(initTimeout);
+    }
+  }, [user?.id]);
   const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const inactivityDurationRef = useRef(120); // Track timeout duration in ref to avoid effect re-runs
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
@@ -182,13 +216,23 @@ export default function Timer({
 
   // One-time restoration from Firebase on mount
   useEffect(() => {
-    if (!user?.id || isInitialized) {
+    if (!user?.id) {
+      return;
+    }
+    
+    // Only run restoration once on mount, not when isInitialized changes
+    if (isInitialized) {
       return;
     }
 
     // Skip restoration if there's already an active timer (from Pomodoro)
     // Check if secondsRef has a value OR we already have seconds, indicating an active timer
     if ((hasStarted && secondsRef?.current && secondsRef.current > 0) || seconds > 0) {
+      console.log('[TIMER DEBUG] Skipping restoration - already has active timer from Pomodoro:', {
+        hasStarted,
+        secondsRefCurrent: secondsRef?.current,
+        seconds
+      });
       setIsInitialized(true);
       // If coming from Pomodoro with an active timer, set running state based on timerRunning
       // The running state is managed by RoomShell through onActiveChange
@@ -319,8 +363,10 @@ export default function Timer({
         }
       }
       
+      console.log('[TIMER DEBUG] Timer initialization complete');
       setIsInitialized(true);
-    }).catch(() => {
+    }).catch((error) => {
+      console.log('[TIMER DEBUG] Timer initialization failed:', error);
       setIsInitialized(true);
     });
     }, 1000); // Wait 1 second for Redux to load
@@ -551,9 +597,27 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState, user?.id, activeTaskId]);
 
   async function startTimer() {
-    // Prevent starting if TaskBuffer is still being checked OR Timer hasn't initialized
-    // This ensures we don't override timer state before restoration completes
-    if (checkingTaskBuffer || !isInitialized) {
+    console.log('[TIMER DEBUG] Start button clicked:', {
+      task: task?.trim(),
+      checkingTaskBuffer,
+      isInitialized,
+      disabled,
+      activeTaskId,
+      currentTaskId,
+      running,
+      isStarting,
+      seconds,
+      willBeDisabled: disabled || checkingTaskBuffer
+    });
+    
+    // Only prevent starting if TaskBuffer is still being checked
+    // We removed the isInitialized check because after task completion,
+    // when a new task is selected, we should be able to start immediately
+    if (checkingTaskBuffer) {
+      console.log('[TIMER DEBUG] Start prevented:', {
+        reason: 'checkingTaskBuffer',
+        checkingTaskBuffer
+      });
       return;
     }
 
@@ -766,12 +830,24 @@ export default function Timer({
           <div className="flex flex-col items-center gap-2">
             <button
               className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto ${
-                !task.trim() || checkingTaskBuffer || !isInitialized 
+                !task.trim() || checkingTaskBuffer 
                   ? "cursor-not-allowed" 
                   : "cursor-pointer"
               }`}
               onClick={startTimer}
-              disabled={disabled || checkingTaskBuffer || !isInitialized}
+              disabled={disabled || checkingTaskBuffer}
+              onMouseEnter={() => {
+                console.log('[TIMER DEBUG] Start button hover:', {
+                  task: task?.trim(),
+                  disabled,
+                  checkingTaskBuffer,
+                  isInitialized,
+                  isDisabled: disabled || checkingTaskBuffer,
+                  disabledReason: !task?.trim() ? 'no task' : 
+                                  disabled ? 'disabled prop' :
+                                  checkingTaskBuffer ? 'checking task buffer' : 'none'
+                });
+              }}
             >
               {(() => {
                 // Always show the appropriate Start/Resume text, even while loading
