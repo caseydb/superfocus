@@ -51,16 +51,6 @@ export default function Timer({
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const checkingTaskBuffer = useSelector((state: RootState) => state.tasks.checkingTaskBuffer);
   
-  // Log checkingTaskBuffer changes
-  React.useEffect(() => {
-    console.log('[TIMER DEBUG] checkingTaskBuffer changed:', {
-      checkingTaskBuffer,
-      task: task?.trim(),
-      activeTaskId,
-      currentTaskId,
-      timestamp: new Date().toISOString()
-    });
-  }, [checkingTaskBuffer]);
   
   
   // Initialize from secondsRef if switching from Pomodoro
@@ -89,22 +79,12 @@ export default function Timer({
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
   
-  // Log isInitialized changes
-  React.useEffect(() => {
-    console.log('[TIMER DEBUG] isInitialized changed:', {
-      isInitialized,
-      task: task?.trim(),
-      activeTaskId,
-      timestamp: new Date().toISOString()
-    });
-  }, [isInitialized]);
   
   // Mark as initialized once we have a user
   // This is now just for tracking, not for blocking the start button
   React.useEffect(() => {
     if (user?.id && !isInitialized) {
       const initTimeout = setTimeout(() => {
-        console.log('[TIMER DEBUG] Marking Timer as initialized');
         setIsInitialized(true);
       }, 500);
       
@@ -228,11 +208,6 @@ export default function Timer({
     // Skip restoration if there's already an active timer (from Pomodoro)
     // Check if secondsRef has a value OR we already have seconds, indicating an active timer
     if ((hasStarted && secondsRef?.current && secondsRef.current > 0) || seconds > 0) {
-      console.log('[TIMER DEBUG] Skipping restoration - already has active timer from Pomodoro:', {
-        hasStarted,
-        secondsRefCurrent: secondsRef?.current,
-        seconds
-      });
       setIsInitialized(true);
       // If coming from Pomodoro with an active timer, set running state based on timerRunning
       // The running state is managed by RoomShell through onActiveChange
@@ -363,10 +338,8 @@ export default function Timer({
         }
       }
       
-      console.log('[TIMER DEBUG] Timer initialization complete');
       setIsInitialized(true);
-    }).catch((error) => {
-      console.log('[TIMER DEBUG] Timer initialization failed:', error);
+    }).catch(() => {
       setIsInitialized(true);
     });
     }, 1000); // Wait 1 second for Redux to load
@@ -597,27 +570,11 @@ export default function Timer({
   }, [running, seconds, task, saveTimerState, user?.id, activeTaskId]);
 
   async function startTimer() {
-    console.log('[TIMER DEBUG] Start button clicked:', {
-      task: task?.trim(),
-      checkingTaskBuffer,
-      isInitialized,
-      disabled,
-      activeTaskId,
-      currentTaskId,
-      running,
-      isStarting,
-      seconds,
-      willBeDisabled: disabled || checkingTaskBuffer
-    });
     
     // Only prevent starting if TaskBuffer is still being checked
     // We removed the isInitialized check because after task completion,
     // when a new task is selected, we should be able to start immediately
     if (checkingTaskBuffer) {
-      console.log('[TIMER DEBUG] Start prevented:', {
-        reason: 'checkingTaskBuffer',
-        checkingTaskBuffer
-      });
       return;
     }
 
@@ -836,18 +793,6 @@ export default function Timer({
               }`}
               onClick={startTimer}
               disabled={disabled || checkingTaskBuffer}
-              onMouseEnter={() => {
-                console.log('[TIMER DEBUG] Start button hover:', {
-                  task: task?.trim(),
-                  disabled,
-                  checkingTaskBuffer,
-                  isInitialized,
-                  isDisabled: disabled || checkingTaskBuffer,
-                  disabledReason: !task?.trim() ? 'no task' : 
-                                  disabled ? 'disabled prop' :
-                                  checkingTaskBuffer ? 'checking task buffer' : 'none'
-                });
-              }}
             >
               {(() => {
                 // Always show the appropriate Start/Resume text, even while loading

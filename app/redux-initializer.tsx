@@ -92,7 +92,8 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
             // Fetch user preferences
             try {
-              await dispatch(fetchPreferences(userData.user_id)).unwrap();
+              const preferences = await dispatch(fetchPreferences(userData.user_id)).unwrap();
+              console.log('preferenceSlice from redux:', preferences);
             } catch (error) {
               console.error("[ReduxInitializer] Failed to fetch preferences:", error);
             }
@@ -130,7 +131,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
             }
 
             // Check for any active tasks in Firebase TaskBuffer
-            console.log('[ReduxInitializer] Checking for active tasks on initial load');
             console.log('[REDUX INIT DEBUG] Dispatching checkForActiveTask');
             await dispatch(
               checkForActiveTask({
@@ -138,7 +138,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 userId: userData.user_id,
               })
             ).unwrap();
-            console.log('[ReduxInitializer] Active task check completed');
             
             // Check if timezone needs updating (only check once)
             if (!hasCheckedTimezone.current) {
@@ -188,7 +187,8 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
                 // Fetch user preferences
                 try {
-                  await dispatch(fetchPreferences(userData.user_id)).unwrap();
+                  const preferences = await dispatch(fetchPreferences(userData.user_id)).unwrap();
+                  console.log('preferenceSlice from redux (retry):', preferences);
                 } catch (error) {
                   console.error("[ReduxInitializer] Failed to fetch preferences on retry:", error);
                 }
@@ -226,14 +226,12 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 }
 
                 // Check for any active tasks in Firebase TaskBuffer
-                console.log('[ReduxInitializer] Checking for active tasks on retry');
                 await dispatch(
                   checkForActiveTask({
                     firebaseUserId: firebaseUser.uid,
                     userId: userData.user_id,
                   })
                 ).unwrap();
-                console.log('[ReduxInitializer] Active task check completed on retry');
                 
                 // Check timezone on retry as well
                 if (!hasCheckedTimezone.current) {

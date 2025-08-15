@@ -42,15 +42,14 @@ export default function TaskInput({
   // Get tasks and preferences from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const preferences = useSelector((state: RootState) => state.preferences);
-  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  // const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   
   // Helper function to clear the justCompletedTask flag
   const clearJustCompletedFlag = React.useCallback(async () => {
     if (user?.id) {
-      console.log('[TASK INPUT DEBUG] Clearing justCompletedTask flag');
       const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
-      await remove(completedFlagRef).catch((error) => {
-        console.log('[TASK INPUT DEBUG] justCompletedTask flag clear failed (probably does not exist):', error.message);
+      await remove(completedFlagRef).catch(() => {
+        // Silent error - flag may not exist
       });
     }
   }, [user]);
@@ -278,12 +277,6 @@ export default function TaskInput({
             // If a task is selected in dropdown, use it
             if (showTaskSuggestions && selectedTaskIndex >= 0 && filteredTasks[selectedTaskIndex]) {
               const selectedTask = filteredTasks[selectedTaskIndex];
-              console.log('[TASK INPUT DEBUG] Task selected from dropdown (Enter key):', {
-                taskId: selectedTask.id,
-                taskName: selectedTask.text,
-                previousActiveTaskId: activeTaskId,
-                timestamp: new Date().toISOString()
-              });
               // Clear the justCompletedTask flag when selecting a new task
               clearJustCompletedFlag();
               // Set both the text and the task ID
@@ -374,12 +367,6 @@ export default function TaskInput({
               <button
                 key={taskItem.id}
                 onClick={() => {
-                  console.log('[TASK INPUT DEBUG] Task selected from dropdown (click):', {
-                    taskId: taskItem.id,
-                    taskName: taskItem.text,
-                    previousActiveTaskId: activeTaskId,
-                    timestamp: new Date().toISOString()
-                  });
                   // Clear the justCompletedTask flag when selecting a new task
                   clearJustCompletedFlag();
                   // Set both the text and the task ID

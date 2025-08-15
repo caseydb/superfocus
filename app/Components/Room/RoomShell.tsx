@@ -7,6 +7,7 @@ import { RootState, AppDispatch } from "../../store/store";
 import { setActiveTask } from "../../store/taskSlice";
 import { fetchHistory } from "../../store/historySlice";
 import { refreshLeaderboard } from "../../store/leaderboardSlice";
+import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
 import {
@@ -39,6 +40,7 @@ import PersonalStats from "./PersonalStats";
 import WelcomeBackMessage from "./WelcomeBackMessage";
 import RoomsModal from "./RoomsModal";
 import Notes from "./Notes";
+import TaskNotes from "./TaskNotes";
 import SignIn from "../SignIn";
 import Preferences from "./Preferences";
 import InvitePopup from "./InvitePopup";
@@ -120,6 +122,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showInvitePopup, setShowInvitePopup] = useState(false);
+  // Get toggle_notes from Redux preferences instead of local state
+  const showDeepWorkNotes = useSelector((state: RootState) => state.preferences.toggle_notes);
   // People Modal - Feature deprioritized
   // const [messagesNotificationCount, setMessagesNotificationCount] = useState(1);
   // const [requestsNotificationCount, setRequestsNotificationCount] = useState(3);
@@ -1463,6 +1467,17 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 )}
               </div>
             )}
+            
+            {/* Task Notes for Deep Work Mode - integrated below input */}
+            {showDeepWorkNotes && !isPomodoroMode && activeTaskId && (
+              <div className="mb-8 flex justify-center w-full">
+                <TaskNotes 
+                  taskId={activeTaskId}
+                  taskName={reduxTasks.find(t => t.id === activeTaskId)?.name}
+                  isVisible={showDeepWorkNotes}
+                />
+              </div>
+            )}
           </div>
           {/* Timer/Pomodoro is always mounted */}
           <div className="flex flex-col items-center justify-center w-full">
@@ -1471,7 +1486,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
             {/* Conditionally render Timer or Pomodoro based on mode */}
             {!isPomodoroMode ? (
-              <Timer
+              <>
+                <Timer
                 key={timerResetKey}
                 onActiveChange={handleActiveChange}
                 startRef={timerStartRef}
@@ -1498,6 +1514,31 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 initialRunning={timerRunning}
                 isQuittingRef={isQuittingRef}
               />
+                {/* Deep Work Mode Toggle - centered below Timer - only show when active task exists */}
+                {activeTaskId && (
+                  <div className="flex justify-center mt-6">
+                    <button
+                      className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
+                        showDeepWorkNotes ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+                      }`}
+                      onClick={async () => {
+                        // Optimistic update to Redux store
+                        dispatch(setPreference({ key: 'toggle_notes', value: !showDeepWorkNotes }));
+                        
+                        // Update PostgreSQL in background
+                        if (reduxUser?.user_id) {
+                          dispatch(updatePreferences({ 
+                            userId: reduxUser.user_id, 
+                            updates: { toggle_notes: !showDeepWorkNotes } 
+                          }));
+                        }
+                      }}
+                    >
+                      {showDeepWorkNotes ? "Hide Notes" : "Show Notes"}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <Pomodoro
                 key={timerResetKey}
