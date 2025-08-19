@@ -90,7 +90,7 @@ export default function Timer({
       
       return () => clearTimeout(initTimeout);
     }
-  }, [user?.id]);
+  }, [user?.id, isInitialized]);
   const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
   const inactivityDurationRef = useRef(120); // Track timeout duration in ref to avoid effect re-runs
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
@@ -440,7 +440,7 @@ export default function Timer({
     });
     
     // Note: Don't change running state here, let StartButton handle it
-  }, [activeTaskId, user?.id, secondsRef, dispatch, running, justPaused, reduxTasks]);
+  }, [activeTaskId, user?.id, secondsRef, dispatch, running, justPaused, reduxTasks, isInitialized]);
 
   // Note: Room user count monitoring removed to keep all Firebase activity in TaskBuffer
   // If needed, this could be re-implemented using TaskBuffer/rooms/{roomId}/activeUsers

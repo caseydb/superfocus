@@ -29,6 +29,7 @@ export default function TaskInput({
   const { user } = useInstance();
   const { currentInput: task, isLocked: disabled } = useSelector((state: RootState) => state.taskInput);
   const [inputWidth, setInputWidth] = React.useState("95%");
+  const [underlineWidth, setUnderlineWidth] = React.useState("615px"); // Default to approximate placeholder width
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = React.useState(false);
@@ -92,20 +93,14 @@ export default function TaskInput({
 
 
   const updateInputWidth = React.useCallback(() => {
-    if (spanRef.current && typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       const screenWidth = window.innerWidth;
-      if (screenWidth >= 768) {
-        // Desktop: use calculated width
-        const minWidth = 650;
-        const maxWidth = 800;
-        const width = Math.min(Math.max(spanRef.current.offsetWidth + 40, minWidth), maxWidth);
-        setInputWidth(`${width}px`);
+      if (screenWidth >= 1024) {
+        // Desktop: fixed width for deep work mode
+        setInputWidth("725px");
       } else if (screenWidth >= 640) {
-        // Tablet: use smaller min width
-        const minWidth = 400;
-        const maxWidth = 600;
-        const width = Math.min(Math.max(spanRef.current.offsetWidth + 40, minWidth), maxWidth);
-        setInputWidth(`${width}px`);
+        // Tablet: fixed width matching notes area
+        setInputWidth("400px");
       } else {
         // Mobile: use wider responsive width to fit placeholder
         setInputWidth("95%");
@@ -116,6 +111,25 @@ export default function TaskInput({
   React.useEffect(() => {
     updateInputWidth();
   }, [task, updateInputWidth]);
+
+  // Calculate underline width based on actual text width
+  React.useEffect(() => {
+    if (spanRef.current) {
+      // Always measure the actual width
+      const textWidth = spanRef.current.offsetWidth;
+      const maxWidth = 725; // Maximum width (input field width)
+      
+      // Add padding to better match visual width
+      const paddedWidth = !task.trim() ? textWidth + 109 : textWidth + 82;
+      
+      // Store the placeholder width as minimum (when task is empty)
+      const minWidth = 615; // The placeholder width we set as default
+      
+      // Never go below placeholder width, never exceed max width
+      const width = Math.min(Math.max(paddedWidth, minWidth), maxWidth);
+      setUnderlineWidth(`${width}px`);
+    }
+  }, [task]);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -232,7 +246,7 @@ export default function TaskInput({
         className={`text-center font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
           disabled ? "cursor-not-allowed" : "bg-transparent"
         } ${
-          task.length > 50 ? "text-2xl md:text-4xl" : "text-3xl md:text-5xl"
+          task.length > 50 ? "text-2xl md:text-3xl" : "text-3xl md:text-5xl"
         }`}
         placeholder="What are you focusing on?"
         rows={1}
@@ -325,9 +339,9 @@ export default function TaskInput({
       />
       {/* Custom underline with larger gap */}
       <div
-        className={`mx-auto transition-colors duration-200${isFocused && !disabled ? "" : " bg-gray-700"}`}
+        className={`mx-auto transition-all duration-300${isFocused && !disabled ? "" : " bg-gray-700"}`}
         style={{
-          width: inputWidth,
+          width: underlineWidth,
           height: "2px",
           marginBottom: "50px",
           borderRadius: "2px",

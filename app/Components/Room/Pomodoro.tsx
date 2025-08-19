@@ -26,6 +26,10 @@ interface PomodoroProps {
   onClearClick?: () => void;
   setShowTaskList?: (show: boolean) => void;
   onTaskRestore?: (taskName: string, isRunning: boolean, taskId?: string) => void;
+  isCompact?: boolean;
+  showNotes?: boolean;
+  notesContent?: React.ReactNode;
+  onNotesToggle?: () => void;
 }
 
 export default function Pomodoro({
@@ -42,6 +46,10 @@ export default function Pomodoro({
   onClearClick,
   setShowTaskList,
   onTaskRestore,
+  isCompact = false,
+  showNotes = false,
+  notesContent,
+  onNotesToggle,
 }: PomodoroProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
@@ -74,6 +82,8 @@ export default function Pomodoro({
   const [showNoTaskFeedback, setShowNoTaskFeedback] = useState(false);
   const hasPlayedZeroNotificationRef = useRef(false);
   const isInitializedRef = useRef(false);
+  const [underlineWidth, setUnderlineWidth] = useState<string>("340px"); // Default to placeholder width
+  const hiddenSpanRef = useRef<HTMLSpanElement>(null); // To measure text width
   
   // Filter out completed tasks and sort by most recent
   const availableTasks = reduxTasks
@@ -323,6 +333,29 @@ export default function Pomodoro({
     }
   }, [task]);
 
+  // Calculate underline width based on text content
+  useEffect(() => {
+    if (hiddenSpanRef.current) {
+      // Measure the current text width (or placeholder if empty)
+      const measuredWidth = hiddenSpanRef.current.offsetWidth;
+      
+      // Always use at least the placeholder width as minimum
+      // The hidden span shows placeholder when task is empty, so first measurement is our minimum
+      const minWidth = 340; // This should be the placeholder width
+      
+      if (textareaRef.current) {
+        const inputWidth = textareaRef.current.offsetWidth;
+        // Never go below placeholder width, never exceed input width
+        const width = Math.min(Math.max(measuredWidth, minWidth), inputWidth);
+        setUnderlineWidth(`${width}px`);
+      } else {
+        // Fallback to max of measured and min width
+        const width = Math.max(measuredWidth, minWidth);
+        setUnderlineWidth(`${width}px`);
+      }
+    }
+  }, [task]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -541,6 +574,17 @@ export default function Pomodoro({
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 sm:px-0 w-full max-w-4xl mx-auto -mt-10">
+      {/* Hidden span to measure text width */}
+      <span
+        ref={hiddenSpanRef}
+        className={`absolute opacity-0 pointer-events-none whitespace-nowrap ${
+          task.length > 50 ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"
+        }`}
+        style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 600 }}
+      >
+        {task || "What are you focusing on?"}
+      </span>
+      
       {/* Task input field - matching Timer styling */}
       <div className="relative group">
         <div className="flex flex-col items-center justify-center w-full px-4 sm:px-0">
@@ -602,15 +646,21 @@ export default function Pomodoro({
           placeholder="What are you focusing on?"
           disabled={inputLocked}
           maxLength={100}
-          className={`text-center text-2xl md:text-3xl font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 w-full min-w-[280px] md:min-w-[400px] max-w-[600px] ${
+          className={`text-center font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 break-words ${
             inputLocked ? "cursor-not-allowed" : "bg-transparent"
-          }`}
-          style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
+          } ${
+            task.length > 50 ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"
+          } ${
+            task.length > 45 ? "max-w-[550px]" : ""
+          } w-[95%] sm:w-[400px] lg:w-[650px]`}
+          style={{ 
+            fontFamily: "Inter, system-ui, -apple-system, sans-serif"
+          }}
           rows={1}
         />
         {/* Custom underline */}
         <div
-          className={`mx-auto transition-all duration-200 min-w-[280px] md:min-w-[400px] max-w-[600px] ${
+          className={`mx-auto transition-all duration-300 ${
             showNoTaskFeedback 
               ? "bg-[#FFAA00] animate-pulse" 
               : inputFocused && !inputLocked 
@@ -618,7 +668,7 @@ export default function Pomodoro({
                 : "bg-gray-700"
           }`}
           style={{
-            width: "100%",
+            width: underlineWidth,
             height: showNoTaskFeedback ? "3px" : "2px",
             marginBottom: "16px",
             borderRadius: "2px",
@@ -688,8 +738,17 @@ export default function Pomodoro({
         )}
       </div>
 
-      {/* Main Countdown Display */}
-      <div className="relative w-72 h-72 sm:w-96 sm:h-96">
+      {/* Notes content - above timer */}
+      {showNotes && notesContent && (
+        <div className="mb-8 flex justify-center w-full max-h-52 overflow-y-auto">
+          {notesContent}
+        </div>
+      )}
+      
+      {/* Main timer and buttons container - flex row when notes shown */}
+      <div className={showNotes ? "flex items-center justify-center gap-8" : ""}>
+        {/* Main Countdown Display - original size when no notes, smaller when notes shown */}
+        <div className={`relative ${isCompact ? 'w-56 h-56 sm:w-72 sm:h-72' : 'w-72 h-72 sm:w-96 sm:h-96'}`}>
         {/* Circle SVG - bigger and thinner */}
         <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 256 256">
           {/* Background circle */}
@@ -709,9 +768,9 @@ export default function Pomodoro({
 
         {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {/* Main countdown - always editable */}
+          {/* Main countdown - always editable - smaller text when compact */}
           <div
-            className={`text-5xl sm:text-7xl font-bold text-white mb-2 ${
+            className={`${isCompact ? 'text-5xl sm:text-6xl' : 'text-5xl sm:text-7xl'} font-bold text-white mb-2 ${
               !isEditingTime ? "cursor-text hover:text-[#FFAA00] transition-colors" : ""
             } ${isEditingTime ? "border-b-2 border-[#FFAA00]" : ""}`}
             onClick={handleTimeEdit}
@@ -806,9 +865,81 @@ export default function Pomodoro({
           </div>
         </div>
       </div>
+      
+      {/* Control buttons when notes shown - ALL buttons placed inside the flex container */}
+      {showNotes && (
+        <div className="flex flex-col gap-4">
+          {/* Start button */}
+          {!isRunning && !isPaused && (
+            <button
+              className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-48 cursor-pointer ${
+                !task.trim() ? "opacity-60" : ""
+              }`}
+              onClick={() => {
+                if (!task.trim()) {
+                  setShowNoTaskFeedback(true);
+                  // Flash the input field
+                  textareaRef.current?.focus();
+                  setTimeout(() => setShowNoTaskFeedback(false), 2000);
+                } else if (!isStarting) {
+                  startTimer();
+                }
+              }}
+            >
+              {elapsedSeconds > 0 ? "Resume" : "Start"}
+            </button>
+          )}
+          
+          {/* Pause and Complete buttons when running */}
+          {isRunning && (
+            <>
+              <button
+                className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+                onClick={pauseTimer}
+              >
+                Pause
+              </button>
+              <button
+                className={`${
+                  showCompleteFeedback ? "bg-green-600" : "bg-green-500"
+                } text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${elapsedSeconds < 1 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onClick={completeTimer}
+                disabled={isCompleting || elapsedSeconds < 1}
+              >
+                {showCompleteFeedback ? "Wait..." : "Complete"}
+              </button>
+            </>
+          )}
+          
+          {/* Resume button when paused */}
+          {isPaused && (
+            <button
+              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+              onClick={resumeTimer}
+              disabled={isStarting}
+            >
+              Resume
+            </button>
+          )}
+          
+          {/* Show/Hide Notes button - included in the same area */}
+          {onNotesToggle && (
+            <button
+              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
+                showNotes ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+              }`}
+              onClick={onNotesToggle}
+            >
+              {showNotes ? "Hide Notes" : "Show Notes"}
+            </button>
+          )}
+        </div>
+      )}
+      </div>
 
-      {/* Control buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
+      {/* Control buttons when notes are NOT shown */}
+      {!showNotes && (
+        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
         {!isRunning && !isPaused && (
           <div className="flex flex-col items-center gap-2">
             <button
@@ -831,7 +962,7 @@ export default function Pomodoro({
           </div>
         )}
 
-        {isRunning && (
+        {isRunning && !showNotes && (
           <>
             <button
               className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
@@ -864,9 +995,22 @@ export default function Pomodoro({
             </button>
           </div>
         )}
-      </div>
-
-
+        </div>
+      )}
+      
+      {/* Show/Hide Notes button - only show below when notes are NOT shown */}
+      {onNotesToggle && !showNotes && (
+        <div className="flex justify-center mt-4">
+          <button
+            className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
+              showNotes ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+            }`}
+            onClick={onNotesToggle}
+          >
+            {showNotes ? "Hide Notes" : "Show Notes"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

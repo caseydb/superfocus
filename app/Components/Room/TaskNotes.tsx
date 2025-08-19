@@ -25,9 +25,11 @@ interface TaskNotesProps {
   taskId?: string | null;
   taskName?: string;
   isVisible?: boolean;
+  customWidth?: string;
+  customMinHeight?: string;
 }
 
-export default function TaskNotes({ taskId, isVisible = true }: TaskNotesProps) {
+export default function TaskNotes({ taskId, isVisible = true, customWidth, customMinHeight }: TaskNotesProps) {
   const dispatch = useDispatch<AppDispatch>();
   const [nextId, setNextId] = useState<number>(2);
   const inputRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
@@ -247,10 +249,12 @@ export default function TaskNotes({ taskId, isVisible = true }: TaskNotesProps) 
 
   // Match TaskInput's minimum width (most common case)
   const getWidth = () => {
+    if (customWidth) return customWidth;
+    
     if (typeof window !== "undefined") {
       const screenWidth = window.innerWidth;
       if (screenWidth >= 768) {
-        return "650px"; // Desktop min width (most common)
+        return "550px"; // Desktop width matching input field
       } else if (screenWidth >= 640) {
         return "400px"; // Tablet min width
       }
@@ -259,10 +263,17 @@ export default function TaskNotes({ taskId, isVisible = true }: TaskNotesProps) 
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ width: getWidth() }}>
-      <div className="bg-gray-850 rounded-xl border border-gray-700 overflow-hidden">
+    <div 
+      className="animate-in fade-in slide-in-from-bottom-2 duration-300" 
+      style={{ 
+        width: getWidth(), 
+        height: customMinHeight || 'auto',
+        minHeight: customMinHeight 
+      }}
+    >
+      <div className="bg-gray-850 rounded-xl border border-gray-700 overflow-hidden h-full flex flex-col">
         {/* Notes Content Only */}
-        <div className="p-6 max-h-[25vh] overflow-y-auto custom-scrollbar">
+        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
           <div className="space-y-2">
             {notes.map((item, index) => (
               <div

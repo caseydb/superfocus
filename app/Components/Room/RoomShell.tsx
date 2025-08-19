@@ -572,6 +572,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     currentInstance,
     joinInstance,
     userReady,
+    reduxUser.user_id,
     publicRoomId,
     privateRoomId,
     setPublicRoomInstance,
@@ -1470,7 +1471,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             
             {/* Task Notes for Deep Work Mode - integrated below input */}
             {showDeepWorkNotes && !isPomodoroMode && activeTaskId && (
-              <div className="mb-8 flex justify-center w-full">
+              <div className="mb-8 flex justify-center w-full max-h-52 overflow-y-auto">
                 <TaskNotes 
                   taskId={activeTaskId}
                   taskName={reduxTasks.find(t => t.id === activeTaskId)?.name}
@@ -1540,34 +1541,61 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 )}
               </>
             ) : (
-              <Pomodoro
-                key={timerResetKey}
-                localVolume={localVolume}
-                onActiveChange={handleActiveChange}
-                onNewTaskStart={() => {
-                  lastStartTimeRef.current = Date.now();
-                }}
-                onComplete={handleComplete}
-                startRef={timerStartRef}
-                pauseRef={timerPauseRef}
-                secondsRef={timerSecondsRef}
-                remainingRef={pomodoroRemainingRef}
-                lastStartTime={lastStartTimeRef.current}
-                initialRunning={timerRunning}
-                onClearClick={handleClearButton}
-                setShowTaskList={setShowTaskList}
-                onTaskRestore={(taskName, isRunning, taskId) => {
-                  dispatch(setCurrentInput(taskName));
-                  if (taskId) {
-                    dispatch(setCurrentTask({ id: taskId, name: taskName }));
-                    dispatch(setActiveTask(taskId));
+              <>
+                <Pomodoro
+                  key={timerResetKey}
+                  localVolume={localVolume}
+                  onActiveChange={handleActiveChange}
+                  onNewTaskStart={() => {
+                    lastStartTimeRef.current = Date.now();
+                  }}
+                  onComplete={handleComplete}
+                  startRef={timerStartRef}
+                  pauseRef={timerPauseRef}
+                  secondsRef={timerSecondsRef}
+                  remainingRef={pomodoroRemainingRef}
+                  lastStartTime={lastStartTimeRef.current}
+                  initialRunning={timerRunning}
+                  onClearClick={handleClearButton}
+                  setShowTaskList={setShowTaskList}
+                  isCompact={showDeepWorkNotes}
+                  showNotes={showDeepWorkNotes && !!activeTaskId}
+                  notesContent={
+                    showDeepWorkNotes && activeTaskId ? (
+                      <TaskNotes 
+                        taskId={activeTaskId}
+                        taskName={reduxTasks.find(t => t.id === activeTaskId)?.name}
+                        isVisible={showDeepWorkNotes}
+                      />
+                    ) : null
                   }
-                  if (isRunning) {
-                    dispatch(lockInput());
+                  onNotesToggle={
+                    activeTaskId ? async () => {
+                      // Optimistic update to Redux store
+                      dispatch(setPreference({ key: 'toggle_notes', value: !showDeepWorkNotes }));
+                      
+                      // Update PostgreSQL in background
+                      if (reduxUser?.user_id) {
+                        dispatch(updatePreferences({ 
+                          userId: reduxUser.user_id, 
+                          updates: { toggle_notes: !showDeepWorkNotes } 
+                        }));
+                      }
+                    } : undefined
                   }
-                  dispatch(setHasStartedRedux(true));
-                }}
-              />
+                  onTaskRestore={(taskName, isRunning, taskId) => {
+                    dispatch(setCurrentInput(taskName));
+                    if (taskId) {
+                      dispatch(setCurrentTask({ id: taskId, name: taskName }));
+                      dispatch(setActiveTask(taskId));
+                    }
+                    if (isRunning) {
+                      dispatch(lockInput());
+                    }
+                    dispatch(setHasStartedRedux(true));
+                  }}
+                />
+              </>
             )}
           </div>
 
