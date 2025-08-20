@@ -14,6 +14,7 @@ import { ref, set, remove, get, update, onValue, off, type DataSnapshot } from "
 import { useStartButton } from "../../hooks/StartButton";
 import { usePauseButton } from "../../hooks/PauseButton";
 import { useCompleteButton } from "../../hooks/CompleteButton";
+import { playAudio } from "../../utils/activeAudio";
 
 export default function Timer({
   onActiveChange,
@@ -57,10 +58,6 @@ export default function Timer({
   const [seconds, setSeconds] = useState(secondsRef?.current || 0);
   const [running, setRunning] = useState(initialRunning);
   const [justPaused, setJustPaused] = useState(false);
-  
-  // Timestamp-based timing to prevent drift
-  const startTimeRef = useRef<number>(0);
-  const baseSecondsRef = useRef<number>(secondsRef?.current || 0);
   
   // Sync with secondsRef on mount
   useEffect(() => {
@@ -471,62 +468,42 @@ export default function Timer({
   // Update display every second and save total_time periodically
   useEffect(() => {
     if (running) {
-      // Store the start time when timer starts
-      if (startTimeRef.current === 0) {
-        startTimeRef.current = Date.now();
-        baseSecondsRef.current = seconds;
-        console.log(`[Timer] Starting timer at ${new Date().toLocaleTimeString()}, base seconds: ${baseSecondsRef.current}`);
-      }
-      
       const interval = setInterval(() => {
-        // Calculate actual elapsed time based on timestamps
-        const now = Date.now();
-        const actualElapsed = Math.floor((now - startTimeRef.current) / 1000);
-        const newSeconds = baseSecondsRef.current + actualElapsed;
-        
-        // Log drift detection
-        const expectedSeconds = seconds + 1;
-        if (Math.abs(newSeconds - expectedSeconds) > 1) {
-          console.log(`[Timer] Drift detected! Expected: ${expectedSeconds}, Actual: ${newSeconds}, Drift: ${newSeconds - expectedSeconds}s`);
-        }
-        
-        setSeconds(newSeconds);
-        
-        // Also update secondsRef to keep it in sync
-        if (secondsRef) {
-          secondsRef.current = newSeconds;
-        }
-        
-        // Save total_time to Firebase every 5 seconds
-        if (newSeconds % 5 === 0 && activeTaskId && user?.id && 
-            !((isQuittingRef && isQuittingRef.current) || localIsQuittingRef.current)) {
-          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
-          update(taskRef, {
-            total_time: newSeconds,
-            updated_at: Date.now()
-          }).catch(() => {
-            // Task might have been deleted, ignore error
-          });
+        setSeconds((s) => {
+          const newSeconds = s + 1;
+          // Also update secondsRef to keep it in sync
+          if (secondsRef) {
+            secondsRef.current = newSeconds;
+          }
           
-          // Also update LastTask to ensure it's current
-          const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
-          set(lastTaskRef, {
-            taskId: activeTaskId,
-            taskName: task || "",
-            timestamp: Date.now()
-          });
-        }
-      }, 100); // Check more frequently to catch up after throttling
-      
+          // Save total_time to Firebase every 5 seconds
+          if (newSeconds % 5 === 0 && activeTaskId && user?.id && 
+              !((isQuittingRef && isQuittingRef.current) || localIsQuittingRef.current)) {
+            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+            update(taskRef, {
+              total_time: newSeconds,
+              updated_at: Date.now()
+            }).catch(() => {
+              // Task might have been deleted, ignore error
+            });
+            
+            // Also update LastTask to ensure it's current
+            const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+            set(lastTaskRef, {
+              taskId: activeTaskId,
+              taskName: task || "",
+              timestamp: Date.now()
+            });
+          }
+          
+          return newSeconds;
+        });
+      }, 1000);
       return () => {
         clearInterval(interval);
       };
-    } else {
-      // Reset start time when timer stops
-      startTimeRef.current = 0;
-      baseSecondsRef.current = seconds;
     }
-  }, [running, secondsRef, activeTaskId, user?.id, task, isQuittingRef, seconds]);
+  }, [running, secondsRef, activeTaskId, user?.id, task, isQuittingRef]);
 
   // Inactivity detection based on timer duration
   useEffect(() => {
@@ -547,9 +524,7 @@ export default function Timer({
 
         // Play inactive sound locally only if not muted (check current volume from ref)
         if (localVolumeRef.current > 0) {
-          const inactiveAudio = new Audio("/inactive.mp3");
-          inactiveAudio.volume = localVolumeRef.current;
-          inactiveAudio.play();
+          playAudio("/inactive.mp3", localVolumeRef.current);
         }
       }
     }, inactivityDurationRef.current * 1000); // Convert seconds to milliseconds
@@ -602,10 +577,6 @@ export default function Timer({
       return;
     }
     
-    // Reset timestamp references when starting
-    startTimeRef.current = Date.now();
-    baseSecondsRef.current = seconds;
-    console.log(`[Timer] Starting timer - base seconds: ${seconds}, timestamp: ${new Date().toLocaleTimeString()}`);
 
     // Check if task is empty and provide feedback
     if (!task.trim()) {
@@ -666,11 +637,6 @@ export default function Timer({
   const pauseTimer = useCallback(() => {
     setJustPaused(true);
     
-    // Reset timestamp refs when pausing
-    startTimeRef.current = 0;
-    baseSecondsRef.current = seconds;
-    console.log(`[Timer] Pausing timer - final seconds: ${seconds}`);
-    
     handleStop({
       task: task || "",
       seconds,
@@ -723,9 +689,7 @@ export default function Timer({
 
         // Play inactive sound locally only if not muted (check current volume from ref)
         if (localVolumeRef.current > 0) {
-          const inactiveAudio = new Audio("/inactive.mp3");
-          inactiveAudio.volume = localVolumeRef.current;
-          inactiveAudio.play();
+          playAudio("/inactive.mp3", localVolumeRef.current);
         }
       }
     }, inactivityDurationRef.current * 1000);

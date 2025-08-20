@@ -6,6 +6,7 @@ import { rtdb } from "../../lib/firebase";
 import { ref, set, update, remove, get } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import { v4 as uuidv4 } from "uuid";
+import { playAudio } from "../utils/activeAudio";
 import {
   updateTask,
   addTaskToBufferWhenStarted,
@@ -319,9 +320,7 @@ export function useStartButton() {
 
       // Play start sound and notify for both start and resume
       // Always play start sound locally (for both start and resume)
-      const startAudio = new Audio("/started.mp3");
-      startAudio.volume = localVolume;
-      startAudio.play();
+      playAudio("/started.mp3", localVolume);
 
       // Notify parent that a task is starting/resuming
       if (onNewTaskStart) {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
@@ -73,6 +73,7 @@ type MilestoneData = {
   };
 };
 
+
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
   const [loading, setLoading] = useState(true);
@@ -139,7 +140,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { handleClear } = useClearButton();
   const { handleQuitConfirm, handlePushOn } = useQuitButton();
 
-  const [localVolume, setLocalVolume] = useState(() => {
+  const [localVolume, setLocalVolumeState] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem("lockedin_volume");
       if (stored !== null) return Number(stored);
@@ -149,6 +150,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Track previous volume for mute/unmute functionality
   const [previousVolume, setPreviousVolume] = useState(0.2);
+  
+  // Wrap setLocalVolume to also update active audio
+  const setLocalVolume = useCallback((volume: number) => {
+    setLocalVolumeState(volume);
+    // Update all active audio elements immediately
+    import('../../utils/activeAudio').then(({ updateAllVolumes }) => {
+      updateAllVolumes(volume);
+    });
+  }, []);
 
   // Local quit cooldown state
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

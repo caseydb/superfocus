@@ -5,6 +5,7 @@ import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
 import { ref, set, push, remove, get } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
+import { playAudio } from "../utils/activeAudio";
 import {
   updateTask,
   setActiveTask,
@@ -115,9 +116,7 @@ export function useQuitButton() {
         }
 
         // Always play quit sound locally
-        const quitAudio = new Audio("/quit.mp3");
-        quitAudio.volume = localVolume;
-        quitAudio.play();
+        playAudio("/quit.mp3", localVolume);
 
         // Only notify quit to RTDB if minimum duration is met
         if (user?.id && currentInstance && timerSeconds >= MIN_DURATION_MS / 1000) {

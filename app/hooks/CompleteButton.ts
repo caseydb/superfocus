@@ -5,6 +5,7 @@ import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
 import { ref, set, remove } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
+import { playAudio } from "../utils/activeAudio";
 import {
   updateTask,
   transferTaskToPostgres,
@@ -112,9 +113,7 @@ export function useCompleteButton() {
       }
 
       // PRIORITY 2: Play completion sound immediately for instant feedback
-      const completeAudio = new Audio("/complete.mp3");
-      completeAudio.volume = localVolume;
-      completeAudio.play();
+      playAudio("/complete.mp3", localVolume);
 
       const completionTime = formatTime(seconds);
 

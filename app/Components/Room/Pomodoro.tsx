@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useStartButton } from "../../hooks/StartButton";
 import { usePauseButton } from "../../hooks/PauseButton";
 import { useCompleteButton } from "../../hooks/CompleteButton";
+import { playAudio } from "../../utils/activeAudio";
 import { useInstance } from "../Instances";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
@@ -84,11 +85,6 @@ export default function Pomodoro({
   const isInitializedRef = useRef(false);
   const [underlineWidth, setUnderlineWidth] = useState<string>("340px"); // Default to placeholder width
   const hiddenSpanRef = useRef<HTMLSpanElement>(null); // To measure text width
-  
-  // Timestamp-based timing to prevent drift
-  const startTimeRef = useRef<number>(0);
-  const baseElapsedRef = useRef<number>(secondsRef?.current || 0);
-  const baseRemainingRef = useRef<number>(preferences.pomodoro_duration * 60);
   
   // Filter out completed tasks and sort by most recent
   const availableTasks = reduxTasks
@@ -182,66 +178,44 @@ export default function Pomodoro({
     return () => clearTimeout(initTimer);
   }, [user?.id, hasStarted, secondsRef, elapsedSeconds, dispatch, onTaskRestore]);
 
-  // Countdown timer with timestamp-based timing to prevent drift
+  // Countdown timer
   useEffect(() => {
     if (isRunning && remainingSeconds > 0) {
-      // Store start time and base values when timer starts
-      if (startTimeRef.current === 0) {
-        startTimeRef.current = Date.now();
-        baseElapsedRef.current = elapsedSeconds;
-        baseRemainingRef.current = remainingSeconds;
-        console.log(`[Pomodoro] Starting timer at ${new Date().toLocaleTimeString()}, base elapsed: ${baseElapsedRef.current}, base remaining: ${baseRemainingRef.current}`);
-      }
-      
       const interval = setInterval(() => {
-        // Calculate actual elapsed time based on timestamps
-        const now = Date.now();
-        const actualElapsed = Math.floor((now - startTimeRef.current) / 1000);
-        const newElapsed = baseElapsedRef.current + actualElapsed;
-        const newRemaining = Math.max(0, baseRemainingRef.current - actualElapsed);
-        
-        // Log drift detection
-        const expectedElapsed = elapsedSeconds + 1;
-        if (Math.abs(newElapsed - expectedElapsed) > 1) {
-          console.log(`[Pomodoro] Drift detected! Expected elapsed: ${expectedElapsed}, Actual: ${newElapsed}, Drift: ${newElapsed - expectedElapsed}s`);
-        }
-        
-        setRemainingSeconds(newRemaining);
-        setElapsedSeconds(newElapsed);
-        
-        // Update shared ref
-        if (secondsRef) {
-          secondsRef.current = newElapsed;
-        }
-        
-        // Save total_time to Firebase every 5 seconds (matching Timer.tsx logic)
-        if (newElapsed % 5 === 0 && activeTaskId && user?.id) {
-          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
-          update(taskRef, {
-            total_time: newElapsed,
-            updated_at: Date.now()
-          }).catch(() => {
-            console.log('[Pomodoro] Failed to update task time - task may have been quit');
-          });
+        setRemainingSeconds((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+        setElapsedSeconds((prev) => {
+          const newElapsed = prev + 1;
           
-          // Also update LastTask to ensure it's current
-          const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
-          set(lastTaskRef, {
-            taskId: activeTaskId,
-            taskName: task || "",
-            timestamp: Date.now()
-          });
-        }
-      }, 100); // Check more frequently to catch up after throttling
-      
+          // Save total_time to Firebase every 5 seconds (matching Timer.tsx logic)
+          if (newElapsed % 5 === 0 && activeTaskId && user?.id) {
+            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+            update(taskRef, {
+              total_time: newElapsed,
+              updated_at: Date.now()
+            }).catch(() => {
+              console.log('[Pomodoro] Failed to update task time - task may have been quit');
+            });
+            
+            // Also update LastTask to ensure it's current
+            const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+            set(lastTaskRef, {
+              taskId: activeTaskId,
+              taskName: task || "",
+              timestamp: Date.now()
+            });
+          }
+          
+          return newElapsed;
+        });
+      }, 1000);
       return () => clearInterval(interval);
-    } else {
-      // Reset timestamp refs when timer stops
-      startTimeRef.current = 0;
-      baseElapsedRef.current = elapsedSeconds;
-      baseRemainingRef.current = remainingSeconds;
     }
-  }, [isRunning, remainingSeconds, activeTaskId, user?.id, task, elapsedSeconds]);
+  }, [isRunning, remainingSeconds, activeTaskId, user?.id, task]);
 
   // Auto-pause when timer reaches zero
   useEffect(() => {
@@ -251,9 +225,7 @@ export default function Pomodoro({
       // Keep the timer at 00:00 instead of resetting
       // Play a gentle notification sound only if we haven't played it yet
       if (localVolume > 0 && !hasPlayedZeroNotificationRef.current) {
-        const notificationAudio = new Audio("/inactive.mp3");
-        notificationAudio.volume = localVolume;
-        notificationAudio.play();
+        playAudio("/inactive.mp3", localVolume);
         hasPlayedZeroNotificationRef.current = true;
       }
     }
@@ -429,12 +401,6 @@ export default function Pomodoro({
     setIsEditingTime(false);
     // Reset the notification flag since we're setting a new time
     hasPlayedZeroNotificationRef.current = false;
-    
-    // Reset timestamp refs when time is edited
-    startTimeRef.current = 0;
-    baseElapsedRef.current = elapsedSeconds;
-    baseRemainingRef.current = newTotalSeconds;
-    console.log(`[Pomodoro] Time edited - new remaining: ${newTotalSeconds}, elapsed: ${elapsedSeconds}`);
 
     // Update Redux state optimistically
     dispatch(setPreference({ key: 'pomodoro_duration', value: validMinutes }));
@@ -507,12 +473,6 @@ export default function Pomodoro({
     // Close dropdown when starting
     setShowTaskSuggestions(false);
     
-    // Reset timestamp references when starting
-    startTimeRef.current = Date.now();
-    baseElapsedRef.current = elapsedSeconds;
-    baseRemainingRef.current = remainingSeconds;
-    console.log(`[Pomodoro] Starting timer - elapsed: ${elapsedSeconds}, remaining: ${remainingSeconds}`);
-
     await handleStart({
       task,
       seconds: elapsedSeconds,
@@ -537,12 +497,6 @@ export default function Pomodoro({
     setIsRunning(false);
     setIsPaused(true);
     
-    // Reset timestamp refs when pausing
-    startTimeRef.current = 0;
-    baseElapsedRef.current = elapsedSeconds;
-    baseRemainingRef.current = remainingSeconds;
-    console.log(`[Pomodoro] Pausing timer - elapsed: ${elapsedSeconds}, remaining: ${remainingSeconds}`);
-    
     handleStop({
       task,
       seconds: elapsedSeconds,
@@ -554,12 +508,6 @@ export default function Pomodoro({
   };
 
   const resumeTimer = async () => {
-    // Reset timestamp references when resuming
-    startTimeRef.current = Date.now();
-    baseElapsedRef.current = elapsedSeconds;
-    baseRemainingRef.current = remainingSeconds;
-    console.log(`[Pomodoro] Resuming timer - elapsed: ${elapsedSeconds}, remaining: ${remainingSeconds}`);
-    
     await startTimer();
   };
 
