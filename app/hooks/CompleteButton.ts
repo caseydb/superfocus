@@ -6,6 +6,7 @@ import { rtdb } from "../../lib/firebase";
 import { ref, set, remove } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import { playAudio } from "../utils/activeAudio";
+import { updateUserActivity } from "../utils/updateUserActivity";
 import {
   updateTask,
   transferTaskToPostgres,
@@ -121,6 +122,9 @@ export function useCompleteButton() {
       if (seconds >= MIN_DURATION_MS / 1000) {
         notifyEvent("complete", seconds);
       }
+
+      // Update user's last_active timestamp
+      updateUserActivity();
 
       // PRIORITY 4: Update presence to inactive
       if (user?.id && currentInstance) {

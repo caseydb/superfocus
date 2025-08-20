@@ -400,11 +400,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                       className="rounded-full object-cover"
                       unoptimized={true}
                       onError={(e) => {
-                        console.error(`[ActiveWorkers] Failed to load profile image for ${u.displayName}:`, {
-                          failedUrl: profileImage,
-                          firebaseUserId: u.id,
-                          error: 'Image load error'
-                        });
+                        // Silently handle error - Google images fail on localhost due to CORS
                         // Hide this image and show fallback
                         const imgElement = e.currentTarget as HTMLImageElement;
                         imgElement.style.display = 'none';

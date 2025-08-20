@@ -288,7 +288,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
         className={`w-full py-1.5 rounded-lg font-medium transition-all duration-200 ${
           isCurrentRoom
             ? "bg-gray-700 text-gray-400 cursor-default"
-            : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black"
+            : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black cursor-pointer"
         }`}
         disabled={isCurrentRoom}
       >
@@ -1186,6 +1186,19 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     }
   };
 
+  // Handler for Quick Join text - always creates a new ephemeral room
+  const handleQuickJoinTextClick = async () => {
+    try {
+      const userId = user?.user_id || "anonymous";
+      // Always create a new ephemeral room, bypassing capacity checks
+      await roomService.createRoomAndNavigate(userId);
+    } catch (error) {
+      console.error("Error creating ephemeral room:", error);
+      // Fallback: try the regular quick join
+      handleQuickJoin();
+    }
+  };
+
   const handleCreateRoom = () => {
     setShowCreateRoom(!showCreateRoom);
   };
@@ -1257,7 +1270,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         <div className="flex items-center gap-1 bg-gray-800/50 rounded-full p-1 mb-4">
           <button
             onClick={() => setActiveTab("experiment")}
-            className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
+            className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "experiment" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-gray-300"
             }`}
           >
@@ -1265,7 +1278,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           </button>
           <button
             onClick={() => setActiveTab("team")}
-            className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
+            className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 cursor-pointer ${
               activeTab === "team" ? "bg-[#FFAA00] text-black" : "text-gray-400 hover:text-gray-300"
             }`}
           >
@@ -1297,7 +1310,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     </svg>
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-gray-200">Quick Join</h3>
+                        <h3 
+                          className="font-semibold text-gray-200 cursor-pointer hover:text-[#FFAA00] transition-colors"
+                          onClick={handleQuickJoinTextClick}
+                          title="Click to create a new ephemeral room"
+                        >
+                          Quick Join
+                        </h3>
                         <p className="text-base text-gray-500">
                           <span className="text-green-500 font-bold">{globalActiveUsers.toLocaleString()}</span> people
                           online
@@ -1308,7 +1327,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   </div>
                   <button
                     onClick={handleQuickJoin}
-                    className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB833] transition-all duration-200 flex items-center gap-2 flex-shrink-0"
+                    className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB833] transition-all duration-200 flex items-center gap-2 flex-shrink-0 cursor-pointer"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -1353,7 +1372,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   </div>
                   <button
                     onClick={handleCreateRoom}
-                    className="px-4 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-[#FFAA00] transition-all duration-200 flex items-center gap-2 whitespace-nowrap border border-gray-700 hover:border-[#FFAA00]"
+                    className="px-4 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-[#FFAA00] transition-all duration-200 flex items-center gap-2 whitespace-nowrap border border-gray-700 hover:border-[#FFAA00] cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1982,7 +2001,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             </div>
                             <button
                               onClick={() => setShowTeamInviteModal(true)}
-                              className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors flex items-center gap-2"
+                              className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors flex items-center gap-2 cursor-pointer"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
@@ -2091,7 +2110,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                     </div>
                                     <button
                                       onClick={() => handleJoinRoom(room.url)}
-                                      className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200"
+                                      className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 cursor-pointer"
                                     >
                                       Join Room
                                     </button>
@@ -2410,7 +2429,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     className={`w-full py-2 rounded-lg font-medium transition-all duration-200 ${
                       currentRoomUrl === room.url
                         ? "bg-gray-700 text-gray-400 cursor-default"
-                        : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black"
+                        : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black cursor-pointer"
                     }`}
                     disabled={currentRoomUrl === room.url}
                   >

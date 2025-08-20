@@ -209,17 +209,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
   useEffect(() => {
     const markTodayCompleteWrapper = async () => {
       if (!user?.id) return;
-
-      // const currentStreakDate = getStreakDate(); // Use midnight-to-midnight window
-      // const dailyCompletionRef = ref(rtdb, `users/${user.id}/dailyCompletions/${currentStreakDate}`);
-
-      // // Check if already marked for this streak day
-      // const snapshot = await get(dailyCompletionRef);
-      // if (!snapshot.exists()) {
-      //   await set(dailyCompletionRef, true);
-      // }
-
-      // Temporary: Just set hasCompletedToday
+      // Daily completions are now handled through PostgreSQL
       setHasCompletedToday(true);
     };
 

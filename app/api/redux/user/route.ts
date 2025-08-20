@@ -40,6 +40,7 @@ export async function PATCH(request: NextRequest) {
         email: true,
         profile_image: true,
         timezone: true,
+        first_visit: true,
       },
     });
 
@@ -86,6 +87,7 @@ export async function GET(request: NextRequest) {
         email: true,
         profile_image: true,
         timezone: true,
+        first_visit: true,
       },
     });
 
@@ -99,6 +101,7 @@ export async function GET(request: NextRequest) {
           email: null,
           profile_image: null,
           timezone: null,
+          first_visit: true,
         },
         { status: 200 }
       );
@@ -112,6 +115,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       profile_image: user.profile_image,
       timezone: user.timezone,
+      first_visit: user.first_visit,
     });
   } catch (error) {
     console.error('GET /api/redux/user error:', error);

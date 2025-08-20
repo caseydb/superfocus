@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "linux-arm64-openssl-1.0.x", "linux-arm64-openssl-3.0.x"]
 }
 
@@ -9,127 +9,119 @@ datasource db {
 }
 
 model user {
-  id                String   @id @default(uuid())
-  first_name        String
-  last_name         String
-  auth_id           String   @unique
-  email             String   @unique
-  profile_image     String?
-  created_at        DateTime @default(now())
-  last_active       DateTime
-  timezone          String @default("UTC")
-
-  preferences       preference?
-  tasks             task[]   @relation("UserTasks")
-  daily_streaks     daily_streak[]
-  room_members      room_member[]
+  id                      String                    @id @default(uuid())
+  first_name              String
+  last_name               String
+  auth_id                 String                    @unique
+  email                   String                    @unique
+  profile_image           String?
+  created_at              DateTime                  @default(now())
+  last_active             DateTime
+  timezone                String                    @default("UTC")
+  first_visit             Boolean                   @default(true)
+  daily_streaks           daily_streak[]
+  preferences             preference?
+  room_members            room_member[]
+  tasks                   task[]                    @relation("UserTasks")
   user_milestone_messages user_milestone_messages[]
 }
 
 model preference {
-  user_id                  String   @id
-  toggle_notes             Boolean  @default(false)
-  toggle_pomodoro          Boolean  @default(false)
-  pomodoro_duration        Int      @default(30)
-  sound_volume             Int      @default(10)
-  task_selection_mode      String   @default("dropdown")
-  focus_check_time         Int      @default(120)
-  analytics_date_pick      String   @default("this_week")
-  mode                     String   @default("countdown")
-  analytics_overview       String   @default("tasks")
-  history_user_filter      String   @default("my_tasks")
-  history_date_filter      String   @default("all_time")
-
-  user                     user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id             String  @id
+  toggle_notes        Boolean @default(false)
+  toggle_pomodoro     Boolean @default(false)
+  sound_volume        Int     @default(10)
+  task_selection_mode String  @default("dropdown")
+  focus_check_time    Int     @default(120)
+  mode                String  @default("countdown")
+  pomodoro_duration   Int     @default(30)
+  analytics_date_pick String  @default("this_week")
+  analytics_overview  String  @default("tasks")
+  history_date_filter String  @default("all_time")
+  history_user_filter String  @default("my_tasks")
+  user                user    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model task {
-  id             String   @id @default(uuid())
-  user_id        String
-  room_id        String?
-  task_name      String
-  status         String   @default("not_started")
-  duration       Int      @default(0)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-  completed_at   DateTime?
-  timezone       String
-  order          Int      @default(0)
-
-  user           user     @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
-  room           room?     @relation(fields: [room_id], references: [id])
-  notes          note[]   @relation("TaskNotes")
+  id           String    @id @default(uuid())
+  user_id      String
+  room_id      String?
+  task_name    String
+  status       String    @default("not_started")
+  duration     Int       @default(0)
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  timezone     String
+  order        Int       @default(0)
+  notes        note[]    @relation("TaskNotes")
+  room         room?     @relation(fields: [room_id], references: [id])
+  user         user      @relation("UserTasks", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, room_id, order])
 }
 
 model note {
-  id                  String   @id @default(uuid())
+  id                  String  @id @default(uuid())
   task_id             String
   type                String
   content_text        String
-  checklist_completed Boolean  @default(false)
+  checklist_completed Boolean @default(false)
   position            Int
-
-  task                task     @relation("TaskNotes", fields: [task_id], references: [id], onDelete: Cascade)
+  task                task    @relation("TaskNotes", fields: [task_id], references: [id], onDelete: Cascade)
 }
 
 model daily_streak {
-  id               String   @id @default(uuid())
-  user_id          String
-  completion_date  DateTime
-  tasks_completed  Int
-  total_seconds    Int
-
-  user             user     @relation(fields: [user_id], references: [id])
+  id              String   @id @default(uuid())
+  user_id         String
+  completion_date DateTime
+  tasks_completed Int
+  total_seconds   Int
+  user            user     @relation(fields: [user_id], references: [id])
 }
 
 model admin_setting {
-  room_id                  String   @id
-  toggle_leaderboard       Boolean  @default(true)
-  toggle_streaks           Boolean  @default(true)
-  toggle_tooltip_stats     Boolean  @default(true)
-  authentication_required  Boolean  @default(false)
-  sprint_duration          String   @default("1_week")
-  room_timezone            String
-
-  room                     room     @relation(fields: [room_id], references: [id])
+  room_id                 String  @id
+  toggle_leaderboard      Boolean @default(true)
+  toggle_streaks          Boolean @default(true)
+  toggle_tooltip_stats    Boolean @default(true)
+  authentication_required Boolean @default(false)
+  sprint_duration         String  @default("1_week")
+  room_timezone           String
+  room                    room    @relation(fields: [room_id], references: [id])
 }
 
 model room {
-  id               String           @id @default(uuid())
-  firebase_id      String?
-  name             String
-  description      String?
-  slug             String           @unique
-  type             String           @default("public")
-  picture          String
-  created_at       DateTime         @default(now())
-  owner            String
-
-  room_members      room_member[]
-  admin_setting     admin_setting?
-  tasks             task[]
+  id            String         @id @default(uuid())
+  name          String
+  slug          String         @unique
+  picture       String
+  created_at    DateTime       @default(now())
+  owner         String
+  type          String         @default("public")
+  description   String?
+  firebase_id   String?
+  admin_setting admin_setting?
+  room_members  room_member[]
+  tasks         task[]
 }
 
 model room_member {
-  id        String   @id @default(uuid())
-  room_id   String
-  user_id   String
-  role      String   @default("member")
-  joined    DateTime @default(now())
-
-  room      room     @relation(fields: [room_id], references: [id], onDelete: Cascade)
-  user      user     @relation(fields: [user_id], references: [id])
+  id      String   @id @default(uuid())
+  room_id String
+  user_id String
+  role    String   @default("member")
+  joined  DateTime @default(now())
+  room    room     @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  user    user     @relation(fields: [user_id], references: [id])
 }
 
 model user_milestone_messages {
   id        String   @id @default(uuid())
   user_id   String
-  milestone String  
-  channel   String 
+  milestone String
+  channel   String
   shown_at  DateTime @default(now())
-
   user      user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, milestone, channel])

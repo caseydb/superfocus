@@ -1,8 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set, get } from "firebase/database";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../../store/store";
+import { updateUser } from "../../store/userSlice";
+import { auth } from "../../../lib/firebase";
 
 interface WelcomeBackMessageProps {
   roomId: string;
@@ -10,10 +12,12 @@ interface WelcomeBackMessageProps {
 
 export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) {
   const { user } = useInstance();
+  const dispatch = useDispatch();
+  const reduxUser = useSelector((state: RootState) => state.user);
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
-
   const [inspirationalQuote, setInspirationalQuote] = useState("");
+  const [hasProcessed, setHasProcessed] = useState(false);
 
   // Inspirational quotes for focus and productivity
   const getInspirationalQuote = () => {
@@ -56,34 +60,44 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
   }, [showWelcome]);
 
   useEffect(() => {
-    if (!user?.id || !roomId) return;
+    if (!user?.id || !roomId || reduxUser.loading || hasProcessed) return;
 
     const checkWelcomeBack = async () => {
       try {
-        // Check user's last visit to this room
-        const lastVisitRef = ref(rtdb, `users/${user.id}/lastVisits/${roomId}`);
-        const lastVisitSnapshot = await get(lastVisitRef);
-        const lastVisit = lastVisitSnapshot.val();
-
-        const now = Date.now();
         const firstName = user.displayName.split(" ")[0];
 
-        // Show welcome message EVERY time user enters the room!
-        if (lastVisit) {
-          // Returning user - show simple welcome back message
-          setWelcomeMessage(`Welcome back, ${firstName}!`);
-          setShowWelcome(true);
-        } else {
-          // First time in this room
+        // Mark as processed immediately to prevent re-runs
+        setHasProcessed(true);
+
+        // Check if this is the user's first visit ever
+        if (reduxUser.first_visit) {
+          // First time user
           setWelcomeMessage(`Welcome, ${firstName}!`);
+          setShowWelcome(true);
+
+          // Update first_visit to false in database (but don't wait for it)
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            currentUser.getIdToken().then(token => {
+              fetch('/api/user/first-visit', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              }).then(() => {
+                // Update local Redux state after the API call completes
+                dispatch(updateUser({ first_visit: false }));
+              });
+            });
+          }
+        } else {
+          // Returning user
+          setWelcomeMessage(`Welcome back, ${firstName}!`);
           setShowWelcome(true);
         }
 
         // Set inspirational quote
         setInspirationalQuote(getInspirationalQuote());
-
-        // Update last visit timestamp
-        set(lastVisitRef, now);
       } catch {
         // Silent error handling - error details not needed
       }
@@ -91,7 +105,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
     // Check immediately - no delay needed
     checkWelcomeBack();
-  }, [user?.id, user?.displayName, roomId]);
+  }, [user?.id, user?.displayName, roomId, reduxUser.first_visit, reduxUser.loading, hasProcessed, dispatch]);
 
   if (!showWelcome) return null;
 

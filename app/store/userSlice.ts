@@ -9,6 +9,7 @@ interface UserState {
   email: string | null;
   profile_image: string | null;
   timezone: string | null;
+  first_visit: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -21,6 +22,7 @@ const initialState: UserState = {
   email: null,
   profile_image: null,
   timezone: null,
+  first_visit: true,
   loading: false,
   error: null,
 };
@@ -106,6 +108,7 @@ const userSlice = createSlice({
         state.email = action.payload.email;
         state.profile_image = action.payload.profile_image;
         state.timezone = action.payload.timezone;
+        state.first_visit = action.payload.first_visit ?? true;
       })
       .addCase(fetchUserData.rejected, (state, action) => {
         state.loading = false;

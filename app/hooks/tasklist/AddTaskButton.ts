@@ -4,6 +4,7 @@ import { AppDispatch, RootState } from "../../store/store";
 import { useInstance } from "../../Components/Instances";
 import { v4 as uuidv4 } from "uuid";
 import { addTask, createTaskThunk } from "../../store/taskSlice";
+import { updateUserActivity } from "../../utils/updateUserActivity";
 
 export function useAddTaskButton() {
   const dispatch = useDispatch<AppDispatch>();
@@ -32,6 +33,9 @@ export function useAddTaskButton() {
             userId: reduxUser.user_id, // Use PostgreSQL UUID
           })
         );
+
+        // Update user's last_active timestamp
+        updateUserActivity();
 
         setNewTaskText("");
       }

@@ -7,6 +7,7 @@ import { ref, set, update, remove, get } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import { v4 as uuidv4 } from "uuid";
 import { playAudio } from "../utils/activeAudio";
+import { updateUserActivity } from "../utils/updateUserActivity";
 import {
   updateTask,
   addTaskToBufferWhenStarted,
@@ -335,6 +336,9 @@ export function useStartButton() {
       if (timeSinceLastStart >= COOLDOWN_MS) {
         notifyEvent("start");
       }
+
+      // Update user's last_active timestamp
+      updateUserActivity();
     },
     [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, moveTaskToTop, notifyEvent]
   );

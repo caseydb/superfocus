@@ -945,27 +945,7 @@ export default function TaskList({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const refreshTasks = () => {
     if (!user?.id) return;
-    // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-    // onValue(
-    //   tasksRef,
-    //   (snapshot) => {
-    //     const tasksData = snapshot.val();
-    //     if (tasksData) {
-    //       const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
-    //         id,
-    //         ...(task as Omit<Task, "id">),
-    //       }));
-    //       tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
-    //       setTasks(tasksArray);
-    //     } else {
-    //       setTasks([]);
-    //     }
-    //   },
-    //   { onlyOnce: true }
-    // );
-
-    // Temporary: No refresh needed with local state
-    // Tasks are now managed by Redux
+    // Tasks are now managed by Redux and PostgreSQL
   };
 
   const sensors = useSensors(
@@ -979,38 +959,10 @@ export default function TaskList({
     })
   );
 
-  // TODO: Replace with Firebase RTDB listener for tasks
-  // Load tasks from Firebase (user-specific)
+  // Tasks are now managed by Redux and PostgreSQL
   useEffect(() => {
     if (!user?.id) return;
-
-    // const tasksRef = ref(rtdb, `users/${user.id}/tasks`);
-    // const handle = onValue(tasksRef, (snapshot) => {
-    //   const tasksData = snapshot.val();
-    //   if (tasksData) {
-    //     // Convert Firebase object to array and sort by order
-    //     const tasksArray = Object.entries(tasksData).map(([id, task]) => ({
-    //       id,
-    //       ...(task as Omit<Task, "id">),
-    //     }));
-    //     // Sort by order field, or fallback to creation order
-    //     tasksArray.sort((a, b) => (a.order || 0) - (b.order || 0));
-
-    //     // Only update tasks if no task is currently being edited
-    //     // This prevents Firebase updates from interfering with local editing state
-    //     if (!editingId) {
-    //       setTasks(tasksArray);
-    //     }
-    //   } else {
-    //     setTasks([]);
-    //   }
-    // });
-
-    // return () => {
-    //   off(tasksRef, "value", handle);
-    // };
-
-    // Tasks are now managed by Redux
+    // Tasks are loaded from Redux store which syncs with PostgreSQL
   }, [user?.id, tasks.length]);
 
   // Load task times from TaskBuffer on mount and when TaskList opens

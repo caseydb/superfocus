@@ -891,25 +891,42 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
 
       // Find new events we haven't processed yet
-      Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string; userId?: string; authId?: string; duration?: number }>).forEach(([eventId, event]) => {
+      Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string; userId?: string; authId?: string; duration?: number }>).forEach(async ([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
 
           // Show notification in title
-          if (event.type) {
+          if (event.type && event.userId) {
             let emoji = "";
             if (event.type === "start") emoji = "🥊";
             if (event.type === "complete") emoji = "🏆";
             if (event.type === "quit") emoji = "💀";
             
-            // Use firstName and lastName if available, otherwise fall back to displayName
-            let name = "";
-            if (event.firstName || event.lastName) {
-              name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
-            } else if (event.displayName) {
-              name = event.displayName;
-            } else {
-              name = "Someone";
+            // Fetch the current name from Firebase Users
+            let name = "Someone";
+            try {
+              const userRef = ref(rtdb, `Users/${event.userId}`);
+              const userSnapshot = await get(userRef);
+              if (userSnapshot.exists()) {
+                const userData = userSnapshot.val();
+                const firstName = userData.firstName || "";
+                const lastName = userData.lastName || "";
+                name = `${firstName} ${lastName}`.trim() || event.displayName || "Someone";
+              } else {
+                // Fallback to event data if Users entry doesn't exist
+                if (event.firstName || event.lastName) {
+                  name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
+                } else if (event.displayName) {
+                  name = event.displayName;
+                }
+              }
+            } catch {
+              // Fallback to event data on error
+              if (event.firstName || event.lastName) {
+                name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
+              } else if (event.displayName) {
+                name = event.displayName;
+              }
             }
             
             // Update browser title to show action and name
@@ -1265,6 +1282,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     showAnalytics,
     // showContacts, // People Modal - Feature deprioritized
     closeAllModals,
+    setLocalVolume,
   ]);
 
   if (!userReady || !user.id || user.id.startsWith("user-")) {
