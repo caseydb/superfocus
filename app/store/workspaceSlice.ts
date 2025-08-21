@@ -87,18 +87,12 @@ const workspaceSlice = createSlice({
   reducers: {
     updateRoomStats: (state, action: PayloadAction<{ roomId: string; stats: { totalTime: string; totalTasks: number; activeUsers: number } }>) => {
       state.roomStats[action.payload.roomId] = action.payload.stats;
-      console.log('[workspaceSlice] Room stats updated:', {
-        roomId: action.payload.roomId,
-        stats: action.payload.stats
-      });
     },
     addRoom: (state, action: PayloadAction<Room>) => {
       state.rooms.push(action.payload);
-      console.log('[workspaceSlice] Room added:', action.payload);
     },
     removeRoom: (state, action: PayloadAction<string>) => {
       state.rooms = state.rooms.filter(room => room.id !== action.payload);
-      console.log('[workspaceSlice] Room removed:', action.payload);
     },
   },
   extraReducers: (builder) => {

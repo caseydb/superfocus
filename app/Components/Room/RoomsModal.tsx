@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useInstance } from "../Instances";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue, off, DataSnapshot } from "firebase/database";
 import { useRouter } from "next/navigation";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
@@ -38,99 +38,61 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
     const loadRooms = async () => {
       setLoading(true);
 
-      // Get all instances from Firebase and filter for rooms the user has been in
-      const instancesRef = ref(rtdb, "instances");
-      const unsubscribe = onValue(instancesRef, (snapshot) => {
-        const instancesData = snapshot.val() || {};
+      // Get private rooms from PrivateRooms in Firebase
+      const privateRoomsRef = ref(rtdb, "PrivateRooms");
+      const unsubscribe = onValue(privateRoomsRef, async (snapshot) => {
+        const roomsData = snapshot.val() || {};
         const userRooms: Room[] = [];
 
-        // Go through all instances and find private rooms where the user has history
-        Object.entries(instancesData).forEach(([instanceId, instanceData]) => {
-          const typedInstanceData = instanceData as {
-            type?: "public" | "private";
+        // Go through all private rooms and find ones the user is in
+        for (const [roomId, roomData] of Object.entries(roomsData)) {
+          const typedRoomData = roomData as {
             url?: string;
-            users?: Record<string, { id: string; displayName: string }>;
-            activeUsers?: Record<string, { id: string; displayName: string }>;
-            history?: Record<string, { userId?: string; timestamp?: number; duration?: string }>;
+            name?: string;
+            users?: Record<string, { displayName: string; joinedAt: number }>;
+            userCount?: number;
+            createdBy?: string;
+            createdAt?: number;
           };
 
-          // Only show private rooms
-          if (typedInstanceData.type !== "private") return;
-
-          // Check if user has history in this room and calculate room-wide stats
-          let hasHistory = false;
-          let lastVisited = 0;
-          let totalTime = 0;
-          let totalTasks = 0;
-          let totalRoomTime = 0;
-
-          if (typedInstanceData.history) {
-            Object.values(typedInstanceData.history).forEach((entry) => {
-              // Skip quit entries for all calculations
-              if (entry.duration && !entry.duration.includes("quit early")) {
-                // Calculate room-wide stats (all users)
-                totalTasks += 1;
-
-                // Parse duration more accurately
-                let entrySeconds = 0;
-                if (entry.duration && typeof entry.duration === "string") {
-                  const parts = entry.duration.split(":").map(Number);
-                  if (parts.length === 3) {
-                    // hh:mm:ss format
-                    const [h, m, s] = parts;
-                    if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
-                      entrySeconds = h * 3600 + m * 60 + s;
-                    }
-                  } else if (parts.length === 2) {
-                    // mm:ss format
-                    const [m, s] = parts;
-                    if (!isNaN(m) && !isNaN(s)) {
-                      entrySeconds = m * 60 + s;
-                    }
-                  }
-                }
-                totalRoomTime += entrySeconds;
-
-                // Check if this entry belongs to current user
-                if (entry.userId === user.id) {
-                  hasHistory = true;
-                  if (entry.timestamp && entry.timestamp > lastVisited) {
-                    lastVisited = entry.timestamp;
-                  }
-                  totalTime += entrySeconds;
-                }
+          // Check if user is in this room
+          if (typedRoomData.users && typedRoomData.users[user.id]) {
+            const userCount = Object.keys(typedRoomData.users || {}).length;
+            const roomName = typedRoomData.name || typedRoomData.url?.toUpperCase() || roomId.toUpperCase();
+            
+            // Check RoomIndex for active workers
+            let activeWorkers = 0;
+            try {
+              const roomIndexRef = ref(rtdb, `RoomIndex/${roomId}`);
+              const roomIndexSnapshot = await new Promise<DataSnapshot>((resolve) => {
+                onValue(roomIndexRef, (snap) => resolve(snap), { onlyOnce: true });
+              });
+              
+              if (roomIndexSnapshot.exists()) {
+                const roomIndexData = roomIndexSnapshot.val();
+                activeWorkers = Object.values(roomIndexData || {})
+                  .filter((user: unknown) => (user as { isActive?: boolean }).isActive)
+                  .length;
               }
-            });
-          }
-
-          // Also check if user is currently in the room
-          if (typedInstanceData.users && typedInstanceData.users[user.id]) {
-            hasHistory = true;
-            if (!lastVisited) {
-              lastVisited = Date.now(); // If no history but user is in room, use current time
+            } catch (error) {
+              console.error('Error fetching room index:', error);
             }
-          }
-
-          if (hasHistory) {
-            const userCount = Object.keys(typedInstanceData.users || {}).length;
-            // Count users who are actively working (have running timers)
-            const activeWorkers = typedInstanceData.activeUsers ? Object.keys(typedInstanceData.activeUsers).length : 0;
-            const roomName = typedInstanceData.url ? typedInstanceData.url.toUpperCase() : instanceId.toUpperCase();
+            
             userRooms.push({
-              id: instanceId,
+              id: roomId,
               name: roomName,
-              url: typedInstanceData.url || instanceId,
+              url: typedRoomData.url || roomId,
               type: "private",
-              lastVisited,
-              totalTime,
+              lastVisited: typedRoomData.users[user.id].joinedAt || Date.now(),
+              totalTime: 0, // History data would need to come from PostgreSQL
               userCount,
               isActive: userCount > 0,
               activeWorkers,
-              totalTasks,
-              totalRoomTime,
+              totalTasks: 0, // History data would need to come from PostgreSQL
+              totalRoomTime: 0, // History data would need to come from PostgreSQL
             });
           }
-        });
+        }
 
         // Sort by last visited (most recent first)
         userRooms.sort((a, b) => b.lastVisited - a.lastVisited);
@@ -139,20 +101,21 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
         setLoading(false);
       });
 
-      return () => off(instancesRef, "value", unsubscribe);
+      return () => off(privateRoomsRef, "value", unsubscribe);
     };
 
     loadRooms();
   }, [isOpen, user?.id]);
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-  };
+  // Unused for now - would be used when we fetch actual time data from PostgreSQL
+  // const formatTime = (seconds: number) => {
+  //   const hours = Math.floor(seconds / 3600);
+  //   const minutes = Math.floor((seconds % 3600) / 60);
+  //   if (hours > 0) {
+  //     return `${hours}h ${minutes}m`;
+  //   }
+  //   return `${minutes}m`;
+  // };
 
   const handleJoinRoom = (roomUrl: string) => {
     onClose();
@@ -162,99 +125,83 @@ export default function RoomsModal({ isOpen, onClose }: RoomsModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm p-4 md:p-0">
       <div
-        className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] border border-gray-800 relative overflow-hidden"
+        className="bg-gray-900 rounded-2xl shadow-2xl p-4 md:p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="p-6 border-b border-gray-800">
+        <div className="flex justify-between items-center mb-4 md:mb-6">
+          <h2 className="text-xl md:text-2xl font-bold text-white">Your Private Rooms</h2>
           <button
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-xl cursor-pointer"
             onClick={onClose}
+            className="text-gray-400 hover:text-white transition p-1"
           >
-            ×
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-          <h2 className="text-2xl font-bold text-white mb-2 font-mono">Your Rooms</h2>
-          <p className="text-gray-400 text-sm font-mono">All the rooms you&apos;ve joined or created</p>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[50vh] custom-scrollbar">
+        <div className="overflow-y-auto flex-1">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <DotSpinner size="40" speed="0.9" color="#FFAA00" />
+            <div className="flex justify-center items-center h-32">
+              <DotSpinner size={48} color="#FFF" />
             </div>
           ) : rooms.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🏠</div>
-              <h3 className="text-xl font-bold text-white mb-2 font-mono">No private rooms found</h3>
-              <p className="text-gray-400 font-mono">
-                You haven&apos;t joined any private rooms yet. Create or join a private room to get started!
-              </p>
+            <div className="text-center text-gray-400 py-8">
+              <p className="mb-2">No private rooms found</p>
+              <p className="text-sm">Create or join a private room to see it here</p>
             </div>
           ) : (
-            <div className="grid gap-4">
-              {rooms.map((room) => (
-                <div
-                  key={room.id}
-                  className={`p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02] cursor-pointer ${
-                    room.id === currentInstance?.id
-                      ? "border-[#FFAA00] bg-[#FFAA00]/10"
-                      : "border-gray-700 bg-gray-800 hover:border-gray-600 hover:bg-gray-700"
-                  }`}
-                  onClick={() => handleJoinRoom(room.url)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className={`w-3 h-3 rounded-full ${room.isActive ? "bg-green-500" : "bg-gray-500"}`}></div>
-                        <h3 className="text-lg font-bold text-white font-mono truncate">
-                          {room.name}
-                          {room.id === currentInstance?.id && (
-                            <span className="ml-2 text-sm text-[#FFAA00] font-normal">(Current)</span>
+            <div className="space-y-3">
+              {rooms.map((room) => {
+                const isCurrentRoom = currentInstance?.url === room.url;
+                return (
+                  <div
+                    key={room.id}
+                    className={`p-3 md:p-4 rounded-lg transition ${
+                      isCurrentRoom
+                        ? "bg-blue-900/30 border border-blue-700"
+                        : "bg-gray-800 hover:bg-gray-700 cursor-pointer"
+                    }`}
+                    onClick={() => !isCurrentRoom && handleJoinRoom(room.url)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-white text-sm md:text-base truncate">
+                            {room.name}
+                          </h3>
+                          {isCurrentRoom && (
+                            <span className="text-xs bg-blue-700 px-2 py-0.5 rounded text-white whitespace-nowrap">
+                              Current
+                            </span>
                           )}
-                        </h3>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-mono ${
-                            room.type === "private" ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"
-                          }`}
-                        >
-                          {room.type}
-                        </span>
+                        </div>
+                        <div className="flex flex-wrap gap-3 md:gap-4 text-xs text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                            </svg>
+                            {room.userCount} {room.userCount === 1 ? "user" : "users"}
+                          </span>
+                          {room.activeWorkers > 0 && (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                              {room.activeWorkers} active
+                            </span>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="text-sm text-gray-400 font-mono">
-                        {room.activeWorkers} actively working | {room.totalTasks} tasks this sprint |{" "}
-                        {formatTime(room.totalRoomTime)} worked
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {room.id !== currentInstance?.id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJoinRoom(room.url);
-                          }}
-                          className="px-4 py-2 bg-[#FFAA00] text-black font-bold rounded-lg hover:bg-[#ff9900] transition-colors font-mono text-sm cursor-pointer"
-                        >
-                          Join
-                        </button>
+                      {!isCurrentRoom && (
+                        <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-400 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       )}
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-gray-400">
-                        <path
-                          d="M9 18l6-6-6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

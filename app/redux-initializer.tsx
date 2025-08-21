@@ -92,8 +92,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
             // Fetch user preferences
             try {
-              const preferences = await dispatch(fetchPreferences(userData.user_id)).unwrap();
-              console.log('preferenceSlice from redux:', preferences);
+              await dispatch(fetchPreferences(userData.user_id)).unwrap();
             } catch (error) {
               console.error("[ReduxInitializer] Failed to fetch preferences:", error);
             }
@@ -131,7 +130,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
             }
 
             // Check for any active tasks in Firebase TaskBuffer
-            console.log('[REDUX INIT DEBUG] Dispatching checkForActiveTask');
             await dispatch(
               checkForActiveTask({
                 firebaseUserId: firebaseUser.uid,
@@ -187,8 +185,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
                 // Fetch user preferences
                 try {
-                  const preferences = await dispatch(fetchPreferences(userData.user_id)).unwrap();
-                  console.log('preferenceSlice from redux (retry):', preferences);
+                  await dispatch(fetchPreferences(userData.user_id)).unwrap();
                 } catch (error) {
                   console.error("[ReduxInitializer] Failed to fetch preferences on retry:", error);
                 }

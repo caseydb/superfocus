@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, remove } from "firebase/database";
+import { ref, remove, set } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import { playAudio } from "../utils/activeAudio";
 import { updateUserActivity } from "../utils/updateUserActivity";
@@ -259,14 +259,8 @@ export function useCompleteButton() {
                 // Refresh leaderboard from server to get accurate totals
                 dispatch(refreshLeaderboard());
 
-                // Write to RTDB to notify all room members about history update
-                if (currentInstance?.id) {
-                  const historyUpdateRef = ref(rtdb, `rooms/${currentInstance.id}/historyUpdate`);
-                  set(historyUpdateRef, {
-                    timestamp: Date.now(),
-                    userId: reduxUser.user_id
-                  });
-                }
+                // History and leaderboard are already refreshed above
+                // Other users will see updates when they next load or via polling
               }
             })
             .catch((error) => {

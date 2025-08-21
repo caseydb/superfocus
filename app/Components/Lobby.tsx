@@ -13,7 +13,7 @@ import { DotSpinner } from "ldrs/react";
 import "ldrs/react/DotSpinner.css";
 
 export default function Lobby() {
-  const { instances, currentInstance, createInstance, leaveInstance, user, userReady } = useInstance();
+  const { instances, currentInstance, createInstance, user, userReady } = useInstance();
   const router = useRouter();
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showPrivateRoomModal, setShowPrivateRoomModal] = useState(false);
@@ -53,13 +53,7 @@ export default function Lobby() {
     }
   }, [currentInstance, router]);
 
-  // Leave room on tab close or refresh
-  useEffect(() => {
-    if (!currentInstance) return;
-    const handleUnload = () => leaveInstance();
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
-  }, [currentInstance, leaveInstance]);
+  // Room cleanup is now handled by PresenceService
 
   // Handle scroll effects
   useEffect(() => {

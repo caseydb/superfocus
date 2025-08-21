@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { rtdb } from "../../../lib/firebase";
-import { ref, onValue, off, get } from "firebase/database";
+import { ref, get } from "firebase/database";
 import Image from "next/image";
 import { PresenceService } from "@/app/utils/presenceService";
 import GlobalPulseTicker from "@/app/utils/globalPulseTicker";
@@ -166,27 +166,8 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     fetchWeeklyLeaderboard();
   }, [fetchWeeklyLeaderboard]);
 
-  // Listen for history updates (which means someone completed a task) and refresh weekly leaderboard
-  useEffect(() => {
-    if (!roomId) return;
-
-    const historyUpdateRef = ref(rtdb, `rooms/${roomId}/historyUpdate`);
-    let lastTimestamp = 0;
-    
-    const handle = onValue(historyUpdateRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.timestamp) {
-        // Only fetch if this is a new update (not the same timestamp we already processed)
-        if (data.timestamp > lastTimestamp && Date.now() - data.timestamp < 10000) {
-          lastTimestamp = data.timestamp;
-          // Refresh weekly leaderboard when someone completes a task
-          fetchWeeklyLeaderboard();
-        }
-      }
-    });
-
-    return () => off(historyUpdateRef, "value", handle);
-  }, [roomId, fetchWeeklyLeaderboard]);
+  // Weekly leaderboard refreshes on interval or can be manually refreshed
+  // No longer listening for history updates via Firebase
 
   // Create a stable key from user IDs to detect actual changes
   const activeUserIdsKey = React.useMemo(
@@ -214,7 +195,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         
         if (response.ok) {
           const data = await response.json();
-          console.log('[ActiveWorkers] Fetched PostgreSQL users:', data.users);
           const newPostgresUsers: Record<string, PostgresUser> = {};
           
           // data.users is an object/map, not an array
@@ -225,11 +205,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               lastName: user.lastName,
               profile_image: user.profileImage
             };
-            console.log(`[ActiveWorkers] Mapped user ${authId}:`, {
-              firstName: user.firstName,
-              lastName: user.lastName,
-              profile_image: user.profileImage
-            });
           });
           
           setPostgresUsers(prev => ({ ...prev, ...newPostgresUsers }));
@@ -408,7 +383,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                         if (fallback) fallback.style.display = 'flex';
                       }}
                       onLoad={() => {
-                        console.log(`[ActiveWorkers] Successfully loaded profile image for ${u.displayName}:`, profileImage);
                       }}
                     />
                   ) : null}

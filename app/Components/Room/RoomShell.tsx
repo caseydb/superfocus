@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { setActiveTask } from "../../store/taskSlice";
-import { fetchHistory } from "../../store/historySlice";
-import { refreshLeaderboard } from "../../store/leaderboardSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
@@ -14,11 +12,10 @@ import {
   ref,
   onValue,
   off,
-  set,
   remove,
-  push,
   runTransaction,
   get,
+  set,
   query,
   orderByChild,
   limitToLast,
@@ -75,7 +72,7 @@ type MilestoneData = {
 
 
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
-  const { instances, currentInstance, joinInstance, user, userReady, setPublicRoomInstance } = useInstance();
+  const { currentInstance, user, userReady, setPublicRoomInstance } = useInstance();
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
   const [publicRoomId, setPublicRoomId] = useState<string | null>(null);
@@ -424,18 +421,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         return;
       }
 
-      // First check legacy instances
-      const targetRoom = instances.find((instance) => instance.url === roomUrl);
-      if (targetRoom) {
-        setRoomFound(true);
-        if (!currentInstance || currentInstance.id !== targetRoom.id) {
-          joinInstance(targetRoom.id);
-        }
-        setLoading(false);
-        return;
-      }
-
-      // If not found in legacy instances, check PublicRooms
+      // Check PublicRooms first
       try {
         const publicRoom = await getPublicRoomByUrl(roomUrl);
         if (publicRoom) {
@@ -577,10 +563,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       };
     }
   }, [
-    instances,
     roomUrl,
     currentInstance,
-    joinInstance,
     userReady,
     reduxUser.user_id,
     publicRoomId,
@@ -630,10 +614,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
         if (newCount === 0) {
           // Remove the tab count entry if this was the last tab
-          const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
-          const usersRef = ref(rtdb, `rooms/${currentInstance.id}/users/${user.id}`);
-          remove(activeRef);
-          remove(usersRef); // Also remove from main users list
 
           // Also remove from PublicRooms if this is a public room
           if (currentInstance.type === "public" && publicRoomId) {
@@ -675,11 +655,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           const newCount = Math.max(0, currentCount - 1);
 
           if (newCount === 0) {
-            const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
-            const usersRef = ref(rtdb, `rooms/${currentInstance.id}/users/${user.id}`);
-            remove(activeRef);
-            remove(usersRef);
-
             // Also remove from PublicRooms if this is a public room
             if (currentInstance.type === "public") {
               removeUserFromPublicRoom(currentInstance.id, user.id);
@@ -722,26 +697,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, [roomPresence]);
 
-  // Track active user status in Firebase RTDB
+  // Track active user status
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
-    const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
     setTimerRunning(isActive);
     
-    // Update presence service
+    // Update presence service - this handles all presence tracking now
     if (roomPresence) {
       roomPresence.setActive(isActive);
     }
     
     if (isActive) {
-      set(activeRef, { id: user.id, displayName: user.displayName });
-      // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
-      // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
       dispatch(lockInput());
       dispatch(setHasStartedRedux(true));
     } else {
-      // Always remove from activeUsers when timer is paused/stopped
-      remove(activeRef);
       // Don't change lock state here - let complete/clear/quit handle unlocking
     }
   };
@@ -902,31 +871,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             if (event.type === "complete") emoji = "🏆";
             if (event.type === "quit") emoji = "💀";
             
-            // Fetch the current name from Firebase Users
+            // Use the name directly from the event data (already has correct user's firstName/lastName)
             let name = "Someone";
-            try {
-              const userRef = ref(rtdb, `Users/${event.userId}`);
-              const userSnapshot = await get(userRef);
-              if (userSnapshot.exists()) {
-                const userData = userSnapshot.val();
-                const firstName = userData.firstName || "";
-                const lastName = userData.lastName || "";
-                name = `${firstName} ${lastName}`.trim() || event.displayName || "Someone";
-              } else {
-                // Fallback to event data if Users entry doesn't exist
-                if (event.firstName || event.lastName) {
-                  name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
-                } else if (event.displayName) {
-                  name = event.displayName;
-                }
-              }
-            } catch {
-              // Fallback to event data on error
-              if (event.firstName || event.lastName) {
-                name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
-              } else if (event.displayName) {
-                name = event.displayName;
-              }
+            if (event.firstName || event.lastName) {
+              name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
+            } else if (event.displayName) {
+              name = event.displayName;
             }
             
             // Update browser title to show action and name
@@ -1009,40 +959,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => off(flyingMessagesRef, "value", handle);
   }, [currentInstance]);
 
-  // Listen for history updates from other users
-  useEffect(() => {
-    if (!currentInstance) return;
-
-    const historyUpdateRef = ref(rtdb, `rooms/${currentInstance.id}/historyUpdate`);
-    let lastTimestamp = 0;
-
-    const handle = onValue(historyUpdateRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.timestamp) {
-        // Only fetch if this is a new update (not the same timestamp we already processed)
-        if (data.timestamp > lastTimestamp && Date.now() - data.timestamp < 10000) {
-          lastTimestamp = data.timestamp;
-
-          // Extract slug from URL since that's what the API expects
-          const pathParts = window.location.pathname.split("/");
-          const urlSlug = pathParts[pathParts.length - 1];
-
-          if (urlSlug) {
-            dispatch(fetchHistory({ 
-              slug: urlSlug,
-              isPublicRoom: currentInstance.type === "public",
-              userId: currentInstance.type === "public" ? user.id : undefined
-            }));
-          }
-
-          // Also refresh the leaderboard
-          dispatch(refreshLeaderboard());
-        }
-      }
-    });
-
-    return () => off(historyUpdateRef, "value", handle);
-  }, [currentInstance, dispatch, user.id]);
+  // History updates are now handled through polling or manual refresh
+  // Users will see updates when they next load the history modal
 
   const handleClearButton = () => {
     // Store the current seconds before resetting
@@ -1116,25 +1034,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Timer state is part of task - gets removed when task is removed
     }
     if (currentInstance && user) {
-      const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
-      remove(activeRef);
-      // Save to history
-      const historyRef = ref(rtdb, `rooms/${currentInstance.id}/history`);
-      const completionData = {
-        userId: user.id,
-        displayName: user.displayName,
-        task,
-        duration,
-        timestamp: Date.now(),
-        completed: true,
-      };
-      push(historyRef, completionData);
-
-      // Completion history should be stored elsewhere, not in TaskBuffer
-      // TaskBuffer is only for temporary task data during active work
+      // Legacy Firebase writes removed - history is now stored in PostgreSQL
 
       // Trigger global task completed event for PersonalStats
       if (typeof window !== "undefined") {
+        const completionData = {
+          userId: user.id,
+          displayName: user.displayName,
+          task,
+          duration,
+          timestamp: Date.now(),
+          completed: true,
+        };
         const windowWithTask = window as Window & { addCompletedTask?: (task: typeof completionData) => void };
         if (windowWithTask.addCompletedTask) {
           windowWithTask.addCompletedTask(completionData);

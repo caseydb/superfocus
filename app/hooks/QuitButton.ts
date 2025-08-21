@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
-import { ref, set, push, remove, get } from "firebase/database";
+import { ref, set, remove, get } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
 import { playAudio } from "../utils/activeAudio";
 import {
@@ -96,19 +96,18 @@ export function useQuitButton() {
           .toString()
           .padStart(2, "0");
         const secs = (timerSeconds % 60).toString().padStart(2, "0");
-        const historyRef = ref(rtdb, `rooms/${currentInstance.id}/history`);
-        const quitData = {
-          userId: user.id,
-          displayName: user.displayName,
-          task: taskName + " (Quit Early)",
-          duration: `${hours}:${minutes}:${secs}`,
-          timestamp: Date.now(),
-          completed: false,
-        };
-        push(historyRef, quitData);
-
+        
+        // Legacy Firebase history write removed - quit data is not saved to history
         // Also add to global completed tasks (will be filtered out from stats due to "Quit Early")
         if (typeof window !== "undefined") {
+          const quitData = {
+            userId: user.id,
+            displayName: user.displayName,
+            task: taskName + " (Quit Early)",
+            duration: `${hours}:${minutes}:${secs}`,
+            timestamp: Date.now(),
+            completed: false,
+          };
           const windowWithTask = window as Window & { addCompletedTask?: (task: typeof quitData) => void };
           if (windowWithTask.addCompletedTask) {
             windowWithTask.addCompletedTask(quitData);
@@ -180,11 +179,7 @@ export function useQuitButton() {
         
       }
 
-      // Clean up room presence
-      if (currentInstance && user?.id) {
-        const activeRef = ref(rtdb, `rooms/${currentInstance.id}/activeUsers/${user.id}`);
-        remove(activeRef);
-      }
+      // Clean up room presence - handled by PresenceService now
       
       // Reset all UI state
       setTimerRunning(false);
