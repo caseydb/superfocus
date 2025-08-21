@@ -9,6 +9,7 @@ import leaderboardReducer from './leaderboardSlice';
 import taskInputReducer from './taskInputSlice';
 import timerReducer from './timerSlice';
 import workspaceReducer from './workspaceSlice';
+import counterReducer from './counterSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     taskInput: taskInputReducer,
     timer: timerReducer,
     workspace: workspaceReducer,
+    counter: counterReducer,
   },
 });
 

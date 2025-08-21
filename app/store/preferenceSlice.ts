@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 interface PreferenceState {
   toggle_notes: boolean;
+  toggle_counter: boolean;
   toggle_pomodoro: boolean;
   pomodoro_duration: number;
   toggle_pomodoro_overtime: boolean;
@@ -19,6 +20,7 @@ interface PreferenceState {
 
 const initialState: PreferenceState = {
   toggle_notes: false,
+  toggle_counter: false,
   toggle_pomodoro: false,
   pomodoro_duration: 30,
   toggle_pomodoro_overtime: true,

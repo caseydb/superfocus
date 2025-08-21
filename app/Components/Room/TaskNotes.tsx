@@ -254,9 +254,9 @@ export default function TaskNotes({ taskId, isVisible = true, customWidth, custo
     if (typeof window !== "undefined") {
       const screenWidth = window.innerWidth;
       if (screenWidth >= 768) {
-        return "550px"; // Desktop width matching input field
+        return "615px"; // Desktop width - 65px wider total
       } else if (screenWidth >= 640) {
-        return "400px"; // Tablet min width
+        return "465px"; // Tablet width - 65px wider total
       }
     }
     return "95%"; // Mobile width

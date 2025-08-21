@@ -4,8 +4,9 @@ import { useInstance } from "../Instances";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { setActiveTask } from "../../store/taskSlice";
+import { setActiveTask, updateTaskCounterLocal, updateTaskCounter } from "../../store/taskSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
+import { setValue as setCounterValue } from "../../store/counterSlice";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
 import {
@@ -122,6 +123,48 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showInvitePopup, setShowInvitePopup] = useState(false);
   // Get toggle_notes from Redux preferences instead of local state
   const showDeepWorkNotes = useSelector((state: RootState) => state.preferences.toggle_notes);
+  const showCounter = useSelector((state: RootState) => state.preferences.toggle_counter);
+  const activeTask = useSelector((state: RootState) => 
+    state.tasks.tasks.find(t => t.id === state.tasks.activeTaskId)
+  );
+  const counterValue = activeTask?.counter || 0;
+  const counterUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isEditingCounter, setIsEditingCounter] = useState(false);
+  const [editingCounterValue, setEditingCounterValue] = useState("");
+  
+  // Sync counter value when active task changes
+  useEffect(() => {
+    dispatch(setCounterValue(counterValue));
+  }, [counterValue, dispatch]);
+  
+  // Debounced function to update counter in database
+  const updateCounterInDatabase = useCallback((taskId: string, newValue: number) => {
+    // Clear any pending update
+    if (counterUpdateTimeoutRef.current) {
+      clearTimeout(counterUpdateTimeoutRef.current);
+    }
+    
+    // Set a new timeout for the database update
+    counterUpdateTimeoutRef.current = setTimeout(() => {
+      const token = localStorage.getItem("firebase_token");
+      if (token) {
+        dispatch(updateTaskCounter({ 
+          taskId, 
+          counter: newValue, 
+          token 
+        }));
+      }
+    }, 500); // 500ms debounce
+  }, [dispatch]);
+  
+  // Cleanup counter update timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (counterUpdateTimeoutRef.current) {
+        clearTimeout(counterUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
   // People Modal - Feature deprioritized
   // const [messagesNotificationCount, setMessagesNotificationCount] = useState(1);
   // const [requestsNotificationCount, setRequestsNotificationCount] = useState(3);
@@ -1408,8 +1451,112 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               </div>
             )}
             
+            {/* Counter for Deep Work Mode - integrated below input */}
+            {showCounter && !showDeepWorkNotes && !isPomodoroMode && (
+              <div className="mb-8 flex justify-center w-full">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl pt-6 pb-4 px-6 shadow-xl border border-gray-700/50 flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-6">
+                    <button
+                      onClick={() => {
+                        if (activeTask) {
+                          const newValue = Math.max(0, counterValue - 1);
+                          // Update Redux optimistically
+                          dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: newValue }));
+                          dispatch(setCounterValue(newValue));
+                          // Update database (debounced)
+                          updateCounterInDatabase(activeTask.id, newValue);
+                        }
+                      }}
+                      className="group relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0"
+                    >
+                      <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">−</span>
+                      <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                    </button>
+                    
+                    <div className="flex flex-col items-center">
+                      <span className="text-gray-400 text-xs uppercase tracking-wider mb-1">Counter</span>
+                      {isEditingCounter ? (
+                        <input
+                          type="text"
+                          value={editingCounterValue}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Only allow numbers
+                            if (value === "" || /^\d+$/.test(value)) {
+                              setEditingCounterValue(value);
+                            }
+                          }}
+                          onBlur={() => {
+                            const newValue = Math.max(0, parseInt(editingCounterValue) || 0);
+                            if (activeTask) {
+                              dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: newValue }));
+                              dispatch(setCounterValue(newValue));
+                              updateCounterInDatabase(activeTask.id, newValue);
+                            }
+                            setIsEditingCounter(false);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.currentTarget.blur();
+                            } else if (e.key === "Escape") {
+                              setEditingCounterValue(counterValue.toString());
+                              setIsEditingCounter(false);
+                            }
+                          }}
+                          className="text-5xl font-bold text-white bg-gray-700/50 rounded-lg px-2 text-center tabular-nums w-[120px] outline-none focus:ring-2 focus:ring-[#FFAA00] transition-all"
+                          autoFocus
+                        />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingCounterValue(counterValue.toString());
+                            setIsEditingCounter(true);
+                          }}
+                          className="text-5xl font-bold text-white tabular-nums w-[120px] text-center hover:text-[#FFAA00] transition-colors cursor-pointer"
+                        >
+                          {counterValue}
+                        </button>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        if (activeTask) {
+                          const newValue = counterValue + 1;
+                          // Update Redux optimistically
+                          dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: newValue }));
+                          dispatch(setCounterValue(newValue));
+                          // Update database (debounced)
+                          updateCounterInDatabase(activeTask.id, newValue);
+                        }
+                      }}
+                      className="group relative w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0"
+                    >
+                      <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">+</span>
+                      <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                    </button>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      if (activeTask) {
+                        // Update Redux optimistically
+                        dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: 0 }));
+                        dispatch(setCounterValue(0));
+                        // Update database (debounced)
+                        updateCounterInDatabase(activeTask.id, 0);
+                      }
+                    }}
+                    className="mt-4 w-full text-gray-500 hover:text-gray-300 text-sm transition-colors duration-200 cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {/* Task Notes for Deep Work Mode - integrated below input */}
-            {showDeepWorkNotes && !isPomodoroMode && activeTaskId && (
+            {showDeepWorkNotes && !showCounter && !isPomodoroMode && activeTaskId && (
               <div className="mb-8 flex justify-center w-full max-h-52 overflow-y-auto">
                 <TaskNotes 
                   taskId={activeTaskId}
@@ -1454,30 +1601,62 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 initialRunning={timerRunning}
                 isQuittingRef={isQuittingRef}
               />
-                {/* Deep Work Mode Toggle - centered below Timer - only show when active task exists */}
-                {activeTaskId && (
-                  <div className="flex justify-center mt-6">
+                {/* Toggle buttons for Counter and Notes - centered below Timer */}
+                <div className="flex justify-center mt-6 gap-4">
+                  <button
+                    className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
+                      showCounter ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
+                    }`}
+                    onClick={async () => {
+                      // Toggle counter on, notes off
+                      dispatch(setPreference({ key: 'toggle_counter', value: !showCounter }));
+                      if (!showCounter && showDeepWorkNotes) {
+                        dispatch(setPreference({ key: 'toggle_notes', value: false }));
+                      }
+                      
+                      // Update PostgreSQL in background
+                      if (reduxUser?.user_id) {
+                        dispatch(updatePreferences({ 
+                          userId: reduxUser.user_id, 
+                          updates: { 
+                            toggle_counter: !showCounter,
+                            toggle_notes: !showCounter ? false : showDeepWorkNotes
+                          } 
+                        }));
+                      }
+                    }}
+                  >
+                    Counter
+                  </button>
+                  
+                  {activeTaskId && (
                     <button
                       className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
                         showDeepWorkNotes ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
                       }`}
                       onClick={async () => {
-                        // Optimistic update to Redux store
+                        // Toggle notes on, counter off
                         dispatch(setPreference({ key: 'toggle_notes', value: !showDeepWorkNotes }));
+                        if (!showDeepWorkNotes && showCounter) {
+                          dispatch(setPreference({ key: 'toggle_counter', value: false }));
+                        }
                         
                         // Update PostgreSQL in background
                         if (reduxUser?.user_id) {
                           dispatch(updatePreferences({ 
                             userId: reduxUser.user_id, 
-                            updates: { toggle_notes: !showDeepWorkNotes } 
+                            updates: { 
+                              toggle_notes: !showDeepWorkNotes,
+                              toggle_counter: !showDeepWorkNotes ? false : showCounter
+                            } 
                           }));
                         }
                       }}
                     >
-                      {showDeepWorkNotes ? "Hide Notes" : "Show Notes"}
+                      Notes
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             ) : (
               <>

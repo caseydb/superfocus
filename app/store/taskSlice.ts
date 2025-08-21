@@ -13,6 +13,7 @@ export interface Task {
   status: "not_started" | "in_progress" | "paused" | "completed" | "quit";
   isOptimistic?: boolean; // Track if this is a temporary optimistic task
   order: number; // Position in the task list
+  counter: number; // Counter value for the task
 }
 
 interface TaskState {
@@ -61,6 +62,7 @@ export const addTaskToBufferWhenStarted = createAsyncThunk(
         status: "in_progress", // Set as in_progress since it's being started
         created_at: Date.now(),
         total_time: 0, // Start with 0, will increment as timer runs
+        counter: 0, // Initialize counter to 0
       };
 
       await set(taskRef, taskData);
@@ -408,6 +410,7 @@ export const fetchTasksFromBuffer = createAsyncThunk(
       time_segments?: Array<{ start: number; end: number | null }>;
       created_at?: number;
       updated_at?: number;
+      counter?: number;
     }
 
     const tasks = Object.values(tasksData as Record<string, FirebaseTaskData>).map((task) => {
@@ -430,6 +433,7 @@ export const fetchTasksFromBuffer = createAsyncThunk(
         createdAt: task.created_at || Date.now(),
         lastActive: task.updated_at,
         status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
+        counter: task.counter || 0,
         order: 0, // Default order for tasks from buffer
       };
     });
@@ -571,6 +575,7 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
       updated_at?: string;
       completed_at?: string;
       order: number;
+      counter?: number;
     }) => ({
       id: task.id,
       name: task.task_name, // Changed from task.name to task.task_name
@@ -581,6 +586,7 @@ export const fetchTasks = createAsyncThunk("tasks/fetchAll", async ({ userId }: 
       lastActive: task.updated_at ? new Date(task.updated_at).getTime() : undefined,
       status: task.status as "not_started" | "in_progress" | "paused" | "completed" | "quit",
       order: task.order,
+      counter: task.counter || 0,
     })
   );
 
@@ -762,6 +768,28 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
   }
 );
 
+// Thunk for updating task counter in database
+export const updateTaskCounter = createAsyncThunk(
+  "tasks/updateCounter",
+  async ({ taskId, counter, token }: { taskId: string; counter: number; token: string }) => {
+    const response = await fetch("/api/task/counter", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ taskId, counter }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update task counter");
+    }
+
+    const data = await response.json();
+    return { taskId, counter, ...data };
+  }
+);
+
 // Thunk for updating task order in database
 export const updateTaskOrder = createAsyncThunk(
   "tasks/updateOrder",
@@ -802,6 +830,7 @@ const taskSlice = createSlice({
         status: "not_started",
         isOptimistic: true,
         order: maxOrder + 1, // New tasks go to the bottom
+        counter: 0, // Initialize counter to 0
       };
       state.tasks.push(newTask);
     },
@@ -829,6 +858,13 @@ const taskSlice = createSlice({
       if (task) {
         task.completed = !task.completed;
         task.status = task.completed ? "completed" : "not_started";
+      }
+    },
+    updateTaskCounterLocal: (state, action: PayloadAction<{ id: string; counter: number }>) => {
+      const task = state.tasks.find((task) => task.id === action.payload.id);
+      if (task) {
+        task.counter = action.payload.counter;
+        task.lastActive = Date.now();
       }
     },
     updateTaskTime: (state, action: PayloadAction<{ id: string; timeSpent: number }>) => {
@@ -1086,6 +1122,18 @@ const taskSlice = createSlice({
         state.error = action.error.message || "Failed to update task status";
         // Could implement rollback logic here if needed
       })
+      // Handle updateTaskCounter
+      .addCase(updateTaskCounter.pending, () => {
+        // Counter update in progress - already updated optimistically
+      })
+      .addCase(updateTaskCounter.fulfilled, (state) => {
+        // Counter already updated optimistically via updateTaskCounter reducer
+        state.error = null;
+      })
+      .addCase(updateTaskCounter.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to update task counter";
+        // Could revert the counter here if needed
+      })
       // Handle updateTaskOrder
       .addCase(updateTaskOrder.pending, () => {
         // Order update in progress
@@ -1135,6 +1183,7 @@ export const {
   deleteTask,
   setActiveTask,
   toggleTaskComplete,
+  updateTaskCounterLocal,
   updateTaskTime,
   reorderTasks,
   removeOptimisticTask,
