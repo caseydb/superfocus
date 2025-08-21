@@ -1,11 +1,11 @@
 "use client";
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "../../store/store";
+import { RootState, AppDispatch } from "../../store/store";
 import { setCurrentInput, setCurrentTask } from "../../store/taskInputSlice";
-import { setActiveTask } from "../../store/taskSlice";
+import { setActiveTask, updateTask, updateTaskName } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
-import { ref, remove } from "firebase/database";
+import { ref, remove, update } from "firebase/database";
 import { useInstance } from "../Instances";
 
 const maxLen = 100;
@@ -25,9 +25,9 @@ export default function TaskInput({
   onStart?: () => void;
   setShowTaskList?: (show: boolean) => void;
 }) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
-  const { currentInput: task, isLocked: disabled } = useSelector((state: RootState) => state.taskInput);
+  const { currentInput: task } = useSelector((state: RootState) => state.taskInput);
   const [inputWidth, setInputWidth] = React.useState("95%");
   const [underlineWidth, setUnderlineWidth] = React.useState("615px"); // Default to approximate placeholder width
   const spanRef = React.useRef<HTMLSpanElement>(null);
@@ -43,7 +43,12 @@ export default function TaskInput({
   // Get tasks and preferences from Redux store
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const preferences = useSelector((state: RootState) => state.preferences);
-  // const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
+  const { hasStarted } = useSelector((state: RootState) => state.taskInput);
+  
+  // Track if we need to save on beforeunload
+  const needsSaveRef = React.useRef(false);
+  const lastSavedTaskNameRef = React.useRef("");
   
   // Helper function to clear the justCompletedTask flag
   const clearJustCompletedFlag = React.useCallback(async () => {
@@ -173,6 +178,31 @@ export default function TaskInput({
     }
   }, [recalculateHeight]);
 
+  // Add beforeunload handler to save task name on page navigation
+  React.useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Only save if there are unsaved changes and task name has changed
+      if (hasStarted && activeTaskId && task.trim() && needsSaveRef.current && task.trim() !== lastSavedTaskNameRef.current) {
+        const token = localStorage.getItem("firebase_token");
+        if (token) {
+          // Use navigator.sendBeacon for reliable unload-time requests
+          const data = JSON.stringify({
+            taskId: activeTaskId,
+            name: task.trim()
+          });
+          
+          navigator.sendBeacon(
+            "/api/task/name",
+            new Blob([data], { type: "application/json" })
+          );
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasStarted, activeTaskId, task, dispatch]);
+
   // Remove the useEffect that shows popup on load
   // We'll handle it directly in onChange instead
 
@@ -213,7 +243,7 @@ export default function TaskInput({
       <textarea
         ref={textareaRef}
         value={task}
-        onChange={(e) => {
+        onChange={async (e) => {
           const newValue = e.target.value;
           const currentLength = task.length;
           const newLength = Math.min(newValue.length, maxLen);
@@ -223,9 +253,33 @@ export default function TaskInput({
             setShowLimitPopup(true);
           }
           
-          dispatch(setCurrentInput(newValue.slice(0, maxLen)));
-          // Show suggestions when typing in dropdown mode (but not when disabled)
-          if (preferences.task_selection_mode === "dropdown" && !disabled) {
+          const finalValue = newValue.slice(0, maxLen);
+          dispatch(setCurrentInput(finalValue));
+          
+          // If timer has started and there's an active task, update its name
+          if (hasStarted && activeTaskId && finalValue.trim()) {
+            // Update Redux
+            dispatch(updateTask({ 
+              id: activeTaskId, 
+              updates: { name: finalValue.trim() }
+            }));
+            
+            // Update Firebase TaskBuffer
+            if (user?.id) {
+              const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+              await update(taskRef, { 
+                name: finalValue.trim(),
+                updated_at: Date.now()
+              }).catch((error) => {
+                console.error("Error updating task name in Firebase:", error);
+              });
+            }
+            
+            // Mark that we have unsaved changes
+            needsSaveRef.current = true;
+          }
+          // Show suggestions when typing in dropdown mode
+          if (preferences.task_selection_mode === "dropdown") {
             setShowTaskSuggestions(true);
           }
           
@@ -244,7 +298,7 @@ export default function TaskInput({
         }}
         maxLength={maxLen}
         className={`text-center font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
-          disabled ? "cursor-not-allowed" : "bg-transparent"
+          "bg-transparent"
         } ${
           task.length > 50 ? "text-2xl md:text-3xl" : "text-3xl md:text-5xl"
         }`}
@@ -253,10 +307,10 @@ export default function TaskInput({
         style={{ width: inputWidth }}
         onFocus={() => {
           setIsFocused(true);
-          // Show dropdown if in dropdown mode and there are tasks to show (but not when disabled)
-          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0 && !disabled) {
+          // Show dropdown if in dropdown mode and there are tasks to show
+          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0) {
             setShowTaskSuggestions(true);
-          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim() && !disabled) {
+          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim()) {
             setShowTaskList(true);
             // Keep focus on this input when opening sidebar
             setTimeout(() => {
@@ -265,10 +319,10 @@ export default function TaskInput({
           }
         }}
         onClick={() => {
-          // Show suggestions when clicking, even if already focused (but not when disabled)
-          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0 && !disabled) {
+          // Show suggestions when clicking, even if already focused
+          if (preferences.task_selection_mode === "dropdown" && filteredTasks.length > 0) {
             setShowTaskSuggestions(true);
-          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim() && !disabled) {
+          } else if (preferences.task_selection_mode === "sidebar" && setShowTaskList && !task.trim()) {
             setShowTaskList(true);
             // Keep focus on this input when opening sidebar
             setTimeout(() => {
@@ -276,17 +330,30 @@ export default function TaskInput({
             }, 50);
           }
         }}
-        onBlur={() => {
+        onBlur={async () => {
           setIsFocused(false);
           // Delay hiding suggestions to allow clicking on them
           setTimeout(() => {
             setShowTaskSuggestions(false);
             setSelectedTaskIndex(-1);
           }, 150);
+          
+          // Save task name to PostgreSQL if timer has started and name has changed
+          if (hasStarted && activeTaskId && task.trim() && needsSaveRef.current) {
+            const token = localStorage.getItem("firebase_token");
+            if (token) {
+              dispatch(updateTaskName({ 
+                taskId: activeTaskId, 
+                name: task.trim(), 
+                token 
+              }));
+              lastSavedTaskNameRef.current = task.trim();
+              needsSaveRef.current = false;
+            }
+          }
         }}
-        disabled={disabled}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !disabled) {
+          if (e.key === "Enter") {
             e.preventDefault();
             // If a task is selected in dropdown, use it
             if (showTaskSuggestions && selectedTaskIndex >= 0 && filteredTasks[selectedTaskIndex]) {
@@ -339,18 +406,18 @@ export default function TaskInput({
       />
       {/* Custom underline with larger gap */}
       <div
-        className={`mx-auto transition-all duration-300${isFocused && !disabled ? "" : " bg-gray-700"}`}
+        className={`mx-auto transition-all duration-300${isFocused ? "" : " bg-gray-700"}`}
         style={{
           width: underlineWidth,
           height: "2px",
           marginBottom: "50px",
           borderRadius: "2px",
-          background: isFocused && !disabled ? "#FFAA00" : undefined,
+          background: isFocused ? "#FFAA00" : undefined,
         }}
       />
 
       {/* Task Suggestions */}
-      {showTaskSuggestions && filteredTasks.length > 0 && !disabled && (
+      {showTaskSuggestions && filteredTasks.length > 0 && (
         <div
           className="absolute mt-2 bg-[#0E1119]/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200"
           style={{

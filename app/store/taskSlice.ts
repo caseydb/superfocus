@@ -768,6 +768,28 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
   }
 );
 
+// Thunk for updating task name in database
+export const updateTaskName = createAsyncThunk(
+  "tasks/updateName",
+  async ({ taskId, name, token }: { taskId: string; name: string; token: string }) => {
+    const response = await fetch("/api/task/name", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ taskId, name }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update task name");
+    }
+
+    const data = await response.json();
+    return { taskId, name, ...data };
+  }
+);
+
 // Thunk for updating task counter in database
 export const updateTaskCounter = createAsyncThunk(
   "tasks/updateCounter",
@@ -1121,6 +1143,18 @@ const taskSlice = createSlice({
         // Revert optimistic update on failure
         state.error = action.error.message || "Failed to update task status";
         // Could implement rollback logic here if needed
+      })
+      // Handle updateTaskName
+      .addCase(updateTaskName.pending, () => {
+        // Name update in progress - already updated optimistically
+      })
+      .addCase(updateTaskName.fulfilled, (state) => {
+        // Name already updated optimistically via updateTask reducer
+        state.error = null;
+      })
+      .addCase(updateTaskName.rejected, (state, action) => {
+        state.error = action.error.message || "Failed to update task name";
+        // Could revert the name here if needed
       })
       // Handle updateTaskCounter
       .addCase(updateTaskCounter.pending, () => {
