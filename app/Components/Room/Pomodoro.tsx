@@ -29,8 +29,12 @@ interface PomodoroProps {
   onTaskRestore?: (taskName: string, isRunning: boolean, taskId?: string) => void;
   isCompact?: boolean;
   showNotes?: boolean;
+  showCounter?: boolean;
   notesContent?: React.ReactNode;
+  counterContent?: React.ReactNode;
   onNotesToggle?: () => void;
+  onCounterToggle?: () => void;
+  hasActiveTask?: boolean;
 }
 
 export default function Pomodoro({
@@ -49,8 +53,12 @@ export default function Pomodoro({
   onTaskRestore,
   isCompact = false,
   showNotes = false,
+  showCounter = false,
   notesContent,
+  counterContent,
   onNotesToggle,
+  onCounterToggle,
+  hasActiveTask = false,
 }: PomodoroProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
@@ -745,9 +753,16 @@ export default function Pomodoro({
         </div>
       )}
       
-      {/* Main timer and buttons container - flex row when notes shown */}
-      <div className={showNotes ? "flex items-center justify-center gap-8" : ""}>
-        {/* Main Countdown Display - original size when no notes, smaller when notes shown */}
+      {/* Counter content - above timer */}
+      {showCounter && counterContent && (
+        <div className="mb-8 flex justify-center w-full">
+          {counterContent}
+        </div>
+      )}
+      
+      {/* Main timer and buttons container - flex row when notes or counter shown */}
+      <div className={showNotes || showCounter ? "flex items-center justify-center gap-8" : ""}>
+        {/* Main Countdown Display - original size when no notes/counter, smaller when notes/counter shown */}
         <div className={`relative ${isCompact ? 'w-56 h-56 sm:w-72 sm:h-72' : 'w-72 h-72 sm:w-96 sm:h-96'}`}>
         {/* Circle SVG - bigger and thinner */}
         <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 256 256">
@@ -866,8 +881,8 @@ export default function Pomodoro({
         </div>
       </div>
       
-      {/* Control buttons when notes shown - ALL buttons placed inside the flex container */}
-      {showNotes && (
+      {/* Control buttons when notes/counter shown - ALL buttons placed inside the flex container */}
+      {(showNotes || showCounter) && (
         <div className="flex flex-col gap-4">
           {/* Start button */}
           {!isRunning && !isPaused && (
@@ -922,23 +937,45 @@ export default function Pomodoro({
             </button>
           )}
           
-          {/* Show/Hide Notes button - included in the same area */}
-          {onNotesToggle && (
-            <button
-              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
-                showNotes ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
-              }`}
-              onClick={onNotesToggle}
-            >
-              {showNotes ? "Hide Notes" : "Show Notes"}
-            </button>
-          )}
+          {/* Toggle buttons for Counter and Notes - included in the same area */}
+          <div className="flex gap-4 justify-center">
+            {onCounterToggle && (
+              <button
+                className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                  !hasActiveTask 
+                    ? "text-gray-600 cursor-not-allowed" 
+                    : showCounter 
+                      ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer" 
+                      : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+                }`}
+                onClick={onCounterToggle}
+                disabled={!hasActiveTask}
+              >
+                Counter
+              </button>
+            )}
+            {onNotesToggle && (
+              <button
+                className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                  !hasActiveTask 
+                    ? "text-gray-600 cursor-not-allowed" 
+                    : showNotes 
+                      ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer" 
+                      : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+                }`}
+                onClick={onNotesToggle}
+                disabled={!hasActiveTask}
+              >
+                Notes
+              </button>
+            )}
+          </div>
         </div>
       )}
       </div>
 
-      {/* Control buttons when notes are NOT shown */}
-      {!showNotes && (
+      {/* Control buttons when notes/counter are NOT shown */}
+      {!showNotes && !showCounter && (
         <div className="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
         {!isRunning && !isPaused && (
           <div className="flex flex-col items-center gap-2">
@@ -998,17 +1035,39 @@ export default function Pomodoro({
         </div>
       )}
       
-      {/* Show/Hide Notes button - only show below when notes are NOT shown */}
-      {onNotesToggle && !showNotes && (
-        <div className="flex justify-center mt-4">
-          <button
-            className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none cursor-pointer ${
-              showNotes ? "text-[#FFAA00] hover:text-[#FF9900]" : "text-gray-400 hover:text-[#FFAA00]"
-            }`}
-            onClick={onNotesToggle}
-          >
-            {showNotes ? "Hide Notes" : "Show Notes"}
-          </button>
+      {/* Toggle buttons for Counter and Notes - only show below when neither is shown */}
+      {(onNotesToggle || onCounterToggle) && !showNotes && !showCounter && (
+        <div className="flex justify-center mt-4 gap-4">
+          {onCounterToggle && (
+            <button
+              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                !hasActiveTask 
+                  ? "text-gray-600 cursor-not-allowed" 
+                  : showCounter 
+                    ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer" 
+                    : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+              }`}
+              onClick={onCounterToggle}
+              disabled={!hasActiveTask}
+            >
+              Counter
+            </button>
+          )}
+          {onNotesToggle && (
+            <button
+              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                !hasActiveTask 
+                  ? "text-gray-600 cursor-not-allowed" 
+                  : showNotes 
+                    ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer" 
+                    : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+              }`}
+              onClick={onNotesToggle}
+              disabled={!hasActiveTask}
+            >
+              Notes
+            </button>
+          )}
         </div>
       )}
     </div>
