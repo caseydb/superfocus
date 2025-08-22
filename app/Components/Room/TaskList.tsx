@@ -1264,7 +1264,7 @@ export default function TaskList({
                 }}
                 placeholder="Add a new task..."
                 className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors resize-none overflow-hidden leading-normal"
-                maxLength={69}
+                maxLength={100}
                 rows={1}
                 style={{ minHeight: "48px" }}
               />
