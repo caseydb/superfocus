@@ -48,7 +48,7 @@ const taskInputSlice = createSlice({
         const { task } = action.payload as { task: { id: string; name: string } };
         // Restore input state when active task is found
         state.currentTaskId = task.id;
-        state.currentInput = task.name;
+        state.currentInput = task.name || ""; // Ensure we always have a string
         state.isLocked = true; // Lock input since task is active
         state.hasStarted = true;
       }

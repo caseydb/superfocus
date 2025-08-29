@@ -27,7 +27,7 @@ export default function TaskInput({
 }) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
-  const { currentInput: task } = useSelector((state: RootState) => state.taskInput);
+  const { currentInput: task = "" } = useSelector((state: RootState) => state.taskInput);
   const [inputWidth, setInputWidth] = React.useState("95%");
   const [underlineWidth, setUnderlineWidth] = React.useState("615px"); // Default to approximate placeholder width
   const spanRef = React.useRef<HTMLSpanElement>(null);
