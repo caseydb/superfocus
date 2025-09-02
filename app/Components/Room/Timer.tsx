@@ -224,6 +224,7 @@ export default function Timer({
       if (lastTaskSnapshot.exists()) {
         const lastTaskData = lastTaskSnapshot.val();
         
+        
         // Load this task's data from TaskBuffer
         const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
         const taskSnapshot = await get(taskRef);
@@ -232,11 +233,15 @@ export default function Timer({
           const taskData = taskSnapshot.val();
           const totalTime = taskData.total_time || 0;
           
+          
           // Set the timer to this task's time
           setSeconds(totalTime);
           if (secondsRef) {
             secondsRef.current = totalTime;
           }
+          
+          // Initialize paused seconds ref for potential resume
+          pausedSecondsRef.current = totalTime;
           
           // Set this as the active task
           dispatch(setActiveTask(lastTaskData.taskId));
@@ -263,14 +268,21 @@ export default function Timer({
         const isRunning = timerState.running || false;
         let currentSeconds = 0;
 
+
         if (isRunning && timerState.startTime) {
           // Calculate current seconds: base + elapsed time since start
           const elapsedMs = Date.now() - timerState.startTime;
           const elapsedSeconds = Math.floor(elapsedMs / 1000);
           currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+          
+          // For a running timer after reload, initialize drift correction refs
+          startTimeRef.current = timerState.startTime;
+          baseSecondsRef.current = timerState.baseSeconds || 0;
         } else {
           // Use stored total seconds when paused
           currentSeconds = timerState.totalSeconds || 0;
+          pausedSecondsRef.current = currentSeconds;
+          
         }
 
         // Restore state
@@ -431,8 +443,8 @@ export default function Timer({
           }
         }
       }
-    }).catch((error) => {
-      console.error('[Timer] Error loading task data:', error);
+    }).catch(() => {
+      // Error loading task data
       // On error, default to 0 for new task
       setSeconds(0);
       if (secondsRef) {
@@ -465,16 +477,73 @@ export default function Timer({
     inactivityDurationRef.current = preferences.focus_check_time * 60;
   }, [preferences.focus_check_time]);
 
-  // Update display every second and save total_time periodically
+  // Timer state tracking for drift correction
+  const startTimeRef = useRef<number | null>(null);
+  const baseSecondsRef = useRef<number>(0);
+  const driftHistoryRef = useRef<number[]>([]);
+  const lastCorrectionRef = useRef<number>(0);
+  const pausedSecondsRef = useRef<number>(0); // Track seconds when paused
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track interval to prevent duplicates
+  
+  // Update display every second with drift correction
   useEffect(() => {
+    // Clear any existing interval first
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    
     if (running) {
-      const interval = setInterval(() => {
-        setSeconds((s) => {
-          const newSeconds = s + 1;
-          // Also update secondsRef to keep it in sync
+      // Initialize timing references when starting
+      if (!startTimeRef.current) {
+        startTimeRef.current = Date.now();
+        // Use secondsRef.current or pausedSecondsRef.current for the base
+        baseSecondsRef.current = secondsRef?.current || pausedSecondsRef.current || 0;
+        lastCorrectionRef.current = 0;
+      }
+      
+      timerIntervalRef.current = setInterval(() => {
+        const now = Date.now();
+        const elapsedMs = now - startTimeRef.current!;
+        const expectedSeconds = baseSecondsRef.current + Math.floor(elapsedMs / 1000);
+        
+        setSeconds((currentSeconds) => {
+          const drift = expectedSeconds - currentSeconds;
+          
+          // Detect significant drift (more than 1 second)
+          if (Math.abs(drift) >= 1) {
+            
+            // Track drift history
+            driftHistoryRef.current.push(drift);
+            if (driftHistoryRef.current.length > 10) {
+              driftHistoryRef.current.shift();
+            }
+            
+            // Apply drift correction
+            lastCorrectionRef.current = expectedSeconds;
+            if (secondsRef) {
+              secondsRef.current = expectedSeconds;
+            }
+            
+            // Save corrected time immediately
+            if (activeTaskId && user?.id) {
+              const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+              update(taskRef, {
+                total_time: expectedSeconds,
+                updated_at: Date.now(),
+                drift_corrected: true
+              }).catch(() => {});
+            }
+            
+            return expectedSeconds;
+          }
+          
+          // Normal increment
+          const newSeconds = currentSeconds + 1;
           if (secondsRef) {
             secondsRef.current = newSeconds;
           }
+          
           
           // Save total_time to Firebase every 5 seconds
           if (newSeconds % 5 === 0 && activeTaskId && user?.id && 
@@ -499,11 +568,95 @@ export default function Timer({
           return newSeconds;
         });
       }, 1000);
+      
       return () => {
-        clearInterval(interval);
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
       };
+    } else {
+      // Timer stopped/paused - log final stats and reset
+      if (startTimeRef.current) {
+        const finalSeconds = seconds;
+        
+        // Save paused seconds for resume
+        pausedSecondsRef.current = finalSeconds;
+        
+      }
+      
+      // Reset tracking refs for next session
+      startTimeRef.current = null;
+      baseSecondsRef.current = 0;
+      driftHistoryRef.current = [];
+      lastCorrectionRef.current = 0;
     }
-  }, [running, secondsRef, activeTaskId, user?.id, task, isQuittingRef]);
+  }, [running, activeTaskId, user?.id, task, isQuittingRef]);  // Removed seconds and secondsRef to prevent re-running
+
+  // Monitor visibility changes and correct drift immediately when tab regains focus
+  useEffect(() => {
+    if (!running || !startTimeRef.current) return;
+
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible';
+
+      // When tab becomes visible again, immediately check and correct any drift
+      if (isVisible && startTimeRef.current) {
+        const now = Date.now();
+        const actualElapsed = now - startTimeRef.current;
+        const expectedSeconds = baseSecondsRef.current + Math.floor(actualElapsed / 1000);
+        const currentSeconds = secondsRef?.current || 0;
+        const drift = expectedSeconds - currentSeconds;
+
+        if (Math.abs(drift) > 0) {
+
+          // Apply immediate correction
+          setSeconds(expectedSeconds);
+          if (secondsRef) {
+            secondsRef.current = expectedSeconds;
+          }
+
+          // Track this correction in drift history
+          driftHistoryRef.current.push(drift);
+          if (driftHistoryRef.current.length > 10) {
+            driftHistoryRef.current.shift();
+          }
+
+          // Save corrected time to Firebase immediately
+          if (activeTaskId && user?.id) {
+            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+            update(taskRef, {
+              total_time: expectedSeconds,
+              updated_at: Date.now(),
+              visibility_corrected: true
+            }).catch(() => {});
+          }
+        }
+      }
+    };
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also listen for focus/blur events as additional detection
+    const handleFocus = () => {
+      // Trigger visibility check on focus
+      handleVisibilityChange();
+    };
+    
+    const handleBlur = () => {
+      // Window lost focus
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [running, activeTaskId, user?.id]);  // Removed seconds and secondsRef to prevent re-running
 
   // Inactivity detection based on timer duration
   useEffect(() => {
@@ -631,15 +784,21 @@ export default function Timer({
       pauseTimer,
       running,
     });
+    
   }
 
   // Pause function using hook
   const pauseTimer = useCallback(() => {
+    const currentSeconds = secondsRef?.current || seconds;
+    
+    // Save current seconds for resume
+    pausedSecondsRef.current = currentSeconds;
+    
     setJustPaused(true);
     
     handleStop({
       task: task || "",
-      seconds,
+      seconds: currentSeconds,
       saveTimerState,
       setRunning,
       setIsStarting,
@@ -650,7 +809,7 @@ export default function Timer({
     setTimeout(() => {
       setJustPaused(false);
     }, 1000);
-  }, [handleStop, task, seconds, saveTimerState]);
+  }, [handleStop, task, seconds, saveTimerState, secondsRef]);
 
   // Complete function using hook
   async function completeTimer() {
@@ -741,7 +900,7 @@ export default function Timer({
       
       // If user is active elsewhere and timer is running here, pause it
       if (userActiveElsewhere && running) {
-        console.log('[Timer] User became active in another room, pausing timer');
+        // User became active in another room, pausing timer
         pauseTimer();
       }
     };

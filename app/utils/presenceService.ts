@@ -426,7 +426,7 @@ export class PresenceService {
             roomId: this.roomId,
             lastSeen: serverTimestamp()
           });
-          console.log('[PresenceService] Successfully restored roomId');
+          // Successfully restored roomId
         } catch (error) {
           console.error('[PresenceService] Failed to restore roomId:', error);
         }
@@ -498,7 +498,7 @@ export class PresenceService {
       
       if (Object.keys(updates).length > 0) {
         await update(ref(rtdb), updates);
-        console.log(`[PresenceService] Fixed ${Object.keys(updates).length} orphaned sessions`);
+        // Fixed orphaned sessions
       }
     } catch (error) {
       console.error('[PresenceService] Failed to fix orphaned sessions:', error);
@@ -626,13 +626,7 @@ export class PresenceService {
 
   // Static method to update presence for a specific user/room from anywhere (e.g., button hooks)
   static async updateUserPresence(userId: string, roomId: string, isActive: boolean, taskInfo?: { taskId?: string; taskName?: string }): Promise<void> {
-    console.log('[PresenceService] ===== STATIC UPDATE USER PRESENCE =====', {
-      userId,
-      roomId,
-      isActive,
-      taskInfo,
-      timestamp: new Date().toISOString()
-    });
+    // Update user presence
     
     try {
       const updates: Record<string, boolean | object | string | null> = {};

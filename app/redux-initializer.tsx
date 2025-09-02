@@ -105,7 +105,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
           
           // If user data is fetched successfully, we're fully authenticated
           if (userData && userData.user_id) {
-            console.log('isLoggedIn');
             
             // IMPORTANT: Update Firebase auth ID in Redux to match current Firebase user
             // This ensures consistency between Firebase auth and Redux state
