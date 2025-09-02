@@ -1,7 +1,8 @@
 "use client";
 
-import Lobby from "./Components/Lobby";
+import RoomPageClient from "./[roomUrl]/RoomPageClient";
 
 export default function Home() {
-  return <Lobby />;
+  // Base URL loads as "gsd" (Get Sh!t Done) room
+  return <RoomPageClient roomUrl="gsd" />;
 }

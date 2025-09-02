@@ -5,6 +5,11 @@ import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
 import { useAppSelector, useAppDispatch } from "../../store/hooks";
 import { fetchLeaderboard } from "../../store/leaderboardSlice";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
+import Image from "next/image";
+import { signInWithGoogle } from "@/lib/auth";
+import SignIn from "../SignIn";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, onValue, off } from "firebase/database";
@@ -120,12 +125,14 @@ function formatTime(totalSeconds: number) {
 export default function Leaderboard({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
   const { entries: apiData, loading, timeFilter } = useAppSelector((state) => state.leaderboard);
+  const currentUser = useSelector((state: RootState) => state.user);
   const [allHistory, setAllHistory] = useState<HistoryEntry[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
   const [currentSprint] = useState(getCurrentSprintNumber());
   const [page, setPage] = useState(1);
   const [countdown, setCountdown] = useState<string>("");
-  const PAGE_SIZE = 10;
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const PAGE_SIZE = currentUser.isGuest ? 7 : 10;
 
   // Fetch leaderboard data on component mount
   useEffect(() => {
@@ -365,6 +372,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
             )}
           </div>
         </div>
+        
         {/* Show winners for ended sprints, regular list for active sprint */}
         {sprintHasEnded && entries.length > 0 ? (
           <div className="w-full space-y-4">
@@ -540,6 +548,25 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         )}
+        
+        {/* Continue with Google button for guest users */}
+        {currentUser.isGuest && (
+          <div className="mt-6 mb-2 flex flex-col items-center gap-2 border-t border-gray-700 pt-4">
+            <button
+              onClick={() => signInWithGoogle()}
+              className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 px-5 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition cursor-pointer"
+            >
+              <Image src="/google.png" alt="Google" width={20} height={20} />
+              Continue with Google to participate
+            </button>
+            <button
+              onClick={() => setShowSignInModal(true)}
+              className="text-gray-500 text-xs hover:text-gray-400 transition-colors cursor-pointer"
+            >
+              or sign in manually
+            </button>
+          </div>
+        )}
 
       </div>
 
@@ -563,6 +590,18 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           background: #ff9500;
         }
       `}</style>
+      
+      {/* Sign In Modal */}
+      {showSignInModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowSignInModal(false)}
+        >
+          <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+            <SignIn />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

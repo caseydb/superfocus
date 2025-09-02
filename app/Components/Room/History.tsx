@@ -8,6 +8,9 @@ import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { DotSpinner } from "ldrs/react";
 import "ldrs/react/DotSpinner.css";
 import { useInstance } from "../Instances";
+import Image from "next/image";
+import { signInWithGoogle } from "@/lib/auth";
+import SignIn from "../SignIn";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -43,9 +46,11 @@ const calculateDynamicWidth = () => {
 };
 
 // Calculate PAGE_SIZE based on screen size
-const calculatePageSize = (width: number, height: number) => {
-  // Since we're now using card layout for all screen sizes with max-width 700px,
-  // use consistent height-based logic for pagination
+const calculatePageSize = (width: number, height: number, isGuest: boolean) => {
+  // Guest users always see 7 records per page
+  if (isGuest) return 7;
+  
+  // Regular users get dynamic sizing based on screen height
   if (height >= 1100) return 11;
   if (height >= 1000) return 10;
   if (height >= 910) return 9;
@@ -75,34 +80,60 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   // Initialize filter states from preferences
   const [showOnlyMine, setShowOnlyMine] = useState(savedUserFilter === "my_tasks");
-  const [selectedTimeRange, setSelectedTimeRange] = useState(savedDateFilter || "all_time");
+  // ALWAYS default to "all_time" for everyone initially
+  // We'll update it for logged-in users after mount if they have a saved preference
+  const [selectedTimeRange, setSelectedTimeRange] = useState("all_time");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(3); // Default to 3
+  const [pageSize, setPageSize] = useState(currentUser.isGuest ? 7 : 3); // Guest users get 7, others get 3
   const [dynamicWidthClasses, setDynamicWidthClasses] = useState("w-[95%] min-[600px]:w-[90%] min-[1028px]:w-[60%]");
   const [showPrivacyWarning, setShowPrivacyWarning] = useState(false);
   const [showPublicToPrivateWarning, setShowPublicToPrivateWarning] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
+
+  // Set time range based on user type and preferences
+  useEffect(() => {
+    if (currentUser.isGuest) {
+      // Guest users always see all time
+      console.log("Guest user - ensuring all_time filter");
+      if (selectedTimeRange !== "all_time") {
+        setSelectedTimeRange("all_time");
+      }
+    } else if (currentUser.user_id && savedDateFilter && savedDateFilter !== "all_time") {
+      // Logged-in users get their saved preference
+      console.log("Logged-in user - applying saved filter:", savedDateFilter);
+      setSelectedTimeRange(savedDateFilter);
+    }
+  }, [currentUser.isGuest, currentUser.user_id, savedDateFilter]);
 
   // Fetch history when component mounts or room changes
   useEffect(() => {
-    // Extract slug from URL since that's what the API expects
+    // Extract slug from URL, or use "gsd" if at base URL
     const pathParts = window.location.pathname.split("/");
-    const urlSlug = pathParts[pathParts.length - 1];
+    const urlSlug = pathParts[pathParts.length - 1] || "gsd";
 
     if (urlSlug && urlSlug !== roomSlug) {
+      // For guest users, always fetch all room history (no userId filter)
+      // For authenticated users in public rooms, pass userId for filtering
+      console.log("Fetching history for:", { 
+        slug: urlSlug, 
+        isPublicRoom, 
+        isGuest: currentUser.isGuest,
+        userId: isPublicRoom && !currentUser.isGuest ? (currentUser.user_id || undefined) : undefined 
+      });
       dispatch(fetchHistory({ 
         slug: urlSlug, 
         isPublicRoom,
-        userId: isPublicRoom ? (currentUser.user_id || undefined) : undefined
+        userId: isPublicRoom && !currentUser.isGuest ? (currentUser.user_id || undefined) : undefined
       }));
     }
-  }, [roomSlug, dispatch, isPublicRoom, currentUser.user_id]);
+  }, [roomSlug, dispatch, isPublicRoom, currentUser.user_id, currentUser.isGuest]);
 
   // Refetch when user filter changes
   useEffect(() => {
     const pathParts = window.location.pathname.split("/");
-    const urlSlug = pathParts[pathParts.length - 1];
+    const urlSlug = pathParts[pathParts.length - 1] || "gsd";
     
-    if (urlSlug) {
+    if (urlSlug && !currentUser.isGuest) {
       if (isPublicRoom) {
         // For public rooms, always show only the user's tasks
         dispatch(fetchHistory({ 
@@ -290,6 +321,12 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   // Filter by date range
   const filterByDateRange = (entries: typeof history) => {
+    // Guest users always see all data regardless of filter
+    if (currentUser.isGuest) {
+      console.log("Guest user - bypassing date filter, showing all data");
+      return entries;
+    }
+    
     if (selectedTimeRange === "all_time") return entries;
 
     const dateRange = getDateRange(selectedTimeRange);
@@ -326,6 +363,16 @@ export default function History({ onClose }: { onClose?: () => void }) {
   const userFilteredHistory = history;
 
   const filteredHistory = filterByDateRange(userFilteredHistory);
+  
+  // Log for debugging
+  console.log("History data:", {
+    totalRecords: history.length,
+    filteredRecords: filteredHistory.length,
+    selectedTimeRange,
+    showOnlyMine,
+    isGuest: currentUser.isGuest,
+    savedDateFilter
+  });
 
   // Calculate total time based on privacy mode
   const calculateTotalTime = () => {
@@ -361,16 +408,16 @@ export default function History({ onClose }: { onClose?: () => void }) {
   const totalPages = Math.max(1, Math.ceil(filteredHistory.length / PAGE_SIZE));
   const paginated = filteredHistory.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Update page size based on screen dimensions
+  // Update page size based on screen dimensions and user type
   useEffect(() => {
     const updatePageSize = () => {
-      setPageSize(calculatePageSize(window.innerWidth, window.innerHeight));
+      setPageSize(calculatePageSize(window.innerWidth, window.innerHeight, currentUser.isGuest));
     };
 
     updatePageSize();
     window.addEventListener("resize", updatePageSize);
     return () => window.removeEventListener("resize", updatePageSize);
-  }, []);
+  }, [currentUser.isGuest]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -397,18 +444,40 @@ export default function History({ onClose }: { onClose?: () => void }) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn" onClick={onClose}>
         <div
-          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar animate-slideUp`}
+          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex flex-col items-center w-full relative">
             {/* Title on first line */}
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">History</h2>
-            {/* Total on second line */}
-            <span className="text-sm text-gray-400 font-mono mb-1">
-              <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">0s</span>
-            </span>
+            {/* Total on second line - hide for guest users */}
+            {!currentUser.isGuest && (
+              <span className="text-sm text-gray-400 font-mono mb-1">
+                <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">0s</span>
+              </span>
+            )}
+            
+            {/* Sign-in prompt for guest users */}
+            {currentUser.isGuest ? (
+              <div className="mt-6 mb-8 flex flex-col items-center gap-2">
+                <button
+                  onClick={() => signInWithGoogle()}
+                  className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 px-5 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition cursor-pointer"
+                >
+                  <Image src="/google.png" alt="Google" width={20} height={20} />
+                  Continue with Google
+                </button>
+                <button
+                  onClick={() => setShowSignInModal(true)}
+                  className="text-gray-500 text-xs hover:text-gray-400 transition-colors cursor-pointer"
+                >
+                  or sign in manually
+                </button>
+              </div>
+            ) : null}
+            
             {/* Dropdowns on third line */}
-            {currentUser?.user_id && (
+            {currentUser?.user_id && !currentUser.isGuest && (
               <div className="flex items-center gap-2">
                 {/* Task Filter Dropdown - Hidden for public rooms */}
                 {!isPublicRoom && (
@@ -483,7 +552,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
               </svg>
             </button>
           </div>
-          <div className="text-center text-white">No History Yet</div>
+          <div className={`text-center text-white ${currentUser.isGuest ? 'opacity-30' : ''}`}>No History Yet</div>
         </div>
       </div>
     );
@@ -492,19 +561,42 @@ export default function History({ onClose }: { onClose?: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn" onClick={onClose}>
       <div
-        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar animate-slideUp`}
+        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center w-full relative">
           {/* Title on first line */}
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">History</h2>
-          {/* Total on second line */}
-          <span className="text-sm text-gray-400 font-mono mb-1">
-            <span className="text-gray-500">Total:</span>{" "}
-            <span className="text-[#FFAA00] font-semibold">{totalTime}</span>
-          </span>
+          
+          {/* Total on second line - hide for guest users */}
+          {!currentUser.isGuest && (
+            <span className="text-sm text-gray-400 font-mono mb-1">
+              <span className="text-gray-500">Total:</span>{" "}
+              <span className="text-[#FFAA00] font-semibold">{totalTime}</span>
+            </span>
+          )}
+          
+          {/* Sign-in prompt for guest users */}
+          {currentUser.isGuest && (
+            <div className="mt-6 mb-4 flex flex-col items-center gap-2">
+              <button
+                onClick={() => signInWithGoogle()}
+                className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 px-5 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition cursor-pointer"
+              >
+                <Image src="/google.png" alt="Google" width={20} height={20} />
+                Continue with Google to track
+              </button>
+              <button
+                onClick={() => setShowSignInModal(true)}
+                className="text-gray-500 text-xs hover:text-gray-400 transition-colors cursor-pointer"
+              >
+                or sign in manually
+              </button>
+            </div>
+          )}
+          
           {/* Dropdowns on third line */}
-          {currentUser?.user_id && (
+          {currentUser?.user_id && !currentUser.isGuest && (
             <div className="flex items-center gap-2">
               {/* Task Filter Dropdown - Hidden for public rooms */}
               {!isPublicRoom && (
@@ -579,8 +671,8 @@ export default function History({ onClose }: { onClose?: () => void }) {
             </svg>
           </button>
         </div>
-        {/* Content */}
-        <div className="w-full">
+        {/* Content - with overlay for guest users */}
+        <div className={`w-full ${currentUser.isGuest ? 'opacity-30 pointer-events-none' : ''}`}>
           {/* Card/Blocks Layout - Now shown on all screen sizes */}
           <div className="block space-y-2 w-full">
             {displayEntries.map((entry, i) => (
@@ -604,7 +696,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
                       }`}
                     >
                       <span className="block truncate group-hover/task:whitespace-normal group-hover/task:break-words transition-all duration-200">
-                        {entry.task}
+                        {currentUser.isGuest ? "••••••••" : entry.task}
                       </span>
                     </div>
                   </div>
@@ -649,7 +741,9 @@ export default function History({ onClose }: { onClose?: () => void }) {
                         entry.task.toLowerCase().includes("quit") ? "text-red-500" : "text-white"
                       }`}
                     >
-                      <span className="block truncate group-hover/task:whitespace-normal group-hover/task:break-words transition-all duration-200">{entry.task}</span>
+                      <span className="block truncate group-hover/task:whitespace-normal group-hover/task:break-words transition-all duration-200">
+                        {currentUser.isGuest ? "••••••••" : entry.task}
+                      </span>
                     </td>
                     <td
                       className={`pl-8 pr-2 py-1 font-mono whitespace-nowrap text-sm md:text-base w-32 ${
@@ -860,6 +954,18 @@ export default function History({ onClose }: { onClose?: () => void }) {
           background: #ff9500;
         }
       `}</style>
+      
+      {/* Sign In Modal */}
+      {showSignInModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowSignInModal(false)}
+        >
+          <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+            <SignIn />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

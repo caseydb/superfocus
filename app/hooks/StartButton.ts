@@ -16,6 +16,7 @@ import {
   setActiveTask,
   reorderTasks,
   updateTaskOrder,
+  saveToCache,
 } from "../store/taskSlice";
 
 interface StartButtonOptions {
@@ -59,17 +60,22 @@ export function useStartButton() {
         // The reorderTasks reducer will handle setting proper order values
         dispatch(reorderTasks(reorderedTasks));
         
-        // Update database with new order
-        const token = localStorage.getItem("firebase_token") || "";
-        const updates = reorderedTasks.map((task, index) => ({
-          taskId: task.id,
-          order: index
-        }));
-        dispatch(updateTaskOrder({ updates, token }));
+        // Update database with new order (only for authenticated users)
+        if (!reduxUser.isGuest) {
+          const token = localStorage.getItem("firebase_token") || "";
+          const updates = reorderedTasks.map((task, index) => ({
+            taskId: task.id,
+            order: index
+          }));
+          dispatch(updateTaskOrder({ updates, token }));
+        } else {
+          // For guest users, save to cache
+          dispatch(saveToCache());
+        }
       }
       return Promise.resolve();
     },
-    [reduxTasks, dispatch]
+    [reduxTasks, dispatch, reduxUser.isGuest]
   );
 
   const notifyEvent = useCallback(
@@ -194,7 +200,7 @@ export function useStartButton() {
       }
       
       // Create new task if needed (only when not resuming and no existing task was found)
-      if (!isResume && task?.trim() && user?.id && currentInstance && reduxUser.user_id) {
+      if (!isResume && task?.trim() && user?.id && currentInstance) {
         if (taskId === taskIdToStart && !reduxTasks.find(t => t.id === taskId)) {
           // This is a new task that needs to be created
           
@@ -206,14 +212,19 @@ export function useStartButton() {
             })
           );
 
-          // Persist to PostgreSQL database
-          dispatch(
-            createTaskThunk({
-              id: taskId,
-              name: task.trim(),
-              userId: reduxUser.user_id,
-            })
-          );
+          // Only persist to PostgreSQL database for authenticated users
+          if (reduxUser.user_id && !reduxUser.isGuest) {
+            dispatch(
+              createTaskThunk({
+                id: taskId,
+                name: task.trim(),
+                userId: reduxUser.user_id,
+              })
+            );
+          } else if (reduxUser.isGuest) {
+            // For guest users, save to cache
+            dispatch(saveToCache());
+          }
 
           // Set the new task as active
           dispatch(setActiveTask(taskId));
@@ -230,8 +241,8 @@ export function useStartButton() {
         );
       }
 
-      // Add task to TaskBuffer first, then start a new time segment
-      if (taskId && user?.id && currentInstance) {
+      // Add task to TaskBuffer first, then start a new time segment (only for authenticated users)
+      if (taskId && user?.id && currentInstance && !reduxUser.isGuest) {
         // First, ensure task exists in TaskBuffer
         await dispatch(
           addTaskToBufferWhenStarted({

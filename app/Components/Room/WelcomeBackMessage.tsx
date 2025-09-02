@@ -1,10 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useInstance } from "../Instances";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
-import { updateUser } from "../../store/userSlice";
-import { auth } from "../../../lib/firebase";
 
 interface WelcomeBackMessageProps {
   roomId: string;
@@ -12,12 +10,12 @@ interface WelcomeBackMessageProps {
 
 export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) {
   const { user } = useInstance();
-  const dispatch = useDispatch();
   const reduxUser = useSelector((state: RootState) => state.user);
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [inspirationalQuote, setInspirationalQuote] = useState("");
   const [hasProcessed, setHasProcessed] = useState(false);
+  const [cachedName, setCachedName] = useState<string | null>(null);
 
   // Inspirational quotes for focus and productivity
   const getInspirationalQuote = () => {
@@ -59,42 +57,53 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showWelcome]);
 
+  // Load cached name on mount
   useEffect(() => {
-    if (!user?.id || !roomId || reduxUser.loading || hasProcessed) return;
+    const cached = localStorage.getItem('locked_in_user_name');
+    if (cached) {
+      setCachedName(cached);
+    }
+  }, []);
 
-    const checkWelcomeBack = async () => {
+  // Cache the user's name when it becomes available from Redux
+  useEffect(() => {
+    if (!reduxUser.isGuest && reduxUser.first_name && reduxUser.first_name !== 'Guest') {
+      const firstName = reduxUser.first_name;
+      localStorage.setItem('locked_in_user_name', firstName);
+      setCachedName(firstName);
+    }
+  }, [reduxUser.first_name, reduxUser.isGuest]);
+
+  // Show welcome message immediately with or without name
+  useEffect(() => {
+    // Check welcome status for all users (guests and authenticated)
+    if (!roomId || hasProcessed) return;
+
+    const checkWelcomeBack = () => {
       try {
-        const firstName = user.displayName.split(" ")[0];
-
         // Mark as processed immediately to prevent re-runs
         setHasProcessed(true);
 
-        // Check if this is the user's first visit ever
-        if (reduxUser.first_visit) {
-          // First time user
-          setWelcomeMessage(`Welcome, ${firstName}!`);
-          setShowWelcome(true);
+        // Check localStorage for returning user flag (device-specific)
+        const localStorageKey = 'locked_in_returning_user';
+        const isReturningUser = localStorage.getItem(localStorageKey) === 'true';
 
-          // Update first_visit to false in database (but don't wait for it)
-          const currentUser = auth.currentUser;
-          if (currentUser) {
-            currentUser.getIdToken().then(token => {
-              fetch('/api/user/first-visit', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
-              }).then(() => {
-                // Update local Redux state after the API call completes
-                dispatch(updateUser({ first_visit: false }));
-              });
-            });
-          }
+        // Build welcome message with or without name
+        let message;
+        if (!isReturningUser) {
+          // First time on this device
+          // For guest users, never show name
+          message = (reduxUser.isGuest || !cachedName) ? "Welcome!" : `Welcome, ${cachedName}!`;
+          // Mark as returning user for next time
+          localStorage.setItem(localStorageKey, 'true');
         } else {
-          // Returning user
-          setWelcomeMessage(`Welcome back, ${firstName}!`);
-          setShowWelcome(true);
+          // Returning user on this device
+          // For guest users, never show name
+          message = (reduxUser.isGuest || !cachedName) ? "Welcome back!" : `Welcome back, ${cachedName}!`;
         }
+        
+        setWelcomeMessage(message);
+        setShowWelcome(true);
 
         // Set inspirational quote
         setInspirationalQuote(getInspirationalQuote());
@@ -105,7 +114,17 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
     // Check immediately - no delay needed
     checkWelcomeBack();
-  }, [user?.id, user?.displayName, roomId, reduxUser.first_visit, reduxUser.loading, hasProcessed, dispatch]);
+  }, [roomId, hasProcessed, cachedName]);
+
+  // Update welcome message when name becomes available
+  useEffect(() => {
+    if (showWelcome && cachedName && !welcomeMessage.includes(cachedName)) {
+      // Update the message to include the name
+      const isReturningUser = localStorage.getItem('locked_in_returning_user') === 'true';
+      const newMessage = isReturningUser ? `Welcome back, ${cachedName}!` : `Welcome, ${cachedName}!`;
+      setWelcomeMessage(newMessage);
+    }
+  }, [cachedName, showWelcome, welcomeMessage]);
 
   if (!showWelcome) return null;
 

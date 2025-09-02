@@ -11,6 +11,7 @@ import {
   updateTask,
   transferTaskToPostgres,
   setActiveTask,
+  saveToCache,
 } from "../store/taskSlice";
 import { setIsActive } from "../store/realtimeSlice";
 import { addHistoryEntry } from "../store/historySlice";
@@ -175,8 +176,8 @@ export function useCompleteButton() {
         setIsCompleting(false);
       }, 2000);
 
-      // Check milestones IMMEDIATELY after completion - independent of task transfer
-      if (reduxUser?.user_id && typeof window !== "undefined") {
+      // Check milestones IMMEDIATELY after completion - only for authenticated users
+      if (reduxUser?.user_id && typeof window !== "undefined" && !reduxUser.isGuest) {
         // Fire and forget milestone check
         (async () => {
           try {
@@ -204,10 +205,10 @@ export function useCompleteButton() {
         })();
       }
 
-      // Transfer task to Postgres - NON-BLOCKING (fire and forget)
+      // Transfer task to Postgres - NON-BLOCKING (only for authenticated users)
       const taskIdForTransfer = activeTaskId || currentTaskId;
 
-      if (taskIdForTransfer && user?.id) {
+      if (taskIdForTransfer && user?.id && !reduxUser.isGuest) {
         if (typeof window !== "undefined") {
           const token = localStorage.getItem("firebase_token") || "";
 
@@ -271,6 +272,9 @@ export function useCompleteButton() {
               console.warn(`Failed to save task completion: ${errorMessage}`);
             });
         }
+      } else if (reduxUser.isGuest && taskIdForTransfer) {
+        // For guest users, just save completed task to cache
+        dispatch(saveToCache());
       }
     },
     [dispatch, user, reduxUser, reduxTasks, activeTaskId, currentTaskId, notifyEvent, showCompleteFeedback, currentInstance]

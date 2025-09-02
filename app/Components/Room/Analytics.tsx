@@ -9,6 +9,9 @@ import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { DotSpinner } from 'ldrs/react';
 import 'ldrs/react/DotSpinner.css';
 import FirecapeSquare from "../FirecapeSquare";
+import Image from "next/image";
+import { signInWithGoogle } from "@/lib/auth";
+import SignIn from "../SignIn";
 
 interface AnalyticsProps {
   roomId: string;
@@ -26,6 +29,7 @@ interface DayActivity {
 const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [activityData, setActivityData] = useState<DayActivity[]>([]);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   
   interface LeaderboardEntry {
     user_id: string;
@@ -707,11 +711,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
         {/* Header with gradient */}
         <div className="mb-6 text-center relative">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
-            {reduxUser.first_name 
-                ? `${reduxUser.first_name}'s Analytics` 
-                : displayName 
-                  ? `${displayName.split(" ")[0]}'s Analytics` 
-                  : "Analytics Dashboard"}
+            {reduxUser.isGuest 
+                ? "My Analytics" 
+                : reduxUser.first_name 
+                  ? `${reduxUser.first_name}'s Analytics` 
+                  : displayName 
+                    ? `${displayName.split(" ")[0]}'s Analytics` 
+                    : "Analytics Dashboard"}
           </h2>
           {/* Keyboard Shortcut Tip */}
           <div className="absolute -top-2 -left-1 hidden md:block">
@@ -733,7 +739,173 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           </button>
         </div>
 
-        {tasksLoading ? (
+        {reduxUser.isGuest ? (
+          // Guest user view - show sign-in prompt with full placeholder UI
+          <div>
+            {/* Sign-in prompt at the top */}
+            <div className="mb-8 flex flex-col items-center gap-2">
+              <button
+                onClick={() => signInWithGoogle()}
+                className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 px-5 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition cursor-pointer"
+              >
+                <Image src="/google.png" alt="Google" width={20} height={20} />
+                Continue with Google to track
+              </button>
+              <button
+                onClick={() => setShowSignInModal(true)}
+                className="text-gray-500 text-xs hover:text-gray-400 transition-colors cursor-pointer"
+              >
+                or sign in manually
+              </button>
+            </div>
+            
+            {/* Show full UI with placeholder/zero values - faded */}
+            <div className="opacity-30 pointer-events-none">
+              {/* GitHub-style Activity Chart */}
+              <div className="mb-4">
+                <div className="relative flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-white">{currentYear} Overview</h3>
+                  
+                  {/* Hero Stats inline - centered */}
+                  <div className="absolute left-1/2 transform -translate-x-1/2 inline-flex items-center gap-4">
+                    {/* Rank */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">👑</span>
+                      <span className="text-xs text-gray-400">Weekly Rank</span>
+                      <span className="text-base font-black text-[#FFAA00]">Unranked</span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-5 w-px bg-gray-700"></div>
+
+                    {/* Streak */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">🔥</span>
+                      <span className="text-xs text-gray-400">Streak</span>
+                      <span className="text-base font-black text-[#FFAA00]">0</span>
+                    </div>
+                  </div>
+                  
+                  {/* Toggle switch */}
+                  <button className="flex items-center gap-2 text-xs text-gray-400 cursor-default">
+                    <span className="text-white font-medium">Tasks</span>
+                    <div className="relative w-10 h-5 bg-gray-700 rounded-full">
+                      <div className="absolute top-0.5 h-4 w-4 bg-white rounded-full translate-x-0.5" />
+                    </div>
+                    <span className="text-gray-500">Time</span>
+                  </button>
+                </div>
+                
+                {/* Activity grid that spells "LOCK IN" */}
+                <div className="inline-block relative bg-gray-800/50 rounded-xl p-3 backdrop-blur border border-gray-700 overflow-hidden max-[820px]:overflow-x-auto max-[820px]:block max-[820px]:w-full">
+                  <div className="inline-flex gap-1 relative">
+                    <div className="flex gap-0.5 ml-9">
+                      {/* Generate grid - 52 weeks x 7 days */}
+                      {(() => {
+                        // Define the pattern for "LOCK IN" in a 7x52 grid
+                        // Using 4x7 narrow font with exact column positions
+                        const pattern: boolean[][] = [];
+                        
+                        // Initialize 52x7 grid with false
+                        for (let week = 0; week < 52; week++) {
+                          pattern[week] = new Array(7).fill(false);
+                        }
+                        
+                        // Define which columns to fill for each row (0-6)
+                        // L O C K   I N pattern with proper spacing
+                        const rowPatterns = [
+                          [0, 5, 6, 7, 8, 10, 11, 12, 13, 15, 18, 22, 23, 24, 25, 26, 28, 31],  // Row 0
+                          [0, 5, 8, 10, 15, 17, 24, 28, 31],                                     // Row 1
+                          [0, 5, 8, 10, 15, 16, 24, 28, 29, 31],                                 // Row 2
+                          [0, 5, 8, 10, 15, 24, 28, 30, 31],                                     // Row 3
+                          [0, 5, 8, 10, 15, 16, 24, 28, 31],                                     // Row 4
+                          [0, 5, 8, 10, 15, 17, 24, 28, 31],                                     // Row 5
+                          [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 13, 15, 18, 22, 23, 24, 25, 26, 28, 31]  // Row 6
+                        ];
+                        
+                        // Fill the pattern based on row patterns
+                        for (let row = 0; row < 7; row++) {
+                          const columnsToFill = rowPatterns[row];
+                          for (const col of columnsToFill) {
+                            if (col < 52) {
+                              pattern[col][row] = true;
+                            }
+                          }
+                        }
+                        
+                        // Center the text by adding offset
+                        const centerOffset = 10; // Center the text in the grid
+                        const centeredPattern: boolean[][] = [];
+                        for (let week = 0; week < 52; week++) {
+                          centeredPattern[week] = new Array(7).fill(false);
+                        }
+                        
+                        // Copy pattern with offset
+                        for (let col = 0; col < 52; col++) {
+                          for (let row = 0; row < 7; row++) {
+                            if (pattern[col] && pattern[col][row] && col + centerOffset < 52) {
+                              centeredPattern[col + centerOffset][row] = true;
+                            }
+                          }
+                        }
+                        
+                        return Array.from({ length: 52 }, (_, weekIndex) => (
+                          <div key={weekIndex} className="flex flex-col gap-0.5">
+                            {Array.from({ length: 7 }, (_, dayIndex) => {
+                              const shouldColor = centeredPattern[weekIndex][dayIndex];
+                              const colorClass = shouldColor ? "bg-[#FFAA00]" : "bg-gray-800";
+                              
+                              return (
+                                <div key={dayIndex} className={`w-[11px] h-[11px] rounded-sm ${colorClass}`} />
+                              );
+                            })}
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-lg p-3 border border-blue-700/50 backdrop-blur text-center">
+                  <div className="text-blue-400 text-xs font-semibold">Avg Tasks/Day</div>
+                  <div className="text-2xl font-black text-white">0</div>
+                  <div className="text-gray-400 text-xs">Daily Average</div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur text-center">
+                  <div className="text-purple-400 text-xs font-semibold">Avg Time/Day</div>
+                  <div className="text-2xl font-black text-white">0m</div>
+                  <div className="text-gray-400 text-xs">Daily Focus Time</div>
+                </div>
+                <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-lg p-3 border border-green-700/50 backdrop-blur text-center">
+                  <div className="text-green-400 text-xs font-semibold">Avg Time/Task</div>
+                  <div className="text-2xl font-black text-white">0m</div>
+                  <div className="text-gray-400 text-xs">Per Task Average</div>
+                </div>
+              </div>
+              
+              {/* Total Stats */}
+              <div className="bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-lg p-3 border border-purple-700/50 backdrop-blur">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-black text-white">0</div>
+                    <div className="text-gray-300 text-xs font-semibold">Total Tasks</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black text-white">0m</div>
+                    <div className="text-gray-300 text-xs font-semibold">Total Time</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black text-white">0</div>
+                    <div className="text-gray-300 text-xs font-semibold">Active Days</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : tasksLoading ? (
           <div className="flex justify-center items-center h-64">
             <DotSpinner size="40" speed="0.9" color="#FFAA00" />
           </div>
@@ -1103,6 +1275,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           </div>
         )}
       </div>
+      
+      {/* Sign In Modal */}
+      {showSignInModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowSignInModal(false)}
+        >
+          <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+            <SignIn />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

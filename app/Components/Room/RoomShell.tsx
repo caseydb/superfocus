@@ -7,6 +7,7 @@ import { RootState, AppDispatch } from "../../store/store";
 import { setActiveTask, updateTaskCounterLocal, updateTaskCounter } from "../../store/taskSlice";
 import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 import { setValue as setCounterValue } from "../../store/counterSlice";
+import LocalCounterCache from "@/app/utils/localCounterCache";
 import { rtdb } from "../../../lib/firebase";
 import type { Instance } from "../../types";
 import {
@@ -119,7 +120,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showNotes, setShowNotes] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [showSignInModal, setShowSignInModal] = useState(false);
+  // Sign-in modal removed - guests can now access rooms
   const [showInvitePopup, setShowInvitePopup] = useState(false);
   // Get toggle_notes from Redux preferences instead of local state
   const showDeepWorkNotes = useSelector((state: RootState) => state.preferences.toggle_notes);
@@ -127,18 +128,51 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const activeTask = useSelector((state: RootState) => 
     state.tasks.tasks.find(t => t.id === state.tasks.activeTaskId)
   );
-  const counterValue = activeTask?.counter || 0;
+  // For guest users, use per-task cached counter; for authenticated users, use task counter
+  // Treat undefined isGuest as guest mode (safer default)
+  const reduxCounterValue = useSelector((state: RootState) => state.counter.value);
+  const isGuestUser = user.isGuest !== false; // true or undefined = guest mode
+  
+  // Load counter from cache when task changes (for guests)
+  useEffect(() => {
+    if (isGuestUser && activeTask?.id) {
+      const cachedValue = LocalCounterCache.getCounter(activeTask.id);
+      console.log(`[RoomShell] Loading cached counter for task ${activeTask.id}:`, cachedValue);
+      dispatch(setCounterValue(cachedValue));
+    }
+  }, [isGuestUser, activeTask?.id, dispatch]);
+  
+  const counterValue = isGuestUser ? reduxCounterValue : (activeTask?.counter || 0);
+  
+  console.log('[RoomShell] User state:', user);
+  console.log('[RoomShell] Counter values:', {
+    isGuest: user.isGuest,
+    isGuestUser,
+    reduxCounterValue,
+    activeTaskCounter: activeTask?.counter,
+    finalCounterValue: counterValue
+  });
   const counterUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editingCounterValue, setEditingCounterValue] = useState("");
   
-  // Sync counter value when active task changes
+  // Sync counter value when active task changes (only for authenticated users)
   useEffect(() => {
-    dispatch(setCounterValue(counterValue));
-  }, [counterValue, dispatch]);
+    if (!isGuestUser) {
+      // For authenticated users, sync from task counter to Redux
+      dispatch(setCounterValue(counterValue));
+    }
+    // For guest users, the counter value is already in Redux and cached
+  }, [counterValue, dispatch, isGuestUser]);
   
   // Debounced function to update counter in database
   const updateCounterInDatabase = useCallback((taskId: string, newValue: number) => {
+    // For guest users, just save to cache
+    if (isGuestUser) {
+      LocalCounterCache.saveCounter(taskId, newValue);
+      return;
+    }
+    
     // Clear any pending update
     if (counterUpdateTimeoutRef.current) {
       clearTimeout(counterUpdateTimeoutRef.current);
@@ -155,7 +189,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }));
       }
     }, 500); // 500ms debounce
-  }, [dispatch]);
+  }, [dispatch, isGuestUser]);
   
   // Cleanup counter update timeout on unmount
   useEffect(() => {
@@ -225,7 +259,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     // setShowContacts(false); // People Modal - Feature deprioritized
     setShowRooms(false);
     setShowQuitModal(false);
-    setShowSignInModal(false);
+    // setShowSignInModal(false); // Not defined - removed
     setShowTimerDropdown(false);
     setShowInvitePopup(false);
   }, []);
@@ -584,6 +618,41 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         }
       } catch {
         // Silent error handling
+      }
+
+      // Check permanent public rooms in PostgreSQL
+      try {
+        const roomResponse = await fetch(`/api/room/by-slug?slug=${roomUrl}`);
+        const roomResult = await roomResponse.json();
+        
+        if (roomResult.success && roomResult.room) {
+          // Found a permanent public room
+          setRoomFound(true);
+          
+          // Initialize presence for permanent public rooms
+          const presence = new PresenceService(user.id, roomResult.room.id);
+          const initialized = await presence.initialize();
+          
+          if (initialized) {
+            setRoomPresence(presence);
+          }
+          
+          // Create a temporary Instance object for compatibility
+          const tempInstance: Instance = {
+            id: roomResult.room.id,
+            type: "public",
+            users: [user],
+            createdBy: user.id, // We don't know the actual creator
+            url: roomUrl,
+          };
+          
+          // Set this as the current instance
+          setPublicRoomInstance(tempInstance);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking permanent room:", error);
       }
 
       setRoomFound(false);
@@ -1239,69 +1308,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setLocalVolume,
   ]);
 
-  if (!userReady || !user.id || user.id.startsWith("user-")) {
-    // Not signed in: mask everything with SignIn
+  // Remove the login wall - allow guest users to access rooms
+  if (!userReady) {
+    // Still loading, show a loading state
     return (
       <div className="min-h-screen flex items-center justify-center bg-elegant-dark text-white">
-        <div className="flex flex-col items-center justify-center w-full h-full">
-          <div className="w-full flex flex-col items-center mb-10 mt-2">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white text-center mb-2 drop-shadow-lg">
-              Drop Lock In. Get Sh<span style={{ color: "#FFAA00" }}>*</span>t Done.
-            </h1>
-            <p className="text-lg md:text-2xl text-gray-300 text-center max-w-2xl mx-auto opacity-90 font-medium">
-              Level up your work with others in the zone.
-            </p>
-          </div>
-
-          {/* Room access message */}
-          <div className="bg-gray-900/50 rounded-xl px-6 py-4 mb-8 border border-gray-800 max-w-md">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#FFAA00]">
-                  <path
-                    d="M16 12V8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8V12M19 21H5C4.44772 21 4 20.5523 4 20V13C4 12.4477 4.44772 12 5 12H19C19.5523 12 20 12.4477 20 13V20C20 20.5523 19.5523 21 19 21Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <div className="text-gray-300">
-                <p className="font-semibold text-white">Sign in required</p>
-                <p className="text-sm">You need to be signed in to access this room</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center">
-            <button
-              onClick={() => signInWithGoogle()}
-              className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-lg font-medium shadow-sm hover:border-[#FFAA00] transition"
-            >
-              <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
-              Continue with Google
-            </button>
-            <div className="mt-4 text-gray-300 text-base">
-              Don&apos;t have an account?{" "}
-              <button
-                className="font-bold underline underline-offset-2 hover:text-[#FFAA00] transition"
-                onClick={() => setShowSignInModal(true)}
-              >
-                Sign up
-              </button>
-            </div>
-          </div>
-          {showSignInModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-              onClick={() => setShowSignInModal(false)}
-            >
-              <div className="relative" onClick={(e) => e.stopPropagation()}>
-                <SignIn />
-              </div>
-            </div>
-          )}
+        <div className="flex flex-col items-center justify-center">
+          <DotSpinner color="#FFAA00" size={60} />
+          <p className="mt-4 text-gray-300">Loading room...</p>
         </div>
       </div>
     );
@@ -1452,18 +1466,30 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             )}
             
             {/* Counter for Deep Work Mode - integrated below input */}
-            {showCounter && !showDeepWorkNotes && !isPomodoroMode && activeTaskId && (
+            {showCounter && !showDeepWorkNotes && !isPomodoroMode && (isGuestUser || activeTaskId) && (
               <div className="mb-8 flex justify-center w-full">
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl pt-6 pb-4 px-6 shadow-xl border border-gray-700/50 flex flex-col items-center">
                   <div className="flex items-center justify-center gap-6">
                     <button
                       onClick={() => {
-                        if (activeTask) {
-                          const newValue = Math.max(0, counterValue - 1);
-                          // Update Redux optimistically
+                        const newValue = Math.max(0, counterValue - 1);
+                        console.log('[RoomShell] Decrement counter:', { 
+                          oldValue: counterValue, 
+                          newValue,
+                          isGuest: user.isGuest,
+                          isGuestUser 
+                        });
+                        
+                        // Update Redux 
+                        dispatch(setCounterValue(newValue));
+                        
+                        if (isGuestUser && activeTask) {
+                          // For guest users, just save to cache
+                          console.log('[RoomShell] Saving to cache for guest');
+                          LocalCounterCache.saveCounter(activeTask.id, newValue);
+                        } else if (activeTask) {
+                          // For authenticated users, update task and database
                           dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: newValue }));
-                          dispatch(setCounterValue(newValue));
-                          // Update database (debounced)
                           updateCounterInDatabase(activeTask.id, newValue);
                         }
                       }}
@@ -1488,9 +1514,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                           }}
                           onBlur={() => {
                             const newValue = Math.max(0, parseInt(editingCounterValue) || 0);
-                            if (activeTask) {
+                            // Update Redux
+                            dispatch(setCounterValue(newValue));
+                            
+                            if (isGuestUser && activeTask) {
+                              // For guest users, just save to cache
+                              LocalCounterCache.saveCounter(activeTask.id, newValue);
+                            } else if (activeTask) {
+                              // For authenticated users, update task and database
                               dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: newValue }));
-                              dispatch(setCounterValue(newValue));
                               updateCounterInDatabase(activeTask.id, newValue);
                             }
                             setIsEditingCounter(false);
@@ -1521,12 +1553,16 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                     
                     <button
                       onClick={() => {
-                        if (activeTask) {
-                          const newValue = counterValue + 1;
-                          // Update Redux optimistically
+                        const newValue = counterValue + 1;
+                        // Update Redux 
+                        dispatch(setCounterValue(newValue));
+                        
+                        if (isGuestUser && activeTask) {
+                          // For guest users, just save to cache
+                          LocalCounterCache.saveCounter(activeTask.id, newValue);
+                        } else if (activeTask) {
+                          // For authenticated users, update task and database
                           dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: newValue }));
-                          dispatch(setCounterValue(newValue));
-                          // Update database (debounced)
                           updateCounterInDatabase(activeTask.id, newValue);
                         }
                       }}
@@ -1539,11 +1575,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   
                   <button
                     onClick={() => {
-                      if (activeTask) {
-                        // Update Redux optimistically
+                      // Update Redux 
+                      dispatch(setCounterValue(0));
+                      
+                      if (isGuestUser && activeTask) {
+                        // For guest users, just save to cache
+                        LocalCounterCache.saveCounter(activeTask.id, 0);
+                      } else if (activeTask) {
+                        // For authenticated users, update task and database
                         dispatch(updateTaskCounterLocal({ id: activeTask.id, counter: 0 }));
-                        dispatch(setCounterValue(0));
-                        // Update database (debounced)
                         updateCounterInDatabase(activeTask.id, 0);
                       }
                     }}

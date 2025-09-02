@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, remove, get, update } from "firebase/database";
+import { LocalTaskCache } from "@/app/utils/localTaskCache";
 
 export interface Task {
   id: string;
@@ -793,7 +794,15 @@ export const updateTaskName = createAsyncThunk(
 // Thunk for updating task counter in database
 export const updateTaskCounter = createAsyncThunk(
   "tasks/updateCounter",
-  async ({ taskId, counter, token }: { taskId: string; counter: number; token: string }) => {
+  async ({ taskId, counter, token }: { taskId: string; counter: number; token: string }, { getState }) => {
+    // Safety check: Don't make API call for guest users
+    const state = getState() as RootState;
+    if (state.user?.isGuest) {
+      // For guest users, just return without API call
+      // Counter is already updated in Redux and cached locally
+      return { taskId, counter };
+    }
+    
     const response = await fetch("/api/task/counter", {
       method: "PATCH",
       headers: {
@@ -909,6 +918,24 @@ const taskSlice = createSlice({
     removeOptimisticTask: (state, action: PayloadAction<string>) => {
       // Remove optimistic task if API call fails
       state.tasks = state.tasks.filter((task) => task.id !== action.payload);
+    },
+    // Load tasks from local cache (for guest users)
+    loadFromCache: (state) => {
+      const cachedTasks = LocalTaskCache.getTasks();
+      if (cachedTasks.length > 0) {
+        state.tasks = cachedTasks;
+        // Find active task if any
+        const activeTask = cachedTasks.find(t => t.status === "in_progress");
+        state.activeTaskId = activeTask?.id || null;
+      }
+    },
+    // Save current tasks to cache (for guest users)
+    saveToCache: (state) => {
+      LocalTaskCache.saveTasks(state.tasks);
+    },
+    // Clear cache when user signs in
+    clearCache: () => {
+      LocalTaskCache.clearCache();
     },
   },
   extraReducers: (builder) => {
@@ -1221,6 +1248,9 @@ export const {
   updateTaskTime,
   reorderTasks,
   removeOptimisticTask,
+  loadFromCache,
+  saveToCache,
+  clearCache,
 } = taskSlice.actions;
 
 export default taskSlice.reducer;

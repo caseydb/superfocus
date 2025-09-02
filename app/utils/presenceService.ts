@@ -60,7 +60,6 @@ export class PresenceService {
     if (this.isInitialized) return true;
 
     try {
-      
       // Set up connection state listener FIRST
       this.setupConnectionListener();
 

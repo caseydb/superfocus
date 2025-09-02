@@ -19,6 +19,18 @@ export async function POST(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const firebaseUid = decodedToken.uid;
 
+    // Check if user exists first (guest users won't exist in PostgreSQL)
+    const user = await prisma.user.findUnique({
+      where: {
+        auth_id: firebaseUid,
+      },
+    });
+
+    if (!user) {
+      // User doesn't exist in PostgreSQL (likely a guest user)
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     // Update first_visit to false
     await prisma.user.update({
       where: {

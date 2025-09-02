@@ -5,6 +5,7 @@ import { useInstance } from "../Instances";
 // import { ref, set, onValue, off } from "firebase/database";
 import { signOut, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/auth";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { updatePreferences, setPreference } from "../../store/preferenceSlice";
@@ -624,24 +625,44 @@ export default function Controls({
               <span className="font-medium font-mono">Plan & Billing</span>
             </button>
 
-            {/* Sign Out Button */}
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
-              onClick={async () => {
-                await signOut(auth);
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="font-medium font-mono">Sign Out</span>
-            </button>
+            {/* Sign Out/Sign In Button */}
+            {reduxUser.isGuest ? (
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+                onClick={async () => {
+                  await signInWithGoogle();
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="font-medium font-mono">Sign In</span>
+              </button>
+            ) : (
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+                onClick={async () => {
+                  await signOut(auth);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="font-medium font-mono">Sign Out</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1041,24 +1062,44 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Plan & Billing</span>
               </button>
 
-              {/* Sign Out Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                onClick={async () => {
-                  await signOut(auth);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path
-                    d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              {/* Sign Out/Sign In Button */}
+              {reduxUser.isGuest ? (
+                <button
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                  onClick={async () => {
+                    await signInWithGoogle();
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                    <path
+                      d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
+                      stroke="#9ca3af"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
-              </button>
+                  </svg>
+                  <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign In</span>
+                </button>
+              ) : (
+                <button
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                  onClick={async () => {
+                    await signOut(auth);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                    <path
+                      d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+                      stroke="#9ca3af"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign Out</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

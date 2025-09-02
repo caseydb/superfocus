@@ -12,6 +12,7 @@ interface UserState {
   first_visit: boolean;
   loading: boolean;
   error: string | null;
+  isGuest: boolean;
 }
 
 const initialState: UserState = {
@@ -25,6 +26,7 @@ const initialState: UserState = {
   first_visit: true,
   loading: false,
   error: null,
+  isGuest: true, // Default to guest mode
 };
 
 export const fetchUserData = createAsyncThunk(
@@ -92,6 +94,71 @@ const userSlice = createSlice({
     clearUser: () => {
       return initialState;
     },
+    initializeGuestMode: (state) => {
+      // Check if we already have a persisted guest ID and avatar
+      let guestId = null;
+      let guestAvatar = null;
+      
+      if (typeof window !== 'undefined') {
+        guestId = localStorage.getItem('guest_id');
+        guestAvatar = localStorage.getItem('guest_avatar');
+      }
+      
+      // Generate new guest ID if needed
+      if (!guestId) {
+        guestId = `guest_${Math.random().toString(36).slice(2, 10)}`;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('guest_id', guestId);
+        }
+      }
+      
+      // Assign animal avatar - use persisted one or generate new
+      if (!guestAvatar) {
+        const animals = ['bear', 'owl', 'tiger', 'turtle', 'wolf'];
+        const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+        guestAvatar = `/${randomAnimal}.png`;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('guest_avatar', guestAvatar);
+        }
+      }
+      
+      state.user_id = guestId;
+      state.auth_id = guestId;
+      state.isGuest = true;
+      state.first_name = 'Guest';
+      state.last_name = 'User';
+      state.loading = false;
+      state.error = null;
+      state.profile_image = guestAvatar;
+    },
+    upgradeToAuthenticatedUser: (state, action: PayloadAction<{ firebaseUser: any }>) => {
+      state.auth_id = action.payload.firebaseUser.uid;
+      state.email = action.payload.firebaseUser.email;
+      state.isGuest = false;
+      // Clear the animal avatar when upgrading to authenticated user
+      state.profile_image = null;
+      // Clear persisted guest data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('guest_id');
+        localStorage.removeItem('guest_avatar');
+      }
+      // Keep other fields until real data is fetched
+    },
+    setGuestWithAuth: (state, action: PayloadAction<{ firebaseUser: any }>) => {
+      // User is authenticated with Firebase but not synced to PostgreSQL
+      state.auth_id = action.payload.firebaseUser.uid;
+      state.email = action.payload.firebaseUser.email;
+      state.isGuest = true; // Still guest because no PostgreSQL data
+      state.first_name = action.payload.firebaseUser.displayName?.split(' ')[0] || 'Guest';
+      state.last_name = action.payload.firebaseUser.displayName?.split(' ')[1] || 'User';
+      
+      // Only set animal avatar if they're truly anonymous (not a real user waiting for sync)
+      if (action.payload.firebaseUser.isAnonymous) {
+        const animals = ['bear', 'owl', 'tiger', 'turtle', 'wolf'];
+        const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+        state.profile_image = `/${randomAnimal}.png`;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -109,6 +176,7 @@ const userSlice = createSlice({
         state.profile_image = action.payload.profile_image;
         state.timezone = action.payload.timezone;
         state.first_visit = action.payload.first_visit ?? true;
+        state.isGuest = false; // Successfully fetched user data means not a guest
       })
       .addCase(fetchUserData.rejected, (state, action) => {
         state.loading = false;
@@ -135,5 +203,12 @@ const userSlice = createSlice({
   },
 });
 
-export const { setUser, updateUser, clearUser } = userSlice.actions;
+export const { 
+  setUser, 
+  updateUser, 
+  clearUser, 
+  initializeGuestMode, 
+  upgradeToAuthenticatedUser, 
+  setGuestWithAuth 
+} = userSlice.actions;
 export default userSlice.reducer;

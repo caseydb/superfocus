@@ -25,19 +25,7 @@ const InstanceContext = createContext<{
 
 export const useInstance = () => useContext(InstanceContext);
 
-// Generate a unique user for this session
-function getOrCreateUser(): User {
-  if (typeof window === "undefined") return { id: "", displayName: "", isPremium: false };
-  const user = window.sessionStorage.getItem("mockUser");
-  if (user) return JSON.parse(user);
-  const newUser = {
-    id: `user-${Math.random().toString(36).slice(2, 10)}`,
-    displayName: `User ${Math.floor(Math.random() * 1000)}`,
-    isPremium: false,
-  };
-  window.sessionStorage.setItem("mockUser", JSON.stringify(newUser));
-  return newUser;
-}
+// Removed getOrCreateUser - now using Firebase anonymous auth for all users
 
 // Process display name from auth
 function processDisplayName(firebaseUser: { displayName?: string | null; email?: string | null }): string {
@@ -69,22 +57,27 @@ function generateRoomUrl(): string {
 export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [currentInstance, setCurrentInstance] = useState<Instance | null>(null);
-  const [user, setUser] = useState<User>(getOrCreateUser());
+  // Start with a placeholder user - will be replaced by Firebase auth
+  const [user, setUser] = useState<User>({ id: "", displayName: "Loading...", isPremium: false });
   const [userReady, setUserReady] = useState(false);
 
   // Update user from Firebase Auth if signed in
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        // Use Firebase UID for both anonymous and authenticated users
+        // This ensures presence tracking works for guests
+        console.log("Setting user from Firebase:", firebaseUser.uid, firebaseUser.isAnonymous ? "(anonymous)" : "(authenticated)");
         setUser({
           id: firebaseUser.uid,
-          displayName: processDisplayName(firebaseUser),
+          displayName: firebaseUser.isAnonymous ? "Guest User" : processDisplayName(firebaseUser),
           isPremium: false, // update if you have premium logic
         });
         setUserReady(true);
       } else {
-        setUser(getOrCreateUser());
-        setUserReady(true);
+        // No Firebase auth yet - wait for anonymous auth to kick in
+        console.log("No Firebase user yet, waiting for anonymous auth...");
+        // Don't set userReady to true yet
       }
     });
     return () => unsub();

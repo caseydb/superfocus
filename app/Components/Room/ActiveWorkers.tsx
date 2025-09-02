@@ -5,6 +5,9 @@ import { ref, get } from "firebase/database";
 import Image from "next/image";
 import { PresenceService } from "@/app/utils/presenceService";
 import GlobalPulseTicker from "@/app/utils/globalPulseTicker";
+import { useSelector } from "react-redux";
+import { RootState } from "@/app/store/store";
+import { useInstance } from "../Instances";
 
 interface WeeklyLeaderboardEntry {
   user_id: string;
@@ -24,13 +27,16 @@ interface PostgresUser {
 }
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
+  const currentUser = useSelector((state: RootState) => state.user);
+  const { user: instanceUser } = useInstance();
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<WeeklyLeaderboardEntry[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
-  const [firebaseUserNames, setFirebaseUserNames] = useState<Record<string, { firstName: string; lastName: string | null }>>({});
+  const [firebaseUserNames, setFirebaseUserNames] = useState<Record<string, { firstName: string; lastName: string | null; picture?: string | null }>>({});
   const [postgresUsers, setPostgresUsers] = useState<Record<string, PostgresUser>>({});
   const [globalDotOpacity, setGlobalDotOpacity] = useState(1);
   const [syncedUsers, setSyncedUsers] = useState<Set<string>>(new Set());
+  const [guestAvatars, setGuestAvatars] = useState<Record<string, string>>({});
   
   // Subscribe to the global singleton pulse ticker
   useEffect(() => {
@@ -247,7 +253,8 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         if (result) {
           newUserNames[result.id] = {
             firstName: result.data.firstName,
-            lastName: result.data.lastName
+            lastName: result.data.lastName,
+            picture: result.data.picture || null
           };
         }
       });
@@ -262,6 +269,40 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   // Track previous state to avoid logging on every heartbeat
   const previousStateRef = React.useRef<string>('');
   
+  // Assign random animal avatars to guest users (but not for current user)
+  useEffect(() => {
+    const animals = ['bear', 'owl', 'tiger', 'turtle', 'wolf'];
+    const newGuestAvatars: Record<string, string> = {};
+    
+    activeUsers.forEach(user => {
+      // Check if this user is a guest:
+      // 1. No data in PostgreSQL (leaderboard or direct fetch)
+      // 2. Firebase data shows empty/Guest name OR no Firebase data at all
+      // 3. No existing profile picture
+      const hasPostgresData = userInfoMap[user.id] || postgresUsers[user.id];
+      const firebaseData = firebaseUserNames[user.id];
+      const hasRealName = firebaseData && firebaseData.firstName && 
+                          firebaseData.firstName !== '' && 
+                          firebaseData.firstName !== 'Guest';
+      const hasProfilePicture = firebaseData?.picture || 
+                                userProfileImages[user.id] || 
+                                postgresUsers[user.id]?.profile_image;
+      
+      // Only assign animal avatar if they're truly a guest without any real data
+      const isGuestUser = !hasPostgresData && !hasRealName && !hasProfilePicture;
+      
+      if (isGuestUser && !guestAvatars[user.id]) {
+        // Assign random animal avatar for guest users
+        const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+        newGuestAvatars[user.id] = `/${randomAnimal}.png`;
+      }
+    });
+    
+    if (Object.keys(newGuestAvatars).length > 0) {
+      setGuestAvatars(prev => ({ ...prev, ...newGuestAvatars }));
+    }
+  }, [activeUsers, userInfoMap, postgresUsers, firebaseUserNames, guestAvatars, userProfileImages]);
+
   // Listen to room presence using new PresenceService
   useEffect(() => {
     if (!roomId) return;
@@ -284,7 +325,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       userMap.forEach((isActive, userId) => {
         const userObj = {
           id: userId,
-          displayName: "Anonymous" // Will be replaced by Firebase user data
+          displayName: "Guest User" // Will be replaced by Firebase user data
         };
         
         if (isActive) {
@@ -347,7 +388,26 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           {/* Profile picture */}
           <div className="relative mr-2">
             {(() => {
-              let profileImage = userProfileImages[u.id] || postgresUsers[u.id]?.profile_image;
+              // Check if this is the current user
+              // Instance user.id will be Firebase UID once auth completes
+              const isCurrentUser = instanceUser && u.id === instanceUser.id;
+              
+              // Priority order for profile images:
+              // 1. If current user, use Redux avatar (for guests, this is their persistent animal)
+              // 2. Real profile images from PostgreSQL (for authenticated users)
+              // 3. Guest animal avatars (randomly assigned for other guests)
+              
+              let profileImage;
+              if (isCurrentUser) {
+                // This is me - use my Redux avatar
+                profileImage = currentUser.profile_image;
+              } else {
+                // Someone else - use their real image or random animal
+                profileImage = userProfileImages[u.id] || 
+                              postgresUsers[u.id]?.profile_image ||
+                              firebaseUserNames[u.id]?.picture ||
+                              guestAvatars[u.id];
+              }
               
               // Process Google profile image URLs to ensure consistent size
               if (profileImage && profileImage.includes('googleusercontent.com')) {
@@ -360,8 +420,8 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               }
               
               const userInfo = userInfoMap[u.id] || firebaseUserNames[u.id] || postgresUsers[u.id];
-              const firstName = userInfo?.firstName || u.displayName.split(' ')[0] || 'U';
-              const lastName = userInfo?.lastName || '';
+              const firstName = userInfo?.firstName || u.displayName.split(' ')[0] || 'Guest';
+              const lastName = userInfo?.lastName || (userInfo ? '' : 'User');
               const initials = (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
               
               return (

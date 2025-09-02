@@ -83,6 +83,7 @@ interface SortableRoomCardProps {
     picture?: string | null;
     isActive: boolean;
   }>;
+  currentUser: any; // Redux user state
 }
 
 const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
@@ -91,6 +92,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
   onJoinRoom,
   activeCount,
   roomUsers,
+  currentUser,
 }) => {
   const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: room.id,
@@ -212,23 +214,29 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
 
               // Add member avatars
               for (let i = 0; i < membersToShow; i++) {
-                const user = sortedUsers[i];
-                const firstName = user.firstName || "";
-                const lastName = user.lastName || "";
+                const roomUser = sortedUsers[i];
+                const firstName = roomUser.firstName || "";
+                const lastName = roomUser.lastName || "";
                 const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
                 const displayInitials = initials.trim() || "U";
                 const fullName = `${firstName} ${lastName}`.trim() || "Unknown User";
+                
+                // Check if this is the current user and use their animal avatar if available
+                const isCurrentUser = roomUser.userId === currentUser.user_id;
+                const avatarSrc = isCurrentUser && currentUser.profile_image 
+                  ? currentUser.profile_image 
+                  : roomUser.picture;
 
                 displayItems.push(
                   <div
-                    key={user.userId}
+                    key={roomUser.userId}
                     className="relative"
-                    title={`${fullName}${user.isActive ? " - Active" : " - Idle"}`}
+                    title={`${fullName}${roomUser.isActive ? " - Active" : " - Idle"}`}
                   >
-                    {user.picture && user.picture.trim() !== "" ? (
+                    {avatarSrc && avatarSrc.trim() !== "" ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={user.picture}
+                        src={avatarSrc}
                         alt={fullName}
                         className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover"
                         onError={(e) => {
@@ -248,7 +256,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                     )}
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
-                        user.isActive ? "bg-green-500 animate-sync-pulse" : "bg-yellow-500"
+                        roomUser.isActive ? "bg-green-500 animate-sync-pulse" : "bg-yellow-500"
                       }`}
                     />
                   </div>
@@ -1495,6 +1503,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             onSettingsClick={setEditingRoom}
                             activeCount={roomActiveCounts[room.id] || 0}
                             roomUsers={roomUsers[room.id] || []}
+                            currentUser={user}
                           />
                         );
                       })}
@@ -2138,8 +2147,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                         {(() => {
                                           // Get profile picture from PostgreSQL data first
                                           const userData = userLastActiveData[member.id];
-                                          const profilePicture =
-                                            userData?.profile_image || member.picture || member.profileImage;
+                                          // Check if this is the current user and use their animal avatar if available
+                                          const isCurrentUser = member.id === user.user_id || member.firebase_id === user.user_id;
+                                          const profilePicture = isCurrentUser && user.profile_image 
+                                            ? user.profile_image
+                                            : (userData?.profile_image || member.picture || member.profileImage);
                                           // const firstName = userData?.first_name || member.firstName || member.name.split(" ")[0] || '';
                                           // const lastName = userData?.last_name || member.lastName || member.name.split(" ")[1] || '';
                                           // const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || member.avatar || 'U';
@@ -2353,23 +2365,29 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                           // Add member avatars
                           for (let i = 0; i < membersToShow; i++) {
-                            const user = sortedUsers[i];
-                            const firstName = user.firstName || "";
-                            const lastName = user.lastName || "";
+                            const roomUser = sortedUsers[i];
+                            const firstName = roomUser.firstName || "";
+                            const lastName = roomUser.lastName || "";
                             const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
                             const displayInitials = initials.trim() || "U";
                             const fullName = `${firstName} ${lastName}`.trim() || "Unknown User";
+                            
+                            // Check if this is the current user and use their animal avatar if available
+                            const isCurrentUser = roomUser.userId === user.user_id;
+                            const avatarSrc = isCurrentUser && user.profile_image 
+                              ? user.profile_image 
+                              : roomUser.picture;
 
                             displayItems.push(
                               <div
-                                key={user.userId}
+                                key={roomUser.userId}
                                 className="relative"
-                                title={`${fullName}${user.isActive ? " - Active" : " - Idle"}`}
+                                title={`${fullName}${roomUser.isActive ? " - Active" : " - Idle"}`}
                               >
-                                {user.picture && user.picture.trim() !== "" ? (
+                                {avatarSrc && avatarSrc.trim() !== "" ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
-                                    src={user.picture}
+                                    src={avatarSrc}
                                     alt={fullName}
                                     className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover"
                                     onError={(e) => {
@@ -2389,7 +2407,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 )}
                                 <div
                                   className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
-                                    user.isActive ? "bg-green-500" : "bg-yellow-500"
+                                    roomUser.isActive ? "bg-green-500" : "bg-yellow-500"
                                   }`}
                                 />
                               </div>
