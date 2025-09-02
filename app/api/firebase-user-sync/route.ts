@@ -5,10 +5,12 @@ import prisma from "@/lib/prisma";
 import { adminAuth } from "@/lib/firebase-admin";
 
 export const POST = async (req: NextRequest) => {
+  console.log("[API /firebase-user-sync] Sync request received");
+  
   // Check if Firebase Admin is properly configured
   if (!adminAuth) {
     console.error(
-      "Firebase Admin not configured. Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables."
+      "[API /firebase-user-sync] Firebase Admin not configured. Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables."
     );
     return NextResponse.json({ error: "Firebase Admin not configured" }, { status: 503 });
   }
@@ -16,12 +18,21 @@ export const POST = async (req: NextRequest) => {
   const authHeader = req.headers.get("Authorization");
   const idToken = authHeader?.split("Bearer ")[1];
   if (!idToken) {
+    console.error("[API /firebase-user-sync] Missing token");
     return NextResponse.json({ error: "Missing token" }, { status: 401 });
   }
 
   try {
+    console.log("[API /firebase-user-sync] Verifying ID token");
     const decoded = await adminAuth.verifyIdToken(idToken);
     const { uid, email, name, picture } = decoded;
+    
+    console.log("[API /firebase-user-sync] Token verified:", {
+      uid,
+      email,
+      name,
+      hasPicture: !!picture
+    });
 
     let user;
     try {
@@ -30,6 +41,7 @@ export const POST = async (req: NextRequest) => {
       const rawFirstName = name?.split(" ")[0] || email?.split("@")[0] || "";
       const firstName = rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1);
 
+      console.log("[API /firebase-user-sync] Upserting user with auth_id:", uid);
       user = await prisma.user.upsert({
         where: { auth_id: uid },
         update: {
@@ -43,6 +55,13 @@ export const POST = async (req: NextRequest) => {
           profile_image: picture || "",
           last_active: new Date(),
         },
+      });
+      
+      console.log("[API /firebase-user-sync] User upserted:", {
+        user_id: user.id,
+        auth_id: user.auth_id,
+        email: user.email,
+        first_name: user.first_name
       });
 
       // Create preferences if they don't exist (for new users or existing users without preferences)
@@ -64,8 +83,16 @@ export const POST = async (req: NextRequest) => {
       throw dbError;
     }
 
+    console.log("[API /firebase-user-sync] Sync successful, returning user");
     return NextResponse.json({ status: "ok", user });
   } catch (error) {
+    console.error("[API /firebase-user-sync] Error syncing user:", error);
+    if (error instanceof Error) {
+      console.error("[API /firebase-user-sync] Error details:", {
+        message: error.message,
+        stack: error.stack
+      });
+    }
     return NextResponse.json(
       {
         error: "Failed to sync user",

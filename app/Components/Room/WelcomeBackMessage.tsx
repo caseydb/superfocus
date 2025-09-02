@@ -9,7 +9,7 @@ interface WelcomeBackMessageProps {
 }
 
 export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) {
-  const { user } = useInstance();
+  const { } = useInstance();
   const reduxUser = useSelector((state: RootState) => state.user);
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
@@ -114,7 +114,7 @@ export default function WelcomeBackMessage({ roomId }: WelcomeBackMessageProps) 
 
     // Check immediately - no delay needed
     checkWelcomeBack();
-  }, [roomId, hasProcessed, cachedName]);
+  }, [roomId, hasProcessed, cachedName, reduxUser.isGuest]);
 
   // Update welcome message when name becomes available
   useEffect(() => {

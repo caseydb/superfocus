@@ -54,7 +54,7 @@ export const fetchPreferences = createAsyncThunk(
   "preferences/fetch",
   async (userId: string, { getState }) => {
     // Check if user is guest
-    const state = getState() as any;
+    const state = getState() as { user?: { isGuest?: boolean }; preferences: PreferenceState };
     if (state.user?.isGuest) {
       // For guest users, return default preferences (already in Redux state)
       return state.preferences;
@@ -76,7 +76,7 @@ export const updatePreferences = createAsyncThunk(
   "preferences/update",
   async ({ userId, updates }: { userId: string; updates: Partial<PreferenceState> }, { getState }) => {
     // Check if user is guest
-    const state = getState() as any;
+    const state = getState() as { user?: { isGuest?: boolean } };
     if (state.user?.isGuest) {
       // For guest users, just return the updates without API call
       // The preferences are already updated in Redux via setPreference

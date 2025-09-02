@@ -743,7 +743,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           // Guest user view - show sign-in prompt with full placeholder UI
           <div>
             {/* Sign-in prompt at the top */}
-            <div className="mb-8 flex flex-col items-center gap-2">
+            <div className="mb-8 flex flex-col items-center">
               <button
                 onClick={() => signInWithGoogle()}
                 className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 px-5 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition cursor-pointer"
@@ -751,11 +751,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                 <Image src="/google.png" alt="Google" width={20} height={20} />
                 Continue with Google to track
               </button>
+              
+              {/* Divider with "or" */}
+              <div className="relative w-full max-w-xs my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-800/30"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-gray-900 text-gray-500">or</span>
+                </div>
+              </div>
+              
+              {/* Manual Sign In */}
               <button
                 onClick={() => setShowSignInModal(true)}
-                className="text-gray-500 text-xs hover:text-gray-400 transition-colors cursor-pointer"
+                className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer"
               >
-                or sign in manually
+                Sign in with email
               </button>
             </div>
             

@@ -626,6 +626,14 @@ export class PresenceService {
 
   // Static method to update presence for a specific user/room from anywhere (e.g., button hooks)
   static async updateUserPresence(userId: string, roomId: string, isActive: boolean, taskInfo?: { taskId?: string; taskName?: string }): Promise<void> {
+    console.log('[PresenceService] ===== STATIC UPDATE USER PRESENCE =====', {
+      userId,
+      roomId,
+      isActive,
+      taskInfo,
+      timestamp: new Date().toISOString()
+    });
+    
     try {
       const updates: Record<string, boolean | object | string | null> = {};
       

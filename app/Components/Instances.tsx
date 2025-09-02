@@ -5,6 +5,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createPublicRoom } from "@/app/utils/publicRooms";
 import { createPrivateRoom } from "@/app/utils/privateRooms";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 
 const InstanceContext = createContext<{
@@ -60,16 +62,32 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Start with a placeholder user - will be replaced by Firebase auth
   const [user, setUser] = useState<User>({ id: "", displayName: "Loading...", isPremium: false });
   const [userReady, setUserReady] = useState(false);
+  
+  // Get Redux user data
+  const reduxUser = useSelector((state: RootState) => state.user);
 
   // Update user from Firebase Auth if signed in
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        // Prefer Redux user data if available (authenticated user)
+        let displayName = "Guest User";
+        
+        if (!reduxUser.isGuest && reduxUser.first_name) {
+          // Use Redux data for authenticated users
+          displayName = reduxUser.last_name 
+            ? `${reduxUser.first_name} ${reduxUser.last_name}`
+            : reduxUser.first_name;
+        } else if (!firebaseUser.isAnonymous) {
+          // Fallback to Firebase display name for authenticated users without Redux data yet
+          displayName = processDisplayName(firebaseUser);
+        }
+        
         // Use Firebase UID for both anonymous and authenticated users
         // This ensures presence tracking works for guests
         setUser({
           id: firebaseUser.uid,
-          displayName: firebaseUser.isAnonymous ? "Guest User" : processDisplayName(firebaseUser),
+          displayName,
           isPremium: false, // update if you have premium logic
         });
         setUserReady(true);
@@ -79,7 +97,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
     return () => unsub();
-  }, []);
+  }, [reduxUser]); // Add reduxUser as dependency to update when Redux state changes
 
   // Legacy instances listener removed - now using PrivateRooms and EphemeralRooms
   // Instances array no longer needed

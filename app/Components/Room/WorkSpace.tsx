@@ -12,7 +12,6 @@ import { roomService } from "@/app/services/roomService";
 import { createPrivateRoom } from "@/app/utils/privateRooms";
 import { createTeamRoom } from "@/app/utils/teamRooms";
 import { useInstance } from "../Instances";
-import SignIn from "../SignIn";
 import { signInWithGoogle } from "@/lib/auth";
 import {
   DndContext,
@@ -86,7 +85,11 @@ interface SortableRoomCardProps {
     picture?: string | null;
     isActive: boolean;
   }>;
-  currentUser: any; // Redux user state
+  currentUser: {
+    user_id?: string | null;
+    profile_image?: string | null;
+    isGuest?: boolean;
+  }; // Redux user state
   firebaseUserId?: string; // Firebase UID
 }
 
@@ -985,6 +988,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const currentRoomUrl = useMemo(() => {
     // Remove the leading slash to get the room URL
     const roomUrl = pathname ? pathname.substring(1) : ""; // e.g., "/test" becomes "test"
+    
+    // If we're on the base URL ("/"), we're in the GSD room
+    if (roomUrl === "" || roomUrl === "/") {
+      return "gsd";
+    }
+    
     return roomUrl;
   }, [pathname]);
 

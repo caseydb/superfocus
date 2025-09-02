@@ -2,6 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, remove, get, update } from "firebase/database";
 import { LocalTaskCache } from "@/app/utils/localTaskCache";
+import type { RootState } from "./store";
 
 export interface Task {
   id: string;
@@ -90,7 +91,23 @@ export const createTaskThunk = createAsyncThunk(
     timezone?: string;
   }, { getState }) => {
     // Get room ID from the current URL
-    const roomId = window.location.pathname.split("/").pop() || "default";
+    const pathParts = window.location.pathname.split("/").filter(Boolean);
+    
+    let roomId: string;
+    
+    // Check if we're actually in a room (URL should be /roomSlug)
+    if (pathParts.length === 0) {
+      // We're on the home page - default to GSD room
+      roomId = "gsd";
+    } else {
+      roomId = pathParts[pathParts.length - 1];
+    }
+    
+    // Don't allow "default" as a room ID
+    if (roomId === "default") {
+      // If somehow we still get "default", redirect to GSD
+      roomId = "gsd";
+    }
 
     // Get user timezone from state if not provided
     const state = getState() as { user: { timezone: string } };

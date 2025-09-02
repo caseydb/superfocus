@@ -131,9 +131,9 @@ const userSlice = createSlice({
       state.error = null;
       state.profile_image = guestAvatar;
     },
-    upgradeToAuthenticatedUser: (state, action: PayloadAction<{ firebaseUser: any }>) => {
+    upgradeToAuthenticatedUser: (state, action: PayloadAction<{ firebaseUser: { uid: string; displayName?: string | null; email?: string | null } }>) => {
       state.auth_id = action.payload.firebaseUser.uid;
-      state.email = action.payload.firebaseUser.email;
+      state.email = action.payload.firebaseUser.email ?? null;
       state.isGuest = false;
       // Clear the animal avatar when upgrading to authenticated user
       state.profile_image = null;
@@ -144,10 +144,10 @@ const userSlice = createSlice({
       }
       // Keep other fields until real data is fetched
     },
-    setGuestWithAuth: (state, action: PayloadAction<{ firebaseUser: any }>) => {
+    setGuestWithAuth: (state, action: PayloadAction<{ firebaseUser: { uid: string; email?: string | null; displayName?: string | null; isAnonymous?: boolean } }>) => {
       // User is authenticated with Firebase but not synced to PostgreSQL
       state.auth_id = action.payload.firebaseUser.uid;
-      state.email = action.payload.firebaseUser.email;
+      state.email = action.payload.firebaseUser.email ?? null;
       state.isGuest = true; // Still guest because no PostgreSQL data
       state.first_name = action.payload.firebaseUser.displayName?.split(' ')[0] || 'Guest';
       state.last_name = action.payload.firebaseUser.displayName?.split(' ')[1] || 'User';

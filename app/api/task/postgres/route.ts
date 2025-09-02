@@ -27,21 +27,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If still not found, create a default room for this instance
+    // If still not found, don't create a room automatically
     if (!room) {
-      // Create a default room for this Firebase instance
-      try {
-        room = await prisma.room.create({
-          data: {
-            name: `Room ${room_id}`,
-            slug: room_id, // Use the Firebase instance ID as slug
-            picture: "/default-room.png",
-            owner: user_id, // Use the user as owner
-          },
-        });
-      } catch {
-        return NextResponse.json({ error: `Failed to create room for instance: ${room_id}` }, { status: 500 });
-      }
+      console.error(`[API /task/postgres] Room not found: ${room_id}`);
+      return NextResponse.json({ 
+        error: `Room not found: ${room_id}. Tasks can only be created within existing rooms.` 
+      }, { status: 404 });
     }
 
     // Create task in database with the provided UUID

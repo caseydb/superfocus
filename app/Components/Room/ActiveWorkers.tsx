@@ -247,7 +247,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       });
       
       const results = await Promise.all(userPromises);
-      const newUserNames: Record<string, { firstName: string; lastName: string | null }> = {};
+      const newUserNames: Record<string, { firstName: string; lastName: string | null; picture?: string | null }> = {};
       
       results.forEach(result => {
         if (result) {
@@ -378,8 +378,9 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             }}
             onMouseLeave={(e) => {
               // Check if we're moving to the tooltip
-              const relatedTarget = e.relatedTarget as HTMLElement;
-              if (relatedTarget && e.currentTarget.contains(relatedTarget)) {
+              const relatedTarget = e.relatedTarget;
+              // Only check contains if relatedTarget is a valid Node
+              if (relatedTarget && relatedTarget instanceof Node && e.currentTarget.contains(relatedTarget)) {
                 return; // Don't close if moving to child element (tooltip)
               }
               setHoveredUserId(null);

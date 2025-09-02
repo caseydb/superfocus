@@ -40,11 +40,8 @@ import WelcomeBackMessage from "./WelcomeBackMessage";
 import RoomsModal from "./RoomsModal";
 import Notes from "./Notes";
 import TaskNotes from "./TaskNotes";
-import SignIn from "../SignIn";
 import Preferences from "./Preferences";
 import InvitePopup from "./InvitePopup";
-import { signInWithGoogle } from "@/lib/auth";
-import Image from "next/image";
 import MobileMenu from "./MobileMenu";
 import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
 import { PresenceService } from "@/app/utils/presenceService";
@@ -131,7 +128,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // For guest users, use per-task cached counter; for authenticated users, use task counter
   // Treat undefined isGuest as guest mode (safer default)
   const reduxCounterValue = useSelector((state: RootState) => state.counter.value);
-  const isGuestUser = user.isGuest !== false; // true or undefined = guest mode
+  const isGuestUser = reduxUser.isGuest !== false; // true or undefined = guest mode
   
   // Load counter from cache when task changes (for guests)
   useEffect(() => {
@@ -473,6 +470,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
           // Initialize presence if not already done
           if (!roomPresence) {
+            console.log("[RoomShell] Initializing presence for user:", {
+              userId: user.id,
+              roomId: currentInstance.id,
+              reduxUserId: reduxUser.user_id,
+              reduxAuthId: reduxUser.auth_id,
+              isGuest: reduxUser.isGuest
+            });
             const presence = new PresenceService(user.id, currentInstance.id);
             const initialized = await presence.initialize();
             if (initialized) {
@@ -670,6 +674,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     currentInstance,
     userReady,
     reduxUser.user_id,
+    reduxUser.auth_id,
+    reduxUser.isGuest,
     publicRoomId,
     privateRoomId,
     setPublicRoomInstance,
@@ -795,10 +801,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (roomPresence) {
-        roomPresence.cleanup();
+                roomPresence.cleanup();
       }
     };
-  }, [roomPresence]);
+  }, [roomPresence, user?.id]); // Also cleanup if user ID changes
 
   // Track active user status
   const handleActiveChange = (isActive: boolean) => {

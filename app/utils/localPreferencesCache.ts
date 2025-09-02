@@ -26,8 +26,7 @@ class LocalPreferencesCache {
       if (!cached) return {};
       
       return JSON.parse(cached);
-    } catch (error) {
-      console.error('Error reading preferences from cache:', error);
+    } catch {
       return {};
     }
   }
@@ -40,8 +39,7 @@ class LocalPreferencesCache {
       const existing = this.getPreferences();
       const updated = { ...existing, ...preferences };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updated));
-    } catch (error) {
-      console.error('Error saving preferences to cache:', error);
+    } catch {
     }
   }
 
@@ -50,8 +48,7 @@ class LocalPreferencesCache {
     
     try {
       localStorage.removeItem(this.STORAGE_KEY);
-    } catch (error) {
-      console.error('Error clearing preferences cache:', error);
+    } catch {
     }
   }
 }

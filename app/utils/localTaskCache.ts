@@ -16,7 +16,7 @@ export class LocalTaskCache {
       
       const tasks = JSON.parse(cached);
       // Ensure tasks have all required fields
-      return tasks.map((task: any) => ({
+      return tasks.map((task: Partial<Task> & { id?: string; name?: string }) => ({
         id: task.id || `local_${Date.now()}_${Math.random()}`,
         name: task.name || "",
         completed: task.completed || false,

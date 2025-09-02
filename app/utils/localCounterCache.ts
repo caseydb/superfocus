@@ -36,7 +36,7 @@ class LocalCounterCache {
       
       const value = taskCounter.count || 0;
       return value;
-    } catch (error) {
+    } catch {
       return 0;
     }
   }
@@ -63,7 +63,7 @@ class LocalCounterCache {
       
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(counters));
       
-    } catch (error) {
+    } catch {
     }
   }
 
@@ -72,7 +72,7 @@ class LocalCounterCache {
     
     try {
       localStorage.removeItem(this.STORAGE_KEY);
-    } catch (error) {
+    } catch {
     }
   }
 }

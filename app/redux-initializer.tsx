@@ -26,7 +26,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   const hasAttemptedFetch = useRef(false);
   const hasCheckedTimezone = useRef(false);
   const isGuest = useSelector((state: RootState) => state.user.isGuest);
-  const reduxUser = useSelector((state: RootState) => state.user);
+  const currentUser = useSelector((state: RootState) => state.user);
 
   useEffect(() => {
     // STEP 1: Initialize as guest immediately (no waiting)
@@ -36,21 +36,33 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
       
       // Load cached tasks for guest users immediately
       dispatch(loadFromCache());
-      
-      // Sign in anonymously for guest users to enable Firebase features
-      signInAnonymously(auth).catch((error) => {
-        console.error("Failed to sign in anonymously:", error);
-      });
     }
 
     // STEP 2: Check auth state and try to upgrade if authenticated
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // If no Firebase user and we haven't signed in anonymously yet
+      if (!firebaseUser) {
+        try {
+          await signInAnonymously(auth);
+        } catch (error) {
+          console.error("[ReduxInitializer] Failed to sign in anonymously:", error);
+        }
+        return;
+      }
+      
       if (firebaseUser && !hasAttemptedFetch.current) {
         // Check if this is an anonymous user
         if (firebaseUser.isAnonymous) {
           // Anonymous user - stay in guest mode but use Firebase features
           return;
         }
+        
+        // IMPORTANT: Clear any guest/cached data BEFORE fetching real user data
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("guest_id");
+          localStorage.removeItem("guest_avatar");
+        }
+        dispatch(clearCache()); // Clear cached tasks immediately
         
         hasAttemptedFetch.current = true;
 
@@ -71,8 +83,14 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               localStorage.setItem("firebase_token", idToken);
             }
             
-            // Upgrade to authenticated user
-            dispatch(upgradeToAuthenticatedUser({ firebaseUser }));
+            // Upgrade to authenticated user - extract serializable properties only
+            dispatch(upgradeToAuthenticatedUser({ 
+              firebaseUser: {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName
+              }
+            }));
           }
         } catch {
           // Silent error - will retry with user data fetch
@@ -89,9 +107,16 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
           if (userData && userData.user_id) {
             console.log('isLoggedIn');
             
-            // Clear any guest data from localStorage
+            // IMPORTANT: Update Firebase auth ID in Redux to match current Firebase user
+            // This ensures consistency between Firebase auth and Redux state
+            if (userData.auth_id !== firebaseUser.uid) {
+              dispatch(updateUser({ auth_id: firebaseUser.uid }));
+            }
+            
+            // Clear any remaining guest data from localStorage
             if (typeof window !== "undefined") {
               localStorage.removeItem("guest_id");
+              localStorage.removeItem("guest_avatar");
             }
             // Initialize Firebase Users for ALL users (even without names)
             try {
@@ -125,8 +150,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               console.error("[ReduxInitializer] Failed to initialize Firebase Users:", error);
             }
             
-            // Clear cache and fetch real tasks (replaces any cached guest tasks)
-            dispatch(clearCache());
+            // Fetch real tasks (cache was already cleared above)
             await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
 
             // Fetch user preferences
@@ -197,7 +221,14 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         } catch (error) {
           // Auth succeeded but PostgreSQL fetch failed - stay in guest mode with Firebase auth
           console.error("[ReduxInitializer] Failed to fetch user data, staying in guest mode:", error);
-          dispatch(setGuestWithAuth({ firebaseUser }));
+          dispatch(setGuestWithAuth({ 
+            firebaseUser: {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              isAnonymous: firebaseUser.isAnonymous
+            }
+          }));
           
           // Retry once after another delay
           setTimeout(async () => {
@@ -223,8 +254,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                   console.error("[ReduxInitializer Retry] Failed to initialize Firebase Users:", error);
                 }
                 
-                // Clear cache and fetch real tasks (replaces any cached guest tasks)
-                dispatch(clearCache());
+                // Fetch real tasks (cache should already be cleared)
                 await dispatch(fetchTasks({ userId: userData.user_id })).unwrap();
 
                 // Fetch user preferences
@@ -299,17 +329,19 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
             }
           }, 3000);
         }
-      } else if (!firebaseUser) {
-        // User signed out - reset to guest mode
-        hasAttemptedFetch.current = false;
-        if (!isGuest) {
-          dispatch(initializeGuestMode());
-            }
+      } else if (firebaseUser && hasAttemptedFetch.current) {
+        // IMPORTANT: Check if this is a page reload scenario where we lost Redux state
+        // Check for authenticated Firebase user but guest Redux state
+        if (!firebaseUser.isAnonymous && firebaseUser.email && (isGuest || !currentUser.user_id)) {
+          hasAttemptedFetch.current = false;
+          // Force a re-run of the auth state logic
+          // The next onAuthStateChanged call will re-attempt the fetch
+        }
       }
     });
 
     return () => unsubscribe();
-  }, [dispatch, isGuest]);
+  }, [dispatch, isGuest, currentUser.user_id]);
 
   return <>{children}</>;
 }

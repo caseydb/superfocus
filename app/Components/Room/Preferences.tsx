@@ -1,7 +1,7 @@
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
-import { updatePreferences } from "../../store/preferenceSlice";
+import { setPreference, updatePreferences } from "../../store/preferenceSlice";
 
 interface PreferencesProps {
   onClose: () => void;
@@ -57,7 +57,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   value={preferences.task_selection_mode}
                   onChange={async (e) => {
                     const newValue = e.target.value;
-                    if (reduxUser.user_id) {
+                    // Always update local state (and cache for guests)
+                    dispatch(setPreference({ key: 'task_selection_mode', value: newValue }));
+                    
+                    // Only update API for authenticated users
+                    if (reduxUser.user_id && reduxUser.isGuest === false) {
                       try {
                         await dispatch(
                           updatePreferences({
@@ -65,8 +69,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
                             updates: { task_selection_mode: newValue }
                           })
                         ).unwrap();
-                      } catch (error) {
-                        console.error("Failed to update task selection mode:", error);
+                      } catch {
+                        // Silently fail for API updates
                       }
                     }
                   }}
@@ -99,7 +103,11 @@ export default function Preferences({ onClose }: PreferencesProps) {
                       value={preferences.focus_check_time}
                       onChange={async (e) => {
                         const newValue = parseInt(e.target.value);
-                        if (reduxUser.user_id) {
+                        // Always update local state (and cache for guests)
+                        dispatch(setPreference({ key: 'focus_check_time', value: newValue }));
+                        
+                        // Only update API for authenticated users
+                        if (reduxUser.user_id && reduxUser.isGuest === false) {
                           try {
                             await dispatch(
                               updatePreferences({
@@ -107,8 +115,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
                                 updates: { focus_check_time: newValue }
                               })
                             ).unwrap();
-                          } catch (error) {
-                            console.error("Failed to update focus check time:", error);
+                          } catch {
+                            // Silently fail for API updates
                           }
                         }
                       }}

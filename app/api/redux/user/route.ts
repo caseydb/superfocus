@@ -118,7 +118,13 @@ export async function GET(request: NextRequest) {
       first_visit: user.first_visit,
     });
   } catch (error) {
-    console.error('GET /api/redux/user error:', error);
+    console.error("[API /redux/user GET] Error fetching user:", error);
+    if (error instanceof Error) {
+      console.error("[API /redux/user GET] Error details:", {
+        message: error.message,
+        stack: error.stack
+      });
+    }
     return NextResponse.json({ error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

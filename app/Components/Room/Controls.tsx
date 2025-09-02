@@ -11,6 +11,7 @@ import { RootState, AppDispatch } from "../../store/store";
 import { updatePreferences, setPreference } from "../../store/preferenceSlice";
 import AccountModal from "./AccountModal";
 import BillingModal from "./BillingModal";
+import SignIn from "../SignIn";
 
 interface ControlsProps {
   className?: string;
@@ -68,6 +69,7 @@ export default function Controls({
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(localVolume > 0 ? localVolume : 0.5);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownIconRef = useRef<HTMLSpanElement>(null);
@@ -551,25 +553,27 @@ export default function Controls({
 
           {/* Menu Items */}
           <div className="p-1">
-            {/* Account Button */}
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
-              onClick={() => {
-                setShowAccountModal(true);
-                setDropdownOpen(false);
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="font-medium font-mono">Account</span>
-            </button>
+            {/* Account Button - Only for authenticated users */}
+            {!reduxUser.isGuest && (
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+                onClick={() => {
+                  setShowAccountModal(true);
+                  setDropdownOpen(false);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="font-medium font-mono">Account</span>
+              </button>
+            )}
 
             {/* Preferences Button */}
             <button
@@ -592,14 +596,15 @@ export default function Controls({
               <span className="font-medium font-mono">Preferences</span>
             </button>
 
-            {/* Plans and Billing Button */}
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
-              onClick={() => {
-                setShowBillingModal(true);
-                setDropdownOpen(false);
-              }}
-            >
+            {/* Plans and Billing Button - Only for authenticated users */}
+            {!reduxUser.isGuest && (
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+                onClick={() => {
+                  setShowBillingModal(true);
+                  setDropdownOpen(false);
+                }}
+              >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <rect
                   x="3"
@@ -624,26 +629,64 @@ export default function Controls({
               </svg>
               <span className="font-medium font-mono">Plan & Billing</span>
             </button>
+            )}
 
             {/* Sign Out/Sign In Button */}
             {reduxUser.isGuest ? (
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
-                onClick={async () => {
-                  await signInWithGoogle();
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="font-medium font-mono">Sign In</span>
-              </button>
+              <>
+                <div className="mx-3 my-2 border-t border-gray-800/50"></div>
+                <button
+                  className="w-full flex items-center justify-center gap-3 px-3 py-2.5 mx-3 mb-2 rounded-md bg-white text-black font-bold hover:bg-gray-100 transition-all duration-200"
+                  style={{ width: 'calc(100% - 1.5rem)' }}
+                  onClick={async () => {
+                    await signInWithGoogle();
+                  }}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+                
+                {/* Divider with "or" */}
+                <div className="px-3 mb-2">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-800/30"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="px-2 bg-gray-900 text-gray-500">or</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Manual Sign In */}
+                <button
+                  className="w-full text-center px-3 py-2 mx-3 mb-2 text-gray-400 hover:text-white text-sm transition-colors"
+                  style={{ width: 'calc(100% - 1.5rem)' }}
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    setShowSignInModal(true);
+                  }}
+                >
+                  Sign in with email
+                </button>
+              </>
             ) : (
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
@@ -920,25 +963,27 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Invite Others</span>
               </button>
 
-              {/* Account Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                onClick={() => {
-                  setShowAccountModal(true);
-                  setShowSideModal(false);
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path
-                    d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
-                    stroke="#9ca3af"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Account</span>
-              </button>
+              {/* Account Button - Only for authenticated users */}
+              {!reduxUser.isGuest && (
+                <button
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                  onClick={() => {
+                    setShowAccountModal(true);
+                    setShowSideModal(false);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
+                    <path
+                      d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+                      stroke="#9ca3af"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Account</span>
+                </button>
+              )}
 
               {/* Preferences Button */}
               <button
@@ -1029,14 +1074,15 @@ export default function Controls({
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Analytics</span>
               </button>
 
-              {/* Plan & Billing Button */}
-              <button
-                className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                onClick={() => {
-                  setShowBillingModal(true);
-                  setShowSideModal(false);
-                }}
-              >
+              {/* Plan & Billing Button - Only for authenticated users */}
+              {!reduxUser.isGuest && (
+                <button
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                  onClick={() => {
+                    setShowBillingModal(true);
+                    setShowSideModal(false);
+                  }}
+                >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
                   <rect
                     x="3"
@@ -1061,26 +1107,63 @@ export default function Controls({
                 </svg>
                 <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Plan & Billing</span>
               </button>
+              )}
 
               {/* Sign Out/Sign In Button */}
               {reduxUser.isGuest ? (
-                <button
-                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
-                  onClick={async () => {
-                    await signInWithGoogle();
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
-                    <path
-                      d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
-                      stroke="#9ca3af"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-gray-400 group-hover:text-[#FFAA00] font-medium font-mono">Sign In</span>
-                </button>
+                <>
+                  <div className="mx-4 my-3 border-t border-gray-800/50"></div>
+                  <div className="px-4 pb-3">
+                    <button
+                      className="w-full flex items-center justify-center gap-3 px-3 py-3 rounded-lg bg-white text-black font-bold hover:bg-gray-100 transition-all duration-200"
+                      onClick={async () => {
+                        await signInWithGoogle();
+                        setShowSideModal(false);
+                      }}
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                      <span>Continue with Google</span>
+                    </button>
+                    
+                    {/* Divider with "or" */}
+                    <div className="relative my-3">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-800/30"></div>
+                      </div>
+                      <div className="relative flex justify-center text-xs">
+                        <span className="px-2 bg-gray-900 text-gray-500">or</span>
+                      </div>
+                    </div>
+                    
+                    {/* Manual Sign In */}
+                    <button
+                      className="w-full text-center py-2 text-gray-400 hover:text-white text-sm transition-colors"
+                      onClick={() => {
+                        setShowSideModal(false);
+                        setShowSignInModal(true);
+                      }}
+                    >
+                      Sign in with email
+                    </button>
+                  </div>
+                </>
               ) : (
                 <button
                   className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
@@ -1225,6 +1308,18 @@ export default function Controls({
       )}
       {showBillingModal && (
         <BillingModal onClose={() => setShowBillingModal(false)} />
+      )}
+      
+      {/* Sign In Modal */}
+      {showSignInModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowSignInModal(false)}
+        >
+          <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+            <SignIn />
+          </div>
+        </div>
       )}
     </div>
   );
