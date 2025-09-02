@@ -67,7 +67,6 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (firebaseUser) {
         // Use Firebase UID for both anonymous and authenticated users
         // This ensures presence tracking works for guests
-        console.log("Setting user from Firebase:", firebaseUser.uid, firebaseUser.isAnonymous ? "(anonymous)" : "(authenticated)");
         setUser({
           id: firebaseUser.uid,
           displayName: firebaseUser.isAnonymous ? "Guest User" : processDisplayName(firebaseUser),
@@ -76,7 +75,6 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setUserReady(true);
       } else {
         // No Firebase auth yet - wait for anonymous auth to kick in
-        console.log("No Firebase user yet, waiting for anonymous auth...");
         // Don't set userReady to true yet
       }
     });

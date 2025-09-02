@@ -137,21 +137,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     if (isGuestUser && activeTask?.id) {
       const cachedValue = LocalCounterCache.getCounter(activeTask.id);
-      console.log(`[RoomShell] Loading cached counter for task ${activeTask.id}:`, cachedValue);
       dispatch(setCounterValue(cachedValue));
     }
   }, [isGuestUser, activeTask?.id, dispatch]);
   
   const counterValue = isGuestUser ? reduxCounterValue : (activeTask?.counter || 0);
   
-  console.log('[RoomShell] User state:', user);
-  console.log('[RoomShell] Counter values:', {
-    isGuest: user.isGuest,
-    isGuestUser,
-    reduxCounterValue,
-    activeTaskCounter: activeTask?.counter,
-    finalCounterValue: counterValue
-  });
   const counterUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editingCounterValue, setEditingCounterValue] = useState("");
@@ -1473,19 +1464,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                     <button
                       onClick={() => {
                         const newValue = Math.max(0, counterValue - 1);
-                        console.log('[RoomShell] Decrement counter:', { 
-                          oldValue: counterValue, 
-                          newValue,
-                          isGuest: user.isGuest,
-                          isGuestUser 
-                        });
                         
                         // Update Redux 
                         dispatch(setCounterValue(newValue));
                         
                         if (isGuestUser && activeTask) {
                           // For guest users, just save to cache
-                          console.log('[RoomShell] Saving to cache for guest');
                           LocalCounterCache.saveCounter(activeTask.id, newValue);
                         } else if (activeTask) {
                           // For authenticated users, update task and database

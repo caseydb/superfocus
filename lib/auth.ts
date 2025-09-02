@@ -11,7 +11,7 @@ import {
 import { auth } from "./firebase"; // uses your initialized auth instance
 import LocalNotesCache from "@/app/utils/localNotesCache";
 import LocalCounterCache from "@/app/utils/localCounterCache";
-import LocalTaskCache from "@/app/utils/localTaskCache";
+import { LocalTaskCache } from "@/app/utils/localTaskCache";
 import LocalPreferencesCache from "@/app/utils/localPreferencesCache";
 
 const googleProvider = new GoogleAuthProvider(); // Google SSO provider

@@ -33,7 +33,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
       dispatch(initializeGuestMode());
-      console.log('isGuest: true');
       
       // Load cached tasks for guest users immediately
       dispatch(loadFromCache());
@@ -50,7 +49,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         // Check if this is an anonymous user
         if (firebaseUser.isAnonymous) {
           // Anonymous user - stay in guest mode but use Firebase features
-          console.log('Anonymous Firebase user for guest mode');
           return;
         }
         
@@ -119,7 +117,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 // Update picture if it exists in Redux but not in Firebase, or if it's changed
                 if (userData.profile_image && existingData.picture !== userData.profile_image) {
                   updates.picture = userData.profile_image;
-                  console.log(`📸 Updating Firebase picture for user ${firebaseUser.uid}`);
                 }
                 
                 await update(userRef, updates);
@@ -209,7 +206,6 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
               
               // If user data is fetched successfully on retry, we're authenticated
               if (userData && userData.user_id) {
-                console.log('isLoggedIn');
                 // Initialize Firebase Users for ALL users (even without names)
                 try {
                   const userRef = ref(rtdb, `Users/${firebaseUser.uid}`);
@@ -308,8 +304,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         hasAttemptedFetch.current = false;
         if (!isGuest) {
           dispatch(initializeGuestMode());
-          console.log('isGuest: true');
-        }
+            }
       }
     });
 

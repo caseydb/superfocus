@@ -8,7 +8,6 @@ interface CounterState {
 // Initialize to 0 - will be loaded per task
 const getInitialValue = (): number => {
   // Don't load from cache here - we need the taskId
-  console.log('[CounterSlice] Initializing counter to 0 (will load per task)');
   return 0;
 };
 

@@ -433,6 +433,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                       width={28}
                       height={28}
                       className="rounded-full object-cover"
+                      style={{ width: '28px', height: '28px' }}
                       unoptimized={true}
                       onError={(e) => {
                         // Silently handle error - Google images fail on localhost due to CORS

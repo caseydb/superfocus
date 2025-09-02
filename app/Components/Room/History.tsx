@@ -94,13 +94,11 @@ export default function History({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     if (currentUser.isGuest) {
       // Guest users always see all time
-      console.log("Guest user - ensuring all_time filter");
       if (selectedTimeRange !== "all_time") {
         setSelectedTimeRange("all_time");
       }
     } else if (currentUser.user_id && savedDateFilter && savedDateFilter !== "all_time") {
       // Logged-in users get their saved preference
-      console.log("Logged-in user - applying saved filter:", savedDateFilter);
       setSelectedTimeRange(savedDateFilter);
     }
   }, [currentUser.isGuest, currentUser.user_id, savedDateFilter]);
@@ -114,12 +112,6 @@ export default function History({ onClose }: { onClose?: () => void }) {
     if (urlSlug && urlSlug !== roomSlug) {
       // For guest users, always fetch all room history (no userId filter)
       // For authenticated users in public rooms, pass userId for filtering
-      console.log("Fetching history for:", { 
-        slug: urlSlug, 
-        isPublicRoom, 
-        isGuest: currentUser.isGuest,
-        userId: isPublicRoom && !currentUser.isGuest ? (currentUser.user_id || undefined) : undefined 
-      });
       dispatch(fetchHistory({ 
         slug: urlSlug, 
         isPublicRoom,
@@ -323,7 +315,6 @@ export default function History({ onClose }: { onClose?: () => void }) {
   const filterByDateRange = (entries: typeof history) => {
     // Guest users always see all data regardless of filter
     if (currentUser.isGuest) {
-      console.log("Guest user - bypassing date filter, showing all data");
       return entries;
     }
     
@@ -365,14 +356,6 @@ export default function History({ onClose }: { onClose?: () => void }) {
   const filteredHistory = filterByDateRange(userFilteredHistory);
   
   // Log for debugging
-  console.log("History data:", {
-    totalRecords: history.length,
-    filteredRecords: filteredHistory.length,
-    selectedTimeRange,
-    showOnlyMine,
-    isGuest: currentUser.isGuest,
-    savedDateFilter
-  });
 
   // Calculate total time based on privacy mode
   const calculateTotalTime = () => {
