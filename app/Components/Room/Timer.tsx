@@ -373,6 +373,8 @@ export default function Timer({
       if (secondsRef) {
         secondsRef.current = 0;
       }
+      // Reset pausedSecondsRef to prevent time inheritance
+      pausedSecondsRef.current = 0;
       // STOP the timer when no task is active
       setRunning(false);
       return;
@@ -427,6 +429,8 @@ export default function Timer({
         if (secondsRef) {
           secondsRef.current = totalTime;
         }
+        // Set pausedSecondsRef to this task's time (not the previous task's)
+        pausedSecondsRef.current = totalTime;
       } else {
         // No data in TaskBuffer, check Redux for the task
         const reduxTask = reduxTasks.find(t => t.id === activeTaskId);
@@ -435,12 +439,16 @@ export default function Timer({
           if (secondsRef) {
             secondsRef.current = reduxTask.timeSpent;
           }
+          // Set pausedSecondsRef to this task's time
+          pausedSecondsRef.current = reduxTask.timeSpent;
         } else {
           // This is truly a new task with no time
           setSeconds(0);
           if (secondsRef) {
             secondsRef.current = 0;
           }
+          // Reset pausedSecondsRef for new task
+          pausedSecondsRef.current = 0;
         }
       }
     }).catch(() => {
@@ -450,6 +458,8 @@ export default function Timer({
       if (secondsRef) {
         secondsRef.current = 0;
       }
+      // Reset pausedSecondsRef on error
+      pausedSecondsRef.current = 0;
     });
     
     // Note: Don't change running state here, let StartButton handle it
@@ -497,8 +507,9 @@ export default function Timer({
       // Initialize timing references when starting
       if (!startTimeRef.current) {
         startTimeRef.current = Date.now();
-        // Use secondsRef.current or pausedSecondsRef.current for the base
-        baseSecondsRef.current = secondsRef?.current || pausedSecondsRef.current || 0;
+        // Use only secondsRef.current for the base (the current task's time)
+        // Never fall back to pausedSecondsRef as that could be from a different task
+        baseSecondsRef.current = secondsRef?.current || 0;
         lastCorrectionRef.current = 0;
       }
       
