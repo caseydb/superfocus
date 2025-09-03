@@ -27,6 +27,11 @@ const clearGuestCaches = () => {
 };
 
 export const signInWithGoogle = async () => {
+  // Mark that we're attempting real authentication to prevent anonymous sign-in
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('pendingAuth', 'true');
+  }
+  
   // Get the old anonymous UID before signing in
   const oldUid = auth.currentUser?.uid;
   const wasAnonymous = auth.currentUser?.isAnonymous;
@@ -45,6 +50,11 @@ export const signInWithGoogle = async () => {
     displayName: result.user.displayName,
     isAnonymous: result.user.isAnonymous
   });
+  
+  // Clear the pending auth flag after successful authentication
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('pendingAuth');
+  }
   
   // If we were anonymous and now have a different UID, clean up old presence
   if (wasAnonymous && oldUid && result.user.uid !== oldUid) {
@@ -71,6 +81,11 @@ export const signInWithGoogle = async () => {
 }; // Google login
 
 export const signUpWithEmail = async (email: string, password: string) => {
+  // Mark that we're attempting real authentication to prevent anonymous sign-in
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('pendingAuth', 'true');
+  }
+  
   console.log("[Auth] ===== EMAIL SIGN UP STARTED =====", {
     email,
     timestamp: new Date().toISOString()
@@ -83,12 +98,22 @@ export const signUpWithEmail = async (email: string, password: string) => {
     email: result.user.email
   });
   
+  // Clear the pending auth flag after successful authentication
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('pendingAuth');
+  }
+  
   // Clear guest caches when signing up
   clearGuestCaches();
   return result;
 }; // Email signup
 
 export const signInWithEmail = async (email: string, password: string) => {
+  // Mark that we're attempting real authentication to prevent anonymous sign-in
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('pendingAuth', 'true');
+  }
+  
   console.log("[Auth] ===== EMAIL SIGN IN STARTED =====", {
     email,
     currentUser: auth.currentUser?.uid,
@@ -102,6 +127,11 @@ export const signInWithEmail = async (email: string, password: string) => {
     email: result.user.email,
     displayName: result.user.displayName
   });
+  
+  // Clear the pending auth flag after successful authentication
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('pendingAuth');
+  }
   
   // Clear guest caches when signing in
   clearGuestCaches();

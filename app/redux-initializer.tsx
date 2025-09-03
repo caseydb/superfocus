@@ -40,12 +40,19 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
     // STEP 2: Check auth state and try to upgrade if authenticated
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // If no Firebase user and we haven't signed in anonymously yet
+      // If no Firebase user, only sign in anonymously if we're not waiting for real auth
       if (!firebaseUser) {
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-          console.error("[ReduxInitializer] Failed to sign in anonymously:", error);
+        // Check if there's a pending Google auth by looking for signs of recent auth activity
+        const hasRecentAuthActivity = typeof window !== 'undefined' && 
+          (sessionStorage.getItem('pendingAuth') === 'true' || 
+           localStorage.getItem('firebase_token'));
+        
+        if (!hasRecentAuthActivity) {
+          try {
+            await signInAnonymously(auth);
+          } catch (error) {
+            console.error("[ReduxInitializer] Failed to sign in anonymously:", error);
+          }
         }
         return;
       }
@@ -340,7 +347,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [dispatch, isGuest, currentUser.user_id]);
+  }, [dispatch]); // Removed isGuest and currentUser.user_id to prevent re-runs
 
   return <>{children}</>;
 }
