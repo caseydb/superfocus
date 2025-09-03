@@ -347,7 +347,8 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [dispatch]); // Removed isGuest and currentUser.user_id to prevent re-runs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]); // Intentionally excluding isGuest and currentUser.user_id to prevent re-runs
 
   return <>{children}</>;
 }

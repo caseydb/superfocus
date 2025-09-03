@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { auth } from "@/lib/firebase";
 
 // Environment variables are loaded from .env file
 

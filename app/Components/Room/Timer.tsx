@@ -602,7 +602,7 @@ export default function Timer({
       driftHistoryRef.current = [];
       lastCorrectionRef.current = 0;
     }
-  }, [running, activeTaskId, user?.id, task, isQuittingRef]);  // Removed seconds and secondsRef to prevent re-running
+  }, [running, activeTaskId, user?.id, task, isQuittingRef, seconds, secondsRef]);  // Added required dependencies
 
   // Monitor visibility changes and correct drift immediately when tab regains focus
   useEffect(() => {
@@ -667,7 +667,7 @@ export default function Timer({
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [running, activeTaskId, user?.id]);  // Removed seconds and secondsRef to prevent re-running
+  }, [running, activeTaskId, user?.id, secondsRef]);  // Added secondsRef dependency
 
   // Inactivity detection based on timer duration
   useEffect(() => {
