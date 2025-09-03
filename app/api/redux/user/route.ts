@@ -20,13 +20,14 @@ export async function PATCH(request: NextRequest) {
     const firebaseUid = decodedToken.uid;
 
     const body = await request.json();
-    const { first_name, last_name, timezone } = body;
+    const { first_name, last_name, timezone, profile_image } = body;
 
-    // Parse the display name into first and last name
-    const updateData: { first_name?: string; last_name?: string; timezone?: string } = {};
+    // Build update data object
+    const updateData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string } = {};
     if (first_name !== undefined) updateData.first_name = first_name;
     if (last_name !== undefined && last_name !== null) updateData.last_name = last_name;
     if (timezone !== undefined) updateData.timezone = timezone;
+    if (profile_image !== undefined) updateData.profile_image = profile_image;
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -54,7 +55,13 @@ export async function PATCH(request: NextRequest) {
       timezone: updatedUser.timezone,
     });
   } catch (error) {
-    console.error('PATCH /api/redux/user error:', error);
+    console.error('[API /redux/user PATCH] Error:', error);
+    if (error instanceof Error) {
+      console.error('[API /redux/user PATCH] Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+    }
     return NextResponse.json({ error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

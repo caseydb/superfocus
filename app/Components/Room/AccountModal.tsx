@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useInstance } from "../Instances";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set } from "firebase/database";
+import { rtdb, auth } from "../../../lib/firebase";
+import { ref, set, update } from "firebase/database";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { updateUser, updateUserData } from "../../store/userSlice";
+import { DotSpinner } from 'ldrs/react';
+import 'ldrs/react/DotSpinner.css';
 
 interface AccountModalProps {
   onClose: () => void;
@@ -21,6 +23,10 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
   const [lastName, setLastName] = useState("");
   const [nameError, setNameError] = useState("");
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize names from Redux user data
   useEffect(() => {
@@ -33,6 +39,8 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
       setLastName(nameParts.slice(1).join(" ") || "");
     }
   }, [reduxUser.first_name, reduxUser.last_name, user?.displayName]);
+
+  // No need to monitor profile_image changes in production
 
 
   return (
@@ -71,8 +79,9 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
             >
               {/* Avatar Container - matching app design */}
               <button
-                onClick={() => alert("Coming Soon!")}
+                onClick={() => fileInputRef.current?.click()}
                 className="relative w-24 h-24 rounded-full overflow-hidden transition-transform duration-200 hover:scale-105 cursor-pointer"
+                disabled={uploading}
               >
                 {reduxUser.profile_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -80,6 +89,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                     src={reduxUser.profile_image} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
+                    key={reduxUser.profile_image}  // Force re-render only when URL actually changes
                     onError={(e) => {
                       // If image fails to load, hide it and show initials
                       e.currentTarget.style.display = 'none';
@@ -108,10 +118,146 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span className="text-white text-xs font-medium">Change</span>
+                  <span className="text-white text-xs font-medium">{uploading ? 'Uploading...' : 'Change'}</span>
                 </div>
               </button>
+              
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  // Reset error state
+                  setUploadError(null);
+                  
+                  // Check file size (5MB limit)
+                  const MAX_SIZE = 5 * 1024 * 1024;
+                  if (file.size > MAX_SIZE) {
+                    setUploadError(`File size exceeds 5MB limit. Your file: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+                    return;
+                  }
+                  
+                  // Check file type
+                  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                  if (!validTypes.includes(file.type)) {
+                    setUploadError('Only JPEG, PNG, GIF, and WebP files are allowed.');
+                    return;
+                  }
+                  
+                  setUploading(true);
+                  
+                  try {
+                    // Get Firebase ID token
+                    const currentUser = auth.currentUser;
+                    const idToken = await currentUser?.getIdToken();
+                    if (!idToken) {
+                      throw new Error('Not authenticated');
+                    }
+                    
+                    // Upload to S3
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch('/api/s3-upload', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${idToken}`,
+                      },
+                      body: formData,
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                      throw new Error(result.error || 'Failed to upload image');
+                    }
+                    
+                    // Construct full S3 URL
+                    const fullS3Url = `https://nexus-profile-storage.s3.us-east-2.amazonaws.com/${result.fileName}`;
+                    
+                    // 1. Optimistically update Redux state immediately for instant UI update
+                    dispatch(updateUser({ profile_image: fullS3Url }));
+                    
+                    // 2. Update PostgreSQL persistently
+                    try {
+                      await dispatch(
+                        updateUserData({ profile_image: fullS3Url })
+                      ).unwrap();
+                    } catch (dbError) {
+                      console.error('Database update failed:', dbError);
+                      // Revert the optimistic update if DB update fails
+                      dispatch(updateUser({ profile_image: reduxUser.profile_image }));
+                      throw new Error('Image uploaded but failed to save to profile');
+                    }
+                    
+                    // 3. Update Firebase RTDB for real-time sync
+                    if (user?.id) {
+                      try {
+                        const userRef = ref(rtdb, `Users/${user.id}`);
+                        await update(userRef, {
+                          picture: fullS3Url,
+                          updatedAt: Date.now()
+                        });
+                      } catch (rtdbError) {
+                        console.error('Failed to update Firebase RTDB:', rtdbError);
+                        // Non-critical error, don't throw
+                      }
+                    }
+                    
+                    setUploadError(null);
+                    setUploadSuccess(true);
+                    
+                    // Hide success message after 3 seconds
+                    setTimeout(() => {
+                      setUploadSuccess(false);
+                    }, 3000);
+                    
+                    // Force re-render by resetting the file input
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                    }
+                  } catch (error) {
+                    console.error('Error uploading image:', error);
+                    setUploadError(error instanceof Error ? error.message : 'Failed to upload image');
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+              />
             </div>
+            
+            {/* Upload error message */}
+            {uploadError && (
+              <div className="mt-2 flex items-center gap-2 text-red-400 text-sm max-w-xs mx-auto">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{uploadError}</span>
+              </div>
+            )}
+            
+            {/* Upload loading feedback */}
+            {uploading && (
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <DotSpinner size={20} color="#FFAA00" />
+                <span className="text-gray-400 text-sm">Uploading</span>
+              </div>
+            )}
+            
+            {/* Upload success feedback */}
+            {uploadSuccess && (
+              <div className="mt-3 flex items-center justify-center gap-2 text-green-400 text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Successful</span>
+              </div>
+            )}
           </div>
 
             {/* Personal Information Section */}

@@ -55,7 +55,7 @@ export const fetchUserData = createAsyncThunk(
 
 export const updateUserData = createAsyncThunk(
   'user/updateUserData',
-  async (userData: { first_name?: string; last_name?: string; timezone?: string }) => {
+  async (userData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string }) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error('No authenticated user');
