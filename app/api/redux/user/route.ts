@@ -20,14 +20,15 @@ export async function PATCH(request: NextRequest) {
     const firebaseUid = decodedToken.uid;
 
     const body = await request.json();
-    const { first_name, last_name, timezone, profile_image } = body;
+    const { first_name, last_name, timezone, profile_image, linkedin_url } = body;
 
     // Build update data object
-    const updateData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string } = {};
+    const updateData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string; linkedin_url?: string } = {};
     if (first_name !== undefined) updateData.first_name = first_name;
     if (last_name !== undefined && last_name !== null) updateData.last_name = last_name;
     if (timezone !== undefined) updateData.timezone = timezone;
     if (profile_image !== undefined) updateData.profile_image = profile_image;
+    if (linkedin_url !== undefined) updateData.linkedin_url = linkedin_url;
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -40,6 +41,7 @@ export async function PATCH(request: NextRequest) {
         last_name: true,
         email: true,
         profile_image: true,
+        linkedin_url: true,
         timezone: true,
         first_visit: true,
       },
@@ -52,6 +54,7 @@ export async function PATCH(request: NextRequest) {
       last_name: updatedUser.last_name,
       email: updatedUser.email,
       profile_image: updatedUser.profile_image,
+      linkedin_url: updatedUser.linkedin_url,
       timezone: updatedUser.timezone,
     });
   } catch (error) {
@@ -93,6 +96,7 @@ export async function GET(request: NextRequest) {
         last_name: true,
         email: true,
         profile_image: true,
+        linkedin_url: true,
         timezone: true,
         first_visit: true,
       },
@@ -107,6 +111,7 @@ export async function GET(request: NextRequest) {
           last_name: null,
           email: null,
           profile_image: null,
+          linkedin_url: null,
           timezone: null,
           first_visit: true,
         },
@@ -121,6 +126,7 @@ export async function GET(request: NextRequest) {
       last_name: user.last_name,
       email: user.email,
       profile_image: user.profile_image,
+      linkedin_url: user.linkedin_url,
       timezone: user.timezone,
       first_visit: user.first_visit,
     });

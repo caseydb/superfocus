@@ -21,6 +21,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
   
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [nameError, setNameError] = useState("");
   const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -28,17 +29,18 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize names from Redux user data
+  // Initialize names and LinkedIn from Redux user data
   useEffect(() => {
     if (reduxUser.first_name) {
       setFirstName(reduxUser.first_name);
       setLastName(reduxUser.last_name || "");
+      setLinkedinUrl(reduxUser.linkedin_url || "");
     } else if (user?.displayName) {
       const nameParts = user.displayName.split(" ");
       setFirstName(nameParts[0]);
       setLastName(nameParts.slice(1).join(" ") || "");
     }
-  }, [reduxUser.first_name, reduxUser.last_name, user?.displayName]);
+  }, [reduxUser.first_name, reduxUser.last_name, reduxUser.linkedin_url, user?.displayName]);
 
   // No need to monitor profile_image changes in production
 
@@ -267,7 +269,9 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
               <div className="space-y-4">
                 {/* First Name Field */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    First Name <span className="text-red-400">*</span>
+                  </label>
                   <input
                     type="text"
                     value={firstName}
@@ -297,6 +301,21 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                   />
                 </div>
 
+                {/* LinkedIn URL Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">LinkedIn</label>
+                  <input
+                    type="text"
+                    value={linkedinUrl}
+                    onChange={(e) => {
+                      setLinkedinUrl(e.target.value);
+                      setNameError("");
+                    }}
+                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500"
+                    placeholder="https://linkedin.com/in/yourprofile"
+                  />
+                </div>
+
                 {/* Error message */}
                 {nameError && (
                   <div className="flex items-center gap-2 text-red-400 text-sm">
@@ -319,9 +338,12 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
 
                       const trimmedFirstName = firstName.trim();
                       const trimmedLastName = lastName.trim();
+                      const trimmedLinkedinUrl = linkedinUrl.trim();
 
                       // Check if values actually changed
-                      if (trimmedFirstName === reduxUser.first_name && trimmedLastName === (reduxUser.last_name || '')) {
+                      if (trimmedFirstName === reduxUser.first_name && 
+                          trimmedLastName === (reduxUser.last_name || '') &&
+                          trimmedLinkedinUrl === (reduxUser.linkedin_url || '')) {
                         setNameError("");
                         return; // No changes to save
                       }
@@ -331,6 +353,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                         updateUser({
                           first_name: trimmedFirstName,
                           last_name: trimmedLastName || null,
+                          linkedin_url: trimmedLinkedinUrl || null,
                         })
                       );
 
@@ -340,6 +363,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                           updateUserData({
                             first_name: trimmedFirstName,
                             last_name: trimmedLastName || undefined,
+                            linkedin_url: trimmedLinkedinUrl || undefined,
                           })
                         ).unwrap();
                         
@@ -376,6 +400,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                           updateUser({
                             first_name: reduxUser.first_name,
                             last_name: reduxUser.last_name,
+                            linkedin_url: reduxUser.linkedin_url,
                           })
                         );
                       }
@@ -390,17 +415,6 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                   </button>
                 </div>
               </div>
-          </div>
-
-            {/* Email Section */}
-            <div className="bg-gray-800/50 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-6">Email Address</h3>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Email</span>
-              <span className="text-sm text-gray-200 font-mono">
-                {reduxUser.email || "No email available"}
-              </span>
-            </div>
           </div>
           </div>
         </div>

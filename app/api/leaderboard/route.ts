@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
             u.first_name,
             u.last_name,
             u.profile_image,
+            u.linkedin_url,
             COALESCE(COUNT(DISTINCT t.id), 0)::int as total_tasks,
             COALESCE(SUM(t.duration), 0)::int as total_duration
           FROM 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
               AND t.status = 'completed'
               AND t.completed_at >= ${monday}
           GROUP BY 
-            u.id, u.auth_id, u.first_name, u.last_name, u.profile_image
+            u.id, u.auth_id, u.first_name, u.last_name, u.profile_image, u.linkedin_url
           HAVING 
             COUNT(DISTINCT t.id) > 0 OR SUM(t.duration) > 0
           ORDER BY 
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
             u.first_name,
             u.last_name,
             u.profile_image,
+            u.linkedin_url,
             COALESCE(COUNT(DISTINCT t.id), 0)::int as total_tasks,
             COALESCE(SUM(t.duration), 0)::int as total_duration
           FROM 
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
             "task" t ON u.id = t.user_id 
               AND t.status = 'completed'
           GROUP BY 
-            u.id, u.auth_id, u.first_name, u.last_name, u.profile_image
+            u.id, u.auth_id, u.first_name, u.last_name, u.profile_image, u.linkedin_url
           HAVING 
             COUNT(DISTINCT t.id) > 0 OR SUM(t.duration) > 0
           ORDER BY 
@@ -83,6 +85,7 @@ export async function GET(request: NextRequest) {
       first_name: string;
       last_name: string;
       profile_image: string | null;
+      linkedin_url: string | null;
       total_tasks: number;
       total_duration: number;
     }>).map(entry => ({
@@ -91,6 +94,7 @@ export async function GET(request: NextRequest) {
       first_name: entry.first_name,
       last_name: entry.last_name,
       profile_image: entry.profile_image,
+      linkedin_url: entry.linkedin_url,
       total_tasks: Number(entry.total_tasks),
       total_duration: Number(entry.total_duration)
     }));

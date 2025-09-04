@@ -8,6 +8,7 @@ interface UserState {
   last_name: string | null;
   email: string | null;
   profile_image: string | null;
+  linkedin_url: string | null;
   timezone: string | null;
   first_visit: boolean;
   loading: boolean;
@@ -22,6 +23,7 @@ const initialState: UserState = {
   last_name: null,
   email: null,
   profile_image: null,
+  linkedin_url: null,
   timezone: null,
   first_visit: true,
   loading: false,
@@ -55,7 +57,7 @@ export const fetchUserData = createAsyncThunk(
 
 export const updateUserData = createAsyncThunk(
   'user/updateUserData',
-  async (userData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string }) => {
+  async (userData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string; linkedin_url?: string }) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error('No authenticated user');
@@ -167,6 +169,7 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUserData.fulfilled, (state, action) => {
+        console.log('[UserSlice] User data fetched:', action.payload);
         state.loading = false;
         state.user_id = action.payload.user_id;
         state.auth_id = action.payload.auth_id;
@@ -174,6 +177,7 @@ const userSlice = createSlice({
         state.last_name = action.payload.last_name;
         state.email = action.payload.email;
         state.profile_image = action.payload.profile_image;
+        state.linkedin_url = action.payload.linkedin_url;
         state.timezone = action.payload.timezone;
         state.first_visit = action.payload.first_visit ?? true;
         state.isGuest = false; // Successfully fetched user data means not a guest
@@ -187,6 +191,7 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(updateUserData.fulfilled, (state, action) => {
+        console.log('[UserSlice] User data updated:', action.payload);
         state.loading = false;
         state.user_id = action.payload.user_id;
         state.auth_id = action.payload.auth_id;
@@ -194,6 +199,7 @@ const userSlice = createSlice({
         state.last_name = action.payload.last_name;
         state.email = action.payload.email;
         state.profile_image = action.payload.profile_image;
+        state.linkedin_url = action.payload.linkedin_url;
         state.timezone = action.payload.timezone;
       })
       .addCase(updateUserData.rejected, (state, action) => {

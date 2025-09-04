@@ -15,6 +15,7 @@ model user {
   auth_id                 String                    @unique
   email                   String                    @unique
   profile_image           String?
+  linkedin_url            String?
   created_at              DateTime                  @default(now())
   last_active             DateTime
   timezone                String                    @default("UTC")

@@ -6,6 +6,7 @@ export interface LeaderboardEntry {
   first_name: string;
   last_name: string;
   profile_image: string | null;
+  linkedin_url: string | null;
   total_tasks: number;
   total_duration: number;
 }
@@ -92,6 +93,7 @@ const leaderboardSlice = createSlice({
           first_name: firstName,
           last_name: lastName,
           profile_image: profileImage,
+          linkedin_url: null,
           total_tasks: 1,
           total_duration: taskDuration,
         });
