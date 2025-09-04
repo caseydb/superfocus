@@ -15,28 +15,15 @@ export function useStartTaskButton() {
   
   const handleStartTask = useCallback(
     (taskId: string, taskText: string, onStartTask?: (text: string) => void, onPauseFirst?: () => void) => {
-      console.log('[StartTaskButton] handleStartTask called with:', {
-        taskId,
-        taskText,
-        isTimerActive,
-        activeTaskId,
-        needsPause: isTimerActive && activeTaskId && activeTaskId !== taskId,
-        hasPauseFunction: !!onPauseFirst
-      });
-      
       // IMPORTANT: Check BEFORE updating Redux state
       const needsToPause = isTimerActive && activeTaskId && activeTaskId !== taskId;
       
       if (needsToPause && onPauseFirst) {
-        console.log('[StartTaskButton] Timer running with different task, pausing first:', activeTaskId, '->', taskId);
-        
         // First pause the current task
         onPauseFirst();
         
         // Then wait and start the new task
         setTimeout(() => {
-          console.log('[StartTaskButton] After pause delay, setting task and starting');
-          
           // Clear the justCompletedTask flag when selecting a new task
           if (user?.id) {
             const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
@@ -50,13 +37,10 @@ export function useStartTaskButton() {
           dispatch(setActiveTask(taskId));
           
           if (onStartTask) {
-            console.log('[StartTaskButton] Calling onStartTask');
             onStartTask(taskText);
           }
         }, 500); // Increased delay to ensure pause completes
       } else {
-        console.log('[StartTaskButton] No pause needed, starting directly');
-        
         // Clear the justCompletedTask flag when selecting a new task
         if (user?.id) {
           const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
@@ -70,7 +54,6 @@ export function useStartTaskButton() {
         dispatch(setActiveTask(taskId));
         
         if (onStartTask) {
-          console.log('[StartTaskButton] Calling onStartTask');
           onStartTask(taskText);
         }
       }

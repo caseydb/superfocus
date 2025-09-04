@@ -160,7 +160,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
         if (response.ok) {
           setWeeklyLeaderboard(data.data);
         }
-      } catch (error) {
+      } catch {
         // Failed to fetch weekly leaderboard
       }
     };
@@ -215,7 +215,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           
           setPostgresUsers(prev => ({ ...prev, ...newPostgresUsers }));
         }
-      } catch (error) {
+      } catch {
         // Failed to fetch PostgreSQL users
       }
     };
@@ -240,7 +240,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             const data = snapshot.val();
             return { id: user.id, data };
           }
-        } catch (error) {
+        } catch {
           // Failed to fetch Firebase user
         }
         return null;
@@ -307,17 +307,8 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   useEffect(() => {
     if (!roomId) return;
 
-    
-    let lastUpdateTime = 0;
-    const UPDATE_THROTTLE_MS = 1000; // Only process updates every 1 second
-
     const unsubscribe = PresenceService.listenToRoomPresence(roomId, (sessions) => {
-      // Throttle updates to prevent excessive processing
-      const now = Date.now();
-      if (now - lastUpdateTime < UPDATE_THROTTLE_MS) {
-        return; // Skip this update, too soon
-      }
-      lastUpdateTime = now;
+      // Process updates immediately - PresenceService already filters out non-meaningful changes
       
       // Separate active and idle users
       const active: { id: string; displayName: string }[] = [];

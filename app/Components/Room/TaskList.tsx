@@ -510,9 +510,6 @@ function SortableTask({
             // Show start button for other tasks
             <button
               onClick={() => {
-                console.log('[TaskList] Start button clicked for task:', task.id, task.text);
-                console.log('[TaskList] Current activeTaskId:', activeTaskId);
-                console.log('[TaskList] isTimerRunning:', isTimerRunning);
                 handleStartTask(task.id, task.text, onStartTask, onPauseTimer);
               }}
               onPointerDown={(e) => e.stopPropagation()}
@@ -995,8 +992,8 @@ export default function TaskList({
             }
           });
         }
-      } catch (error) {
-        console.error('[TaskList] Error loading task times from TaskBuffer:', error);
+      } catch {
+        // Error loading task times from TaskBuffer
       }
     };
     
