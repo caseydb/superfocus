@@ -161,7 +161,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           setWeeklyLeaderboard(data.data);
         }
       } catch (error) {
-        console.error('[ActiveWorkers] Failed to fetch weekly leaderboard:', error);
+        // Failed to fetch weekly leaderboard
       }
     };
     
@@ -216,7 +216,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           setPostgresUsers(prev => ({ ...prev, ...newPostgresUsers }));
         }
       } catch (error) {
-        console.error('[ActiveWorkers] Failed to fetch PostgreSQL users:', error);
+        // Failed to fetch PostgreSQL users
       }
     };
     
@@ -241,7 +241,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             return { id: user.id, data };
           }
         } catch (error) {
-          console.error(`[ActiveWorkers] Failed to fetch Firebase user ${user.id}:`, error);
+          // Failed to fetch Firebase user
         }
         return null;
       });
@@ -307,7 +307,6 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   useEffect(() => {
     if (!roomId) return;
 
-    console.log(`[ActiveWorkers] Setting up presence listener for room: ${roomId}`);
     
     let lastUpdateTime = 0;
     const UPDATE_THROTTLE_MS = 1000; // Only process updates every 1 second
@@ -355,20 +354,11 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       const currentState = `active:${activeIds}|idle:${idleIds}`;
       
       if (currentState !== previousStateRef.current) {
-        console.log(`[ActiveWorkers] 🔄 PRESENCE STATE CHANGED in room ${roomId}:`, {
-          previous: previousStateRef.current || 'initial',
-          current: currentState,
-          activeCount: active.length,
-          idleCount: idle.length,
-          activeUsers: active.map(u => u.id),
-          timestamp: new Date().toISOString()
-        });
         previousStateRef.current = currentState;
       }
     });
     
     return () => {
-      console.log(`[ActiveWorkers] Cleaning up presence listener for room: ${roomId}`);
       unsubscribe();
     };
   }, [roomId]);

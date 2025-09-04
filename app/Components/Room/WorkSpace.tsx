@@ -91,6 +91,7 @@ interface SortableRoomCardProps {
     isGuest?: boolean;
   }; // Redux user state
   firebaseUserId?: string; // Firebase UID
+  index?: number; // Position in the list for tooltip positioning
 }
 
 const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
@@ -101,6 +102,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
   roomUsers,
   currentUser,
   firebaseUserId,
+  index = 0,
 }) => {
   const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: room.id,
@@ -205,7 +207,59 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
       <div className="flex-1">
         {/* Active Members */}
         <div className="flex items-center gap-2 mb-2">
-          <div className="flex -space-x-2">
+          <div className="flex -space-x-2 group relative">
+            {/* Hover Tooltip - Shows all workers */}
+            {roomUsers && roomUsers.length > 0 && (
+              <div className={`absolute ${index > 1 ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 z-50`}>
+                <div className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-3 min-w-[200px] max-w-[300px]">
+                  {/* Header with total count */}
+                  <div className="text-xs text-gray-400 font-medium mb-2">
+                    {roomUsers.length} {roomUsers.length === 1 ? 'person' : 'people'} in room
+                  </div>
+                  
+                  {/* Scrollable list container - shows 6 items before scrolling */}
+                  <div className="max-h-[150px] overflow-y-auto custom-scrollbar space-y-2">
+                    {/* Active Workers */}
+                    {roomUsers.filter(u => u.isActive).length > 0 && (
+                      <>
+                        <div className="text-xs text-green-400 font-semibold mb-1">Active ({roomUsers.filter(u => u.isActive).length})</div>
+                        {roomUsers.filter(u => u.isActive).map(roomUser => {
+                          const firstName = roomUser.firstName || "";
+                          const lastName = roomUser.lastName || "";
+                          const fullName = `${firstName} ${lastName}`.trim() || "Guest User";
+                          return (
+                            <div key={roomUser.userId} className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-sync-pulse flex-shrink-0" />
+                              <span className="text-sm text-gray-200 truncate">{fullName}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                    
+                    {/* Idle Workers */}
+                    {roomUsers.filter(u => !u.isActive).length > 0 && (
+                      <>
+                        {roomUsers.filter(u => u.isActive).length > 0 && <div className="border-t border-gray-700 my-2" />}
+                        <div className="text-xs text-yellow-400 font-semibold mb-1">Idle ({roomUsers.filter(u => !u.isActive).length})</div>
+                        {roomUsers.filter(u => !u.isActive).map(roomUser => {
+                          const firstName = roomUser.firstName || "";
+                          const lastName = roomUser.lastName || "";
+                          const fullName = `${firstName} ${lastName}`.trim() || "Guest User";
+                          return (
+                            <div key={roomUser.userId} className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0" />
+                              <span className="text-sm text-gray-400 truncate">{fullName}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {(() => {
               const displayItems = [];
               const users = roomUsers || [];
@@ -227,7 +281,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                 const lastName = roomUser.lastName || "";
                 const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
                 const displayInitials = initials.trim() || "U";
-                const fullName = `${firstName} ${lastName}`.trim() || "Unknown User";
+                const fullName = `${firstName} ${lastName}`.trim() || "Guest User";
                 
                 // Check if this is the current user and use their animal avatar if available
                 // For guest users, the roomUser.userId will be the Firebase UID
@@ -1525,7 +1579,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 >
                   <SortableContext items={filteredRooms.map((r) => r.id)} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {filteredRooms.map((room) => {
+                      {filteredRooms.map((room, idx) => {
                         if (!room) return null;
 
                         return (
@@ -1539,6 +1593,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             roomUsers={roomUsers[room.id] || []}
                             currentUser={user}
                             firebaseUserId={firebaseUser.id}
+                            index={idx}
                           />
                         );
                       })}
