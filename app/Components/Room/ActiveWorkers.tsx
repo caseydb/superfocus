@@ -5,10 +5,10 @@ import { ref, get } from "firebase/database";
 import Image from "next/image";
 import { PresenceService } from "@/app/utils/presenceService";
 import GlobalPulseTicker from "@/app/utils/globalPulseTicker";
-import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "@/app/store/store";
+import { useSelector } from "react-redux";
+import { RootState } from "@/app/store/store";
 import { useInstance } from "../Instances";
-import { fetchLeaderboard, LeaderboardEntry } from "@/app/store/leaderboardSlice";
+import { LeaderboardEntry } from "@/app/store/leaderboardSlice";
 
 interface PostgresUser {
   auth_id: string;
@@ -18,14 +18,11 @@ interface PostgresUser {
 }
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
-  const dispatch = useDispatch<AppDispatch>();
   const currentUser = useSelector((state: RootState) => state.user);
   const { user: instanceUser } = useInstance();
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
-  // Use Redux leaderboard state instead of local state
-  const weeklyLeaderboard = useSelector((state: RootState) => 
-    state.leaderboard.timeFilter === 'this_week' ? state.leaderboard.entries : []
-  );
+  // Store weekly leaderboard data separately from the global filter
+  const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
   const [firebaseUserNames, setFirebaseUserNames] = useState<Record<string, { firstName: string; lastName: string | null; picture?: string | null }>>({});
   const [postgresUsers, setPostgresUsers] = useState<Record<string, PostgresUser>>({});
@@ -152,21 +149,28 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   // };
 
 
-  // Fetch weekly leaderboard data through Redux on mount
-  // This ensures we use the same data source as the Leaderboard component
-  const leaderboardState = useSelector((state: RootState) => state.leaderboard);
-  
+  // Fetch weekly leaderboard data independently
+  // ActiveWorkers always needs weekly data, regardless of what the Leaderboard component is showing
   useEffect(() => {
-    // Only fetch if we don't have data or if it's stale (older than 30 seconds)
-    const lastFetched = leaderboardState.lastFetched || 0;
-    const now = Date.now();
-    const STALE_TIME = 30000; // 30 seconds
+    const fetchWeeklyData = async () => {
+      try {
+        const response = await fetch('/api/leaderboard?timeFilter=this_week');
+        const data = await response.json();
+        
+        if (response.ok) {
+          setWeeklyLeaderboard(data.data);
+        }
+      } catch (error) {
+        console.error('[ActiveWorkers] Failed to fetch weekly leaderboard:', error);
+      }
+    };
     
-    // Also fetch if the filter isn't set to this_week
-    if (!lastFetched || (now - lastFetched > STALE_TIME) || leaderboardState.timeFilter !== 'this_week') {
-      dispatch(fetchLeaderboard('this_week'));
-    }
-  }, [dispatch, leaderboardState.lastFetched, leaderboardState.timeFilter]);
+    // Fetch on mount and periodically
+    fetchWeeklyData();
+    const interval = setInterval(fetchWeeklyData, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // The leaderboard will now automatically update when tasks are completed
   // via the Redux store updates from CompleteButton.ts
