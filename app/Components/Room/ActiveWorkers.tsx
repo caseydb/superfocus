@@ -307,7 +307,19 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   useEffect(() => {
     if (!roomId) return;
 
+    console.log(`[ActiveWorkers] Setting up presence listener for room: ${roomId}`);
+    
+    let lastUpdateTime = 0;
+    const UPDATE_THROTTLE_MS = 1000; // Only process updates every 1 second
+
     const unsubscribe = PresenceService.listenToRoomPresence(roomId, (sessions) => {
+      // Throttle updates to prevent excessive processing
+      const now = Date.now();
+      if (now - lastUpdateTime < UPDATE_THROTTLE_MS) {
+        return; // Skip this update, too soon
+      }
+      lastUpdateTime = now;
+      
       // Separate active and idle users
       const active: { id: string; displayName: string }[] = [];
       const idle: { id: string; displayName: string }[] = [];
@@ -343,11 +355,22 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
       const currentState = `active:${activeIds}|idle:${idleIds}`;
       
       if (currentState !== previousStateRef.current) {
+        console.log(`[ActiveWorkers] 🔄 PRESENCE STATE CHANGED in room ${roomId}:`, {
+          previous: previousStateRef.current || 'initial',
+          current: currentState,
+          activeCount: active.length,
+          idleCount: idle.length,
+          activeUsers: active.map(u => u.id),
+          timestamp: new Date().toISOString()
+        });
         previousStateRef.current = currentState;
       }
     });
     
-    return unsubscribe;
+    return () => {
+      console.log(`[ActiveWorkers] Cleaning up presence listener for room: ${roomId}`);
+      unsubscribe();
+    };
   }, [roomId]);
 
 

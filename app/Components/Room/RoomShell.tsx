@@ -889,9 +889,44 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       const userTasksRef = ref(rtdb, `TaskBuffer/${user.id}`);
       try {
         const snapshot = await get(userTasksRef);
+        // Defer state update to avoid updating during render
+        queueMicrotask(() => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            // Check if there are any task entries (excluding timer_state, heartbeat, etc.)
+            const taskIds = Object.keys(data).filter(
+              (key) =>
+                key !== "timer_state" &&
+                key !== "heartbeat" &&
+                key !== "tasks" &&
+                key !== "rooms" &&
+                key !== "completionHistory" &&
+                key !== "lastStartSound" &&
+                key !== "lastCompleteSound" &&
+                key !== "history" &&
+                key !== "lastEvent"
+            );
+            setHasTaskInBuffer(taskIds.length > 0);
+          } else {
+            setHasTaskInBuffer(false);
+          }
+        });
+      } catch {
+        queueMicrotask(() => {
+          setHasTaskInBuffer(false);
+        });
+      }
+    };
+
+    checkTaskBuffer();
+
+    // Also set up a listener for real-time updates
+    const userTasksRef = ref(rtdb, `TaskBuffer/${user.id}`);
+    const unsubscribe = onValue(userTasksRef, (snapshot) => {
+      // Defer state update to avoid updating during render
+      queueMicrotask(() => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          // Check if there are any task entries (excluding timer_state, heartbeat, etc.)
           const taskIds = Object.keys(data).filter(
             (key) =>
               key !== "timer_state" &&
@@ -908,34 +943,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         } else {
           setHasTaskInBuffer(false);
         }
-      } catch {
-        setHasTaskInBuffer(false);
-      }
-    };
-
-    checkTaskBuffer();
-
-    // Also set up a listener for real-time updates
-    const userTasksRef = ref(rtdb, `TaskBuffer/${user.id}`);
-    const unsubscribe = onValue(userTasksRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const taskIds = Object.keys(data).filter(
-          (key) =>
-            key !== "timer_state" &&
-            key !== "heartbeat" &&
-            key !== "tasks" &&
-            key !== "rooms" &&
-            key !== "completionHistory" &&
-            key !== "lastStartSound" &&
-            key !== "lastCompleteSound" &&
-            key !== "history" &&
-            key !== "lastEvent"
-        );
-        setHasTaskInBuffer(taskIds.length > 0);
-      } else {
-        setHasTaskInBuffer(false);
-      }
+      });
     });
 
     return () => {

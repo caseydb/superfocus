@@ -22,8 +22,29 @@ export interface PresenceSession extends SessionData {
 const HEARTBEAT_INTERVAL = 30000;
 // Consider offline after 65 seconds (just over 2 heartbeats)
 const OFFLINE_THRESHOLD = 65000;
-// Grace period before removing presence (10 seconds)
-const DISCONNECT_GRACE_PERIOD = 10000;
+
+// Debug logging helper  
+const log = (level: 'info' | 'warn' | 'error', message: string, data?: unknown) => {
+  // Check localStorage each time for dynamic toggling
+  const debugEnabled = typeof window !== 'undefined' ? 
+    localStorage.getItem('presence_debug') === 'true' : false;
+    
+  if (!debugEnabled) return;
+  
+  const timestamp = new Date().toISOString();
+  const prefix = `[PRESENCE ${timestamp}]`;
+  
+  switch (level) {
+    case 'error':
+      console.error(prefix, message, data || '');
+      break;
+    case 'warn':
+      console.warn(prefix, message, data || '');
+      break;
+    default:
+      console.log(prefix, message, data || '');
+  }
+};
 
 export class PresenceService {
   private userId: string;
@@ -42,10 +63,12 @@ export class PresenceService {
   private isInitialized = false;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private lastActiveState: boolean | null = null;
+  private heartbeatFailures = 0;
+  private maxHeartbeatFailures = 3;
 
   constructor(userId: string, roomId: string) {
     if (!userId || !roomId) {
-      console.error('[PresenceService] Invalid constructor params:', { userId, roomId });
+      log('error', 'Invalid constructor params', { userId, roomId });
     }
     this.userId = userId;
     this.roomId = roomId;
@@ -54,10 +77,25 @@ export class PresenceService {
     this.sessionRef = ref(rtdb, `Presence/${userId}/sessions/${this.sessionId}`);
     this.userPresenceRef = ref(rtdb, `Presence/${userId}`);
     this.roomIndexRef = ref(rtdb, `RoomIndex/${roomId}/${userId}`);
+    
+    log('info', 'PresenceService created', {
+      userId,
+      roomId,
+      sessionId: this.sessionId
+    });
   }
 
   async initialize(): Promise<boolean> {
-    if (this.isInitialized) return true;
+    if (this.isInitialized) {
+      log('warn', 'Already initialized', { sessionId: this.sessionId });
+      return true;
+    }
+
+    log('info', 'Initializing presence', {
+      userId: this.userId,
+      roomId: this.roomId,
+      sessionId: this.sessionId
+    });
 
     try {
       // Set up connection state listener FIRST
@@ -74,14 +112,17 @@ export class PresenceService {
       };
 
       // Set up onDisconnect BEFORE setting presence
+      log('info', 'Setting up onDisconnect handlers', { sessionId: this.sessionId });
       this.disconnectRef = onDisconnect(this.sessionRef);
       await this.disconnectRef.remove();
       
       // Set up onDisconnect for room index  
       this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
       await this.roomIndexDisconnectRef.remove();
+      log('info', 'onDisconnect handlers configured', { sessionId: this.sessionId });
 
       // Now set the presence
+      log('info', 'Setting initial presence', { sessionId: this.sessionId, sessionData });
       await set(this.sessionRef, sessionData);
       
       // Also set initial room index entry (only meaningful data)
@@ -90,6 +131,7 @@ export class PresenceService {
         isActive: false,
         joinedAt: serverTimestamp()
       });
+      log('info', 'Initial presence set successfully', { sessionId: this.sessionId });
 
       // Set up visibility tracking
       this.setupVisibilityTracking();
@@ -104,18 +146,35 @@ export class PresenceService {
       this.startHeartbeat();
 
       this.isInitialized = true;
+      log('info', '✅ Presence initialized successfully', {
+        userId: this.userId,
+        roomId: this.roomId,
+        sessionId: this.sessionId
+      });
       return true;
     } catch (error) {
-      console.error('[PresenceService] Initialization failed:', error);
+      log('error', '❌ Initialization failed', { 
+        error, 
+        sessionId: this.sessionId,
+        userId: this.userId,
+        roomId: this.roomId
+      });
       return false;
     }
   }
 
   async cleanup(): Promise<void> {
+    log('info', '🧹 Starting cleanup', { 
+      sessionId: this.sessionId,
+      userId: this.userId,
+      roomId: this.roomId 
+    });
+    
     // Stop all listeners and intervals
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
+      log('info', 'Heartbeat stopped', { sessionId: this.sessionId });
     }
 
     if (this.reconnectTimeout) {
@@ -160,11 +219,17 @@ export class PresenceService {
     try {
       await remove(this.sessionRef);
       await remove(this.roomIndexRef);
-    } catch {
+      log('info', '✅ Presence removed successfully', { sessionId: this.sessionId });
+    } catch (error) {
       // Session might already be removed
+      log('warn', 'Presence already removed or error during removal', { 
+        error, 
+        sessionId: this.sessionId 
+      });
     }
 
     this.isInitialized = false;
+    log('info', '✅ Cleanup complete', { sessionId: this.sessionId });
   }
 
   async updateCurrentTask(taskId: string | null, taskName: string | null): Promise<void> {
@@ -182,7 +247,18 @@ export class PresenceService {
   }
 
   async setActive(isActive: boolean): Promise<void> {
-    if (!this.isInitialized) return;
+    if (!this.isInitialized) {
+      log('warn', 'Cannot setActive - not initialized', { sessionId: this.sessionId });
+      return;
+    }
+
+    log('info', `🔄 Setting active status: ${isActive}`, {
+      sessionId: this.sessionId,
+      userId: this.userId,
+      roomId: this.roomId,
+      previousState: this.lastActiveState,
+      newState: isActive
+    });
 
     try {
       // If becoming active, ALWAYS deactivate all other sessions regardless of current state
@@ -195,6 +271,11 @@ export class PresenceService {
         
         if (snapshot.exists()) {
           const sessions = snapshot.val();
+          const sessionCount = Object.keys(sessions).length;
+          log('info', `Found ${sessionCount} sessions to manage`, {
+            sessionId: this.sessionId,
+            totalSessions: sessionCount
+          });
           
           // Set ALL sessions to inactive first (including this one temporarily)
           for (const [sessionId, sessionData] of Object.entries(sessions)) {
@@ -248,7 +329,13 @@ export class PresenceService {
         updates[`RoomIndex/${this.roomId}/${this.userId}/lastUpdated`] = serverTimestamp();
         
         // Apply all updates atomically
+        const updateCount = Object.keys(updates).length;
+        log('info', `Applying ${updateCount} atomic updates`, { sessionId: this.sessionId });
         await update(ref(rtdb), updates);
+        log('info', '✅ Active status updated successfully', { 
+          sessionId: this.sessionId,
+          isActive
+        });
       } else {
         // If deactivating, just update current session and room
         await update(this.sessionRef, {
@@ -264,7 +351,12 @@ export class PresenceService {
       
       this.lastActiveState = isActive;
     } catch (error) {
-      console.error('[PresenceService] Failed to update active status:', error);
+      log('error', '❌ Failed to update active status', { 
+        error, 
+        sessionId: this.sessionId,
+        attemptedState: isActive
+      });
+      throw error; // Re-throw to let caller handle
     }
   }
 
@@ -272,21 +364,39 @@ export class PresenceService {
     const connectedRef = ref(rtdb, '.info/connected');
     
     this.connectionHandler = async (snap: DataSnapshot) => {
-      if (snap.val() === true) {
+      const isConnected = snap.val() === true;
+      log('info', `🌐 Connection state changed: ${isConnected ? 'CONNECTED' : 'DISCONNECTED'}`, {
+        sessionId: this.sessionId,
+        userId: this.userId,
+        roomId: this.roomId,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (isConnected) {
         // We're connected (or reconnected)
+        log('info', '🔄 Re-establishing presence after connection', { sessionId: this.sessionId });
         
         // Re-establish onDisconnect
-        if (this.disconnectRef) {
-          await this.disconnectRef.cancel();
+        try {
+          if (this.disconnectRef) {
+            await this.disconnectRef.cancel();
+          }
+          this.disconnectRef = onDisconnect(this.sessionRef);
+          await this.disconnectRef.remove();
+          
+          if (this.roomIndexDisconnectRef) {
+            await this.roomIndexDisconnectRef.cancel();
+          }
+          this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
+          await this.roomIndexDisconnectRef.remove();
+          
+          log('info', '✅ onDisconnect handlers re-established', { sessionId: this.sessionId });
+        } catch (error) {
+          log('error', '❌ Failed to re-establish onDisconnect handlers', { 
+            error, 
+            sessionId: this.sessionId 
+          });
         }
-        this.disconnectRef = onDisconnect(this.sessionRef);
-        await this.disconnectRef.remove();
-        
-        if (this.roomIndexDisconnectRef) {
-          await this.roomIndexDisconnectRef.cancel();
-        }
-        this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
-        await this.roomIndexDisconnectRef.remove();
         
         // Update our presence (always include roomId to prevent loss)
         await update(this.sessionRef, {
@@ -297,10 +407,16 @@ export class PresenceService {
         
         // Restart heartbeat if it was stopped
         if (!this.heartbeatInterval && this.isInitialized) {
+          log('info', '💓 Restarting heartbeat after reconnection', { sessionId: this.sessionId });
           this.startHeartbeat();
         }
       } else {
         // We're disconnected
+        log('warn', '⚠️ Connection lost - stopping heartbeat', {
+          sessionId: this.sessionId,
+          userId: this.userId,
+          roomId: this.roomId
+        });
         
         // Stop heartbeat during disconnect
         if (this.heartbeatInterval) {
@@ -343,6 +459,11 @@ export class PresenceService {
       clearInterval(this.heartbeatInterval);
     }
 
+    log('info', '💓 Starting heartbeat', { 
+      sessionId: this.sessionId,
+      interval: HEARTBEAT_INTERVAL 
+    });
+
     // Update immediately
     this.updateHeartbeat();
 
@@ -353,19 +474,111 @@ export class PresenceService {
   }
 
   private async updateHeartbeat(): Promise<void> {
-    if (!this.isInitialized) return;
+    if (!this.isInitialized) {
+      log('warn', 'Heartbeat skipped - not initialized', { sessionId: this.sessionId });
+      return;
+    }
 
+    const heartbeatTimestamp = Date.now();
+    
     try {
       // Always include roomId in heartbeat to ensure it's never lost
       await update(this.sessionRef, {
         lastSeen: serverTimestamp(),
         roomId: this.roomId  // Ensure roomId is always present
       });
+      
+      // Reset failure count on success
+      if (this.heartbeatFailures > 0) {
+        log('info', `💓 Heartbeat recovered after ${this.heartbeatFailures} failures`, {
+          sessionId: this.sessionId
+        });
+        this.heartbeatFailures = 0;
+      }
+      
+      log('info', '💓 Heartbeat sent successfully', {
+        sessionId: this.sessionId,
+        timestamp: new Date(heartbeatTimestamp).toISOString()
+      });
     } catch (error) {
-      console.error('[PresenceService] Heartbeat failed:', error);
+      this.heartbeatFailures++;
+      
+      log('error', `❌ Heartbeat failed! (failure ${this.heartbeatFailures}/${this.maxHeartbeatFailures})`, {
+        error,
+        sessionId: this.sessionId,
+        userId: this.userId,
+        roomId: this.roomId,
+        timestamp: new Date(heartbeatTimestamp).toISOString(),
+        failureCount: this.heartbeatFailures
+      });
+      
+      // If we've failed too many times, try to reinitialize
+      if (this.heartbeatFailures >= this.maxHeartbeatFailures) {
+        log('error', `🚨 Max heartbeat failures reached - attempting recovery`, {
+          sessionId: this.sessionId
+        });
+        
+        // Try to re-establish presence
+        try {
+          await this.recoverPresence();
+        } catch (recoveryError) {
+          log('error', `🔴 Failed to recover presence`, { 
+            recoveryError,
+            sessionId: this.sessionId 
+          });
+        }
+      }
+    }
+  }
+  
+  private async recoverPresence(): Promise<void> {
+    log('info', `🔄 Attempting presence recovery`, { sessionId: this.sessionId });
+    
+    try {
+      // Re-establish onDisconnect handlers
+      if (this.disconnectRef) {
+        await this.disconnectRef.cancel();
+      }
+      this.disconnectRef = onDisconnect(this.sessionRef);
+      await this.disconnectRef.remove();
+      
+      if (this.roomIndexDisconnectRef) {
+        await this.roomIndexDisconnectRef.cancel();
+      }
+      this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
+      await this.roomIndexDisconnectRef.remove();
+      
+      // Force update presence with current state
+      await update(this.sessionRef, {
+        roomId: this.roomId,
+        isActive: this.lastActiveState || false,
+        lastSeen: serverTimestamp(),
+        tabVisible: document.visibilityState === 'visible',
+        device: this.getDeviceInfo(),
+        recovered: true,
+        recoveredAt: serverTimestamp()
+      });
+      
+      // Update room index
+      await update(this.roomIndexRef, {
+        userId: this.userId,
+        isActive: this.lastActiveState || false,
+        lastUpdated: serverTimestamp()
+      });
+      
+      // Reset failure count
+      this.heartbeatFailures = 0;
+      
+      log('info', `✅ Presence recovered successfully`, { sessionId: this.sessionId });
+    } catch (error) {
+      log('error', `❌ Presence recovery failed`, { error, sessionId: this.sessionId });
+      throw error;
     }
   }
 
+  // Commenting out unused method to fix TS warning
+  // This method can be re-enabled if grace period removal is needed
+  /*
   private async removeWithGracePeriod(): Promise<void> {
     // First, mark as disconnecting
     try {
@@ -388,6 +601,7 @@ export class PresenceService {
       // Session might already be removed by onDisconnect
     }
   }
+  */
 
   private setupBeforeUnloadHandler(): void {
     this.beforeUnloadHandler = () => {
@@ -407,16 +621,24 @@ export class PresenceService {
   private setupSessionMonitor(): void {
     // Listen to this specific session for changes
     this.sessionMonitorHandler = async (snapshot: DataSnapshot) => {
-      if (!snapshot.exists()) return;
+      if (!snapshot.exists()) {
+        log('warn', '⚠️ Session disappeared from Firebase!', {
+          sessionId: this.sessionId,
+          userId: this.userId,
+          roomId: this.roomId
+        });
+        return;
+      }
       
       const sessionData = snapshot.val();
       
       // If roomId is missing, fix it immediately
       if (!sessionData.roomId && this.roomId) {
-        console.warn('[PresenceService] Session lost roomId, self-healing...', {
+        log('error', '🚨 CRITICAL: Session lost roomId - attempting self-heal', {
           sessionId: this.sessionId,
           userId: this.userId,
-          expectedRoomId: this.roomId
+          expectedRoomId: this.roomId,
+          currentData: sessionData
         });
         
         try {
@@ -426,10 +648,23 @@ export class PresenceService {
             roomId: this.roomId,
             lastSeen: serverTimestamp()
           });
-          // Successfully restored roomId
+          log('info', '✅ Successfully restored roomId', {
+            sessionId: this.sessionId,
+            roomId: this.roomId
+          });
         } catch (error) {
-          console.error('[PresenceService] Failed to restore roomId:', error);
+          log('error', '❌ Failed to restore roomId', { 
+            error, 
+            sessionId: this.sessionId,
+            roomId: this.roomId
+          });
         }
+      } else if (sessionData.roomId !== this.roomId) {
+        log('error', '🚨 Session roomId mismatch!', {
+          sessionId: this.sessionId,
+          expectedRoom: this.roomId,
+          actualRoom: sessionData.roomId
+        });
       }
     };
     
@@ -584,15 +819,102 @@ export class PresenceService {
     return uniqueUsers.size;
   }
 
+  // Debug helper to check presence status
+  static async debugPresence(roomId?: string) {
+    console.log('\n=== 🔍 PRESENCE DEBUG REPORT ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Room:', roomId || 'ALL ROOMS');
+    
+    const presenceRef = ref(rtdb, 'Presence');
+    const presenceSnapshot = await get(presenceRef);
+    
+    if (!presenceSnapshot.exists()) {
+      console.log('❌ No presence data found');
+      return;
+    }
+    
+    const allUsers = presenceSnapshot.val();
+    const now = Date.now();
+    let totalUsers = 0;
+    let totalSessions = 0;
+    let activeSessions = 0;
+    let roomSessions = 0;
+    
+    console.log('\n👥 USER SESSIONS:');
+    
+    for (const [userId, userData] of Object.entries(allUsers)) {
+      const userSessions = (userData as { sessions?: Record<string, SessionData> }).sessions;
+      if (!userSessions) continue;
+      
+      totalUsers++;
+      const sessions = Object.entries(userSessions);
+      totalSessions += sessions.length;
+      
+      console.log(`\n  User: ${userId}`);
+      console.log(`  Sessions: ${sessions.length}`);
+      
+      for (const [sessionId, session] of sessions) {
+        const timeSinceLastSeen = typeof session.lastSeen === 'number' ? now - session.lastSeen : Infinity;
+        const isOnline = timeSinceLastSeen < OFFLINE_THRESHOLD;
+        
+        if (session.isActive) activeSessions++;
+        if (!roomId || session.roomId === roomId) {
+          roomSessions++;
+          
+          console.log(`    Session ${sessionId}:`);
+          console.log(`      Room: ${session.roomId}`);
+          console.log(`      Active: ${session.isActive ? '✅' : '❌'}`);
+          console.log(`      Online: ${isOnline ? '✅' : '❌'} (${Math.round(timeSinceLastSeen / 1000)}s ago)`);
+          console.log(`      Task: ${session.currentTaskName || 'None'}`);
+          console.log(`      Tab: ${session.tabVisible ? 'Visible' : 'Hidden'}`);
+        }
+      }
+    }
+    
+    // Check RoomIndex
+    if (roomId) {
+      console.log(`\n🏠 ROOM INDEX for ${roomId}:`);
+      const roomIndexRef = ref(rtdb, `RoomIndex/${roomId}`);
+      const roomSnapshot = await get(roomIndexRef);
+      
+      if (roomSnapshot.exists()) {
+        const roomData = roomSnapshot.val();
+        console.log('Users in room index:', Object.keys(roomData).length);
+        
+        for (const [userId, userData] of Object.entries(roomData)) {
+          const user = userData as { isActive?: boolean; lastUpdated?: number | object; currentTaskName?: string };
+          console.log(`  ${userId}:`);
+          console.log(`    Active: ${user.isActive ? '✅' : '❌'}`);
+          console.log(`    Task: ${user.currentTaskName || 'None'}`);
+          console.log(`    Last Updated: ${user.lastUpdated}`);
+        }
+      } else {
+        console.log('No room index data');
+      }
+    }
+    
+    console.log('\n📊 SUMMARY:');
+    console.log(`Total Users: ${totalUsers}`);
+    console.log(`Total Sessions: ${totalSessions}`);
+    console.log(`Active Sessions: ${activeSessions}`);
+    if (roomId) console.log(`Sessions in Room: ${roomSessions}`);
+    console.log('=== END DEBUG REPORT ===\n');
+  }
+  
   static async getRoomSessions(roomId: string): Promise<PresenceSession[]> {
     const presenceRef = ref(rtdb, 'Presence');
     const snapshot = await get(presenceRef);
     
-    if (!snapshot.exists()) return [];
+    if (!snapshot.exists()) {
+      log('warn', `No presence data found for getRoomSessions`);
+      return [];
+    }
 
     const now = Date.now();
     const sessions: PresenceSession[] = [];
     const allUsers = snapshot.val();
+    
+    log('info', `🔍 Checking all users for room ${roomId}`);
 
     // Iterate through all users
     for (const [userId, userData] of Object.entries(allUsers)) {
@@ -604,13 +926,29 @@ export class PresenceService {
         const session = sessionData as SessionData;
         
         // Filter by room and online status
-        if (session.roomId === roomId && 
-            typeof session.lastSeen === 'number' &&
-            now - session.lastSeen < OFFLINE_THRESHOLD) {
+        const isInRoom = session.roomId === roomId;
+        const timeSinceLastSeen = typeof session.lastSeen === 'number' ? now - session.lastSeen : Infinity;
+        const isOnline = timeSinceLastSeen < OFFLINE_THRESHOLD;
+        
+        if (isInRoom && isOnline) {
+          log('info', `✅ User ${userId} session ${sessionId} is in room and online:`, {
+            roomId: session.roomId,
+            isActive: session.isActive,
+            lastSeen: new Date(session.lastSeen as number).toISOString(),
+            timeSinceLastSeen: `${Math.round(timeSinceLastSeen / 1000)}s ago`
+          });
+          
           sessions.push({
             ...session,
             sessionId,
             userId
+          });
+        } else if (isInRoom && !isOnline) {
+          log('warn', `⚠️ User ${userId} session ${sessionId} is in room but OFFLINE:`, {
+            roomId: session.roomId,
+            lastSeen: typeof session.lastSeen === 'number' ? new Date(session.lastSeen).toISOString() : 'unknown',
+            timeSinceLastSeen: `${Math.round(timeSinceLastSeen / 1000)}s ago`,
+            threshold: `${OFFLINE_THRESHOLD / 1000}s`
           });
         }
       }
@@ -621,7 +959,18 @@ export class PresenceService {
 
   static async getActiveWorkers(roomId: string): Promise<PresenceSession[]> {
     const roomSessions = await this.getRoomSessions(roomId);
-    return roomSessions.filter(session => session.isActive);
+    const activeWorkers = roomSessions.filter(session => session.isActive);
+    
+    log('info', `👷 Active workers in room ${roomId}:`, {
+      count: activeWorkers.length,
+      workers: activeWorkers.map(w => ({ 
+        userId: w.userId, 
+        sessionId: w.sessionId,
+        lastSeen: w.lastSeen 
+      }))
+    });
+    
+    return activeWorkers;
   }
 
   // Static method to update presence for a specific user/room from anywhere (e.g., button hooks)
@@ -772,8 +1121,14 @@ export class PresenceService {
     // Listen to the RoomIndex for this room (only meaningful changes)
     const roomIndexRef = ref(rtdb, `RoomIndex/${roomId}`);
     
+    log('info', `👁️ Setting up room presence listener`, { roomId });
+    
+    // Track previous state to detect real changes
+    let previousState = '';
+    
     const handler = (snapshot: DataSnapshot) => {
       if (!snapshot.exists()) {
+        log('warn', `No presence data for room ${roomId}`);
         callback([]);
         return;
       }
@@ -781,9 +1136,18 @@ export class PresenceService {
       const roomData = snapshot.val();
       const sessions: PresenceSession[] = [];
       
+      log('info', `📄 Raw RoomIndex data for ${roomId}:`, roomData);
+      
       // roomData structure: { userId: { isActive, joinedAt, ... } }
       for (const [userId, userData] of Object.entries(roomData)) {
-        const user = userData as { isActive?: boolean; lastUpdated?: number | object; joinedAt?: number | object };
+        const user = userData as { isActive?: boolean; lastUpdated?: number | object; joinedAt?: number | object; currentTaskName?: string };
+        
+        log('info', `User ${userId} in room:`, {
+          isActive: user.isActive,
+          lastUpdated: user.lastUpdated,
+          currentTask: user.currentTaskName
+        });
+        
         // Create a session-like object for compatibility
         sessions.push({
           userId,
@@ -797,7 +1161,27 @@ export class PresenceService {
         });
       }
 
-      callback(sessions);
+      // Create a state signature to detect real changes (ignore timestamp updates)
+      const stateSignature = sessions
+        .map(s => `${s.userId}:${s.isActive ? 'active' : 'idle'}`)
+        .sort()
+        .join('|');
+      
+      // Only call callback if there's a meaningful change
+      if (stateSignature !== previousState) {
+        previousState = stateSignature;
+        
+        log('info', `📊 Meaningful change detected in room ${roomId}:`, {
+          activeCount: sessions.filter(s => s.isActive).length,
+          activeUsers: sessions.filter(s => s.isActive).map(s => s.userId),
+          stateSignature
+        });
+        
+        callback(sessions);
+      } else {
+        // Just a timestamp update, ignore
+        log('info', `⏱️ Timestamp-only update ignored for room ${roomId}`);
+      }
     };
 
     onValue(roomIndexRef, handler);
