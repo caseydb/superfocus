@@ -982,10 +982,10 @@ export default function Timer({
             </button>
             <div className="flex flex-col items-center gap-2">
               <button
-                className={`${showCompleteFeedback ? 'bg-green-600' : 'bg-green-500'} text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${seconds < 1 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`${showCompleteFeedback ? 'bg-green-600' : 'bg-green-500'} text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${seconds < 1 ? 'cursor-not-allowed' : 'cursor-pointer'} flex items-center justify-center`}
                 onClick={completeTimer}
                 disabled={isCompleting || seconds < 1}
-            >
+              >
                 {showCompleteFeedback ? 'Wait...' : 'Complete'}
               </button>
             </div>
