@@ -263,9 +263,9 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
             {(() => {
               const displayItems = [];
               const users = roomUsers || [];
-              const maxVisible = 5;
+              const maxVisible = 10;
               const hasOverflow = users.length > maxVisible;
-              const membersToShow = hasOverflow ? 4 : users.length;
+              const membersToShow = hasOverflow ? 9 : users.length;
 
               // Sort users by status: active first, then idle
               const sortedUsers = [...users].sort((a, b) => {
@@ -338,7 +338,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
 
               // Add overflow indicator
               if (hasOverflow) {
-                const overflowCount = users.length - 4;
+                const overflowCount = users.length - 9;
                 displayItems.push(
                   <div key="overflow" className="relative">
                     <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
@@ -2471,9 +2471,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                         {(() => {
                           const displayItems = [];
                           const users = roomUsers[room.id] || [];
-                          const maxVisible = 5;
+                          const maxVisible = 10;
                           const hasOverflow = users.length > maxVisible;
-                          const membersToShow = hasOverflow ? 4 : users.length;
+                          const membersToShow = hasOverflow ? 9 : users.length;
 
                           // Sort users by status: active first, then idle
                           const sortedUsers = [...users].sort((a, b) => {
@@ -2546,7 +2546,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                           // Add overflow indicator as just another item in the sequence
                           if (hasOverflow) {
-                            const overflowCount = users.length - 4;
+                            const overflowCount = users.length - 9;
                             displayItems.push(
                               <div key="overflow" className="relative">
                                 <div className="w-8 h-8 rounded-full border-2 border-gray-900 bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
