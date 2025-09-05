@@ -14,7 +14,6 @@ bun dev
 
 - git reset --hard origin/dev
 - git clean -fd
-- test build
 
 ## Run Prisma Migration
 
