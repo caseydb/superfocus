@@ -685,13 +685,12 @@ function SortableTask({
                     <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
                       {formatTime(timerSeconds || 0)}
                     </div>
-                    {/* Delete Button - disabled for active tasks */}
+                    {/* Delete Button - allowed for active tasks (will clear state) */}
                     <button
                       onClick={() => onRemove(task.id)}
                       onPointerDown={(e) => e.stopPropagation()}
-                      disabled={true}
-                      className="text-gray-600 cursor-not-allowed p-1 rounded opacity-0 group-hover:opacity-100 absolute"
-                      title="Cannot delete active task"
+                      className="text-gray-400 hover:text-red-400 p-1 rounded opacity-0 group-hover:opacity-100 transition-colors cursor-pointer"
+                      title="Delete task (clears timer and time)"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                         <path
@@ -721,12 +720,8 @@ function SortableTask({
                     <button
                       onClick={() => onRemove(task.id)}
                       onPointerDown={(e) => e.stopPropagation()}
-                      disabled={taskTime > 0}
-                      className={taskTime > 0 
-                        ? "text-gray-600 cursor-not-allowed p-1 rounded opacity-0 group-hover:opacity-100 absolute"
-                        : "text-gray-400 hover:text-red-400 p-1 rounded opacity-0 group-hover:opacity-100 transition-colors cursor-pointer"
-                      }
-                      title={taskTime > 0 ? "Cannot delete task with logged time" : "Delete task"}
+                      className="text-gray-400 hover:text-red-400 p-1 rounded opacity-0 group-hover:opacity-100 transition-colors cursor-pointer"
+                      title={taskTime > 0 ? "Delete task (clears logged time)" : "Delete task"}
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                         <path

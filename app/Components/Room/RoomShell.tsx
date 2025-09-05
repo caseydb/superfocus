@@ -222,6 +222,56 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     });
   }, []);
 
+  // Apply server preference for volume on first load
+  const appliedPrefVolumeRef = useRef(false);
+  useEffect(() => {
+    if (!appliedPrefVolumeRef.current && typeof preferences.sound_volume === 'number') {
+      const prefVolume = Math.max(0, Math.min(100, preferences.sound_volume));
+      const normalized = prefVolume / 100;
+      // Only apply if significantly different from current local volume
+      if (Math.abs(localVolume - normalized) > 0.001) {
+        setLocalVolume(normalized);
+      }
+      appliedPrefVolumeRef.current = true;
+    }
+  }, [preferences.sound_volume]);
+
+  // Console log preference slice changes (including sound_volume)
+  useEffect(() => {
+    try {
+      console.log('[Preferences] Slice changed: sound_volume=', preferences.sound_volume, preferences);
+    } catch {}
+  }, [preferences]);
+
+  // Keep Redux preference and Postgres in sync when localVolume changes
+  const volumePersistTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    // Persist to localStorage for quick reloads
+    try {
+      window.localStorage.setItem('lockedin_volume', String(localVolume));
+    } catch {}
+
+    // Optimistically update preference slice with integer 0-100
+    const volumeInt = Math.round(Math.max(0, Math.min(1, localVolume)) * 100);
+    dispatch(setPreference({ key: 'sound_volume', value: volumeInt }));
+
+    // Debounce persistent update to Postgres
+    if (volumePersistTimeoutRef.current) {
+      clearTimeout(volumePersistTimeoutRef.current);
+    }
+    volumePersistTimeoutRef.current = setTimeout(() => {
+      if (reduxUser.user_id) {
+        dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { sound_volume: volumeInt } }));
+      }
+    }, 300);
+
+    return () => {
+      if (volumePersistTimeoutRef.current) {
+        clearTimeout(volumePersistTimeoutRef.current);
+      }
+    };
+  }, [localVolume, dispatch, reduxUser.user_id]);
+
   // Local quit cooldown state
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [localQuitCooldown, setLocalQuitCooldown] = useState(0);
