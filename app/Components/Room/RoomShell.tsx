@@ -1064,8 +1064,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           };
         });
 
-        // Filter out messages older than 7 seconds
-        const recentMessages = messages.filter((msg) => Date.now() - msg.timestamp < 7000);
+        // Filter out messages older than 5 seconds
+        const recentMessages = messages.filter((msg) => Date.now() - msg.timestamp < 5000);
 
         setFlyingMessages(recentMessages);
       } else {
@@ -1195,10 +1195,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         timestamp: Date.now(),
       });
 
-      // Auto-remove the message after 7 seconds
+      // Auto-remove the message after 5 seconds (ephemeral)
       setTimeout(() => {
         remove(flyingMessageRef);
-      }, 7000);
+      }, 5000);
     }
 
     // Reset input immediately

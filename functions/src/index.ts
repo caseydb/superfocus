@@ -32,6 +32,102 @@ import * as admin from "firebase-admin";
 
 admin.initializeApp();
 
+// Derive tabCounts from Presence sessions to avoid stale counts
+export const syncTabCountOnPresenceChange = functions.database
+  .ref("/Presence/{userId}/sessions/{sessionId}")
+  .onWrite(async (change, context) => {
+    const userId = context.params.userId as string;
+    const now = Date.now();
+    const OFFLINE_THRESHOLD = 70 * 1000; // 70 seconds, aligned with PresenceService
+
+    try {
+      // Read all sessions for the user
+      const sessionsSnap = await admin.database().ref(`/Presence/${userId}/sessions`).once("value");
+
+      let activeCount = 0;
+      if (sessionsSnap.exists()) {
+        const sessions = sessionsSnap.val() as Record<string, { lastSeen?: number } | undefined>;
+        for (const session of Object.values(sessions)) {
+          const lastSeen = typeof session?.lastSeen === "number" ? session!.lastSeen : 0;
+          if (now - lastSeen < OFFLINE_THRESHOLD) {
+            activeCount++;
+          }
+        }
+      }
+
+      const tabCountRef = admin.database().ref(`/tabCounts/${userId}`);
+      if (activeCount <= 0) {
+        // No active sessions: remove the tabCount node entirely
+        await tabCountRef.remove();
+      } else {
+        await tabCountRef.update({
+          count: activeCount,
+          lastUpdated: now,
+        });
+      }
+    } catch (err) {
+      console.error("[syncTabCountOnPresenceChange] Error:", err);
+    }
+    return null;
+  });
+
+// Safety net: periodically prune stale tabCounts by reconciling with Presence
+export const cleanUpStaleTabCounts = functions.pubsub
+  .schedule("every 5 minutes")
+  .onRun(async () => {
+    const now = Date.now();
+    const OFFLINE_THRESHOLD = 70 * 1000; // 70 seconds
+    const STALE_COUNT_THRESHOLD = 10 * 60 * 1000; // 10 minutes since lastUpdated
+
+    try {
+      const tabCountsSnap = await admin.database().ref("/tabCounts").once("value");
+      if (!tabCountsSnap.exists()) return null;
+
+      const updates: Record<string, any> = {};
+
+      const tabCounts = tabCountsSnap.val() as Record<string, { count?: number; lastUpdated?: number }>;
+      for (const [userId, data] of Object.entries(tabCounts)) {
+        // Recompute from Presence sessions
+        const sessionsSnap = await admin.database().ref(`/Presence/${userId}/sessions`).once("value");
+        let activeCount = 0;
+        if (sessionsSnap.exists()) {
+          const sessions = sessionsSnap.val() as Record<string, { lastSeen?: number } | undefined>;
+          for (const session of Object.values(sessions)) {
+            const lastSeen = typeof session?.lastSeen === "number" ? session!.lastSeen : 0;
+            if (now - lastSeen < OFFLINE_THRESHOLD) {
+              activeCount++;
+            }
+          }
+        }
+
+        if (activeCount <= 0) {
+          // No active sessions — delete the node
+          updates[`/tabCounts/${userId}`] = null;
+          continue;
+        }
+
+        // If there is a mismatch, correct the count
+        if ((data.count || 0) !== activeCount) {
+          updates[`/tabCounts/${userId}/count`] = activeCount;
+          updates[`/tabCounts/${userId}/lastUpdated`] = now;
+        } else {
+          // If count hasn't changed in a long time, refresh lastUpdated
+          if (!data.lastUpdated || now - data.lastUpdated > STALE_COUNT_THRESHOLD) {
+            updates[`/tabCounts/${userId}/lastUpdated`] = now;
+          }
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await admin.database().ref().update(updates);
+        console.log(`[cleanUpStaleTabCounts] Applied ${Object.keys(updates).length} updates`);
+      }
+    } catch (err) {
+      console.error("[cleanUpStaleTabCounts] Error:", err);
+    }
+    return null;
+  });
+
 export const cleanUpEmptyPublicRooms = functions.database
   .ref("/instances/{instanceId}/users")
   .onDelete(async (snapshot, context) => {

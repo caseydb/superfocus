@@ -75,12 +75,12 @@ export function useCompleteButton() {
 
         set(eventRef, eventData);
 
-        // Auto-cleanup old events after 10 seconds
+        // Auto-cleanup event after 5 seconds (ephemeral)
         setTimeout(() => {
           import("firebase/database").then(({ remove }) => {
             remove(eventRef);
           });
-        }, 10000);
+        }, 5000);
       }
     },
     [currentInstance, user, reduxUser]
@@ -135,8 +135,8 @@ export function useCompleteButton() {
       // PRIORITY 5: Clear timer state AND LastTask immediately
       const taskId = activeTaskId || currentTaskId;
       
-      // CRITICAL: Remove LastTask immediately to prevent Timer from restoring it after Fast Refresh
-      if (user?.id) {
+      // CRITICAL: Remove LastTask immediately (authenticated users only)
+      if (user?.id && !reduxUser.isGuest) {
         const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
         remove(lastTaskRef);
       }

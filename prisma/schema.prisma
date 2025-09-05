@@ -25,6 +25,7 @@ model user {
   room_members            room_member[]
   tasks                   task[]                    @relation("UserTasks")
   user_milestone_messages user_milestone_messages[]
+  guest                   Boolean                   @default(true)
 }
 
 model preference {

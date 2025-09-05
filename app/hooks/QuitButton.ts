@@ -55,12 +55,12 @@ export function useQuitButton() {
 
         set(eventRef, eventData);
 
-        // Auto-cleanup old events after 10 seconds
+        // Auto-cleanup event after 5 seconds (ephemeral)
         setTimeout(() => {
           import("firebase/database").then(({ remove }) => {
             remove(eventRef);
           });
-        }, 10000);
+        }, 5000);
       }
     },
     [currentInstance, user, reduxUser]
@@ -132,10 +132,10 @@ export function useQuitButton() {
           timestamp: Date.now(),
         });
 
-        // Auto-remove the message after 7 seconds
+        // Auto-remove the message after 5 seconds (ephemeral)
         setTimeout(() => {
           remove(flyingMessageRef);
-        }, 7000);
+        }, 5000);
 
         // Update presence to inactive
         if (currentInstance) {
@@ -149,13 +149,13 @@ export function useQuitButton() {
         heartbeatIntervalRef.current = null;
       }
       
-      if (user?.id) {
+      if (user?.id && !reduxUser.isGuest) {
         await remove(ref(rtdb, `TaskBuffer/${user.id}/heartbeat`));
       }
 
       // STEP 3: NUKE THE TASK FROM TASKBUFFER - SIMPLE AND DIRECT
       const taskIdToClean = activeTaskId;
-      if (taskIdToClean && user?.id) {
+      if (taskIdToClean && user?.id && !reduxUser.isGuest) {
         
         // Direct Firebase removal - no Redux thunks, no bullshit
         const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${taskIdToClean}`);

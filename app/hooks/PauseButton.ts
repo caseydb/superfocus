@@ -5,7 +5,7 @@ import { useInstance } from "../Components/Instances";
 import { rtdb } from "../../lib/firebase";
 import { ref, update, get, set } from "firebase/database";
 import { PresenceService } from "../utils/presenceService";
-import { updateTask } from "../store/taskSlice";
+import { updateTask, saveToCache } from "../store/taskSlice";
 
 interface PauseButtonOptions {
   task: string;
@@ -21,6 +21,7 @@ export function usePauseButton() {
   const { user, currentInstance } = useInstance();
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const { currentTaskId } = useSelector((state: RootState) => state.taskInput);
+  const reduxUser = useSelector((state: RootState) => state.user);
 
   const handleStop = useCallback(
     async (options: PauseButtonOptions) => {
@@ -37,8 +38,8 @@ export function usePauseButton() {
           })
         );
 
-        // Simply save the current total time to TaskBuffer
-        if (user?.id) {
+        // Save the current total time
+        if (user?.id && !reduxUser.isGuest) {
           const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${taskId}`);
           
           // Check if task still exists before updating (might have been quit)
@@ -77,6 +78,10 @@ export function usePauseButton() {
                 status: "paused" as const
               }
             }));
+            // Persist local cache for guests
+            if (reduxUser.isGuest) {
+              dispatch(saveToCache());
+            }
           }).catch(() => {
             // Error handled silently - task may have been deleted
           });
@@ -88,13 +93,21 @@ export function usePauseButton() {
             last_seen: Date.now(),
           });
 
-          // Update presence to inactive
-          if (currentInstance) {
-            PresenceService.updateUserPresence(user.id, currentInstance.id, false);
-          }
+          // Presence update moved below to run for all users
         } else {
           // If no user, just save current seconds
           saveTimerState(false, seconds);
+          // Update Redux for guests
+          if (taskId) {
+            dispatch(updateTask({
+              id: taskId,
+              updates: {
+                timeSpent: seconds,
+                status: "paused" as const
+              }
+            }));
+            dispatch(saveToCache());
+          }
         }
       }
 
@@ -107,6 +120,11 @@ export function usePauseButton() {
       // Set state AFTER all operations
       setRunning(false);
       setIsStarting(false);
+
+      // Update presence to inactive (all users)
+      if (currentInstance && user?.id) {
+        PresenceService.updateUserPresence(user.id, currentInstance.id, false);
+      }
     },
     [dispatch, user, activeTaskId, currentTaskId, currentInstance]
   );

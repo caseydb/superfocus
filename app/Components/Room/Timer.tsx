@@ -8,6 +8,8 @@ import {
   updateTask,
   addTask,
   setActiveTask,
+  updateTaskTime,
+  saveToCache,
 } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set, remove, get, update, onValue, off, type DataSnapshot } from "firebase/database";
@@ -106,6 +108,7 @@ export default function Timer({
   
   // Get preferences from Redux
   const preferences = useSelector((state: RootState) => state.preferences);
+  const reduxUser = useSelector((state: RootState) => state.user);
   
   // Update local cooldowns every second (only complete cooldown now)
   useEffect(() => {
@@ -145,6 +148,13 @@ export default function Timer({
       const taskId = currentTaskId || activeTaskId;
       
       if (taskId && user?.id) {
+        // For guests, persist locally only
+        if (reduxUser.isGuest) {
+          dispatch(updateTaskTime({ id: taskId, timeSpent: baseSeconds }));
+          dispatch(saveToCache());
+          return;
+        }
+
         const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
 
         const timerState = {
@@ -159,7 +169,7 @@ export default function Timer({
         set(timerRef, timerState);
         
         // Also update LastTask whenever we save timer state
-        if (taskId) {
+        if (taskId && !reduxUser.isGuest) {
           const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
           set(lastTaskRef, {
             taskId: taskId,
@@ -169,16 +179,16 @@ export default function Timer({
         }
       }
     },
-    [currentTaskId, activeTaskId, user?.id, isQuittingRef, task]
+    [currentTaskId, activeTaskId, user?.id, isQuittingRef, task, reduxUser.isGuest, dispatch]
   );
 
   // Helper to clear timer state from Firebase
   const clearTimerState = React.useCallback(() => {
-    if (user?.id) {
+    if (user?.id && !reduxUser.isGuest) {
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
       remove(timerRef);
     }
-  }, [user?.id]);
+  }, [user?.id, reduxUser.isGuest]);
 
   // Helper to format time as mm:ss or hh:mm:ss based on duration
   function formatTime(s: number) {
@@ -217,41 +227,40 @@ export default function Timer({
 
     // Wait a bit to ensure Redux has loaded tasks
     const initTimer = setTimeout(async () => {
+      if (reduxUser.isGuest) {
+        // Guest: restore from Redux/local cache only
+        if (activeTaskId) {
+          const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
+          if (activeTask) {
+            const totalTime = activeTask.timeSpent || 0;
+            setSeconds(totalTime);
+            if (secondsRef) secondsRef.current = totalTime;
+            pausedSecondsRef.current = totalTime;
+            if (onTaskRestore) onTaskRestore(activeTask.name, false, activeTaskId);
+          }
+        }
+        setIsInitialized(true);
+        return;
+      }
+
+      // Authenticated: try Firebase restoration
       // First check for LastTask
       const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
       const lastTaskSnapshot = await get(lastTaskRef);
       
       if (lastTaskSnapshot.exists()) {
         const lastTaskData = lastTaskSnapshot.val();
-        
-        
         // Load this task's data from TaskBuffer
         const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
         const taskSnapshot = await get(taskRef);
-        
         if (taskSnapshot.exists()) {
           const taskData = taskSnapshot.val();
           const totalTime = taskData.total_time || 0;
-          
-          
-          // Set the timer to this task's time
           setSeconds(totalTime);
-          if (secondsRef) {
-            secondsRef.current = totalTime;
-          }
-          
-          // Initialize paused seconds ref for potential resume
+          if (secondsRef) secondsRef.current = totalTime;
           pausedSecondsRef.current = totalTime;
-          
-          // Set this as the active task
           dispatch(setActiveTask(lastTaskData.taskId));
-          
-          // Restore the task name in the input
-          if (onTaskRestore) {
-            onTaskRestore(lastTaskData.taskName || taskData.name, false, lastTaskData.taskId);
-          }
-          
-          // Mark as initialized
+          if (onTaskRestore) onTaskRestore(lastTaskData.taskName || taskData.name, false, lastTaskData.taskId);
           setIsInitialized(true);
           return;
         }
@@ -259,103 +268,59 @@ export default function Timer({
       
       // Fallback to checking timer_state (for backward compatibility)
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-      
-      // One-time read to restore state
       get(timerRef).then((snapshot) => {
-      const timerState = snapshot.val();
-      
-      if (timerState && timerState.taskId) {
-        const isRunning = timerState.running || false;
-        let currentSeconds = 0;
-
-
-        if (isRunning && timerState.startTime) {
-          // Calculate current seconds: base + elapsed time since start
-          const elapsedMs = Date.now() - timerState.startTime;
-          const elapsedSeconds = Math.floor(elapsedMs / 1000);
-          currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-          
-          // For a running timer after reload, initialize drift correction refs
-          startTimeRef.current = timerState.startTime;
-          baseSecondsRef.current = timerState.baseSeconds || 0;
-        } else {
-          // Use stored total seconds when paused
-          currentSeconds = timerState.totalSeconds || 0;
-          pausedSecondsRef.current = currentSeconds;
-          
-        }
-
-        // Restore state
-        setSeconds(currentSeconds);
-        setRunning(isRunning);
-        
-        // Also update secondsRef immediately
-        if (secondsRef) {
-          secondsRef.current = currentSeconds;
-        }
-        
-        // Always restore the task associated with the timer
-        if (timerState.taskId) {
-          
-          // First try to find in Redux
-          const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
-          if (restoredTask) {
-            // Skip restoration if task is already completed
-            if (restoredTask.completed || restoredTask.status === "completed") {
-              return;
-            }
-            // Set this as the active task
-            dispatch(setActiveTask(timerState.taskId));
-            // Update task status based on timer state
-            dispatch(updateTask({
-              id: timerState.taskId,
-              updates: { 
-                status: isRunning ? "in_progress" : "paused" as const,
-                timeSpent: currentSeconds
-              }
-            }));
-            if (onTaskRestore) {
-              onTaskRestore(restoredTask.name, isRunning, timerState.taskId);
-            }
+        const timerState = snapshot.val();
+        if (timerState && timerState.taskId) {
+          const isRunning = timerState.running || false;
+          let currentSeconds = 0;
+          if (isRunning && timerState.startTime) {
+            const elapsedMs = Date.now() - timerState.startTime;
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+            currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+            startTimeRef.current = timerState.startTime;
+            baseSecondsRef.current = timerState.baseSeconds || 0;
           } else {
-            // If not in Redux yet, try to get from TaskBuffer
-            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
-            get(taskRef).then((taskSnapshot) => {
-              const taskData = taskSnapshot.val();
-              if (taskData && taskData.name) {
-                // Check if task already exists in Redux before adding
-                const existingTask = reduxTasks.find(t => t.id === timerState.taskId);
-                if (!existingTask) {
-                  // Add task to Redux if not already there
-                  dispatch(addTask({
-                    id: timerState.taskId,
-                    name: taskData.name
-                  }));
-                }
-                // Always set as active task and restore name
-                dispatch(setActiveTask(timerState.taskId));
-                dispatch(updateTask({
-                  id: timerState.taskId,
-                  updates: { 
-                    status: isRunning ? "in_progress" : "paused" as const,
-                    timeSpent: taskData.total_time || currentSeconds
-                  }
-                }));
-                if (onTaskRestore) {
-                  onTaskRestore(taskData.name, isRunning, timerState.taskId);
-                }
-              } else {
+            currentSeconds = timerState.totalSeconds || 0;
+            pausedSecondsRef.current = currentSeconds;
+          }
+          setSeconds(currentSeconds);
+          setRunning(isRunning);
+          if (secondsRef) secondsRef.current = currentSeconds;
+          if (timerState.taskId) {
+            const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
+            if (restoredTask) {
+              if (restoredTask.completed || restoredTask.status === "completed") {
+                return;
               }
-            });
+              dispatch(setActiveTask(timerState.taskId));
+              dispatch(updateTask({
+                id: timerState.taskId,
+                updates: { status: isRunning ? "in_progress" : "paused", timeSpent: currentSeconds },
+              }));
+              if (onTaskRestore) onTaskRestore(restoredTask.name, isRunning, timerState.taskId);
+            } else {
+              const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
+              get(taskRef).then((taskSnapshot) => {
+                const taskData = taskSnapshot.val();
+                if (taskData && taskData.name) {
+                  const existingTask = reduxTasks.find((t) => t.id === timerState.taskId);
+                  if (!existingTask) {
+                    dispatch(addTask({ id: timerState.taskId, name: taskData.name }));
+                  }
+                  dispatch(setActiveTask(timerState.taskId));
+                  dispatch(updateTask({
+                    id: timerState.taskId,
+                    updates: { status: isRunning ? "in_progress" : "paused", timeSpent: taskData.total_time || currentSeconds },
+                  }));
+                  if (onTaskRestore) onTaskRestore(taskData.name, isRunning, timerState.taskId);
+                }
+              });
+            }
           }
         }
-      }
-      
-      setIsInitialized(true);
-    }).catch(() => {
-      setIsInitialized(true);
-    });
-    }, 1000); // Wait 1 second for Redux to load
+        setIsInitialized(true);
+      }).catch(() => setIsInitialized(true));
+    }, 1000);
     
     return () => clearTimeout(initTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -536,8 +501,8 @@ export default function Timer({
               secondsRef.current = expectedSeconds;
             }
             
-            // Save corrected time immediately
-            if (activeTaskId && user?.id) {
+            // Save corrected time immediately (authenticated only)
+            if (activeTaskId && user?.id && !reduxUser.isGuest) {
               const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
               update(taskRef, {
                 total_time: expectedSeconds,
@@ -556,24 +521,34 @@ export default function Timer({
           }
           
           
-          // Save total_time to Firebase every 5 seconds
-          if (newSeconds % 5 === 0 && activeTaskId && user?.id && 
-              !((isQuittingRef && isQuittingRef.current) || localIsQuittingRef.current)) {
-            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
-            update(taskRef, {
-              total_time: newSeconds,
-              updated_at: Date.now()
-            }).catch(() => {
-              // Task might have been deleted, ignore error
-            });
-            
-            // Also update LastTask to ensure it's current
-            const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
-            set(lastTaskRef, {
-              taskId: activeTaskId,
-              taskName: task || "",
-              timestamp: Date.now()
-            });
+          // Persist progress
+          if (activeTaskId) {
+            if (reduxUser.isGuest) {
+              // Keep Redux task in sync and cache periodically
+              dispatch(updateTaskTime({ id: activeTaskId, timeSpent: newSeconds }));
+              if (newSeconds % 5 === 0) {
+                dispatch(saveToCache());
+              }
+            } else if (user?.id && !((isQuittingRef && isQuittingRef.current) || localIsQuittingRef.current)) {
+              // Authenticated: Save total_time to Firebase every 5 seconds
+              if (newSeconds % 5 === 0) {
+                const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
+                update(taskRef, {
+                  total_time: newSeconds,
+                  updated_at: Date.now()
+                }).catch(() => {
+                  // Task might have been deleted, ignore error
+                });
+                
+                // Also update LastTask to ensure it's current
+                const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+                set(lastTaskRef, {
+                  taskId: activeTaskId,
+                  taskName: task || "",
+                  timestamp: Date.now()
+                });
+              }
+            }
           }
           
           return newSeconds;
@@ -633,8 +608,8 @@ export default function Timer({
             driftHistoryRef.current.shift();
           }
 
-          // Save corrected time to Firebase immediately
-          if (activeTaskId && user?.id) {
+          // Save corrected time to Firebase immediately (authenticated only)
+          if (activeTaskId && user?.id && !reduxUser.isGuest) {
             const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
             update(taskRef, {
               total_time: expectedSeconds,

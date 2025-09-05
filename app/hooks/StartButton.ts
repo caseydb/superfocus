@@ -99,13 +99,13 @@ export function useStartButton() {
 
         set(eventRef, eventData);
 
-        // Auto-cleanup old events after 10 seconds
+        // Auto-cleanup event after 5 seconds (ephemeral)
         setTimeout(() => {
           const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
           import("firebase/database").then(({ remove }) => {
             remove(eventRef);
           });
-        }, 10000);
+        }, 5000);
       }
     },
     [currentInstance, user, reduxUser]
@@ -257,8 +257,8 @@ export function useStartButton() {
         // No need for time segments anymore, just update status
       }
 
-      // Write heartbeat to Firebase
-      if (user?.id) {
+      // Write heartbeat to Firebase (authenticated users only)
+      if (user?.id && !reduxUser.isGuest) {
         const heartbeatRef = ref(rtdb, `TaskBuffer/${user.id}/heartbeat`);
 
         const heartbeatData = {
@@ -270,13 +270,7 @@ export function useStartButton() {
 
         set(heartbeatRef, heartbeatData);
 
-        // Update presence to active with task info
-        if (currentInstance) {
-          PresenceService.updateUserPresence(user.id, currentInstance.id, true, {
-            taskId,
-            taskName: task?.trim() || "Untitled Task"
-          });
-        }
+        // Presence update moved below to run for all users
 
         // Start heartbeat interval
         if (heartbeatIntervalRef?.current) {
@@ -310,15 +304,23 @@ export function useStartButton() {
       setRunning(true);
       setIsStarting(false);
 
-      // Save this as the last active task
-      if (taskId && user?.id) {
+      // Update presence to active with task info (all users)
+      if (currentInstance && user?.id) {
+        PresenceService.updateUserPresence(user.id, currentInstance.id, true, {
+          taskId,
+          taskName: task?.trim() || "Untitled Task",
+        });
+      }
+
+      // Save this as the last active task (authenticated only)
+      if (taskId && user?.id && !reduxUser.isGuest) {
         const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
         set(lastTaskRef, {
           taskId: taskId,
           taskName: task?.trim() || "",
           timestamp: Date.now()
         });
-
+        
         // Clear the justCompletedTask flag when starting a new task
         const completedFlagRef = ref(rtdb, `TaskBuffer/${user.id}/justCompletedTask`);
         remove(completedFlagRef);
