@@ -393,7 +393,17 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             }}
           >
           {/* Profile picture */}
-          <div className="relative mr-2">
+          <div
+            className={`relative mr-2 ${((postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url)) ? 'cursor-pointer' : ''}`}
+            onMouseEnter={() => setHoveredUserId(u.id)}
+            onClick={() => {
+              const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
+              if (url) {
+                try { window.open(url, '_blank', 'noopener'); } catch {}
+              }
+            }}
+            title={(postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null) ? 'Open LinkedIn profile' : ''}
+          >
             {(() => {
               // Check if this is the current user
               // Instance user.id will be Firebase UID once auth completes
@@ -439,7 +449,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                       alt="Profile" 
                       width={28}
                       height={28}
-                      className="rounded-full object-cover"
+                      className={`rounded-full object-cover border-2 ${hoveredUserId === u.id ? 'border-[#FFAA00]' : 'border-transparent'}`}
                       style={{ width: '28px', height: '28px' }}
                       unoptimized={true}
                       onError={(e) => {
@@ -455,9 +465,9 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                     />
                   ) : null}
                   <div 
-                    className={`w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 ${
-                      profileImage ? 'hidden' : 'flex'
-                    }`}
+                    className={`w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-300 border-2 ${
+                      hoveredUserId === u.id ? 'border-[#FFAA00]' : 'border-transparent'
+                    } ${profileImage ? 'hidden' : 'flex'}`}
                   >
                     {initials}
                   </div>
@@ -465,14 +475,10 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               );
             })()}
           </div>
-          <span className="cursor-pointer flex items-center gap-1.5 group">
+          <span className="flex items-center gap-1.5 group">
             {/* Rank and Name */}
             <span
-              className={`font-medium text-white ${
-                (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url)
-                  ? 'hover:text-[#FFAA00]'
-                  : ''
-              }`}
+              className={`font-medium ${hoveredUserId === u.id ? 'text-[#FFAA00]' : 'text-white'} ${(postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url) ? 'cursor-pointer' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
@@ -515,7 +521,18 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             )}
             
             {/* Status text with pulsing dot - temporarily hidden */}
-            <span className="flex items-center gap-1 text-gray-400">
+            <span
+              className="flex items-center gap-1 text-gray-400"
+              onMouseEnter={() => setHoveredUserId(u.id)}
+              onClick={() => {
+                const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
+                if (url) {
+                  try { window.open(url, '_blank', 'noopener'); } catch {}
+                }
+              }}
+              title={(postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null) ? 'Open LinkedIn profile' : ''}
+              style={{ cursor: (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url) ? 'pointer' : 'default' }}
+            >
               <span className="text-xs">is</span>
               <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full">
                 {/* Pulsing dot temporarily commented out

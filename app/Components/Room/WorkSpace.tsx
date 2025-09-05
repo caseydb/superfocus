@@ -109,6 +109,8 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
     animateLayoutChanges: () => true,
   });
 
+  // (hover state removed; no cross-element highlighting in Workspace)
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? "none" : transition,
@@ -300,6 +302,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                   avatarSrc = `/${animals[animalIndex]}.png`;
                 }
 
+                
                 displayItems.push(
                   <div
                     key={roomUser.userId}
