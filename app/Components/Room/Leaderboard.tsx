@@ -480,7 +480,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <div className="w-full space-y-1.5" style={{ minHeight: `${PAGE_SIZE * 40 + (PAGE_SIZE - 1) * 6}px` }}>
-            {loading ? (
+            {loading && entries.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <DotSpinner size="30" speed="0.9" color="#FFAA00" />
               </div>

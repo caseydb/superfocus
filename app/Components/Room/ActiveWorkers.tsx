@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { rtdb } from "../../../lib/firebase";
-import { ref, get } from "firebase/database";
+import { ref, get, onValue, off, query, orderByChild, limitToLast } from "firebase/database";
 import Image from "next/image";
 import { PresenceService } from "@/app/utils/presenceService";
 import GlobalPulseTicker from "@/app/utils/globalPulseTicker";
@@ -20,6 +20,9 @@ interface PostgresUser {
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
   const currentUser = useSelector((state: RootState) => state.user);
+  const leaderboardEntries = useSelector((state: RootState) => state.leaderboard.entries);
+  const leaderboardTimeFilter = useSelector((state: RootState) => state.leaderboard.timeFilter);
+  const leaderboardLastFetched = useSelector((state: RootState) => state.leaderboard.lastFetched);
   const { user: instanceUser } = useInstance();
   const [activeUsers, setActiveUsers] = useState<{ id: string; displayName: string }[]>([]);
   // Store weekly leaderboard data separately from the global filter
@@ -150,28 +153,94 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   // };
 
 
-  // Fetch weekly leaderboard data independently
-  // ActiveWorkers always needs weekly data, regardless of what the Leaderboard component is showing
-  useEffect(() => {
-    const fetchWeeklyData = async () => {
-      try {
-        const response = await fetch('/api/leaderboard?timeFilter=this_week');
-        const data = await response.json();
-        
-        if (response.ok) {
-          setWeeklyLeaderboard(data.data);
-        }
-      } catch {
-        // Failed to fetch weekly leaderboard
+  // Fetch weekly leaderboard on demand
+  const latestFetchSeq = useRef(0);
+  const fetchWeeklyData = React.useCallback(async () => {
+    const seq = ++latestFetchSeq.current;
+    try {
+      const response = await fetch('/api/leaderboard?timeFilter=this_week');
+      const data = await response.json();
+
+      if (response.ok && seq === latestFetchSeq.current) {
+        setWeeklyLeaderboard(data.data);
       }
-    };
-    
-    // Fetch on mount and periodically
-    fetchWeeklyData();
-    const interval = setInterval(fetchWeeklyData, 30000); // Refresh every 30 seconds
-    
-    return () => clearInterval(interval);
+    } catch {
+      // Failed to fetch weekly leaderboard
+    }
   }, []);
+
+  // Initial load of weekly leaderboard (no interval polling)
+  useEffect(() => {
+    fetchWeeklyData();
+  }, [fetchWeeklyData]);
+
+  // Also reflect Redux leaderboard updates when it's for this week
+  useEffect(() => {
+    if (leaderboardTimeFilter === 'this_week' && leaderboardEntries && leaderboardEntries.length >= 0) {
+      // Map Redux entries shape directly; typing matches LeaderboardEntry
+      setWeeklyLeaderboard(leaderboardEntries as LeaderboardEntry[]);
+      // console.debug('[ActiveWorkers] Updated from Redux leaderboard', { count: leaderboardEntries.length, at: leaderboardLastFetched });
+    }
+  }, [leaderboardEntries, leaderboardTimeFilter, leaderboardLastFetched]);
+
+  // If Redux refreshed but is showing all_time, still refresh local weekly stats in background
+  useEffect(() => {
+    if (leaderboardLastFetched && leaderboardTimeFilter !== 'this_week') {
+      const t = setTimeout(() => {
+        fetchWeeklyData();
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [leaderboardLastFetched, leaderboardTimeFilter, fetchWeeklyData]);
+
+  // Listen to GlobalEffects events and refresh weekly leaderboard on task completion
+  useEffect(() => {
+    if (!roomId) return;
+
+    // Only observe recent events
+    const eventsQuery = query(
+      ref(rtdb, `GlobalEffects/${roomId}/events`),
+      orderByChild('timestamp'),
+      limitToLast(20)
+    );
+
+    let isInitialLoad = true;
+    const processed = new Set<string>();
+    let debounceTimer: NodeJS.Timeout | null = null;
+
+    const handle = onValue(eventsQuery, (snap) => {
+      const events = snap.val();
+      if (!events) return;
+
+      if (isInitialLoad) {
+        Object.keys(events).forEach((id) => processed.add(id));
+        isInitialLoad = false;
+        return;
+      }
+
+      let shouldRefresh = false;
+      Object.entries(events as Record<string, { type?: string }>)
+        .forEach(([id, evt]) => {
+          if (processed.has(id)) return;
+          processed.add(id);
+          if (evt?.type === 'complete') {
+            shouldRefresh = true;
+          }
+        });
+
+      if (shouldRefresh) {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          fetchWeeklyData();
+        }, 5000); // Wait 5s to avoid DB race after completion
+      }
+    });
+
+    return () => {
+      off(eventsQuery, 'value', handle);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [roomId, fetchWeeklyData]);
 
   // The leaderboard will now automatically update when tasks are completed
   // via the Redux store updates from CompleteButton.ts

@@ -59,6 +59,7 @@ import {
   setCurrentInput,
   setCurrentTask,
 } from "@/app/store/taskInputSlice";
+import { refreshLeaderboard } from "@/app/store/leaderboardSlice";
 
 type MilestoneData = {
   milestone: string;
@@ -1008,6 +1009,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       limitToLast(20) // Only fetch the 20 most recent events
     );
     let timeout: NodeJS.Timeout | null = null;
+    let refreshDebounce: NodeJS.Timeout | null = null;
     const processedEvents = new Set<string>();
     let isInitialLoad = true;
 
@@ -1023,6 +1025,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
 
       // Find new events we haven't processed yet
+      let shouldRefreshLeaderboard = false;
       Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string; userId?: string; authId?: string; duration?: number }>).forEach(async ([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
@@ -1064,8 +1067,22 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               }
             }, 5000);
           }
+
+          // Trigger leaderboard refresh only for completion events
+          // This path is already scoped to the current room: GlobalEffects/${currentInstance.id}
+          if (event.type === "complete") {
+            shouldRefreshLeaderboard = true;
+          }
         }
       });
+
+      if (shouldRefreshLeaderboard) {
+        if (refreshDebounce) clearTimeout(refreshDebounce);
+        refreshDebounce = setTimeout(() => {
+          // Use current store timeFilter via refresh thunk
+          dispatch(refreshLeaderboard());
+        }, 5000); // Wait 5s to allow DB to persist
+      }
     });
 
     // Clean up old processed events periodically
@@ -1086,9 +1103,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => {
       off(eventsQuery, "value", handle);
       if (timeout) clearTimeout(timeout);
+      if (refreshDebounce) clearTimeout(refreshDebounce);
       clearInterval(cleanupInterval);
     };
-  }, [currentInstance, timerRunning]);
+  }, [currentInstance, timerRunning, dispatch]);
 
   // Listen for flying messages from GlobalEffects
   useEffect(() => {
