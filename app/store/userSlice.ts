@@ -169,7 +169,6 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUserData.fulfilled, (state, action) => {
-        console.log('[UserSlice] User data fetched:', action.payload);
         state.loading = false;
         state.user_id = action.payload.user_id;
         state.auth_id = action.payload.auth_id;
@@ -191,7 +190,6 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(updateUserData.fulfilled, (state, action) => {
-        console.log('[UserSlice] User data updated:', action.payload);
         state.loading = false;
         state.user_id = action.payload.user_id;
         state.auth_id = action.payload.auth_id;

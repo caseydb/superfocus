@@ -2,6 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { rtdb } from "@/lib/firebase";
 import { ref, set, remove, get, update } from "firebase/database";
 import { LocalTaskCache } from "@/app/utils/localTaskCache";
+import { taskBufferUserId } from "@/app/utils/taskBuffer";
 import type { RootState } from "./store";
 
 export interface Task {
@@ -49,9 +50,11 @@ export const addTaskToBufferWhenStarted = createAsyncThunk(
     userId: string; // PostgreSQL user ID
     roomId: string;
     firebaseUserId: string; // Firebase Auth user ID
-  }) => {
+  }, { getState }) => {
+    const state = getState() as RootState;
+    const effectiveUserId = taskBufferUserId(firebaseUserId, state.user?.isGuest);
     // Check if task already exists in TaskBuffer
-    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
+    const taskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/${id}`);
     const snapshot = await get(taskRef);
 
     if (!snapshot.exists()) {
@@ -143,7 +146,7 @@ export const createTaskThunk = createAsyncThunk(
 // Thunk for deleting a task from database
 export const deleteTaskThunk = createAsyncThunk(
   "tasks/delete",
-  async ({ id, userId, firebaseUserId }: { id: string; userId: string; firebaseUserId?: string }) => {
+  async ({ id, userId, firebaseUserId }: { id: string; userId: string; firebaseUserId?: string }, { getState }) => {
     // Call API to delete from database
     const response = await fetch(`/api/task/postgres?id=${id}&user_id=${userId}`, {
       method: "DELETE",
@@ -155,11 +158,13 @@ export const deleteTaskThunk = createAsyncThunk(
 
     // Also delete from Firebase TaskBuffer if firebaseUserId is provided
     if (firebaseUserId) {
-      const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${id}`);
+      const state = getState() as RootState;
+      const effectiveUserId = taskBufferUserId(firebaseUserId, state.user?.isGuest);
+      const taskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/${id}`);
       await remove(taskRef);
 
       // Check if this was the last task and clean up if needed
-      const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+      const userTasksRef = ref(rtdb, `TaskBuffer/${effectiveUserId}`);
       const userSnapshot = await get(userTasksRef);
 
       if (userSnapshot.exists()) {
@@ -205,8 +210,10 @@ export const transferTaskToPostgres = createAsyncThunk(
     duration?: number; // Optional duration in seconds to override Firebase calculation
   }, { getState }) => {
     try {
+      const state = getState() as RootState;
+      const effectiveUserId = taskBufferUserId(firebaseUserId, state.user?.isGuest);
       // 1. Get task data from TaskBuffer
-      const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+      const taskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/${taskId}`);
       const snapshot = await get(taskRef);
 
       if (!snapshot.exists()) {
@@ -236,8 +243,8 @@ export const transferTaskToPostgres = createAsyncThunk(
       const durationToSave = duration !== undefined ? duration : finalTotalTime;
 
       // Get user timezone from state
-      const state = getState() as { user: { timezone: string } };
-      const userTimezone = state.user.timezone || "UTC";
+      const timezoneState = getState() as { user: { timezone: string } };
+      const userTimezone = timezoneState.user.timezone || "UTC";
 
       // 2. Update task in Postgres with completion data
       const patchBody = {
@@ -283,16 +290,12 @@ export const transferTaskToPostgres = createAsyncThunk(
       const savedTask = await response.json();
 
       // 3. On success, only delete the completed task from TaskBuffer
-      console.log('[transferTaskToPostgres] About to remove task from TaskBuffer');
-      console.log('[transferTaskToPostgres] Task ID:', taskData.id);
-      
       // Remove the specific task
       await remove(taskRef);
-      console.log('[transferTaskToPostgres] Task removed from TaskBuffer');
 
       // Only remove LastTask if it belongs to the completed task
       // This prevents race conditions where a new task starts before the transfer completes
-      const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
+      const lastTaskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/LastTask`);
       const lastTaskSnapshot = await get(lastTaskRef);
       if (lastTaskSnapshot.exists()) {
         const lastTaskData = lastTaskSnapshot.val();
@@ -302,14 +305,14 @@ export const transferTaskToPostgres = createAsyncThunk(
       }
 
       // Set a flag indicating task was just completed to prevent auto-selection on reload
-      const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
+      const completedFlagRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/justCompletedTask`);
       await set(completedFlagRef, {
         timestamp: Date.now(),
         completedTaskId: taskData.id
       });
 
       // Clean up timer state only if it belongs to this task
-      const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
+      const timerRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/timer_state`);
       const timerSnapshot = await get(timerRef);
       if (timerSnapshot.exists()) {
         const timerData = timerSnapshot.val();
@@ -319,7 +322,7 @@ export const transferTaskToPostgres = createAsyncThunk(
       }
 
       // Clean up heartbeat only if it belongs to this task
-      const heartbeatRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/heartbeat`);
+      const heartbeatRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/heartbeat`);
       const heartbeatSnapshot = await get(heartbeatRef);
       if (heartbeatSnapshot.exists()) {
         const heartbeatData = heartbeatSnapshot.val();
@@ -329,7 +332,7 @@ export const transferTaskToPostgres = createAsyncThunk(
       }
 
       // Check if user has any other tasks in TaskBuffer
-      const userTasksRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+      const userTasksRef = ref(rtdb, `TaskBuffer/${effectiveUserId}`);
       const userSnapshot = await get(userTasksRef);
 
       if (userSnapshot.exists()) {
@@ -411,8 +414,10 @@ export const completeTaskWithHistory = createAsyncThunk(
 // Thunk for fetching tasks from TaskBuffer
 export const fetchTasksFromBuffer = createAsyncThunk(
   "tasks/fetchFromBuffer",
-  async ({ firebaseUserId }: { firebaseUserId: string }) => {
-    const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+  async ({ firebaseUserId }: { firebaseUserId: string }, { getState }) => {
+    const state = getState() as RootState;
+    const effectiveUserId = taskBufferUserId(firebaseUserId, state.user?.isGuest);
+    const userRef = ref(rtdb, `TaskBuffer/${effectiveUserId}`);
     const snapshot = await get(userRef);
 
     if (!snapshot.exists()) {
@@ -463,8 +468,10 @@ export const fetchTasksFromBuffer = createAsyncThunk(
 // Thunk for checking and restoring active task state
 export const checkForActiveTask = createAsyncThunk(
   "tasks/checkForActiveTask",
-  async ({ firebaseUserId }: { firebaseUserId: string; userId: string }) => {
-    const userRef = ref(rtdb, `TaskBuffer/${firebaseUserId}`);
+  async ({ firebaseUserId }: { firebaseUserId: string; userId: string }, { getState }) => {
+    const state = getState() as RootState;
+    const effectiveUserId = taskBufferUserId(firebaseUserId, state.user?.isGuest);
+    const userRef = ref(rtdb, `TaskBuffer/${effectiveUserId}`);
     const snapshot = await get(userRef);
 
     if (!snapshot.exists()) {
@@ -476,7 +483,7 @@ export const checkForActiveTask = createAsyncThunk(
     // Check if user just completed a task - if so, don't auto-select anything
     if (tasksData.justCompletedTask) {
       // Clean up the flag after checking
-      const completedFlagRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/justCompletedTask`);
+      const completedFlagRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/justCompletedTask`);
       await remove(completedFlagRef);
       return null;
     }
@@ -497,7 +504,7 @@ export const checkForActiveTask = createAsyncThunk(
         const timeSinceLastTask = Date.now() - (lastTaskTimestamp || 0);
         if (timeSinceLastTask < 10000) { // 10 seconds
           // Remove the stale LastTask entry
-          const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
+      const lastTaskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/LastTask`);
           await remove(lastTaskRef);
           return null;
         }
@@ -542,7 +549,7 @@ export const checkForActiveTask = createAsyncThunk(
 
         // Close the open segment in Firebase
         timeSegments[timeSegments.length - 1].end = Date.now();
-        const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+        const taskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/${taskId}`);
         update(taskRef, {
           time_segments: timeSegments,
           total_time: taskTotalTime,
@@ -716,10 +723,12 @@ export const updateTaskStatusThunk = createAsyncThunk(
 // Thunk for cleaning up TaskBuffer when quitting (without transferring to Postgres)
 export const cleanupTaskFromBuffer = createAsyncThunk(
   "tasks/cleanupFromBuffer",
-  async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }) => {
+  async ({ taskId, firebaseUserId }: { taskId: string; firebaseUserId: string }, { getState }) => {
+    const state = getState() as RootState;
+    const effectiveUserId = taskBufferUserId(firebaseUserId, state.user?.isGuest);
     
     // Remove task from TaskBuffer if it exists
-    const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${taskId}`);
+    const taskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/${taskId}`);
 
     // Check if task exists before trying to remove
     const snapshot = await get(taskRef);
@@ -752,7 +761,7 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
     }
 
     // Also clear any timer state if it exists
-    const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
+    const timerRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/timer_state`);
     const timerSnapshot = await get(timerRef);
     if (timerSnapshot.exists()) {
       const timerData = timerSnapshot.val();
@@ -763,7 +772,7 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
     }
 
     // Clear heartbeat if it exists and matches this task
-    const heartbeatRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/heartbeat`);
+    const heartbeatRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/heartbeat`);
     const heartbeatSnapshot = await get(heartbeatRef);
     if (heartbeatSnapshot.exists()) {
       const heartbeatData = heartbeatSnapshot.val();
@@ -773,7 +782,7 @@ export const cleanupTaskFromBuffer = createAsyncThunk(
     }
 
     // IMPORTANT: Also remove LastTask if it matches the quit task
-    const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
+    const lastTaskRef = ref(rtdb, `TaskBuffer/${effectiveUserId}/LastTask`);
     const lastTaskSnapshot = await get(lastTaskRef);
     if (lastTaskSnapshot.exists()) {
       const lastTaskData = lastTaskSnapshot.val();

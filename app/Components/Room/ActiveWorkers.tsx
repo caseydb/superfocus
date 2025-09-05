@@ -15,6 +15,7 @@ interface PostgresUser {
   firstName: string;
   lastName: string;
   profile_image: string | null;
+  linkedin_url?: string | null;
 }
 
 export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
@@ -204,12 +205,13 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           const newPostgresUsers: Record<string, PostgresUser> = {};
           
           // data.users is an object/map, not an array
-          Object.entries(data.users as Record<string, { firstName: string; lastName: string; profileImage: string | null }>).forEach(([authId, user]) => {
+          Object.entries(data.users as Record<string, { firstName: string; lastName: string; profileImage: string | null; linkedinUrl?: string | null }>).forEach(([authId, user]) => {
             newPostgresUsers[authId] = {
               auth_id: authId,
               firstName: user.firstName,
               lastName: user.lastName,
-              profile_image: user.profileImage
+              profile_image: user.profileImage,
+              linkedin_url: user.linkedinUrl || null,
             };
           });
           
@@ -465,7 +467,23 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           </div>
           <span className="cursor-pointer flex items-center gap-1.5 group">
             {/* Rank and Name */}
-            <span className="font-medium text-white">
+            <span
+              className={`font-medium text-white ${
+                (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url)
+                  ? 'hover:text-[#FFAA00]'
+                  : ''
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
+                if (url) {
+                  try {
+                    window.open(url, '_blank', 'noopener');
+                  } catch {}
+                }
+              }}
+              title={(postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null) ? 'Open LinkedIn profile' : ''}
+            >
               {(() => {
                 // const rank = userRankMap[u.id]; // Commented out - not used currently
                 // First try from leaderboard data (most up to date)
@@ -527,7 +545,26 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             >
               {/* Invisible bridge to maintain hover */}
               <div className="absolute inset-y-0 -left-2 w-4" />
-              <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 overflow-hidden w-64 ml-2">
+              <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 overflow-hidden w-64 ml-2 relative">
+                {/* LinkedIn link for hovered user (if available) */}
+                {(() => {
+                  const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
+                  return url ? (
+                    <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute top-2 right-2 text-[#0A66C2] hover:text-[#1385E0]"
+                    title="View LinkedIn profile"
+                    onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden>
+                        <rect x="0" y="0" width="24" height="24" rx="5" fill="white" />
+                        <path fill="#0077B5" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                  ) : null;
+                })()}
                 {/* Stats Section */}
                 <div className="px-4 py-3 border-b border-gray-800/50">
                   <div className="flex items-center gap-3">

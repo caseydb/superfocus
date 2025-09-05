@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
         auth_id: true,
         first_name: true,
         last_name: true,
-        profile_image: true
+        profile_image: true,
+        linkedin_url: true,
       }
     });
 
@@ -30,10 +31,11 @@ export async function POST(request: NextRequest) {
       acc[user.auth_id] = {
         firstName: user.first_name,
         lastName: user.last_name,
-        profileImage: user.profile_image
+        profileImage: user.profile_image,
+        linkedinUrl: user.linkedin_url,
       };
       return acc;
-    }, {} as Record<string, { firstName: string; lastName: string; profileImage: string | null }>);
+    }, {} as Record<string, { firstName: string; lastName: string; profileImage: string | null; linkedinUrl: string | null }>);
 
     return NextResponse.json({ success: true, users: userMap });
   } catch (error) {

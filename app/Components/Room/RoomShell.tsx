@@ -237,11 +237,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   }, [preferences.sound_volume]);
 
   // Console log preference slice changes (including sound_volume)
-  useEffect(() => {
-    try {
-      console.log('[Preferences] Slice changed: sound_volume=', preferences.sound_volume, preferences);
-    } catch {}
-  }, [preferences]);
+  // Removed console logging of preferences slice changes for production cleanliness
 
   // Keep Redux preference and Postgres in sync when localVolume changes
   const volumePersistTimeoutRef = useRef<NodeJS.Timeout | null>(null);
