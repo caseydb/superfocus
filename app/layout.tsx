@@ -16,24 +16,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Locked In",
+  title: "Superfocus",
   description: "Drop In. Lock In. Get Sh*t Done. Level up your work with others in the zone.",
   openGraph: {
-    title: "Locked In",
+    title: "Superfocus",
     description: "Drop In. Lock In. Get Sh*t Done. Level up your work with others in the zone.",
     images: [
       {
         url: "https://locked-in.work/meta.png",
         width: 1200,
         height: 630,
-        alt: "Locked In - Productivity App",
+        alt: "Superfocus - Productivity App",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Locked In",
+    title: "Superfocus",
     description: "Drop In. Lock In. Get Sh*t Done. Level up your work with others in the zone.",
     images: ["https://locked-in.work/meta.png"],
   },
