@@ -39,20 +39,20 @@ export default function Preferences({ onClose }: PreferencesProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-5 py-5 custom-scrollbar">
           <div className="flex flex-col gap-6 max-w-3xl mx-auto">
             {/* Timer and Task Settings Section */}
-            <div className="bg-gray-800/50 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-6">Timer and Task Settings</h3>
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-5 shadow-md">
+              <h3 className="text-lg font-bold text-white mb-4">Timer and Task Settings</h3>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Task Selection Mode */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div className="md:flex-1">
-                <label className="text-white font-medium">Task Selection Mode</label>
-                <p className="text-sm text-gray-400 mt-1">Choose how to select tasks when clicking the input field</p>
-              </div>
-              <div className="relative md:flex-none">
+                  <div className="md:flex-1">
+                    <label className="text-white font-medium">Task Selection Mode</label>
+                    <p className="text-sm text-gray-400 mt-1">Choose how to select tasks when clicking the input field</p>
+                  </div>
+                  <div className="relative md:flex-none">
                 <select
                   value={preferences.task_selection_mode}
                   onChange={async (e) => {
@@ -74,7 +74,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                       }
                     }
                   }}
-                  className="w-full md:w-auto border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 md:min-w-[200px] text-center"
+                  className="w-full md:w-auto border border-gray-700 rounded-lg px-3 pr-9 py-2.5 bg-gray-800 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-700 md:min-w-[200px] text-center"
                 >
                   <option value="dropdown" className="bg-[#0E1119] text-gray-100 cursor-pointer">Dropdown List</option>
                   <option value="sidebar" className="bg-[#0E1119] text-gray-100 cursor-pointer">Task Sidebar</option>
@@ -96,7 +96,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="md:flex-1">
                     <label className="text-white font-medium">Focus Check</label>
-                    <p className="text-sm text-gray-400 mt-1">Check if still working after this duration</p>
+                    <p className="text-sm text-gray-400 mt-1">Check if still working after this duration before pausing timer</p>
                   </div>
                   <div className="relative md:flex-none">
                     <select
@@ -120,7 +120,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                           }
                         }
                       }}
-                      className="w-full md:w-auto border border-gray-700 rounded-lg px-4 pr-10 py-3 bg-gray-700 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-600 md:min-w-[180px] text-center"
+                      className="w-full md:w-auto border border-gray-700 rounded-lg px-3 pr-9 py-2.5 bg-gray-800 text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-700 md:min-w-[180px] text-center"
                     >
                       <option value="15" className="bg-[#0E1119] text-gray-100 cursor-pointer">15 minutes</option>
                       <option value="30" className="bg-[#0E1119] text-gray-100 cursor-pointer">30 minutes</option>
@@ -143,9 +143,49 @@ export default function Preferences({ onClose }: PreferencesProps) {
               </div>
             </div>
 
+            {/* Notifications Section */}
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-5 shadow-md">
+              <h3 className="text-lg font-bold text-white mb-4">Email Notifications</h3>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <label className="text-white font-medium">Weekly Analytics</label>
+                  <p className="text-sm text-gray-400 mt-1">Get a weekly analytics email summarizing your last 7 days.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
+                      style={{ accentColor: '#FFAA00' }}
+                      checked={Boolean(preferences.weekly_analytics_email)}
+                      onChange={async (e) => {
+                        const value = e.target.checked;
+                        // Optimistic update
+                        dispatch(setPreference({ key: 'weekly_analytics_email', value }));
+                        // Persist for authenticated users
+                        if (reduxUser.user_id && reduxUser.isGuest === false) {
+                          try {
+                            await dispatch(updatePreferences({
+                              userId: reduxUser.user_id,
+                              updates: { weekly_analytics_email: value }
+                            })).unwrap();
+                          } catch {
+                            // Revert on failure
+                            dispatch(setPreference({ key: 'weekly_analytics_email', value: !value }));
+                          }
+                        }
+                      }}
+                    />
+                    <span className="text-gray-200 text-sm">Weekly Analytics</span>
+                  </label>
+                </div>
+              </div>
+              
+            </div>
+
             {/* Shortcuts Section - Hidden on mobile */}
-            <div className="hidden md:block bg-gray-800/50 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 text-center">Keyboard Shortcuts</h3>
+            <div className="hidden md:block bg-[#0B0E16] border border-gray-800 rounded-2xl p-5 shadow-md">
+              <h3 className="text-lg font-bold text-white mb-3 text-center">Keyboard Shortcuts</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘K</kbd>

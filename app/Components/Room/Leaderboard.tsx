@@ -159,9 +159,9 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
 
     const calculateCountdown = () => {
       const now = new Date();
-      
-      // Get next Monday 00:00:00 UTC
-      const nextMonday = new Date();
+
+      // Get next Sunday 00:00:00 UTC
+      const nextSunday = new Date();
       const nowUTC = new Date(Date.UTC(
         now.getUTCFullYear(),
         now.getUTCMonth(),
@@ -170,17 +170,17 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
         now.getUTCMinutes(),
         now.getUTCSeconds()
       ));
-      
-      // Calculate days until next Monday
-      const dayOfWeek = nowUTC.getUTCDay();
-      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
-      
-      // Set to next Monday 00:00:00 UTC
-      nextMonday.setUTCDate(nowUTC.getUTCDate() + daysUntilMonday);
-      nextMonday.setUTCHours(0, 0, 0, 0);
-      
+
+      // Calculate days until next Sunday (if today is Sunday, go to next week)
+      const dayOfWeek = nowUTC.getUTCDay(); // 0..6 (Sun..Sat)
+      const daysUntilSunday = dayOfWeek === 0 ? 7 : (7 - dayOfWeek);
+
+      // Set to next Sunday 00:00:00 UTC
+      nextSunday.setUTCDate(nowUTC.getUTCDate() + daysUntilSunday);
+      nextSunday.setUTCHours(0, 0, 0, 0);
+
       // Calculate difference
-      const diff = nextMonday.getTime() - now.getTime();
+      const diff = nextSunday.getTime() - now.getTime();
       
       if (diff <= 0) {
         setCountdown("Resetting...");

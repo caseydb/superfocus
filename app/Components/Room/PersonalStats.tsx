@@ -4,8 +4,7 @@ import { useInstance } from "../Instances";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
 import type { Task } from "../../store/taskSlice";
-import { rtdb } from "../../../lib/firebase";
-import { ref, set } from "firebase/database";
+// Firebase RTDB removed for streaks; using Redux userSlice instead
 
 // Types kept for reference
 // interface HistoryEntry {
@@ -72,7 +71,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
-  const [streak, setStreak] = useState(0);
+  const reduxStreak = useSelector((state: RootState) => state.user.streak);
   const [loading, setLoading] = useState(true);
   const [hasCompletedToday, setHasCompletedToday] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
@@ -204,19 +203,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
     return () => clearInterval(interval);
   }, [calculateTimeRemaining]);
 
-  // TODO: Replace with Firebase RTDB streak marking
-  // Expose the markTodayComplete function globally so other components can call it
-  useEffect(() => {
-    const markTodayCompleteWrapper = async () => {
-      if (!user?.id) return;
-      // Daily completions are now handled through PostgreSQL
-      setHasCompletedToday(true);
-    };
-
-    if (typeof window !== "undefined") {
-      (window as Window & { markStreakComplete?: () => Promise<void> }).markStreakComplete = markTodayCompleteWrapper;
-    }
-  }, [user?.id]);
+  // Removed legacy global bridge for Firebase streak marking
 
   // TODO: Replace with Firebase RTDB listener for stats
   useEffect(() => {
@@ -249,58 +236,9 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
       // Filter for completed tasks only
       const completedTasks = tasks.filter((task: Task) => task.status === "completed");
 
-      // Get unique streak dates
-      const streakDates = completedTasks.map((t) => {
-        const timestamp = toTimestamp(t.completedAt || t.createdAt);
-        return getStreakDate(timestamp);
-      });
-      const uniqueDateStrings = Array.from(new Set(streakDates));
-      const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+      // Unique/sorted streak dates are not needed for current UI; skip computing
 
-      let currentStreak = 0;
-
-      if (sortedDateStrings.length > 0) {
-        // Calculate current streak (working backwards from today)
-        const todayStr = getStreakDate(Date.now());
-        const yesterdayStr = getStreakDate(Date.now() - 24 * 60 * 60 * 1000);
-
-        const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
-
-        // Check if the streak is current (task completed today or yesterday)
-        if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
-          currentStreak = 1;
-
-          // Work backwards to count consecutive days
-          for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
-            const prevDateStr = sortedDateStrings[i];
-            const currDateStr = sortedDateStrings[i + 1];
-
-            // Parse the date strings to get year, month, day
-            const [prevYear, prevMonth, prevDay] = prevDateStr.split('-').map(Number);
-            const [currYear, currMonth, currDay] = currDateStr.split('-').map(Number);
-            
-            // Create dates at noon to avoid any timezone edge cases
-            const prevDate = new Date(prevYear, prevMonth - 1, prevDay, 12, 0, 0);
-            const currDate = new Date(currYear, currMonth - 1, currDay, 12, 0, 0);
-            
-            // Check if dates are consecutive calendar days
-            const nextDay = new Date(prevDate);
-            nextDay.setDate(nextDay.getDate() + 1);
-            
-            const isConsecutive = (
-              nextDay.getFullYear() === currDate.getFullYear() &&
-              nextDay.getMonth() === currDate.getMonth() &&
-              nextDay.getDate() === currDate.getDate()
-            );
-
-            if (isConsecutive) {
-              currentStreak++;
-            } else {
-              break;
-            }
-          }
-        }
-      }
+      // Current streak now comes from Redux; no local computation needed
 
       // Calculate today's stats
       const currentStreakDate = getStreakDate();
@@ -319,7 +257,6 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
 
       setTasksCompleted(userTaskCount);
       setTotalSeconds(userTotalSeconds);
-      setStreak(currentStreak);
       setLoading(false);
     };
 
@@ -338,27 +275,12 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
     };
   }, [user?.id, getStreakDate, tasks]);
 
-  // Sync streak to Firebase RTDB whenever it changes
-  useEffect(() => {
-    if (!user?.id || streak === 0) return;
-
-    // Only sync streaks >= 1 to Firebase
-    const syncStreak = async () => {
-      try {
-        const streakRef = ref(rtdb, `Streaks/${user.id}`);
-        await set(streakRef, streak);
-      } catch {
-        // Silent error handling - error details not needed
-      }
-    };
-
-    syncStreak();
-  }, [streak, user?.id]);
+  // Removed Firebase RTDB streak sync; Redux userSlice handles streak centrally
 
   if (loading || !user) return null;
 
   // Streak styling - border only, golden at 2+ days
-  const streakBorderColor = streak >= 2 ? "border-[#FFAA00]" : "border-gray-400";
+  const streakBorderColor = reduxStreak >= 2 ? "border-[#FFAA00]" : "border-gray-400";
 
   // Show countdown if they haven't completed today's task
   if (!hasCompletedToday) {
@@ -373,12 +295,12 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
           >
             <div className="flex items-center justify-center gap-2">
               <div className={`w-5 h-5 border ${streakBorderColor} rounded-full flex items-center justify-center animate-pulse bg-transparent`}>
-                <span className="text-gray-300 text-xs font-bold">{streak}</span>
+                <span className="text-gray-300 text-xs font-bold">{reduxStreak}</span>
               </div>
               <span className="text-gray-400 text-xs font-mono whitespace-nowrap">
                 <span className="text-gray-400">day streak</span> |{" "}
                 <span className="text-gray-300 font-medium">{timeRemaining}</span> to{" "}
-                {streak === 0 ? "start streak!" : "maintain streak!"}
+                {reduxStreak === 0 ? "start streak!" : "maintain streak!"}
               </span>
             </div>
           </div>
@@ -413,7 +335,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
             <div
               className={`w-5 h-5 border ${streakBorderColor} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 bg-transparent`}
             >
-              <span className="text-gray-300 text-xs font-bold">{streak}</span>
+              <span className="text-gray-300 text-xs font-bold">{reduxStreak}</span>
             </div>
             <span className="text-gray-400 text-xs font-mono whitespace-nowrap">
               <span className="text-gray-400">day streak</span> |{" "}

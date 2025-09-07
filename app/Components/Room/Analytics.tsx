@@ -500,7 +500,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     const sortedDateStrings = uniqueDateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
     let longestStreak = 0;
-    let currentStreak = 0;
+    const currentStreak = reduxUser?.streak ?? 0;
 
     if (sortedDateStrings.length > 0) {
       let tempStreak = 1;
@@ -540,50 +540,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
       }
       
 
-      // Calculate current streak (working backwards from today)
-      const now = Date.now();
-      const todayStr = getStreakDate(now);
-      const yesterdayStr = getStreakDate(now - 24 * 60 * 60 * 1000);
-      
-      const lastTaskDate = sortedDateStrings[sortedDateStrings.length - 1];
-      
-      // Check if the streak is current (task completed today or yesterday)
-      if (lastTaskDate === todayStr || lastTaskDate === yesterdayStr) {
-        currentStreak = 1;
-        
-        
-        // Work backwards to count consecutive days
-        for (let i = sortedDateStrings.length - 2; i >= 0; i--) {
-          const prevDateStr = sortedDateStrings[i];
-          const currDateStr = sortedDateStrings[i + 1];
-          
-          // Parse the date strings to get year, month, day
-          const [prevYear, prevMonth, prevDay] = prevDateStr.split('-').map(Number);
-          const [currYear, currMonth, currDay] = currDateStr.split('-').map(Number);
-          
-          // Create dates at noon to avoid any timezone edge cases
-          const prevDate = new Date(prevYear, prevMonth - 1, prevDay, 12, 0, 0);
-          const currDate = new Date(currYear, currMonth - 1, currDay, 12, 0, 0);
-          
-          // Check if dates are consecutive calendar days
-          const nextDay = new Date(prevDate);
-          nextDay.setDate(nextDay.getDate() + 1);
-          
-          const isConsecutive = (
-            nextDay.getFullYear() === currDate.getFullYear() &&
-            nextDay.getMonth() === currDate.getMonth() &&
-            nextDay.getDate() === currDate.getDate()
-          );
-          
-          
-          if (isConsecutive) {
-            currentStreak++;
-          } else {
-            break;
-          }
-        }
-        
-      }
+      // Current streak comes from Redux; longest streak remains history-based
     }
     
 

@@ -28,6 +28,13 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   const isGuest = useSelector((state: RootState) => state.user.isGuest);
   const currentUser = useSelector((state: RootState) => state.user);
 
+  // Debug: log the entire user slice when it becomes available or changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Redux] User slice:', currentUser);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     // STEP 1: Initialize as guest immediately (no waiting)
     if (!hasInitialized.current) {

@@ -17,6 +17,7 @@ import { setIsActive } from "../store/realtimeSlice";
 import { addHistoryEntry } from "../store/historySlice";
 import { updateLeaderboardOptimistically, refreshLeaderboard } from "../store/leaderboardSlice";
 import { resetInput } from "../store/taskInputSlice";
+import { updateUser, updateUserData } from "../store/userSlice";
 
 interface CompleteButtonOptions {
   task: string;
@@ -139,12 +140,97 @@ export function useCompleteButton() {
       dispatch(setIsActive(false));
       dispatch(resetInput());
 
-      // Mark today as completed for streak tracking
-      if (typeof window !== "undefined") {
-        const windowWithStreak = window as Window & { markStreakComplete?: () => Promise<void> };
-        if (windowWithStreak.markStreakComplete) {
-          windowWithStreak.markStreakComplete();
+      // Legacy Firebase streak bridge removed
+
+      // Optimistically update user streak in Redux and persist to Postgres
+      try {
+        // Compute current streak from tasks including this completion
+        const toTimestamp = (dateValue: string | number | Date | undefined): number => {
+          if (!dateValue && dateValue !== 0) return 0;
+          if (typeof dateValue === "string") return new Date(dateValue).getTime();
+          if (typeof dateValue === "number") return dateValue;
+          if (dateValue instanceof Date) return dateValue.getTime();
+          return 0;
+        };
+
+        const timezone = reduxUser.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+
+        const dayStr = (ts: number) => {
+          const parts = formatter.formatToParts(new Date(ts));
+          const map = parts.reduce((acc, p) => {
+            acc[p.type] = p.value;
+            return acc;
+          }, {} as Record<string, string>);
+          return `${map.year}-${map.month}-${map.day}`;
+        };
+
+        // Simulate the just-completed task being completed with a timestamp now
+        const now = Date.now();
+        const completedTaskId = taskId;
+        const simulatedTasks = reduxTasks.map((t) =>
+          completedTaskId && t.id === completedTaskId
+            ? { ...t, status: "completed" as const, completed: true, completedAt: now }
+            : t
+        );
+
+        // Build a set of unique completed day strings
+        const completedSet = new Set<string>();
+        for (const t of simulatedTasks) {
+          if (t.status === "completed" || t.completed) {
+            const ts = toTimestamp(t.completedAt || t.createdAt);
+            if (ts) completedSet.add(dayStr(ts));
+          }
         }
+
+        // Count current streak working back from today in the user's timezone
+        let currentStreak = 0;
+        const today = dayStr(now);
+        const oneDayMs = 24 * 60 * 60 * 1000;
+
+        // Helper to get previous day in tz by subtracting 24h and reformatting
+        const prevDayStr = (refTs: number) => dayStr(refTs - oneDayMs);
+
+        let cursorStr = today;
+        if (completedSet.has(cursorStr)) {
+          // Count consecutive days starting today
+          while (completedSet.has(cursorStr)) {
+            currentStreak++;
+            // Step back using refTs to avoid parsing cursorStr; use now - k*24h
+            const stepTs = now - currentStreak * oneDayMs;
+            cursorStr = dayStr(stepTs);
+          }
+        } else {
+          // Try starting from yesterday
+          const yStr = prevDayStr(now);
+          if (completedSet.has(yStr)) {
+            cursorStr = yStr;
+            while (completedSet.has(cursorStr)) {
+              currentStreak++;
+              const stepTs = now - currentStreak * oneDayMs;
+              cursorStr = dayStr(stepTs);
+            }
+          } else {
+            currentStreak = 0;
+          }
+        }
+
+        // Optimistically set Redux user streak
+        dispatch(updateUser({ streak: currentStreak }));
+
+        // Persist streak to Postgres for authenticated users
+        if (!reduxUser.isGuest) {
+          dispatch(updateUserData({ streak: currentStreak })).catch(() => {
+            // Silent fail; UI already updated optimistically
+          });
+        }
+      } catch {
+        // Do not block completion flow on streak calculation failure
       }
 
       // Optimistically update task status to completed
@@ -153,7 +239,7 @@ export function useCompleteButton() {
         dispatch(
           updateTask({
             id: taskId,
-            updates: { status: "completed" as const, completed: true },
+            updates: { status: "completed" as const, completed: true, completedAt: Date.now() },
           })
         );
         // IMPORTANT: Clear activeTaskId immediately to prevent RoomShell from restoring the input

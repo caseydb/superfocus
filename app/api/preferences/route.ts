@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         analytics_overview: true,
         history_user_filter: true,
         history_date_filter: true,
+        weekly_analytics_email: true,
         mode: true,
       }
     });
@@ -98,6 +99,7 @@ export async function PATCH(request: NextRequest) {
           analytics_date_pick: true,
           history_user_filter: true,
           history_date_filter: true,
+          weekly_analytics_email: true,
           mode: true,
         }
       });
@@ -119,6 +121,7 @@ export async function PATCH(request: NextRequest) {
         analytics_overview: true,
         history_user_filter: true,
         history_date_filter: true,
+        weekly_analytics_email: true,
         mode: true,
       }
     });

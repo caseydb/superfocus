@@ -11,6 +11,7 @@ interface UserState {
   linkedin_url: string | null;
   timezone: string | null;
   first_visit: boolean;
+  streak: number;
   loading: boolean;
   error: string | null;
   isGuest: boolean;
@@ -26,6 +27,7 @@ const initialState: UserState = {
   linkedin_url: null,
   timezone: null,
   first_visit: true,
+  streak: 0,
   loading: false,
   error: null,
   isGuest: true, // Default to guest mode
@@ -57,7 +59,7 @@ export const fetchUserData = createAsyncThunk(
 
 export const updateUserData = createAsyncThunk(
   'user/updateUserData',
-  async (userData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string; linkedin_url?: string }) => {
+  async (userData: { first_name?: string; last_name?: string; timezone?: string; profile_image?: string; linkedin_url?: string; streak?: number }) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error('No authenticated user');
@@ -129,6 +131,7 @@ const userSlice = createSlice({
       state.isGuest = true;
       state.first_name = 'Guest';
       state.last_name = 'User';
+      state.streak = 0;
       state.loading = false;
       state.error = null;
       state.profile_image = guestAvatar;
@@ -179,6 +182,7 @@ const userSlice = createSlice({
         state.linkedin_url = action.payload.linkedin_url;
         state.timezone = action.payload.timezone;
         state.first_visit = action.payload.first_visit ?? true;
+        state.streak = action.payload.streak ?? 0;
         state.isGuest = false; // Successfully fetched user data means not a guest
       })
       .addCase(fetchUserData.rejected, (state, action) => {
@@ -199,6 +203,9 @@ const userSlice = createSlice({
         state.profile_image = action.payload.profile_image;
         state.linkedin_url = action.payload.linkedin_url;
         state.timezone = action.payload.timezone;
+        if (typeof action.payload.streak === 'number') {
+          state.streak = action.payload.streak;
+        }
       })
       .addCase(updateUserData.rejected, (state, action) => {
         state.loading = false;

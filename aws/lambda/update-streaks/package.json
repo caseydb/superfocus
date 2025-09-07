@@ -1,0 +1,11 @@
+{
+  "name": "update-streaks",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
+

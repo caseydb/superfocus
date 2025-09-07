@@ -20,7 +20,8 @@ model user {
   last_active             DateTime
   timezone                String                    @default("UTC")
   first_visit             Boolean                   @default(true)
-  daily_streaks           daily_streak[]
+  streak                  Int                       @default(0)
+  longest_streak          Int                       @default(0)
   preferences             preference?
   room_members            room_member[]
   tasks                   task[]                    @relation("UserTasks")
@@ -41,6 +42,8 @@ model preference {
   analytics_overview  String  @default("tasks")
   history_date_filter String  @default("all_time")
   history_user_filter String  @default("my_tasks")
+  weekly_analytics_email Boolean  @default(true)
+  weekly_leaderboard_email Boolean  @default(true)
   user                user    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
@@ -53,6 +56,7 @@ model task {
   duration     Int       @default(0)
   counter      Int       @default(0)
   completed_at DateTime?
+  completed_locally_at DateTime?
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
   timezone     String
@@ -72,15 +76,6 @@ model note {
   checklist_completed Boolean @default(false)
   position            Int
   task                task    @relation("TaskNotes", fields: [task_id], references: [id], onDelete: Cascade)
-}
-
-model daily_streak {
-  id              String   @id @default(uuid())
-  user_id         String
-  completion_date DateTime
-  tasks_completed Int
-  total_seconds   Int
-  user            user     @relation(fields: [user_id], references: [id])
 }
 
 model admin_setting {
@@ -128,4 +123,15 @@ model user_milestone_messages {
   user      user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, milestone, channel])
+}
+
+model quote {
+  id           String   @id @default(uuid())
+  quote        String
+  author       String
+  active       Boolean  @default(true)
+  lastUsedAt   DateTime?      
+  timesUsed    Int       @default(0)   
+  createdAt    DateTime  @default(now())
+  @@index([active, lastUsedAt])
 }

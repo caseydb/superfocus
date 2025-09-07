@@ -9,6 +9,7 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { Pool } from "pg";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -124,6 +125,123 @@ export const cleanUpStaleTabCounts = functions.pubsub
       }
     } catch (err) {
       console.error("[cleanUpStaleTabCounts] Error:", err);
+    }
+    return null;
+  });
+
+// Trigger the Next.js API to update all streaks every minute
+// Helper: day string in a timezone
+function dayString(ts: number, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(ts));
+  const map = parts.reduce((acc: Record<string, string>, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {});
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function computeLongestStreakFromDays(dayStrings: string[]): number {
+  if (!dayStrings || dayStrings.length === 0) return 0;
+  const uniq = Array.from(new Set(dayStrings)).sort();
+  const addOneDay = (ds: string) => {
+    const [y, m, d] = ds.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+    dt.setUTCDate(dt.getUTCDate() + 1);
+    const yy = dt.getUTCFullYear();
+    const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getUTCDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  };
+  let longest = 1;
+  let current = 1;
+  for (let i = 1; i < uniq.length; i++) {
+    if (uniq[i] === addOneDay(uniq[i - 1])) {
+      current += 1;
+      if (current > longest) longest = current;
+    } else {
+      current = 1;
+    }
+  }
+  return longest;
+}
+
+export const updateAllStreaksCron = functions.region('us-central1').pubsub
+  .schedule("every 1 minutes")
+  .timeZone("UTC")
+  .onRun(async () => {
+    console.log('[updateAllStreaksCron] Tick');
+    const dbUrl = process.env.DATABASE_URL || (functions.config().database && (functions.config().database as any).url);
+    if (!dbUrl) {
+      console.error("[updateAllStreaksCron] DATABASE_URL not set");
+      return null;
+    }
+    const pool = new Pool({ connectionString: dbUrl });
+    const client = await pool.connect();
+    try {
+      // Advisory lock to avoid overlapping runs
+      const lockRes = await client.query('SELECT pg_try_advisory_lock($1)', [987654321]);
+      if (!lockRes.rows[0].pg_try_advisory_lock) {
+        console.log('[updateAllStreaksCron] Another run is active; skipping');
+        return null;
+      }
+
+      const usersRes = await client.query('SELECT id, timezone, streak, COALESCE(longest_streak, 0) AS longest_streak FROM "user"');
+      const oneDay = 24 * 60 * 60 * 1000;
+      let updated = 0;
+
+      for (const row of usersRes.rows) {
+        const userId: string = row.id;
+        const tz: string = row.timezone || 'UTC';
+        const curStreakDb: number = Number(row.streak || 0);
+        const curLongestDb: number = Number(row.longest_streak || 0);
+
+        const daysRes = await client.query(
+          `SELECT DISTINCT to_char((completed_locally_at)::date, 'YYYY-MM-DD') AS day
+           FROM "task" WHERE user_id = $1 AND status = 'completed' AND completed_locally_at IS NOT NULL`,
+          [userId]
+        );
+        const dayStrings: string[] = daysRes.rows.map((r: any) => r.day);
+        const daySet = new Set(dayStrings);
+
+        // Compute current streak anchored to user's timezone
+        const now = Date.now();
+        const today = dayString(now, tz);
+        const yesterday = dayString(now - oneDay, tz);
+        let current = 0;
+        let cursor = '';
+        if (daySet.has(today)) cursor = today;
+        else if (daySet.has(yesterday)) cursor = yesterday;
+        while (cursor && daySet.has(cursor)) {
+          current++;
+          const stepTs = now - current * oneDay;
+          cursor = dayString(stepTs, tz);
+        }
+
+        // Longest from all historical days
+        let longest = computeLongestStreakFromDays(dayStrings);
+        if (current > longest) longest = current;
+
+        if (current !== curStreakDb || longest !== curLongestDb) {
+          await client.query(
+            'UPDATE "user" SET streak = $2, longest_streak = $3 WHERE id = $1',
+            [userId, current, longest]
+          );
+          updated++;
+        }
+      }
+
+      console.log(`[updateAllStreaksCron] Updated ${updated} users`);
+    } catch (e) {
+      console.error('[updateAllStreaksCron] Error:', e);
+    } finally {
+      try { await client.query('SELECT pg_advisory_unlock($1)', [987654321]); } catch {}
+      client.release();
+      await pool.end();
     }
     return null;
   });

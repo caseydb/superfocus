@@ -7,26 +7,26 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const timeFilter = searchParams.get('timeFilter') || 'all_time';
     
-    // Get the start of the current week (Monday at 00:00:00 UTC) if filtering by this week
-    const monday = new Date();
+    // Get the start of the current week (Sunday at 00:00:00 UTC) if filtering by this week
+    const weekStart = new Date();
     if (timeFilter === 'this_week') {
       // Get current UTC date
       const nowUTC = new Date(Date.UTC(
-        monday.getUTCFullYear(),
-        monday.getUTCMonth(),
-        monday.getUTCDate(),
-        monday.getUTCHours(),
-        monday.getUTCMinutes(),
-        monday.getUTCSeconds()
+        weekStart.getUTCFullYear(),
+        weekStart.getUTCMonth(),
+        weekStart.getUTCDate(),
+        weekStart.getUTCHours(),
+        weekStart.getUTCMinutes(),
+        weekStart.getUTCSeconds()
       ));
-      
-      // Calculate days since Monday (where Monday = 1, Sunday = 0)
-      const dayOfWeek = nowUTC.getUTCDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      
-      // Set to Monday 00:00:00 UTC
-      monday.setUTCDate(nowUTC.getUTCDate() - daysToMonday);
-      monday.setUTCHours(0, 0, 0, 0);
+
+      // Calculate days since Sunday (Sunday = 0)
+      const dayOfWeek = nowUTC.getUTCDay(); // 0..6 (Sun..Sat)
+      const daysSinceSunday = dayOfWeek; // 0 if Sunday
+
+      // Set to Sunday 00:00:00 UTC
+      weekStart.setUTCDate(nowUTC.getUTCDate() - daysSinceSunday);
+      weekStart.setUTCHours(0, 0, 0, 0);
     }
     
     // Build the query based on the time filter
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
           LEFT JOIN 
             "task" t ON u.id = t.user_id 
               AND t.status = 'completed'
-              AND t.completed_at >= ${monday}
+              AND t.completed_at >= ${weekStart}
           GROUP BY 
             u.id, u.auth_id, u.first_name, u.last_name, u.profile_image, u.linkedin_url
           HAVING 
