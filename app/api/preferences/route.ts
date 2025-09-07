@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         history_user_filter: true,
         history_date_filter: true,
         weekly_analytics_email: true,
+        weekly_leaderboard_email: true,
         mode: true,
       }
     });
@@ -97,9 +98,11 @@ export async function PATCH(request: NextRequest) {
           task_selection_mode: true,
           focus_check_time: true,
           analytics_date_pick: true,
+          analytics_overview: true,
           history_user_filter: true,
           history_date_filter: true,
           weekly_analytics_email: true,
+          weekly_leaderboard_email: true,
           mode: true,
         }
       });
@@ -122,6 +125,7 @@ export async function PATCH(request: NextRequest) {
         history_user_filter: true,
         history_date_filter: true,
         weekly_analytics_email: true,
+        weekly_leaderboard_email: true,
         mode: true,
       }
     });

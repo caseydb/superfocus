@@ -16,6 +16,7 @@ interface PreferenceState {
   history_date_filter: string;
   mode: "stopwatch" | "countdown";
   weekly_analytics_email: boolean; // local-only opt-in for now
+  weekly_leaderboard_email: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -37,6 +38,7 @@ const getInitialState = (): PreferenceState => {
     history_date_filter: "this_week",
     mode: "stopwatch",
     weekly_analytics_email: true,
+    weekly_leaderboard_email: true,
     loading: false,
     error: null,
   };

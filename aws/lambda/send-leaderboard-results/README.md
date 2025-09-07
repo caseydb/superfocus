@@ -1,7 +1,8 @@
 Send Leaderboard Results Lambda (AWS)
 
 Overview
-- Sends the PREVIOUS week's leaderboard results (Sunday 00:00 UTC → next Sunday 00:00 UTC) to two hardcoded user IDs (for testing).
+- Sends the PREVIOUS week's leaderboard results (Sunday 00:00 UTC → next Sunday 00:00 UTC) to opted‑in users.
+- Recipients: all users with a valid email where `preference.weekly_leaderboard_email = true` (or no preference row, which defaults to opt‑in).
 - Connects directly to Postgres using `pg` and `DATABASE_URL`.
 - Uses Resend API to send the email.
 
@@ -37,3 +38,4 @@ Notes
 - Highlights the current user row with a gold border (mobile-safe).
 - Shows up to 7 rows around the user (2 above, user, up to 4 below) with edge clamping.
 - Footer preference link points to `https://superfocus.work/?modal=preferences`.
+- Opt‑out: users with `preference.weekly_leaderboard_email = false` are excluded from sends.

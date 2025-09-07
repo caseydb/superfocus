@@ -14,6 +14,7 @@ interface PreferencesCache {
   history_date_filter?: string;
   mode?: "stopwatch" | "countdown";
   weekly_analytics_email?: boolean;
+  weekly_leaderboard_email?: boolean;
 }
 
 class LocalPreferencesCache {

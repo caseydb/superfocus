@@ -19,13 +19,13 @@ export default function Preferences({ onClose }: PreferencesProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative flex items-center justify-center px-6 py-6 border-b border-gray-800/50">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Preferences</h2>
+        <div className="relative flex items-center justify-center px-5 py-4 border-b border-gray-800/50">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#FFAA00]">Preferences</h2>
           
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute right-5 w-7 h-7 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -39,13 +39,13 @@ export default function Preferences({ onClose }: PreferencesProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 custom-scrollbar">
-          <div className="flex flex-col gap-6 max-w-3xl mx-auto">
+        <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar">
+          <div className="flex flex-col gap-4 max-w-3xl mx-auto">
             {/* Timer and Task Settings Section */}
-            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-5 shadow-md">
-              <h3 className="text-lg font-bold text-white mb-4">Timer and Task Settings</h3>
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
+              <h3 className="text-base font-bold text-white mb-3">Timer and Task Settings</h3>
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {/* Task Selection Mode */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="md:flex-1">
@@ -144,8 +144,8 @@ export default function Preferences({ onClose }: PreferencesProps) {
             </div>
 
             {/* Notifications Section */}
-            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-5 shadow-md">
-              <h3 className="text-lg font-bold text-white mb-4">Email Notifications</h3>
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
+              <h3 className="text-base font-bold text-white mb-3">Email Notifications</h3>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <label className="text-white font-medium">Weekly Analytics</label>
@@ -180,13 +180,47 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   </label>
                 </div>
               </div>
+              <div className="flex items-start justify-between gap-4 mt-4">
+                <div>
+                  <label className="text-white font-medium">Weekly Leaderboard</label>
+                  <p className="text-sm text-gray-400 mt-1">Get a weekly email where you placed on the leaderboard.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
+                      style={{ accentColor: '#FFAA00' }}
+                      checked={Boolean(preferences.weekly_leaderboard_email)}
+                      onChange={async (e) => {
+                        const value = e.target.checked;
+                        // Optimistic update
+                        dispatch(setPreference({ key: 'weekly_leaderboard_email', value }));
+                        // Persist for authenticated users
+                        if (reduxUser.user_id && reduxUser.isGuest === false) {
+                          try {
+                            await dispatch(updatePreferences({
+                              userId: reduxUser.user_id,
+                              updates: { weekly_leaderboard_email: value }
+                            })).unwrap();
+                          } catch {
+                            // Revert on failure
+                            dispatch(setPreference({ key: 'weekly_leaderboard_email', value: !value }));
+                          }
+                        }
+                      }}
+                    />
+                    <span className="text-gray-200 text-sm">Weekly Leaderboard</span>
+                  </label>
+                </div>
+              </div>
               
             </div>
 
             {/* Shortcuts Section - Hidden on mobile */}
-            <div className="hidden md:block bg-[#0B0E16] border border-gray-800 rounded-2xl p-5 shadow-md">
-              <h3 className="text-lg font-bold text-white mb-3 text-center">Keyboard Shortcuts</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="hidden md:block bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
+              <h3 className="text-base font-bold text-white mb-2 text-center">Keyboard Shortcuts</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘K</kbd>
                   <span className="text-gray-400 text-sm">Tasks</span>

@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useInstance } from "../Instances";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import type { Route } from "next";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
 import { setActiveTask, updateTaskCounterLocal, updateTaskCounter } from "../../store/taskSlice";
@@ -79,6 +80,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [roomPresence, setRoomPresence] = useState<PresenceService | null>(null);
   const [privateRoomId, setPrivateRoomId] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const dispatch = useDispatch<AppDispatch>();
 
   // Get user data from Redux store
@@ -188,6 +191,26 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       }
     };
   }, []);
+
+  // Open Preferences modal via URL query: ?modal=preferences
+  useEffect(() => {
+    const modal = searchParams.get("modal");
+    if (modal === "preferences") {
+      setShowPreferences(true);
+    }
+  }, [searchParams]);
+
+  const handleClosePreferences = useCallback(() => {
+    // Remove the modal query param from the URL when closing
+    try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("modal");
+      const query = params.toString();
+      const newUrl = (query ? `${pathname}?${query}` : pathname) as Route;
+      router.replace(newUrl);
+    } catch {}
+    setShowPreferences(false);
+  }, [router, pathname, searchParams]);
   // People Modal - Feature deprioritized
   // const [messagesNotificationCount, setMessagesNotificationCount] = useState(1);
   // const [requestsNotificationCount, setRequestsNotificationCount] = useState(3);
@@ -2202,7 +2225,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             />
           )} */}
           {showRooms && <WorkSpace onClose={() => setShowRooms(false)} />}
-          {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
+          {showPreferences && <Preferences onClose={handleClosePreferences} />}
         </div>
         {/* Invite Modal - rendered as separate overlay */}
         {showInviteModal && (

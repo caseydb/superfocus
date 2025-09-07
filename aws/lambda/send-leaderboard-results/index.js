@@ -100,8 +100,14 @@ exports.handler = async () => {
       console.error('[send-leaderboard-results] Quote selection failed:', e);
     }
 
-    // Fetch all users with a valid email
-    const usersRes = await client.query(`SELECT id, email, first_name, last_name, streak FROM "user" WHERE email IS NOT NULL AND email <> ''`);
+    // Fetch all users with a valid email who are opted-in for weekly leaderboard emails
+    const usersRes = await client.query(`
+      SELECT u.id, u.email, u.first_name, u.last_name, u.streak
+      FROM "user" u
+      LEFT JOIN "preference" p ON p.user_id = u.id
+      WHERE u.email IS NOT NULL AND u.email <> ''
+        AND COALESCE(p.weekly_leaderboard_email, true) = true
+    `);
     const allUsers = usersRes.rows;
 
     // Helper to send with retry on 429/5xx
