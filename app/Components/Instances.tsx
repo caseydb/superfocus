@@ -1,3 +1,4 @@
+"use client";
 // app/InstanceContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { Instance, InstanceType, User } from "../types";
@@ -68,7 +69,13 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Update user from Firebase Auth if signed in
   useEffect(() => {
+    console.log('[InstanceProvider] Subscribing to onAuthStateChanged');
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('[InstanceProvider] onAuthStateChanged', {
+        hasUser: !!firebaseUser,
+        isAnonymous: firebaseUser?.isAnonymous,
+        uid: firebaseUser?.uid || null,
+      });
       if (firebaseUser) {
         // Prefer Redux user data if available (authenticated user)
         let displayName = "Guest User";
@@ -85,15 +92,18 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         
         // Use Firebase UID for both anonymous and authenticated users
         // This ensures presence tracking works for guests
-        setUser({
+        const newUser = {
           id: firebaseUser.uid,
           displayName,
           isPremium: false, // update if you have premium logic
-        });
+        };
+        console.log('[InstanceProvider] Setting user and userReady=true', newUser);
+        setUser(newUser);
         setUserReady(true);
       } else {
         // No Firebase auth yet - wait for anonymous auth to kick in
         // Don't set userReady to true yet
+        console.log('[InstanceProvider] No Firebase user yet; userReady remains false');
       }
     });
     return () => unsub();

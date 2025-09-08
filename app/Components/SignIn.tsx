@@ -5,7 +5,7 @@ import { useState } from "react";
 import { signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword } from "@/lib/auth";
 import Image from "next/image";
 
-export default function SignIn() {
+export default function SignIn({ onSuccess }: { onSuccess?: (mode: 'login' | 'signup') => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -16,10 +16,18 @@ export default function SignIn() {
   // Note: User sync to PostgreSQL is now handled in redux-initializer.tsx
   // This component only handles the sign-in UI
 
-  const handleAuth = async (fn: () => Promise<unknown>) => {
+  const handleAuth = async (fn: () => Promise<unknown>, mode: 'login' | 'signup') => {
     setError(null);
     try {
       await fn();
+      // Immediately close the modal
+      if (onSuccess) onSuccess(mode);
+      // Notify RoomShell to show welcome popup for signups
+      if (mode === 'signup' && typeof window !== 'undefined') {
+        try {
+          window.dispatchEvent(new CustomEvent('showWelcomePopup', { detail: {} }));
+        } catch {}
+      }
     } catch (err: unknown) {
       const code = (err as { code?: string }).code || "";
       setError(getErrorMessage(code) || (err as Error).message || "No account found with this email.");
@@ -65,7 +73,7 @@ export default function SignIn() {
       {!showResetPassword ? (
         <>
           <button
-            onClick={() => handleAuth(signInWithGoogle)}
+            onClick={() => handleAuth(signInWithGoogle, 'login')}
             className="w-full max-w-xs flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-6 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition mb-2 cursor-pointer"
           >
             <Image src="/google.png" alt="Google" width={24} height={24} className="mr-2" />
@@ -102,13 +110,13 @@ export default function SignIn() {
           </button>
           {error && <div className="w-full text-red-500 text-center font-mono text-sm mb-1">{error}</div>}
           <button
-            onClick={() => handleAuth(() => signInWithEmail(email, password))}
+            onClick={() => handleAuth(() => signInWithEmail(email, password), 'login')}
             className="w-full bg-[#FFAA00] text-black font-bold text-base py-2 rounded-md shadow hover:bg-[#FFB84D] transition border border-transparent mb-2 cursor-pointer"
           >
             Log In
           </button>
           <button
-            onClick={() => handleAuth(() => signUpWithEmail(email, password))}
+            onClick={() => handleAuth(() => signUpWithEmail(email, password), 'signup')}
             className="w-full bg-transparent text-white font-bold text-base py-2 rounded-md shadow border border-[#FFAA00] hover:bg-[#23272b] transition cursor-pointer"
           >
             Create Account

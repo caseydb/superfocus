@@ -38,6 +38,7 @@ import Sounds from "./Sounds";
 import TaskList from "./TaskList";
 import PersonalStats from "./PersonalStats";
 import WelcomeBackMessage from "./WelcomeBackMessage";
+import WelcomePopup from "./WelcomePopup";
 import RoomsModal from "./RoomsModal";
 import Notes from "./Notes";
 import TaskNotes from "./TaskNotes";
@@ -123,6 +124,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [showPreferences, setShowPreferences] = useState(false);
   // Sign-in modal removed - guests can now access rooms
   const [showInvitePopup, setShowInvitePopup] = useState(false);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   // Get toggle_notes from Redux preferences instead of local state
   const showDeepWorkNotes = useSelector((state: RootState) => state.preferences.toggle_notes);
   const showCounter = useSelector((state: RootState) => state.preferences.toggle_counter);
@@ -524,6 +526,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, []);
 
+  // Listen for welcome popup events (after successful signup)
+  useEffect(() => {
+    const handleWelcome = () => setShowWelcomePopup(true);
+    window.addEventListener('showWelcomePopup', handleWelcome);
+    return () => window.removeEventListener('showWelcomePopup', handleWelcome);
+  }, []);
+
   // Pause timer when switching modes
   const prevModeRef = useRef(isPomodoroMode);
   useEffect(() => {
@@ -536,6 +545,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
+      console.log('[RoomShell] checkRoom start', { roomUrl, userId: user?.id, instance: currentInstance });
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
@@ -573,6 +583,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const publicRoom = await getPublicRoomByUrl(roomUrl);
         if (publicRoom) {
+          console.log('[RoomShell] Found public room by URL', { id: publicRoom.id });
           // Only join if we're not already in this room
           if (!publicRoomId || publicRoomId !== publicRoom.id) {
             // Create presence manager
@@ -613,6 +624,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
+          console.log('[RoomShell] Public room setup complete, loading=false');
           return;
         }
       } catch {
@@ -623,6 +635,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const privateRoom = await getPrivateRoomByUrl(roomUrl);
         if (privateRoom) {
+          console.log('[RoomShell] Found private room by URL', { id: privateRoom.id });
           // Only join if we're not already in this room
           if (!privateRoomId || privateRoomId !== privateRoom.id) {
             try {
@@ -684,6 +697,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
+          console.log('[RoomShell] Private room setup complete, loading=false');
           return;
         }
       } catch {
@@ -696,6 +710,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         const roomResult = await roomResponse.json();
 
         if (roomResult.success && roomResult.room) {
+          console.log('[RoomShell] Found permanent room via API', { id: roomResult.room.id });
           // Found a permanent public room
           setRoomFound(true);
 
@@ -719,6 +734,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance
           setPublicRoomInstance(tempInstance);
           setLoading(false);
+          console.log('[RoomShell] Permanent room setup complete, loading=false');
           return;
         }
       } catch (error) {
@@ -727,6 +743,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       setRoomFound(false);
       setLoading(false);
+      console.warn('[RoomShell] No room found for URL', { roomUrl });
     };
 
     if (userReady) {
@@ -1420,6 +1437,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Remove the login wall - allow guest users to access rooms
   if (!userReady) {
+    if (typeof window !== 'undefined') {
+      console.log('[RoomShell] userReady=false. Waiting for Firebase auth/anonymous sign-in', {
+        currentInstance,
+      });
+    }
     // Still loading, show a loading state
     return (
       <div className="min-h-screen flex items-center justify-center bg-elegant-dark text-white">
@@ -1546,6 +1568,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             activeWorkers={currentInstance.users.map((u) => ({ name: u.displayName, userId: u.id }))}
           />
           <WelcomeBackMessage roomId={currentInstance.id} />
+          <WelcomePopup isOpen={showWelcomePopup} onClose={() => setShowWelcomePopup(false)} />
           <Sounds roomId={currentInstance.id} localVolume={localVolume} currentUserId={user?.id} />
           <ActiveWorkers roomId={currentInstance.id} />
           {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}

@@ -152,6 +152,10 @@ export const signOutUser = () => {
     localStorage.removeItem('guest_id');
     localStorage.removeItem('guest_avatar');
     localStorage.removeItem('firebase_token');
+    // Ensure we don't suppress anonymous auth after logout
+    try {
+      sessionStorage.removeItem('pendingAuth');
+    } catch {}
     console.log("[Auth] localStorage cleared");
   }
   
@@ -166,4 +170,14 @@ export const signOutUser = () => {
   return signOutPromise;
 }; // Logout
 
-export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email); // Password reset
+export const resetPassword = (email: string) => {
+  // Send a password reset that lands on our branded handler page.
+  // Prefer a fixed public URL so emails always link to production.
+  const base = process.env.NEXT_PUBLIC_APP_URL
+    || (typeof window !== 'undefined' ? window.location.origin : 'https://superfocus.work');
+  const actionCodeSettings = {
+    url: `${base}/`,
+    handleCodeInApp: true,
+  } as const;
+  return sendPasswordResetEmail(auth, email, actionCodeSettings);
+}; // Password reset

@@ -457,7 +457,7 @@ export default function Lobby() {
               onClick={() => setShowSignInModal(false)}
             >
               <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
-                <SignIn />
+                <SignIn onSuccess={() => setShowSignInModal(false)} />
               </div>
             </div>
           )}

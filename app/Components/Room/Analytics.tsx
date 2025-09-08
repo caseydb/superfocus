@@ -656,13 +656,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
     }
   };
 
+  const isGuest = reduxUser.isGuest;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn"
+      className={`fixed inset-0 z-50 flex items-center justify-center ${isGuest ? 'bg-black/80' : 'bg-black/50'} animate-fadeIn`}
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar"
+        className={`${isGuest ? 'bg-[#0E1119]/95' : 'bg-[#0E1119]/90'} backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
@@ -1252,7 +1254,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           onClick={() => setShowSignInModal(false)}
         >
           <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
-            <SignIn />
+            <SignIn onSuccess={() => setShowSignInModal(false)} />
           </div>
         </div>
       )}

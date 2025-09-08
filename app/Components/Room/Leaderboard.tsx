@@ -613,7 +613,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           onClick={() => setShowSignInModal(false)}
         >
           <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
-            <SignIn />
+            <SignIn onSuccess={() => setShowSignInModal(false)} />
           </div>
         </div>
       )}

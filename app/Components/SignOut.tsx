@@ -1,9 +1,8 @@
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { signOutUser } from "@/lib/auth";
 
 export default function SignOut() {
   const handleSignOut = async () => {
-    await signOut(auth);
+    await signOutUser();
   };
   return (
     <button

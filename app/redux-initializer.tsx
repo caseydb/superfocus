@@ -36,9 +36,11 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   useEffect(() => {
+    console.log('[ReduxInitializer] Mounting ReduxInitializer');
     // STEP 1: Initialize as guest immediately (no waiting)
     if (!hasInitialized.current) {
       hasInitialized.current = true;
+      console.log('[ReduxInitializer] Initializing guest mode & loading cache');
       dispatch(initializeGuestMode());
       
       // Load cached tasks for guest users immediately
@@ -47,16 +49,35 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
     // STEP 2: Check auth state and try to upgrade if authenticated
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('[ReduxInitializer] onAuthStateChanged fired', {
+        hasUser: !!firebaseUser,
+        isAnonymous: firebaseUser?.isAnonymous,
+        uid: firebaseUser?.uid || null,
+      });
       // If no Firebase user, only sign in anonymously if we're not waiting for real auth
       if (!firebaseUser) {
-        // Check if there's a pending Google auth by looking for signs of recent auth activity
-        const hasRecentAuthActivity = typeof window !== 'undefined' && 
-          (sessionStorage.getItem('pendingAuth') === 'true' || 
-           localStorage.getItem('firebase_token'));
-        
+        // Check if there's a pending real auth attempt
+        let hasRecentAuthActivity = false;
+        if (typeof window !== 'undefined') {
+          const pending = sessionStorage.getItem('pendingAuth') === 'true';
+          const hasToken = !!localStorage.getItem('firebase_token');
+          // If token exists but there is no Firebase user, it's stale. Clear it.
+          if (hasToken) {
+            console.warn('[ReduxInitializer] Stale firebase_token found without Firebase user. Clearing token.');
+            localStorage.removeItem('firebase_token');
+          }
+          hasRecentAuthActivity = pending;
+          console.log('[ReduxInitializer] No firebase user. Flags after cleanup:', {
+            pendingAuth: sessionStorage.getItem('pendingAuth'),
+            hadStaleToken: hasToken,
+          });
+        }
+
         if (!hasRecentAuthActivity) {
           try {
-            await signInAnonymously(auth);
+            console.log('[ReduxInitializer] Attempting anonymous sign-in...');
+            const cred = await signInAnonymously(auth);
+            console.log('[ReduxInitializer] Anonymous sign-in success', { uid: cred.user?.uid });
           } catch (error) {
             console.error("[ReduxInitializer] Failed to sign in anonymously:", error);
           }
@@ -65,9 +86,10 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
       }
       
       if (firebaseUser && !hasAttemptedFetch.current) {
+        console.log('[ReduxInitializer] Firebase user available; attemptedFetch?', hasAttemptedFetch.current);
         // Check if this is an anonymous user
         if (firebaseUser.isAnonymous) {
-          // Anonymous user - stay in guest mode but use Firebase features
+          console.log('[ReduxInitializer] Anonymous Firebase user detected; staying in guest mode');
           return;
         }
         
@@ -83,6 +105,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         // First sync user to PostgreSQL (only for non-anonymous users)
         try {
           const idToken = await firebaseUser.getIdToken();
+          console.log('[ReduxInitializer] Got Firebase ID token; syncing user to Postgres');
 
           const syncResponse = await fetch("/api/firebase-user-sync", {
             method: "POST",
@@ -105,9 +128,10 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
                 displayName: firebaseUser.displayName
               }
             }));
+            console.log('[ReduxInitializer] Upgraded to authenticated user in Redux');
           }
-        } catch {
-          // Silent error - will retry with user data fetch
+        } catch (e) {
+          console.warn('[ReduxInitializer] Sync to Postgres failed; will proceed to fetch user data', e);
         }
 
         // Wait a bit to ensure sync completed
@@ -116,6 +140,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
         // Try to fetch user data
         try {
           const userData = await dispatch(fetchUserData()).unwrap();
+          console.log('[ReduxInitializer] fetchUserData result', { hasUserId: !!userData?.user_id });
           
           // If user data is fetched successfully, we're fully authenticated
           if (userData && userData.user_id) {

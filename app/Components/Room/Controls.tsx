@@ -3,7 +3,8 @@ import { useInstance } from "../Instances";
 // TODO: Remove firebase imports when replacing with proper persistence
 // import { rtdb } from "../../../lib/firebase";
 // import { ref, set, onValue, off } from "firebase/database";
-import { signOut, updateProfile } from "firebase/auth";
+import { updateProfile } from "firebase/auth";
+import { signOutUser } from "@/lib/auth";
 import { auth } from "@/lib/firebase";
 import { signInWithGoogle } from "@/lib/auth";
 import { useSelector, useDispatch } from "react-redux";
@@ -691,7 +692,15 @@ export default function Controls({
               <button
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
                 onClick={async () => {
-                  await signOut(auth);
+                  try {
+                    setDropdownOpen(false);
+                    await signOutUser();
+                  } finally {
+                    // Return to lobby after sign out
+                    if (typeof window !== 'undefined') {
+                      window.location.href = "/";
+                    }
+                  }
                 }}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -1168,7 +1177,7 @@ export default function Controls({
                 <button
                   className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
                   onClick={async () => {
-                    await signOut(auth);
+                    await signOutUser();
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mr-2">
@@ -1317,7 +1326,7 @@ export default function Controls({
           onClick={() => setShowSignInModal(false)}
         >
           <div className="relative animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
-            <SignIn />
+            <SignIn onSuccess={() => setShowSignInModal(false)} />
           </div>
         </div>
       )}
