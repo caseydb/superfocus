@@ -39,3 +39,4 @@ Notes
 - Shows up to 7 rows around the user (2 above, user, up to 4 below) with edge clamping.
 - Footer preference link points to `https://superfocus.work/?modal=preferences`.
 - Opt‑out: users with `preference.weekly_leaderboard_email = false` are excluded from sends.
+- Subject: if the user ranks, subject is `You Ranked {N}{st|nd|rd|th}!`; otherwise it is `Leaderboard Results!`.

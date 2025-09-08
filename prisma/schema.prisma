@@ -27,6 +27,7 @@ model user {
   tasks                   task[]                    @relation("UserTasks")
   user_milestone_messages user_milestone_messages[]
   guest                   Boolean                   @default(true)
+  email_send_logs         email_send_log[]
 }
 
 model preference {
@@ -134,4 +135,17 @@ model quote {
   timesUsed    Int       @default(0)   
   createdAt    DateTime  @default(now())
   @@index([active, lastUsedAt])
+}
+
+model email_send_log {
+  id              String    @id @default(uuid())
+  user_id         String
+  type            String    @default("weekly_analytics")
+  week_start_date DateTime  @db.Date
+  sent_at         DateTime  @default(now())
+  status          String
+  error           String?
+  user user @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  @@unique([user_id, type, week_start_date])
+  @@index([user_id])
 }

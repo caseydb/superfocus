@@ -5,7 +5,6 @@ import prisma from "@/lib/prisma";
 // Hardcoded target users for testing as requested (structured for many)
 const TARGET_USER_IDS: string[] = [
   "df3aed2a-ad51-457f-b0cd-f7d4225143d4",
-  "6e756c03-9596-41bc-96ae-d8ede249a27a",
 ];
 
 // Format seconds into human-friendly Hh Mm format
@@ -31,46 +30,93 @@ export async function POST() {
       return NextResponse.json({ success: false, error: "RESEND_API_KEY not configured" }, { status: 500 });
     }
 
-    // Compute Monday start (UTC) and weekly leaderboard once
-    const monday = new Date();
-    const nowUTC = new Date(Date.UTC(
-      monday.getUTCFullYear(),
-      monday.getUTCMonth(),
-      monday.getUTCDate(),
-      monday.getUTCHours(),
-      monday.getUTCMinutes(),
-      monday.getUTCSeconds()
-    ));
-    const dayOfWeek = nowUTC.getUTCDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    monday.setUTCDate(nowUTC.getUTCDate() - daysToMonday);
-    monday.setUTCHours(0, 0, 0, 0);
+    // Simple rate limit + retry controls (match Lambda behavior)
+    const RATE_LIMIT_PER_SEC = Number(process.env.RATE_LIMIT_PER_SEC || '3');
+    const SEND_DELAY_MS = Math.max(0, Math.floor(1000 / Math.max(1, RATE_LIMIT_PER_SEC)));
+    const RETRY_MAX = Number(process.env.RETRY_MAX || '3');
+    const RETRY_BASE_DELAY_MS = Number(process.env.RETRY_BASE_DELAY_MS || '1000');
+    const JITTER_MS = Number(process.env.RETRY_JITTER_MS || '250');
 
-    const weeklyLeaderboard = await prisma.$queryRaw<Array<{
-      user_id: string;
-      total_duration: number;
-      total_tasks: number;
-      first_name: string;
-      last_name: string;
-    }>>`
-      SELECT 
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        COALESCE(COUNT(DISTINCT t.id), 0)::int as total_tasks,
-        COALESCE(SUM(t.duration), 0)::int as total_duration
-      FROM 
-        "user" u
-      LEFT JOIN 
-        "task" t ON u.id = t.user_id 
-          AND t.status = 'completed'
-          AND t.completed_at >= ${monday}
-      GROUP BY 
-        u.id, u.first_name, u.last_name
-      HAVING 
-        COUNT(DISTINCT t.id) > 0 OR SUM(t.duration) > 0
-      ORDER BY 
-        COALESCE(SUM(t.duration), 0) DESC
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const sendWithRetry = async (payload: { from: string; to: string[]; subject: string; html: string }) => {
+      let attempt = 0;
+      while (true) {
+        attempt += 1;
+        try {
+          const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const rawText = await res.text();
+          let json: unknown = {}; try { json = rawText ? JSON.parse(rawText) : {}; } catch {}
+          if (res.ok) return { ok: true, json };
+          const status = res.status;
+          let apiMsg: string | undefined;
+          if (typeof json === 'object' && json !== null) {
+            const obj = json as Record<string, unknown>;
+            const top = obj.message;
+            if (typeof top === 'string') apiMsg = top;
+            const err = obj.error as unknown;
+            if (typeof err === 'string') apiMsg = err;
+            else if (typeof err === 'object' && err !== null) {
+              const msg = (err as Record<string, unknown>).message;
+              if (typeof msg === 'string') apiMsg = msg;
+            }
+          }
+          apiMsg = apiMsg || rawText;
+          const isRetryable = status === 429 || (status >= 500 && status < 600);
+          if (attempt < RETRY_MAX && isRetryable) {
+            const backoff = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+            const jitter = Math.floor(Math.random() * JITTER_MS);
+            await sleep(backoff + jitter);
+            continue;
+          }
+          return { ok: false, status, apiMsg };
+        } catch (err: unknown) {
+          if (attempt < RETRY_MAX) {
+            const backoff = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+            const jitter = Math.floor(Math.random() * JITTER_MS);
+            await sleep(backoff + jitter);
+            continue;
+          }
+          const msg = err instanceof Error ? err.message : String(err);
+          return { ok: false, status: 0, apiMsg: msg };
+        }
+      }
+    };
+
+    // Weekly leaderboard no longer needed for this email; removed query
+
+    // Select a single quote for this send so all recipients see the same one
+    let selectedQuote: { id: string; quote: string; author: string } | null = null;
+    try {
+      const q = await prisma.$queryRaw<Array<{ id: string; quote: string; author: string }>>`
+        SELECT "id", "quote", "author" FROM "quote" WHERE "active" = true ORDER BY "lastUsedAt" NULLS FIRST, random() LIMIT 1
+      `;
+      if (q && q.length > 0) {
+        selectedQuote = q[0];
+        await prisma.$executeRaw`UPDATE "quote" SET "lastUsedAt" = now(), "timesUsed" = "timesUsed" + 1 WHERE "id" = ${selectedQuote.id}`;
+      }
+    } catch (e) {
+      console.error('[weekly-analytics email] Quote selection failed:', e);
+    }
+
+    // Use a simple left quote glyph styled to be white, since React Icons can't be used in raw email HTML.
+    // Use a stylized quote glyph for maximum email-client compatibility
+    const quoteIcon = `<div style="font-size:24px;line-height:1;color:#ffffff;margin-bottom:8px;text-align:center;">❝</div>`;
+    const quoteBlockHtml = selectedQuote ? `
+      <div style="border:1px solid #1f2937;background:linear-gradient(180deg,#0E1119 0%,#0B0E16 100%);border-radius:12px;padding:16px 18px;text-align:center;margin-bottom:14px;">
+        ${quoteIcon}
+        <div style="font-size:16px;color:#e5e7eb;">${String(selectedQuote.quote || '')}</div>
+        <div style="margin-top:8px;color:#9ca3af;font-size:14px;">${String(selectedQuote.author || '')}</div>
+      </div>
+    ` : `
+      <div style="border:1px solid #1f2937;background:linear-gradient(180deg,#0E1119 0%,#0B0E16 100%);border-radius:12px;padding:16px 18px;text-align:center;margin-bottom:14px;">
+        ${quoteIcon}
+        <div style="font-size:16px;color:#e5e7eb;">Small deeds done are better than great deeds planned.</div>
+        <div style="margin-top:8px;color:#9ca3af;font-size:14px;">Peter Marshall</div>
+      </div>
     `;
 
     const results: Array<{ userId: string; email?: string | null; sent: boolean; error?: string } > = [];
@@ -78,7 +124,7 @@ export async function POST() {
     for (const userId of TARGET_USER_IDS) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, first_name: true, last_name: true, streak: true }
+        select: { id: true, email: true, first_name: true, last_name: true, streak: true, timezone: true }
       });
 
       if (!user || !user.email) {
@@ -119,14 +165,7 @@ export async function POST() {
       const activeDays = dayRows.filter(r => r.seconds > 0).length;
       const avgPerDaySeconds = activeDays > 0 ? Math.round(totalSeconds / activeDays) : 0;
 
-      // Locate user's rank and neighbors for visual
-      const rankIndex = weeklyLeaderboard.findIndex(e => e.user_id === user.id);
-      const weeklyRank = rankIndex >= 0 ? rankIndex + 1 : null;
-      let visualStart = 0;
-      if (rankIndex >= 0) visualStart = Math.max(0, rankIndex - 2);
-      const visualEnd = Math.min(weeklyLeaderboard.length - 1, visualStart + 4);
-      if (rankIndex >= 0 && visualEnd - visualStart < 4) visualStart = Math.max(0, visualEnd - 4);
-      const visualGroup = weeklyLeaderboard.slice(visualStart, visualEnd + 1).map((e, i) => ({ ...e, rank: visualStart + i + 1, isUser: e.user_id === user.id }));
+      // Leaderboard visuals removed in email; no need to compute rank window
 
       // Streak: read from Postgres user.streak to match Redux value
       const streak = Number(user.streak || 0);
@@ -136,34 +175,28 @@ export async function POST() {
       const firstName = (user.first_name ?? fullName.split(" ")[0] ?? "You").trim();
       const prettyTotal = formatDuration(totalSeconds);
       const prettyAvgDay = formatDuration(avgPerDaySeconds);
+      const avgTasksPerDayRounded = Math.round(totalTasks / Math.max(1, activeDays));
+      const avgTimePerTaskSeconds = Math.round(totalSeconds / Math.max(1, totalTasks));
+      const prettyAvgTask = formatDuration(avgTimePerTaskSeconds);
 
-      const leaderboardVisualHtml = visualGroup.length > 0 ? `
-      <table role="presentation" width="100%" style="margin-top:12px;border-collapse:separate;border-spacing:0 8px;">
-        ${visualGroup.map(v => `
-          <tr>
-            <td style="padding:0;">
-              <div style="border:1px solid ${v.isUser ? '#FFAA00' : '#1f2937'};background:#0E1119;border-radius:12px;padding:12px;">
-                <table role="presentation" width="100%" style="border-collapse:collapse;">
-                  <tr style="height:24px;">
-                    <td style="vertical-align:middle;width:36px;text-align:left;font-size:${v.isUser ? '14px' : '13px'};line-height:1.4;color:${v.isUser ? '#FFAA00' : '#9ca3af'};font-weight:700;">#${v.rank}</td>
-                    <td style="vertical-align:middle;color:#e5e7eb;font-size:${v.isUser ? '14px' : '13px'};line-height:1.4;font-weight:${v.isUser ? '800' : '600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(v.first_name || '').toString()} ${(v.last_name || '').toString()}</td>
-                    <td style="vertical-align:middle;text-align:right;white-space:nowrap;font-size:${v.isUser ? '14px' : '13px'};line-height:1.4;color:${v.isUser ? '#FFAA00' : '#9ca3af'};font-weight:${v.isUser ? '800' : '700'};">${formatDuration(Number(v.total_duration) || 0)}</td>
-                  </tr>
-                </table>
-              </div>
-            </td>
-          </tr>
-        `).join('')}
-      </table>
-    ` : '';
+      /* Upcoming/Completed sections commented out to keep only analytics
+      // Build tasks sections to replace leaderboard visual
+      const notStartedTasks = await prisma.task.findMany({ ... });
+      const topCompleted = [...tasks] ...;
+      const notStartedHtml = `...`;
+      const completedHtml = `...`;
+      const tasksSectionsHtml = `${notStartedHtml}${completedHtml}`;
+      */
+      const tasksSectionsHtml = '';
 
-      // Header subtitle logic: if user has 0 tasks this week, show a friendly nudge
+      // Header subtitle logic: remove leaderboard rank entirely
       const headerSubtitle = totalTasks === 0
         ? `We missed you! Let’s get you back on 🔥`
-        : `Leaderboard Rank: <span style="color:#FFAA00;font-weight:700">${weeklyRank ? `#${weeklyRank}` : 'Unranked'}</span>
-            ${streak >= 1 
-              ? `<span style=\"color:#374151\"> | </span><span style=\"color:#e5e7eb;font-weight:700\">${streak}</span> <span style=\"color:#9ca3af\">Day Streak</span> 🔥`
-              : `<span style=\"color:#374151\"> | </span> You Worked <span style=\"color:#e5e7eb;font-weight:700\">${activeDays}</span> Days 🔥`}`;
+        : `${streak >= 1 
+              ? `<span style="color:#e5e7eb;font-weight:700">${streak}</span> <span style="color:#9ca3af">Day Streak</span> 🔥`
+              : `You Worked <span style=\"color:#e5e7eb;font-weight:700\">${activeDays}</span> Days 🔥`}`;
+
+      // Quote is selected once per send (defined before loop)
 
       const html = `
       <!doctype html>
@@ -172,7 +205,7 @@ export async function POST() {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" />
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-          <title>Performance Snapshot: Last 7 Days</title>
+          <title>Focus Report: Last 7 Days</title>
           <style>
             @media only screen and (max-width: 480px) {
               .wrapper-pad { padding: 0 !important; }
@@ -185,6 +218,8 @@ export async function POST() {
               .kpi-table .kpi-cell { display: block !important; width: 100% !important; box-sizing: border-box !important; margin: 0 0 12px 0 !important; padding: 16px !important; }
               /* Remove outer side gaps entirely */
               .side-gap { display: none !important; width: 0 !important; }
+              /* Slightly larger CTA spacing on small screens */
+              .cta-gap { margin: 20px 0 !important; }
             }
             /* Neutralize iOS auto-detected links (addresses, phones) */
             a[x-apple-data-detectors],
@@ -216,28 +251,41 @@ export async function POST() {
                   </tr>
                   <tr>
                     <td style="padding:20px 28px;">
-                      <div style="font-size:16px;margin-bottom:14px;color:#e5e7eb;text-align:center;">"Small deeds done are better than great deeds planned."
-                        <div style="margin-top:4px;color:#9ca3af;font-size:14px;">Peter Marshall</div>
-                      </div>
-                      <table role="presentation" width="100%" class="kpi-table" style="border-collapse:separate;border-spacing:12px 12px;">
+                      ${quoteBlockHtml}
+                      <table role="presentation" width="100%" class="kpi-table" style="border-collapse:separate;border-spacing:12px 12px;table-layout:fixed;">
                         <tr>
-                          <td class="kpi-cell" style="width:33.33%;padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
+                          <td class="kpi-cell" style="padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
                             <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Total Time</div>
                             <div style="font-size:22px;font-weight:800;color:#FFAA00;margin-top:4px;">${prettyTotal}</div>
                           </td>
-                          <td class="kpi-cell" style="width:33.33%;padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
-                            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Tasks</div>
+                          <td class="kpi-cell" style="padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
+                            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Total Tasks</div>
                             <div style="font-size:22px;font-weight:800;color:#FFAA00;margin-top:4px;">${totalTasks}</div>
                           </td>
-                          <td class="kpi-cell" style="width:33.33%;padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
+                        </tr>
+                        <tr>
+                          <td class="kpi-cell" style="padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
+                            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Active Days</div>
+                            <div style="font-size:22px;font-weight:800;color:#FFAA00;margin-top:4px;">${activeDays}</div>
+                          </td>
+                          <td class="kpi-cell" style="padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
+                            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Avg Tasks/Day</div>
+                            <div style="font-size:22px;font-weight:800;color:#FFAA00;margin-top:4px;">${avgTasksPerDayRounded}</div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td class="kpi-cell" style="padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
                             <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Avg Time/Day</div>
                             <div style="font-size:22px;font-weight:800;color:#FFAA00;margin-top:4px;">${prettyAvgDay}</div>
                           </td>
+                          <td class="kpi-cell" style="padding:14px;border:1px solid #1f2937;border-radius:12px;background:#0E1119;color:#9ca3af;text-align:center;">
+                            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;">Avg Time/Task</div>
+                            <div style="font-size:22px;font-weight:800;color:#FFAA00;margin-top:4px;">${prettyAvgTask}</div>
+                          </td>
                         </tr>
                       </table>
-                      ${leaderboardVisualHtml}
-                      <div style="height:12px"></div>
-                      <div style="text-align:center;margin-top:8px;">
+                      ${tasksSectionsHtml}
+                      <div class="cta-gap" style="text-align:center;margin:20px 0;">
                         <a href="https://superfocus.work/" target="_blank" style="
                           display:inline-block;
                           padding:14px 24px;
@@ -260,6 +308,9 @@ export async function POST() {
                   <span style="color:#6b7280;text-decoration:none;">701 Brazos Street, Austin, Texas 78701</span>
                 </div>
                 <div style="text-align:center;color:#6b7280;font-size:12px;margin-top:6px;">
+                  <a href="https://superfocus.work/?modal=preferences" target="_blank" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
+                </div>
+                <div style="text-align:center;color:#6b7280;font-size:12px;margin-top:6px;">
                   <a href="https://superfocus.work/?modal=preferences" target="_blank" style="color:#6b7280;text-decoration:underline;">Manage preferences</a>
                 </div>
               </td>
@@ -269,40 +320,75 @@ export async function POST() {
         </body>
       </html>
     `;
-      // Send via Resend API
+      // Compute local week start (Monday 00:00 in user's timezone) for dedupe/logging
+      let weekStartLocal: Date | null = null;
       try {
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: FROM_ADDRESS, to: [user.email], subject: "Performance Snapshot: Last 7 Days", html }),
-        });
-        const rawText = await res.text();
-        let json: unknown = {}; try { json = rawText ? JSON.parse(rawText) as unknown : {}; } catch {}
-        if (!res.ok) {
+        const rows = await prisma.$queryRaw<Array<{ week_start_local: Date }>>`
+          SELECT date_trunc('week', (now() AT TIME ZONE ${user.timezone}))::date AS week_start_local
+        `;
+        weekStartLocal = rows?.[0]?.week_start_local ?? null;
+      } catch {}
+
+      // Skip if already sent this local week
+      if (weekStartLocal) {
+        try {
+          const exists = await prisma.$queryRaw<Array<{ x: number }>>`
+            SELECT 1 as x FROM "email_send_log" 
+            WHERE user_id = ${user.id} 
+              AND type = 'weekly_analytics' 
+              AND week_start_date = ${weekStartLocal}
+            LIMIT 1
+          `;
+          if (exists && exists.length > 0) {
+            results.push({ userId: user.id, email: user.email, sent: false, error: 'already_sent_this_week' });
+            continue;
+          }
+        } catch {}
+      }
+
+      // Send via Resend API (rate-limited with retry)
+      try {
+        if (SEND_DELAY_MS > 0) await sleep(SEND_DELAY_MS);
+        const attempt = await sendWithRetry({ from: FROM_ADDRESS, to: [user.email], subject: "Focus Report: Last 7 Days", html });
+        if (!attempt.ok) {
           let friendly = "Failed to send email";
-          const apiMsg = (() => {
-            if (typeof json === 'object' && json !== null) {
-              const obj = json as Record<string, unknown>;
-              const top = obj.message;
-              if (typeof top === 'string') return top;
-              const err = obj.error as unknown;
-              if (typeof err === 'string') return err;
-              if (typeof err === 'object' && err !== null) {
-                const msg = (err as Record<string, unknown>).message;
-                if (typeof msg === 'string') return msg;
-              }
-            }
-            return rawText;
-          })();
-          if (res.status === 401 || res.status === 403) friendly = "Invalid or unauthorized RESEND_API_KEY";
-          if (res.status === 422 && typeof apiMsg === 'string' && apiMsg.toLowerCase().includes('from')) friendly = "Invalid 'from' address. Use a verified domain or onboarding@resend.dev";
+          const apiMsg = attempt.apiMsg;
+          if (attempt.status === 401 || attempt.status === 403) friendly = "Invalid or unauthorized RESEND_API_KEY";
+          if (attempt.status === 422 && typeof apiMsg === 'string' && apiMsg.toLowerCase().includes('from')) friendly = "Invalid 'from' address. Use a verified domain or onboarding@resend.dev";
           results.push({ userId: user.id, email: user.email, sent: false, error: friendly });
+          try {
+            if (weekStartLocal) {
+              await prisma.$executeRaw`
+                INSERT INTO "email_send_log" (id, user_id, type, week_start_date, sent_at, status, error)
+                VALUES (gen_random_uuid(), ${user.id}, 'weekly_analytics', ${weekStartLocal}, now(), 'error', ${String(apiMsg || friendly)})
+                ON CONFLICT DO NOTHING
+              `;
+            }
+          } catch {}
         } else {
           results.push({ userId: user.id, email: user.email, sent: true });
+          try {
+            if (weekStartLocal) {
+              await prisma.$executeRaw`
+                INSERT INTO "email_send_log" (id, user_id, type, week_start_date, sent_at, status)
+                VALUES (gen_random_uuid(), ${user.id}, 'weekly_analytics', ${weekStartLocal}, now(), 'sent')
+                ON CONFLICT DO NOTHING
+              `;
+            }
+          } catch {}
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         results.push({ userId: user.id, email: user.email, sent: false, error: message });
+        try {
+          if (weekStartLocal) {
+            await prisma.$executeRaw`
+              INSERT INTO "email_send_log" (id, user_id, type, week_start_date, sent_at, status, error)
+              VALUES (gen_random_uuid(), ${user.id}, 'weekly_analytics', ${weekStartLocal}, now(), 'error', ${message})
+              ON CONFLICT DO NOTHING
+            `;
+          }
+        } catch {}
       }
     }
 

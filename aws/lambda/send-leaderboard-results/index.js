@@ -14,7 +14,7 @@ exports.handler = async () => {
   const dbUrl = process.env.DATABASE_URL;
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const FROM_ADDRESS = process.env.RESEND_FROM_LEADERBOARD || process.env.RESEND_FROM || "Superfocus <leaderboard@superfocus.work>";
-  const QUOTE_IMAGE_URL = "https://nexus-profile-storage.s3.us-east-2.amazonaws.com/quote.png";
+  // Quote icon rendered as a stylized glyph to avoid remote images in email clients
 
   if (!dbUrl) {
     console.error("[send-leaderboard-results] Missing env DATABASE_URL");
@@ -42,6 +42,17 @@ exports.handler = async () => {
   const JITTER_MS = Number(process.env.RETRY_JITTER_MS || '250');
 
   try {
+    const ordinal = (n) => {
+      const v = n % 100;
+      if (v >= 11 && v <= 13) return `${n}th`;
+      switch (n % 10) {
+        case 1: return `${n}st`;
+        case 2: return `${n}nd`;
+        case 3: return `${n}rd`;
+        default: return `${n}th`;
+      }
+    };
+
     // Compute current week start (Sunday 00:00 UTC) and previous week window
     const weekStart = new Date();
     const nowUTC = new Date(Date.UTC(
@@ -213,6 +224,8 @@ exports.handler = async () => {
       </table>
     ` : '';
 
+      const subject = weeklyRank == null ? "Leaderboard Results!" : `You Ranked ${ordinal(weeklyRank)}!`;
+
       const html = `
       <!doctype html>
       <html>
@@ -259,13 +272,13 @@ exports.handler = async () => {
                     <td style="padding:20px 28px;">
                       ${selectedQuote ? `
                         <div style=\"border:1px solid #1f2937;background:linear-gradient(180deg,#0E1119 0%,#0B0E16 100%);border-radius:12px;padding:16px 18px;text-align:center;margin-bottom:14px;\">
-                          <img src=\"${QUOTE_IMAGE_URL}\" alt=\"\u201C\" width=\"26\" height=\"26\" style=\"display:block;margin:0 auto 8px auto;\"/>
+                          <div style=\"font-size:24px;line-height:1;color:#ffffff;margin-bottom:8px;\">❝</div>
                           <div style=\"font-size:16px;color:#e5e7eb;\">${String(selectedQuote.quote || '')}</div>
                           <div style=\"margin-top:8px;color:#9ca3af;font-size:14px;\">${String(selectedQuote.author || '')}</div>
                         </div>
                       ` : `
                         <div style=\"border:1px solid #1f2937;background:linear-gradient(180deg,#0E1119 0%,#0B0E16 100%);border-radius:12px;padding:16px 18px;text-align:center;margin-bottom:14px;\">
-                          <img src=\"${QUOTE_IMAGE_URL}\" alt=\"\u201C\" width=\"26\" height=\"26\" style=\"display:block;margin:0 auto 8px auto;\"/>
+                          <div style=\"font-size:24px;line-height:1;color:#ffffff;margin-bottom:8px;\">❝</div>
                           <div style=\"font-size:16px;color:#e5e7eb;\">Small deeds done are better than great deeds planned.</div>
                           <div style=\"margin-top:8px;color:#9ca3af;font-size:14px;\">Peter Marshall</div>
                         </div>
@@ -294,6 +307,9 @@ exports.handler = async () => {
                   <span style="color:#6b7280;text-decoration:none;">701 Brazos Street, Austin, Texas 78701</span>
                 </div>
                 <div style="text-align:center;color:#6b7280;font-size:12px;margin-top:6px;">
+                  <a href="https://superfocus.work/?modal=preferences" target="_blank" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
+                </div>
+                <div style="text-align:center;color:#6b7280;font-size:12px;margin-top:6px;">
                   <a href="https://superfocus.work/?modal=preferences" target="_blank" style="color:#6b7280;text-decoration:underline;">Manage preferences</a>
                 </div>
               </td>
@@ -312,7 +328,7 @@ exports.handler = async () => {
       const attemptRes = await sendWithRetry({
         from: FROM_ADDRESS,
         to: [user.email],
-        subject: "Leaderboard Results!",
+        subject,
         html,
       });
       if (attemptRes.ok) {

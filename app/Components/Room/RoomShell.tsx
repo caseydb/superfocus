@@ -71,7 +71,6 @@ type MilestoneData = {
   };
 };
 
-
 export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { currentInstance, user, userReady, setPublicRoomInstance } = useInstance();
   const [loading, setLoading] = useState(true);
@@ -112,6 +111,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [copied, setCopied] = useState(false);
   const [showHistoryTooltip, setShowHistoryTooltip] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  // Weekly analytics email trigger state (temporarily disabled)
   // const [showContacts, setShowContacts] = useState(false); // People Modal - Feature deprioritized
   const [showRooms, setShowRooms] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -126,14 +126,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Get toggle_notes from Redux preferences instead of local state
   const showDeepWorkNotes = useSelector((state: RootState) => state.preferences.toggle_notes);
   const showCounter = useSelector((state: RootState) => state.preferences.toggle_counter);
-  const activeTask = useSelector((state: RootState) => 
-    state.tasks.tasks.find(t => t.id === state.tasks.activeTaskId)
+  const activeTask = useSelector((state: RootState) =>
+    state.tasks.tasks.find((t) => t.id === state.tasks.activeTaskId)
   );
   // For guest users, use per-task cached counter; for authenticated users, use task counter
   // Treat undefined isGuest as guest mode (safer default)
   const reduxCounterValue = useSelector((state: RootState) => state.counter.value);
   const isGuestUser = reduxUser.isGuest !== false; // true or undefined = guest mode
-  
+
   // Load counter from cache when task changes (for guests)
   useEffect(() => {
     if (isGuestUser && activeTask?.id) {
@@ -141,13 +141,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       dispatch(setCounterValue(cachedValue));
     }
   }, [isGuestUser, activeTask?.id, dispatch]);
-  
-  const counterValue = isGuestUser ? reduxCounterValue : (activeTask?.counter || 0);
-  
+
+  const counterValue = isGuestUser ? reduxCounterValue : activeTask?.counter || 0;
+
   const counterUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editingCounterValue, setEditingCounterValue] = useState("");
-  
+
   // Sync counter value when active task changes (only for authenticated users)
   useEffect(() => {
     if (!isGuestUser) {
@@ -156,33 +156,38 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
     // For guest users, the counter value is already in Redux and cached
   }, [counterValue, dispatch, isGuestUser]);
-  
+
   // Debounced function to update counter in database
-  const updateCounterInDatabase = useCallback((taskId: string, newValue: number) => {
-    // For guest users, just save to cache
-    if (isGuestUser) {
-      LocalCounterCache.saveCounter(taskId, newValue);
-      return;
-    }
-    
-    // Clear any pending update
-    if (counterUpdateTimeoutRef.current) {
-      clearTimeout(counterUpdateTimeoutRef.current);
-    }
-    
-    // Set a new timeout for the database update
-    counterUpdateTimeoutRef.current = setTimeout(() => {
-      const token = localStorage.getItem("firebase_token");
-      if (token) {
-        dispatch(updateTaskCounter({ 
-          taskId, 
-          counter: newValue, 
-          token 
-        }));
+  const updateCounterInDatabase = useCallback(
+    (taskId: string, newValue: number) => {
+      // For guest users, just save to cache
+      if (isGuestUser) {
+        LocalCounterCache.saveCounter(taskId, newValue);
+        return;
       }
-    }, 500); // 500ms debounce
-  }, [dispatch, isGuestUser]);
-  
+
+      // Clear any pending update
+      if (counterUpdateTimeoutRef.current) {
+        clearTimeout(counterUpdateTimeoutRef.current);
+      }
+
+      // Set a new timeout for the database update
+      counterUpdateTimeoutRef.current = setTimeout(() => {
+        const token = localStorage.getItem("firebase_token");
+        if (token) {
+          dispatch(
+            updateTaskCounter({
+              taskId,
+              counter: newValue,
+              token,
+            })
+          );
+        }
+      }, 500); // 500ms debounce
+    },
+    [dispatch, isGuestUser]
+  );
+
   // Cleanup counter update timeout on unmount
   useEffect(() => {
     return () => {
@@ -236,12 +241,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Track previous volume for mute/unmute functionality
   const [previousVolume, setPreviousVolume] = useState(0.2);
-  
+
   // Wrap setLocalVolume to also update active audio
   const setLocalVolume = useCallback((volume: number) => {
     setLocalVolumeState(volume);
     // Update all active audio elements immediately
-    import('../../utils/activeAudio').then(({ updateAllVolumes }) => {
+    import("../../utils/activeAudio").then(({ updateAllVolumes }) => {
       updateAllVolumes(volume);
     });
   }, []);
@@ -249,7 +254,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Apply server preference for volume on first load
   const appliedPrefVolumeRef = useRef(false);
   useEffect(() => {
-    if (!appliedPrefVolumeRef.current && typeof preferences.sound_volume === 'number') {
+    if (!appliedPrefVolumeRef.current && typeof preferences.sound_volume === "number") {
       const prefVolume = Math.max(0, Math.min(100, preferences.sound_volume));
       const normalized = prefVolume / 100;
       // Only apply if significantly different from current local volume
@@ -268,12 +273,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   useEffect(() => {
     // Persist to localStorage for quick reloads
     try {
-      window.localStorage.setItem('lockedin_volume', String(localVolume));
+      window.localStorage.setItem("lockedin_volume", String(localVolume));
     } catch {}
 
     // Optimistically update preference slice with integer 0-100
     const volumeInt = Math.round(Math.max(0, Math.min(1, localVolume)) * 100);
-    dispatch(setPreference({ key: 'sound_volume', value: volumeInt }));
+    dispatch(setPreference({ key: "sound_volume", value: volumeInt }));
 
     // Debounce persistent update to Postgres
     if (volumePersistTimeoutRef.current) {
@@ -332,74 +337,76 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     if (user?.id) {
       // First check for LastTask
       const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
-      get(lastTaskRef).then(async (lastTaskSnapshot) => {
-        if (lastTaskSnapshot.exists()) {
-          const lastTaskData = lastTaskSnapshot.val();
-          
-          // Check if this task exists in TaskBuffer
-          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
-          const taskSnapshot = await get(taskRef);
-          
-          if (taskSnapshot.exists()) {
-            const taskData = taskSnapshot.val();
-            
-            // Set the task input and active task
-            dispatch(setCurrentInput(lastTaskData.taskName || taskData.name));
-            dispatch(setCurrentTask({ id: lastTaskData.taskId, name: lastTaskData.taskName || taskData.name }));
-            dispatch(setActiveTask(lastTaskData.taskId));
-            dispatch(setHasStartedRedux(true));
-            
-            // Don't check timer_state since we found LastTask
-            return;
-          }
-        }
-        
-        // If no LastTask, check timer_state for backward compatibility
-        const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-        get(timerRef)
-        .then((snapshot) => {
-          const timerState = snapshot.val();
-          if (timerState && timerState.taskId) {
-            // Found active timer state - lock input immediately
-            dispatch(lockInput());
-            dispatch(setHasStartedRedux(true));
+      get(lastTaskRef)
+        .then(async (lastTaskSnapshot) => {
+          if (lastTaskSnapshot.exists()) {
+            const lastTaskData = lastTaskSnapshot.val();
 
-            // Calculate current seconds from timer state
-            let currentSeconds = 0;
-            if (timerState.running && timerState.startTime) {
-              // Calculate current seconds: base + elapsed time since start
-              const elapsedMs = Date.now() - timerState.startTime;
-              const elapsedSeconds = Math.floor(elapsedMs / 1000);
-              currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-            } else {
-              // Use stored total seconds when paused
-              currentSeconds = timerState.totalSeconds || 0;
-            }
+            // Check if this task exists in TaskBuffer
+            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
+            const taskSnapshot = await get(taskRef);
 
-            // Update the secondsRef immediately
-            timerSecondsRef.current = currentSeconds;
-
-            // Set the active task ID immediately
-            dispatch(setActiveTask(timerState.taskId));
-
-            // Also restore the task name if we can find it
-            const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
-            get(taskRef).then((taskSnapshot) => {
+            if (taskSnapshot.exists()) {
               const taskData = taskSnapshot.val();
-              if (taskData && taskData.name) {
-                dispatch(setCurrentInput(taskData.name));
+
+              // Set the task input and active task
+              dispatch(setCurrentInput(lastTaskData.taskName || taskData.name));
+              dispatch(setCurrentTask({ id: lastTaskData.taskId, name: lastTaskData.taskName || taskData.name }));
+              dispatch(setActiveTask(lastTaskData.taskId));
+              dispatch(setHasStartedRedux(true));
+
+              // Don't check timer_state since we found LastTask
+              return;
+            }
+          }
+
+          // If no LastTask, check timer_state for backward compatibility
+          const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+          get(timerRef)
+            .then((snapshot) => {
+              const timerState = snapshot.val();
+              if (timerState && timerState.taskId) {
+                // Found active timer state - lock input immediately
+                dispatch(lockInput());
+                dispatch(setHasStartedRedux(true));
+
+                // Calculate current seconds from timer state
+                let currentSeconds = 0;
+                if (timerState.running && timerState.startTime) {
+                  // Calculate current seconds: base + elapsed time since start
+                  const elapsedMs = Date.now() - timerState.startTime;
+                  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+                  currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+                } else {
+                  // Use stored total seconds when paused
+                  currentSeconds = timerState.totalSeconds || 0;
+                }
+
+                // Update the secondsRef immediately
+                timerSecondsRef.current = currentSeconds;
+
+                // Set the active task ID immediately
+                dispatch(setActiveTask(timerState.taskId));
+
+                // Also restore the task name if we can find it
+                const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
+                get(taskRef).then((taskSnapshot) => {
+                  const taskData = taskSnapshot.val();
+                  if (taskData && taskData.name) {
+                    dispatch(setCurrentInput(taskData.name));
+                  } else {
+                  }
+                });
               } else {
               }
+            })
+            .catch(() => {
+              // Error handling removed - silent failure
             });
-          } else {
-          }
         })
         .catch(() => {
-          // Error handling removed - silent failure
+          // Silent error handling - LastTask may not exist
         });
-      }).catch(() => {
-        // Silent error handling - LastTask may not exist
-      });
     }
   }, [user?.id, dispatch]);
 
@@ -529,7 +536,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
-      
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
@@ -545,7 +551,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               roomId: currentInstance.id,
               reduxUserId: reduxUser.user_id,
               reduxAuthId: reduxUser.auth_id,
-              isGuest: reduxUser.isGuest
+              isGuest: reduxUser.isGuest,
             });
             const presence = new PresenceService(user.id, currentInstance.id);
             const initialized = await presence.initialize();
@@ -623,7 +629,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               // Check if the user is the superadmin
               const SUPERADMIN_USER_ID = "df3aed2a-ad51-457f-b0cd-f7d4225143d4";
               const isSuperadmin = reduxUser.user_id === SUPERADMIN_USER_ID;
-              
+
               // Check if user is a member of this private room (for superadmin visibility logic)
               let isMember = true; // Default to true for non-superadmin users
               if (isSuperadmin) {
@@ -639,11 +645,11 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   console.error("Failed to check room membership:", error);
                 }
               }
-              
+
               // Create presence manager for private rooms
               const presence = new PresenceService(user.id, privateRoom.id);
               const initialized = await presence.initialize();
-              
+
               if (initialized) {
                 // Store presence manager
                 setRoomPresence(presence);
@@ -653,7 +659,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 if (!isSuperadmin || isMember) {
                   await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
                 }
-                
+
                 // Store the private room ID for cleanup later
                 setPrivateRoomId(privateRoom.id);
               }
@@ -662,7 +668,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               setLoading(false);
               return;
             }
-
           }
 
           setRoomFound(true);
@@ -689,19 +694,19 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const roomResponse = await fetch(`/api/room/by-slug?slug=${roomUrl}`);
         const roomResult = await roomResponse.json();
-        
+
         if (roomResult.success && roomResult.room) {
           // Found a permanent public room
           setRoomFound(true);
-          
+
           // Initialize presence for permanent public rooms
           const presence = new PresenceService(user.id, roomResult.room.id);
           const initialized = await presence.initialize();
-          
+
           if (initialized) {
             setRoomPresence(presence);
           }
-          
+
           // Create a temporary Instance object for compatibility
           const tempInstance: Instance = {
             id: roomResult.room.id,
@@ -710,7 +715,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             createdBy: user.id, // We don't know the actual creator
             url: roomUrl,
           };
-          
+
           // Set this as the current instance
           setPublicRoomInstance(tempInstance);
           setLoading(false);
@@ -726,7 +731,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
     if (userReady) {
       let cancelled = false;
-      
+
       // Small delay to ensure Firebase writes are propagated
       const timer = setTimeout(() => {
         if (!cancelled) {
@@ -871,7 +876,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (roomPresence) {
-                roomPresence.cleanup();
+        roomPresence.cleanup();
       }
     };
   }, [roomPresence, user?.id]); // Also cleanup if user ID changes
@@ -880,12 +885,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const handleActiveChange = (isActive: boolean) => {
     if (!currentInstance || !user) return;
     setTimerRunning(isActive);
-    
+
     // Update presence service - this handles all presence tracking now
     if (roomPresence) {
       roomPresence.setActive(isActive);
     }
-    
+
     if (isActive) {
       dispatch(lockInput());
       dispatch(setHasStartedRedux(true));
@@ -927,7 +932,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       interval = setInterval(updateTitleAndSeconds, 1000);
       updateTitleAndSeconds(); // Set immediately
     } else {
-      document.title = "Locked In";
+      document.title = "Superfocus";
       // When timer is not running, still update currentTimerSeconds to show accumulated time
       setCurrentTimerSeconds(timerSecondsRef.current);
     }
@@ -1024,7 +1029,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Listen for event notifications (🥊🏆💀) from GlobalEffects
   useEffect(() => {
     if (!currentInstance) return;
-    
+
     // Only fetch recent events to avoid processing old ones
     const eventsQuery = query(
       ref(rtdb, `GlobalEffects/${currentInstance.id}/events`),
@@ -1049,7 +1054,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       // Find new events we haven't processed yet
       let shouldRefreshLeaderboard = false;
-      Object.entries(events as Record<string, { displayName?: string; firstName?: string; lastName?: string; type?: string; userId?: string; authId?: string; duration?: number }>).forEach(async ([eventId, event]) => {
+      Object.entries(
+        events as Record<
+          string,
+          {
+            displayName?: string;
+            firstName?: string;
+            lastName?: string;
+            type?: string;
+            userId?: string;
+            authId?: string;
+            duration?: number;
+          }
+        >
+      ).forEach(async ([eventId, event]) => {
         if (!processedEvents.has(eventId)) {
           processedEvents.add(eventId);
 
@@ -1059,15 +1077,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             if (event.type === "start") emoji = "🥊";
             if (event.type === "complete") emoji = "🏆";
             if (event.type === "quit") emoji = "💀";
-            
+
             // Use the name directly from the event data (already has correct user's firstName/lastName)
             let name = "Someone";
             if (event.firstName || event.lastName) {
-              name = `${event.firstName || ''} ${event.lastName || ''}`.trim();
+              name = `${event.firstName || ""} ${event.lastName || ""}`.trim();
             } else if (event.displayName) {
               name = event.displayName;
             }
-            
+
             // Update browser title to show action and name
             // This will be seen by ALL users in the room
             if (event.type === "start") {
@@ -1086,7 +1104,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               if (timerRunning) {
                 document.title = formatTime(timerSecondsRef.current);
               } else {
-                document.title = "Locked In";
+                document.title = "Superfocus";
               }
             }, 5000);
           }
@@ -1188,10 +1206,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   const handleQuitButton = async () => {
     // Store the current seconds before resetting
     let currentSeconds = timerSecondsRef.current;
-    
+
     // If timer shows 0 but we have an active task, get the time from the task
     if (currentSeconds === 0 && activeTaskId) {
-      const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+      const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
       if (activeTask && activeTask.timeSpent > 0) {
         currentSeconds = activeTask.timeSpent;
       }
@@ -1213,10 +1231,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       setHasStarted: (started: boolean) => dispatch(setHasStartedRedux(started)),
       setShowQuitModal,
     });
-    
+
     // Reset the quit flag after quit is complete
     isQuittingRef.current = false;
-    
+
     // Ensure input is unlocked after a small delay (in case Timer state hasn't updated yet)
     setTimeout(() => {
       dispatch(unlockInput());
@@ -1266,12 +1284,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           const userData = snapshot.val();
           const firstName = userData.firstName || "";
           const lastName = userData.lastName || "";
-          displayName = `${firstName}${lastName ? ' ' + lastName : ''}`.trim() || user.displayName;
+          displayName = `${firstName}${lastName ? " " + lastName : ""}`.trim() || user.displayName;
         }
       } catch (error) {
-        console.error('[RoomShell] Failed to fetch user data from Firebase:', error);
+        console.error("[RoomShell] Failed to fetch user data from Firebase:", error);
       }
-      
+
       // Add flying message to GlobalEffects
       const flyingMessageId = `${user.id}-complete-${Date.now()}`;
       const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
@@ -1412,8 +1430,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       </div>
     );
   }
-  
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-elegant-dark">
@@ -1445,7 +1462,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         {/* Feedback Button - Right Side */}
         <button
           className="fixed right-0 top-1/2 -translate-y-1/2 bg-gray-900 text-gray-400 hover:text-white text-sm font-bold py-2 px-2 rounded-r-md shadow-lg hover:bg-gray-800 z-40 transition-all duration-300"
-          onClick={() => window.open('https://getlockedin.featurebase.app/', '_blank')}
+          onClick={() => window.open("https://getlockedin.featurebase.app/", "_blank")}
           style={{ writingMode: "vertical-lr", textOrientation: "mixed", transform: "rotate(180deg)" }}
         >
           ✨ Feedback
@@ -1466,7 +1483,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             instanceType={currentInstance.type}
             closeAllModals={closeAllModals}
           />
-          
+
           {/* Top right container for controls - hidden on mobile */}
           <div className="fixed top-[8px] right-4 z-50 hidden md:flex items-center gap-2 max-w-[calc(100vw-6rem)]">
             {/* Controls - speaker icon, timer dropdown, and name dropdown */}
@@ -1556,7 +1573,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 )}
               </div>
             )}
-            
+
             {/* Counter for Deep Work Mode - integrated below input */}
             {showCounter && !showDeepWorkNotes && !isPomodoroMode && (isGuestUser || activeTaskId) && (
               <div className="mb-8 flex justify-center w-full">
@@ -1565,10 +1582,10 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                     <button
                       onClick={() => {
                         const newValue = Math.max(0, counterValue - 1);
-                        
-                        // Update Redux 
+
+                        // Update Redux
                         dispatch(setCounterValue(newValue));
-                        
+
                         if (isGuestUser && activeTask) {
                           // For guest users, just save to cache
                           LocalCounterCache.saveCounter(activeTask.id, newValue);
@@ -1580,10 +1597,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                       }}
                       className="group relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0"
                     >
-                      <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">−</span>
+                      <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">
+                        −
+                      </span>
                       <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
                     </button>
-                    
+
                     <div className="flex flex-col items-center">
                       <span className="text-gray-400 text-xs uppercase tracking-wider mb-1">Counter</span>
                       {isEditingCounter ? (
@@ -1601,7 +1620,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                             const newValue = Math.max(0, parseInt(editingCounterValue) || 0);
                             // Update Redux
                             dispatch(setCounterValue(newValue));
-                            
+
                             if (isGuestUser && activeTask) {
                               // For guest users, just save to cache
                               LocalCounterCache.saveCounter(activeTask.id, newValue);
@@ -1635,13 +1654,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                         </button>
                       )}
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         const newValue = counterValue + 1;
-                        // Update Redux 
+                        // Update Redux
                         dispatch(setCounterValue(newValue));
-                        
+
                         if (isGuestUser && activeTask) {
                           // For guest users, just save to cache
                           LocalCounterCache.saveCounter(activeTask.id, newValue);
@@ -1653,16 +1672,18 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                       }}
                       className="group relative w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0"
                     >
-                      <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">+</span>
+                      <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">
+                        +
+                      </span>
                       <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
                     </button>
                   </div>
-                  
+
                   <button
                     onClick={() => {
-                      // Update Redux 
+                      // Update Redux
                       dispatch(setCounterValue(0));
-                      
+
                       if (isGuestUser && activeTask) {
                         // For guest users, just save to cache
                         LocalCounterCache.saveCounter(activeTask.id, 0);
@@ -1679,13 +1700,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 </div>
               </div>
             )}
-            
+
             {/* Task Notes for Deep Work Mode - integrated below input */}
             {showDeepWorkNotes && !showCounter && !isPomodoroMode && activeTaskId && (
               <div className="mb-8 flex justify-center w-full max-h-52 overflow-y-auto">
-                <TaskNotes 
+                <TaskNotes
                   taskId={activeTaskId}
-                  taskName={reduxTasks.find(t => t.id === activeTaskId)?.name}
+                  taskName={reduxTasks.find((t) => t.id === activeTaskId)?.name}
                   isVisible={showDeepWorkNotes}
                 />
               </div>
@@ -1700,93 +1721,97 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
             {!isPomodoroMode ? (
               <>
                 <Timer
-                key={timerResetKey}
-                onActiveChange={handleActiveChange}
-                startRef={timerStartRef}
-                pauseRef={timerPauseRef}
-                onComplete={handleComplete}
-                secondsRef={timerSecondsRef}
-                localVolume={localVolume}
-                onTaskRestore={(taskName, isRunning, taskId) => {
-                  dispatch(setCurrentInput(taskName));
-                  if (taskId) {
-                    dispatch(setCurrentTask({ id: taskId, name: taskName }));
-                    dispatch(setActiveTask(taskId));
-                  }
-                  if (isRunning) {
-                    dispatch(lockInput());
-                  }
-                  dispatch(setHasStartedRedux(true));
-                }}
-                onNewTaskStart={() => {
-                  lastStartTimeRef.current = Date.now();
-                }}
-                startCooldown={localStartCooldown}
-                lastStartTime={lastStartTimeRef.current}
-                initialRunning={timerRunning}
-                isQuittingRef={isQuittingRef}
-              />
+                  key={timerResetKey}
+                  onActiveChange={handleActiveChange}
+                  startRef={timerStartRef}
+                  pauseRef={timerPauseRef}
+                  onComplete={handleComplete}
+                  secondsRef={timerSecondsRef}
+                  localVolume={localVolume}
+                  onTaskRestore={(taskName, isRunning, taskId) => {
+                    dispatch(setCurrentInput(taskName));
+                    if (taskId) {
+                      dispatch(setCurrentTask({ id: taskId, name: taskName }));
+                      dispatch(setActiveTask(taskId));
+                    }
+                    if (isRunning) {
+                      dispatch(lockInput());
+                    }
+                    dispatch(setHasStartedRedux(true));
+                  }}
+                  onNewTaskStart={() => {
+                    lastStartTimeRef.current = Date.now();
+                  }}
+                  startCooldown={localStartCooldown}
+                  lastStartTime={lastStartTimeRef.current}
+                  initialRunning={timerRunning}
+                  isQuittingRef={isQuittingRef}
+                />
                 {/* Toggle buttons for Counter and Notes - centered below Timer */}
                 <div className="flex justify-center mt-6 gap-4">
                   <button
                     className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
-                      !activeTaskId 
-                        ? "text-gray-600 cursor-not-allowed" 
-                        : showCounter 
-                          ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer" 
-                          : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+                      !activeTaskId
+                        ? "text-gray-600 cursor-not-allowed"
+                        : showCounter
+                        ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer"
+                        : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
                     }`}
                     onClick={async () => {
                       if (!activeTaskId) return;
-                      
+
                       // Toggle counter on, notes off
-                      dispatch(setPreference({ key: 'toggle_counter', value: !showCounter }));
+                      dispatch(setPreference({ key: "toggle_counter", value: !showCounter }));
                       if (!showCounter && showDeepWorkNotes) {
-                        dispatch(setPreference({ key: 'toggle_notes', value: false }));
+                        dispatch(setPreference({ key: "toggle_notes", value: false }));
                       }
-                      
+
                       // Update PostgreSQL in background
                       if (reduxUser?.user_id) {
-                        dispatch(updatePreferences({ 
-                          userId: reduxUser.user_id, 
-                          updates: { 
-                            toggle_counter: !showCounter,
-                            toggle_notes: !showCounter ? false : showDeepWorkNotes
-                          } 
-                        }));
+                        dispatch(
+                          updatePreferences({
+                            userId: reduxUser.user_id,
+                            updates: {
+                              toggle_counter: !showCounter,
+                              toggle_notes: !showCounter ? false : showDeepWorkNotes,
+                            },
+                          })
+                        );
                       }
                     }}
                     disabled={!activeTaskId}
                   >
                     Counter
                   </button>
-                  
+
                   <button
                     className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
-                      !activeTaskId 
-                        ? "text-gray-600 cursor-not-allowed" 
-                        : showDeepWorkNotes 
-                          ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer" 
-                          : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
+                      !activeTaskId
+                        ? "text-gray-600 cursor-not-allowed"
+                        : showDeepWorkNotes
+                        ? "text-[#FFAA00] hover:text-[#FF9900] cursor-pointer"
+                        : "text-gray-400 hover:text-[#FFAA00] cursor-pointer"
                     }`}
                     onClick={async () => {
                       if (!activeTaskId) return;
-                      
+
                       // Toggle notes on, counter off
-                      dispatch(setPreference({ key: 'toggle_notes', value: !showDeepWorkNotes }));
+                      dispatch(setPreference({ key: "toggle_notes", value: !showDeepWorkNotes }));
                       if (!showDeepWorkNotes && showCounter) {
-                        dispatch(setPreference({ key: 'toggle_counter', value: false }));
+                        dispatch(setPreference({ key: "toggle_counter", value: false }));
                       }
-                      
+
                       // Update PostgreSQL in background
                       if (reduxUser?.user_id) {
-                        dispatch(updatePreferences({ 
-                          userId: reduxUser.user_id, 
-                          updates: { 
-                            toggle_notes: !showDeepWorkNotes,
-                            toggle_counter: !showDeepWorkNotes ? false : showCounter
-                          } 
-                        }));
+                        dispatch(
+                          updatePreferences({
+                            userId: reduxUser.user_id,
+                            updates: {
+                              toggle_notes: !showDeepWorkNotes,
+                              toggle_counter: !showDeepWorkNotes ? false : showCounter,
+                            },
+                          })
+                        );
                       }
                     }}
                     disabled={!activeTaskId}
@@ -1818,9 +1843,9 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   showCounter={showCounter && !!activeTaskId}
                   notesContent={
                     showDeepWorkNotes && activeTaskId ? (
-                      <TaskNotes 
+                      <TaskNotes
                         taskId={activeTaskId}
-                        taskName={reduxTasks.find(t => t.id === activeTaskId)?.name}
+                        taskName={reduxTasks.find((t) => t.id === activeTaskId)?.name}
                         isVisible={showDeepWorkNotes}
                       />
                     ) : null
@@ -1840,10 +1865,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                             }}
                             className="group relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0"
                           >
-                            <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">−</span>
+                            <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">
+                              −
+                            </span>
                             <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
                           </button>
-                          
+
                           <div className="flex flex-col items-center">
                             <span className="text-gray-400 text-xs uppercase tracking-wider mb-1">Counter</span>
                             {isEditingCounter ? (
@@ -1888,7 +1915,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                               </button>
                             )}
                           </div>
-                          
+
                           <button
                             onClick={() => {
                               if (activeTask) {
@@ -1900,11 +1927,13 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                             }}
                             className="group relative w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 flex-shrink-0"
                           >
-                            <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">+</span>
+                            <span className="text-white text-3xl font-bold select-none group-hover:scale-110 transition-transform">
+                              +
+                            </span>
                             <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
                           </button>
                         </div>
-                        
+
                         <button
                           onClick={() => {
                             if (activeTask) {
@@ -1920,50 +1949,50 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                       </div>
                     ) : null
                   }
-                  onNotesToggle={
-                    async () => {
-                      if (!activeTaskId) return;
-                      
-                      // Toggle notes on, counter off
-                      dispatch(setPreference({ key: 'toggle_notes', value: !showDeepWorkNotes }));
-                      if (!showDeepWorkNotes && showCounter) {
-                        dispatch(setPreference({ key: 'toggle_counter', value: false }));
-                      }
-                      
-                      // Update PostgreSQL in background
-                      if (reduxUser?.user_id) {
-                        dispatch(updatePreferences({ 
-                          userId: reduxUser.user_id, 
-                          updates: { 
+                  onNotesToggle={async () => {
+                    if (!activeTaskId) return;
+
+                    // Toggle notes on, counter off
+                    dispatch(setPreference({ key: "toggle_notes", value: !showDeepWorkNotes }));
+                    if (!showDeepWorkNotes && showCounter) {
+                      dispatch(setPreference({ key: "toggle_counter", value: false }));
+                    }
+
+                    // Update PostgreSQL in background
+                    if (reduxUser?.user_id) {
+                      dispatch(
+                        updatePreferences({
+                          userId: reduxUser.user_id,
+                          updates: {
                             toggle_notes: !showDeepWorkNotes,
-                            toggle_counter: !showDeepWorkNotes ? false : showCounter
-                          } 
-                        }));
-                      }
+                            toggle_counter: !showDeepWorkNotes ? false : showCounter,
+                          },
+                        })
+                      );
                     }
-                  }
-                  onCounterToggle={
-                    async () => {
-                      if (!activeTaskId) return;
-                      
-                      // Toggle counter on, notes off
-                      dispatch(setPreference({ key: 'toggle_counter', value: !showCounter }));
-                      if (!showCounter && showDeepWorkNotes) {
-                        dispatch(setPreference({ key: 'toggle_notes', value: false }));
-                      }
-                      
-                      // Update PostgreSQL in background
-                      if (reduxUser?.user_id) {
-                        dispatch(updatePreferences({ 
-                          userId: reduxUser.user_id, 
-                          updates: { 
+                  }}
+                  onCounterToggle={async () => {
+                    if (!activeTaskId) return;
+
+                    // Toggle counter on, notes off
+                    dispatch(setPreference({ key: "toggle_counter", value: !showCounter }));
+                    if (!showCounter && showDeepWorkNotes) {
+                      dispatch(setPreference({ key: "toggle_notes", value: false }));
+                    }
+
+                    // Update PostgreSQL in background
+                    if (reduxUser?.user_id) {
+                      dispatch(
+                        updatePreferences({
+                          userId: reduxUser.user_id,
+                          updates: {
                             toggle_counter: !showCounter,
-                            toggle_notes: !showCounter ? false : showDeepWorkNotes
-                          } 
-                        }));
-                      }
+                            toggle_notes: !showCounter ? false : showDeepWorkNotes,
+                          },
+                        })
+                      );
                     }
-                  }
+                  }}
                   hasActiveTask={!!activeTaskId}
                   onTaskRestore={(taskName, isRunning, taskId) => {
                     dispatch(setCurrentInput(taskName));
@@ -1983,6 +2012,24 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
           {/* Analytics and Leaderboard buttons - bottom left */}
           <div className="fixed bottom-4 left-8 z-[60] hidden sm:flex flex-col gap-4">
+            {/* Weekly Analytics Email Trigger - temporarily disabled */}
+            {/**
+            <button
+              className="flex items-center gap-3 group relative cursor-pointer"
+              onClick={async () => {}}
+            >
+              <div className="relative">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-gray-400 group-hover:text-[#FFAA00] transition-all duration-300 transform group-hover:scale-110">
+                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
+              </div>
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+                Email Analytics
+              </span>
+            </button>
+            **/}
+
             {/* Analytics Section */}
             <button
               className="flex items-center gap-3 group relative cursor-pointer"
@@ -2079,14 +2126,14 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                   }}
                 />
                 {/* Glow effect on hover */}
-                {/* <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div> */}
-                {/* Notification badge */}
-                {/* {availabilityStatus !== "dnd" && peopleNotificationCount > 0 && (
+            {/* <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div> */}
+            {/* Notification badge */}
+            {/* {availabilityStatus !== "dnd" && peopleNotificationCount > 0 && (
                   <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {peopleNotificationCount}
                   </div>
                 )} */}
-              {/* </div>
+            {/* </div>
               <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
                 People
               </span>
@@ -2100,47 +2147,15 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
               }}
             >
               <div className="relative">
-                <svg 
+                <svg
                   className="w-10 h-10 text-gray-400 group-hover:text-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 p-[3px]"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <rect
-                    x="3"
-                    y="3"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
-                  <rect
-                    x="14"
-                    y="3"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
-                  <rect
-                    x="3"
-                    y="14"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
-                  <rect
-                    x="14"
-                    y="14"
-                    width="7"
-                    height="7"
-                    rx="1"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
+                  <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
@@ -2313,30 +2328,30 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         <RoomsModal isOpen={showRoomsModal} onClose={() => setShowRoomsModal(false)} />
 
         {/* Invite Popup */}
-        <InvitePopup 
-          isOpen={showInvitePopup} 
+        <InvitePopup
+          isOpen={showInvitePopup}
           onClose={async () => {
             setShowInvitePopup(false);
-            
+
             // Get milestone data if it exists
             const milestoneData = (window as Window & { milestoneData?: MilestoneData }).milestoneData;
-            
+
             if (!milestoneData?.milestone) {
               return;
             }
-            
+
             const milestoneToMark = milestoneData.milestone;
-            
+
             try {
               const body = {
                 milestone: milestoneToMark,
                 channel: "invite_popup",
               };
-              
+
               if (!reduxUser?.user_id) {
                 return;
               }
-              
+
               const response = await fetch("/api/user/milestones/shown", {
                 method: "POST",
                 headers: {
@@ -2345,12 +2360,12 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
                 },
                 body: JSON.stringify(body),
               });
-              
+
               await response.json();
             } catch {
               // Silently fail
             }
-            
+
             // Clear milestone data if it exists
             if (milestoneData) {
               delete (window as Window & { milestoneData?: MilestoneData }).milestoneData;
