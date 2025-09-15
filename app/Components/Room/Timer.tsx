@@ -925,7 +925,7 @@ export default function Timer({
         {!running && !isStarting ? (
           <div className="flex flex-col items-center gap-2">
             <button
-              className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto ${
+              className={`bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto ${
                 !task.trim() || checkingTaskBuffer ? "cursor-not-allowed" : "cursor-pointer"
               }`}
               onClick={startTimer}
@@ -944,7 +944,7 @@ export default function Timer({
         ) : (
           <>
             <button
-              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+              className="bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
               onClick={pauseTimer}
             >
               Pause

@@ -1580,7 +1580,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           />
           {/* Tasks - desktop only: bottom right corner */}
           <button
-            className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-lg font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center ${
+            className={`fixed bottom-4 right-8 z-[60] text-gray-400 text-lg font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-colors px-2 py-1 bg-transparent border-none cursor-pointer hidden sm:flex items-center sf-tasks-cta ${
               showTaskList ? "!hidden" : ""
             }`}
             onClick={() => {
@@ -1625,7 +1625,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Clear button in top-right: when running (on hover) or when paused (also on hover) */}
                 {task.trim() && hasStarted && (
                   <button
-                    className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100`}
+                    className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100 sf-clear-btn`}
                     onClick={handleClearButton}
                   >
                     Clear
@@ -1637,7 +1637,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             {/* Counter for Deep Work Mode - integrated below input */}
             {showCounter && !showDeepWorkNotes && !isPomodoroMode && (isGuestUser || activeTaskId) && (
               <div className="mb-8 flex justify-center w-full">
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl pt-6 pb-4 px-6 shadow-xl border border-gray-700/50 flex flex-col items-center">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl pt-6 pb-4 px-6 shadow-xl border border-gray-700/50 flex flex-col items-center sf-counter-panel">
                   <div className="flex items-center justify-center gap-6">
                     <button
                       onClick={() => {
@@ -1664,7 +1664,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                     </button>
 
                     <div className="flex flex-col items-center">
-                      <span className="text-gray-400 text-xs uppercase tracking-wider mb-1">Counter</span>
+                      <span className="text-gray-400 text-xs uppercase tracking-wider mb-1 sf-counter-label">Counter</span>
                       {isEditingCounter ? (
                         <input
                           type="text"
@@ -1810,7 +1810,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Toggle buttons for Counter and Notes - centered below Timer */}
                 <div className="flex justify-center mt-6 gap-4">
                   <button
-                    className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                    className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none sf-mode-toggle ${
                       !activeTaskId
                         ? "text-gray-600 cursor-not-allowed"
                         : showCounter
@@ -1845,7 +1845,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                   </button>
 
                   <button
-                    className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                    className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none sf-mode-toggle ${
                       !activeTaskId
                         ? "text-gray-600 cursor-not-allowed"
                         : showDeepWorkNotes
@@ -1912,7 +1912,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                   }
                   counterContent={
                     showCounter && activeTaskId ? (
-                      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl pt-6 pb-4 px-6 shadow-xl border border-gray-700/50 flex flex-col items-center">
+                      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl pt-6 pb-4 px-6 shadow-xl border border-gray-700/50 flex flex-col items-center sf-counter-panel">
                         <div className="flex items-center justify-center gap-6">
                           <button
                             onClick={() => {
@@ -2100,7 +2100,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <div
-                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 sf-navicon"
                   style={{
                     WebkitMask: `url(/analytics-icon.svg) no-repeat center`,
                     mask: `url(/analytics-icon.svg) no-repeat center`,
@@ -2111,7 +2111,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap sf-navlabel">
                 Analytics
               </span>
             </button>
@@ -2126,7 +2126,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <div
-                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 sf-navicon"
                   style={{
                     WebkitMask: `url(/crown-icon.svg) no-repeat center`,
                     mask: `url(/crown-icon.svg) no-repeat center`,
@@ -2137,7 +2137,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap sf-navlabel">
                 Leaderboard
               </span>
             </button>
@@ -2152,7 +2152,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <div
-                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110"
+                  className="w-10 h-10 bg-gray-400 group-hover:bg-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 sf-navicon"
                   style={{
                     WebkitMask: `url(/history-icon.svg) no-repeat center`,
                     mask: `url(/history-icon.svg) no-repeat center`,
@@ -2163,7 +2163,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap sf-navlabel">
                 History
               </span>
             </button>
@@ -2208,7 +2208,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             >
               <div className="relative">
                 <svg
-                  className="w-10 h-10 text-gray-400 group-hover:text-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 p-[3px]"
+                  className="w-10 h-10 text-gray-400 group-hover:text-[#FFAA00] transition-all duration-300 transform group-hover:scale-110 p-[3px] sf-navicon-svg"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
@@ -2220,7 +2220,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-[#FFAA00] opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 rounded-full"></div>
               </div>
-              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap">
+              <span className="text-gray-400 text-sm font-mono cursor-pointer underline underline-offset-4 select-none group-hover:text-[#FFAA00] transition-all duration-300 opacity-0 group-hover:opacity-100 absolute left-12 whitespace-nowrap sf-navlabel">
                 Workspace
               </span>
             </button>

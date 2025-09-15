@@ -297,7 +297,7 @@ export default function TaskInput({
           });
         }}
         maxLength={maxLen}
-        className={`text-center font-semibold outline-none text-white mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
+        className={`text-center font-semibold outline-none text-white sf-taskinput-text mb-6 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 ${
           "bg-transparent"
         } ${
           task.length > 50 ? "text-2xl md:text-3xl" : "text-3xl md:text-5xl"

@@ -594,7 +594,7 @@ export default function Pomodoro({
 
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 sm:px-0 w-full max-w-4xl mx-auto -mt-10">
+    <div className="flex flex-col items-center gap-4 px-4 sm:px-0 w-full max-w-4xl mx-auto -mt-10 sf-pomo">
       {/* Hidden span to measure text width */}
       <span
         ref={hiddenSpanRef}
@@ -610,8 +610,8 @@ export default function Pomodoro({
       <div className="relative group">
         <div className="flex flex-col items-center justify-center w-full px-4 sm:px-0">
           <textarea
-          ref={textareaRef}
-          value={task}
+            ref={textareaRef}
+            value={task}
           onChange={(e) => {
             const newValue = e.target.value;
             if (newValue.length <= 100) {
@@ -622,10 +622,10 @@ export default function Pomodoro({
               }
             }
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && task.trim() && !isRunning && !isPaused) {
-              e.preventDefault();
-              startTimer();
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && task.trim() && !isRunning && !isPaused) {
+                e.preventDefault();
+                startTimer();
               // Close Task List if it's open
               if (setShowTaskList) {
                 setShowTaskList(false);
@@ -667,7 +667,7 @@ export default function Pomodoro({
           placeholder="What are you focusing on?"
           disabled={inputLocked}
           maxLength={100}
-          className={`text-center font-semibold outline-none text-white mb-4 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 break-words ${
+          className={`text-center font-semibold outline-none text-white sf-taskinput-text mb-2 leading-tight mx-auto overflow-hidden resize-none transition-all duration-200 break-words ${
             inputLocked ? "cursor-not-allowed" : "bg-transparent"
           } ${
             task.length > 50 ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"
@@ -677,8 +677,8 @@ export default function Pomodoro({
           style={{ 
             fontFamily: "Inter, system-ui, -apple-system, sans-serif"
           }}
-          rows={1}
-        />
+            rows={1}
+          />
         {/* Custom underline */}
         <div
           className={`mx-auto transition-all duration-300 ${
@@ -705,7 +705,7 @@ export default function Pomodoro({
         {/* Clear button in top-right - matching Timer's positioning */}
         {task.trim() && hasStarted && (
           <button
-            className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100`}
+            className={`absolute -top-6 right-0 text-gray-400 text-sm font-mono underline underline-offset-4 select-none hover:text-[#FFAA00] transition-all px-2 py-1 bg-transparent border-none cursor-pointer z-10 opacity-0 group-hover:opacity-100 sf-clear-btn`}
             onClick={handleClear}
           >
             Clear
@@ -873,7 +873,7 @@ export default function Pomodoro({
                       }));
                     }
                   }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer sf-preset ${
                     (isEditingTime ? parseInt(editingMinutes) || 0 : Math.floor(remainingSeconds / 60)) ===
                     preset.minutes
                       ? "bg-[#FFAA00] text-black hover:bg-[#FFB833]"
@@ -900,7 +900,7 @@ export default function Pomodoro({
           {/* Start button */}
           {!isRunning && !isPaused && (
             <button
-              className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-48 cursor-pointer ${
+              className={`bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-48 cursor-pointer ${
                 !task.trim() ? "opacity-60" : ""
               }`}
               onClick={() => {
@@ -922,7 +922,7 @@ export default function Pomodoro({
           {isRunning && (
             <>
               <button
-                className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+                className="bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
                 onClick={pauseTimer}
               >
                 Pause
@@ -942,7 +942,7 @@ export default function Pomodoro({
           {/* Resume button when paused */}
           {isPaused && (
             <button
-              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+              className="bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
               onClick={resumeTimer}
               disabled={isStarting}
             >
@@ -954,7 +954,7 @@ export default function Pomodoro({
           <div className="flex gap-4 justify-center">
             {onCounterToggle && (
               <button
-                className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none sf-mode-toggle ${
                   !hasActiveTask 
                     ? "text-gray-600 cursor-not-allowed" 
                     : showCounter 
@@ -969,7 +969,7 @@ export default function Pomodoro({
             )}
             {onNotesToggle && (
               <button
-                className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+                className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none sf-mode-toggle ${
                   !hasActiveTask 
                     ? "text-gray-600 cursor-not-allowed" 
                     : showNotes 
@@ -993,7 +993,7 @@ export default function Pomodoro({
         {!isRunning && !isPaused && (
           <div className="flex flex-col items-center gap-2">
             <button
-              className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto cursor-pointer ${
+              className={`bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto cursor-pointer ${
                 !task.trim() ? "opacity-60" : ""
               }`}
               onClick={() => {
@@ -1015,7 +1015,7 @@ export default function Pomodoro({
         {isRunning && !showNotes && (
           <>
             <button
-              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
+              className="bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 disabled:opacity-40 w-full sm:w-48 cursor-pointer"
               onClick={pauseTimer}
             >
               Pause
@@ -1037,7 +1037,7 @@ export default function Pomodoro({
         {isPaused && (
           <div className="flex flex-col items-center gap-2">
             <button
-              className="bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
+              className="bg-white text-black sf-invert-btn font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 disabled:opacity-40 w-full sm:w-auto cursor-pointer"
               onClick={resumeTimer}
               disabled={isStarting}
             >
@@ -1053,7 +1053,7 @@ export default function Pomodoro({
         <div className="flex justify-center mt-4 gap-4">
           {onCounterToggle && (
             <button
-              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none sf-mode-toggle ${
                 !hasActiveTask 
                   ? "text-gray-600 cursor-not-allowed" 
                   : showCounter 
@@ -1068,7 +1068,7 @@ export default function Pomodoro({
           )}
           {onNotesToggle && (
             <button
-              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none ${
+              className={`text-sm font-mono underline underline-offset-4 select-none transition-all px-2 py-1 bg-transparent border-none sf-mode-toggle ${
                 !hasActiveTask 
                   ? "text-gray-600 cursor-not-allowed" 
                   : showNotes 

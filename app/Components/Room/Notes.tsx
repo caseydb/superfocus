@@ -364,7 +364,7 @@ export default function Notes({ isOpen, task, taskId }: { isOpen: boolean; task:
     <div className="w-full min-w-[650px] bg-gray-900 rounded-2xl shadow-xl border border-gray-800 overflow-hidden mb-6">
       {/* Header with Save Button */}
       <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between">
-        <div className="text-sm text-gray-400">
+        <div className="text-sm text-gray-400 sf-notes-label">
           Notes for this task
         </div>
         <button

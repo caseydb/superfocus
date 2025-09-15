@@ -440,7 +440,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
   if (activeUsers.length === 0) return null;
 
   return (
-    <div className="fixed top-4 left-8 z-40 text-base font-mono opacity-70 select-none">
+    <div className="fixed top-4 left-8 z-40 text-base font-mono opacity-70 select-none sf-active-workers">
       {sortedUsers.map((u, index) => (
           <div
             key={u.id}
@@ -547,7 +547,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
           <span className="flex items-center gap-1.5 group">
             {/* Rank and Name */}
             <span
-              className={`font-medium ${hoveredUserId === u.id ? 'text-[#FFAA00]' : 'text-white'} ${(postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url) ? 'cursor-pointer' : ''}`}
+              className={`font-medium sf-active-name ${hoveredUserId === u.id ? 'text-[#FFAA00]' : 'text-white'} ${(postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url) ? 'cursor-pointer' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
@@ -591,7 +591,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             
             {/* Status text with pulsing dot - temporarily hidden */}
             <span
-              className="flex items-center gap-1 text-gray-400"
+              className="flex items-center gap-1 text-gray-400 sf-active-status"
               onMouseEnter={() => setHoveredUserId(u.id)}
               onClick={() => {
                 const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
@@ -603,7 +603,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
               style={{ cursor: (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id && currentUser.linkedin_url) ? 'pointer' : 'default' }}
             >
               <span className="text-xs">is</span>
-              <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1.5 bg-gray-800/50 px-2 py-0.5 rounded-full sf-active-chip">
                 {/* Pulsing dot temporarily commented out
                 <div className="relative flex items-center justify-center">
                   <div 
@@ -615,7 +615,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                   )}
                 </div>
                 */}
-                <span className="text-xs font-medium text-gray-300"><span className="hidden sm:inline">actively </span>working</span>
+                <span className="text-xs font-medium text-gray-300 sf-active-chip-text"><span className="hidden sm:inline">actively </span>working</span>
               </span>
             </span>
           </span>

@@ -332,9 +332,9 @@ export default function TaskNotes({ taskId, isVisible = true, customWidth, custo
                     onFocus={() => {}}
                     onPointerDown={(e) => e.stopPropagation()}
                     placeholder={index === 0 ? "Start writing..." : ""}
-                    className={`w-full bg-transparent text-white placeholder-gray-500 border-none outline-none resize-none font-medium leading-relaxed ${
-                      item.completed ? "line-through text-gray-400" : ""
-                    }`}
+                  className={`w-full bg-transparent text-white sf-notes-text placeholder-gray-500 border-none outline-none resize-none font-medium leading-relaxed ${
+                    item.completed ? "line-through text-gray-400" : ""
+                  }`}
                     style={{
                       minHeight: "28px",
                       lineHeight: "1.75",

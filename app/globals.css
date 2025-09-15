@@ -3,11 +3,26 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Semantic text roles (defaults) */
+  --text-primary: var(--foreground);
+  --text-secondary: #525252; /* subdued body */
+  --text-muted: #737373;     /* captions, meta */
+  --text-inverse: #0a0b0b;   /* text on light brand */
+  --link: #0a58ca;
+  --link-hover: #084298;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Map semantic text roles to Tailwind tokens */
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
@@ -42,17 +57,249 @@
 [data-theme="dark"] {
   --app-bg: #0a0b0b; /* original black */
   --app-text: #ededed;
+
+  /* Semantic text roles for dark */
+  --text-primary: #ededed;
+  --text-secondary: #c7c7c7;
+  --text-muted: #9ca3af;
+  --text-inverse: #0a0b0b;
+  --link: #ffaa00;
+  --link-hover: #e69500;
 }
 
 [data-theme="light"] {
-  --app-bg: #f6f1e7; /* warm paper-like */
+  --app-bg: #ffffff; /* pure white */
   --app-text: #262626; /* near black for contrast */
+
+  /* Semantic text roles for light */
+  --text-primary: #262626;
+  --text-secondary: #404040;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --link: #0a58ca;
+  --link-hover: #084298;
+}
+
+/* Light theme icon overrides for nav icons */
+[data-theme="light"] .sf-navicon {
+  background-color: #0A0B0B;
+}
+[data-theme="light"] .sf-navicon-svg {
+  color: #0A0B0B;
+}
+
+/* Light theme: main input + notes text */
+[data-theme="light"] .sf-taskinput-text,
+[data-theme="light"] .sf-notes-text {
+  color: #0A0B0B !important;
+  caret-color: #0A0B0B;
+}
+
+/* Light theme: labels */
+[data-theme="light"] .sf-counter-label,
+[data-theme="light"] .sf-notes-label {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: control widgets (speaker, dropdown labels/arrows) */
+[data-theme="light"] .sf-control {
+  color: #0A0B0B !important;
+}
+/* Ensure nested gray text in controls also flips to light color */
+[data-theme="light"] .sf-control .text-gray-400,
+[data-theme="light"] .sf-control .text-gray-500,
+[data-theme="light"] .sf-control .text-gray-300 {
+  color: #0A0B0B !important;
+}
+
+/* Deep Work toggles: Counter/Notes base color in light theme when enabled */
+[data-theme="light"] .sf-mode-toggle:not(.text-\[\#FFAA00\]):not(.cursor-not-allowed) {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: ensure Active Workers are not faded */
+[data-theme="light"] .sf-active-workers {
+  opacity: 1 !important;
+}
+
+/* Blue theme: ensure Active Workers are not faded */
+[data-theme="blue"] .sf-active-workers {
+  opacity: 1 !important;
+}
+
+/* Purple theme: ensure Active Workers are not faded */
+[data-theme="purple"] .sf-active-workers {
+  opacity: 1 !important;
+}
+
+/* Light theme: Active Workers colors for better contrast */
+[data-theme="light"] .sf-active-workers .sf-active-name:not(.text-\[\#FFAA00\]) {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-active-workers .sf-active-status {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-active-workers .sf-active-chip {
+  background-color: #f3f4f6 !important; /* gray-100 */
+  border: 1px solid #e5e7eb; /* gray-200 */
+}
+[data-theme="light"] .sf-active-workers .sf-active-chip-text {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: hover labels for nav icons */
+[data-theme="light"] .sf-navlabel {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: TaskInput Clear button should be black on hover and visible */
+[data-theme="light"] .sf-clear-btn,
+[data-theme="light"] .sf-clear-btn:hover {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: Bottom-right Tasks CTA (icon + text) */
+[data-theme="light"] .sf-tasks-cta,
+[data-theme="light"] .sf-tasks-cta:hover {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: Personal stats bar (bottom center) should not look masked */
+[data-theme="light"] .sf-statsbar {
+  background-color: #f8fafc !important; /* slate-50 */
+  border: 1px solid #e5e7eb !important; /* gray-200 */
+  color: #0A0B0B !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] .sf-statsbar .text-gray-300,
+[data-theme="light"] .sf-statsbar .text-gray-400 {
+  color: #0A0B0B !important;
+}
+
+/* Light theme: Controls user dropdown restyle */
+[data-theme="light"] .sf-user-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #0A0B0B !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] .sf-user-dropdown .text-gray-300,
+[data-theme="light"] .sf-user-dropdown .text-gray-400,
+[data-theme="light"] .sf-user-dropdown .text-gray-500 {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-user-dropdown [class*="border-gray-800"],
+[data-theme="light"] .sf-user-dropdown [class*="border-gray-700"] {
+  border-color: #e5e7eb !important;
+}
+[data-theme="light"] .sf-user-item {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-user-item:hover {
+  background: #f3f4f6 !important;
+  color: #0A0B0B !important;
+}
+
+/* Light theme: Mode dropdown (Deep Work / Pomodoro) */
+[data-theme="light"] .sf-mode-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #0A0B0B !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] .sf-mode-dropdown .text-gray-300,
+[data-theme="light"] .sf-mode-dropdown .text-gray-400,
+[data-theme="light"] .sf-mode-dropdown .text-gray-500 {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-mode-item:hover {
+  background: #f3f4f6 !important;
+  color: #0A0B0B !important;
+}
+
+/* Light theme: Selected mode option needs stronger contrast */
+[data-theme="light"] .sf-mode-dropdown .sf-mode-selected {
+  background: #FFE8A3 !important; /* soft amber */
+  color: #0A0B0B !important;
+  border: 1px solid #F59E0B !important; /* amber-500 */
+}
+
+/* Light theme: Counter panel (Deep Work and Pomodoro) */
+[data-theme="light"] .sf-counter-panel {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #0A0B0B !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-theme="light"] .sf-counter-panel .text-white,
+[data-theme="light"] .sf-counter-panel .text-gray-300,
+[data-theme="light"] .sf-counter-panel .text-gray-400,
+[data-theme="light"] .sf-counter-panel .text-gray-500 {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-counter-panel input[type="text"] {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #0A0B0B !important;
+}
+
+/* Light theme: invert white CTA buttons to dark */
+[data-theme="light"] .sf-invert-btn,
+[data-theme="light"] .sf-invert-btn:hover {
+  background-color: #0A0B0B !important;
+  color: #ffffff !important;
+  border-color: #0A0B0B !important;
+}
+
+
+/* Light theme: Pomodoro adjustments for readability */
+[data-theme="light"] .sf-pomo .text-white,
+[data-theme="light"] .sf-pomo .text-gray-300,
+[data-theme="light"] .sf-pomo .text-gray-400,
+[data-theme="light"] .sf-pomo .text-gray-500 {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-pomo .sf-preset:not(.bg-\[\#FFAA00\]) {
+  background: #f3f4f6 !important; /* gray-100 */
+  border: 1px solid #e5e7eb !important; /* gray-200 */
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-pomo .sf-preset:not(.bg-\[\#FFAA00\]):hover {
+  background: #e5e7eb !important; /* gray-200 */
+  color: #0A0B0B !important;
 }
 
 [data-theme="blue"] {
   /* soft blue gradient background */
   --app-bg: radial-gradient(1200px 800px at 10% 10%, #0f224a 0%, #0b1835 40%, #0a1228 100%);
   --app-text: #e6f2ff;
+
+  /* Semantic text roles for blue */
+  --text-primary: #e6f2ff;
+  --text-secondary: #cfe3ff;
+  --text-muted: #b7d2ff;
+  --text-inverse: #0a1228;
+  --link: #69a6ff;
+  --link-hover: #8bbaff;
+}
+
+/* Purple theme: similar to blue but with violet hues */
+[data-theme="purple"] {
+  /* soft purple gradient background */
+  --app-bg: radial-gradient(1200px 800px at 10% 10%, #2a0f4a 0%, #1e0b35 40%, #140a28 100%);
+  --app-text: #f2e9ff;
+
+  /* Semantic text roles for purple */
+  --text-primary: #f2e9ff;
+  --text-secondary: #e1d4ff;
+  --text-muted: #cbbafc;
+  --text-inverse: #140a28;
+  --link: #b48cff;
+  --link-hover: #cfb3ff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -64,7 +311,7 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: var(--color-text);
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -126,14 +373,14 @@ body,
   min-height: 100%;
   width: 100%;
   background: var(--app-bg) !important;
-  color: var(--app-text);
+  color: var(--color-text);
 }
 
 /* Make central surface follow theme colors without changing structure */
 .theme-surface {
   /* Let the page chrome show through so body background can flash */
   background-color: transparent !important;
-  color: var(--app-text) !important;
+  color: var(--color-text) !important;
 }
 
 /* Custom range slider thumb for full-height blue circle */
@@ -405,10 +652,10 @@ body,
   animation: flash-app-bg-blue 1s ease-in-out infinite;
 }
 
-/* Gutters/background flashing for light theme */
+/* Gutters/background flashing for light theme (use pale red so black text remains readable) */
 @keyframes flash-app-bg-light {
-  0%, 100% { --app-bg: #f6f1e7; }
-  50% { --app-bg: #3a0000; }
+  0%, 100% { --app-bg: #ffffff; }
+  50% { --app-bg: #ffcccc; } /* light red, slightly deeper */
 }
 
 [data-theme="light"] body.app-flash-bg {

@@ -145,7 +145,7 @@ export default function Controls({
       <div className="flex items-center">
         {/* Speaker icon - leftmost */}
         <button
-          className={`group relative flex items-center px-4 py-2 mr-3 rounded-lg transition-all duration-300 cursor-pointer ${
+          className={`group relative flex items-center px-4 py-2 mr-3 rounded-lg transition-all duration-300 cursor-pointer sf-control text-gray-400 ${
             localVolume === 0 ? "border border-[#ef4444]/50" : "border border-transparent hover:border-[#FFAA00]/50"
           }`}
           onClick={() => {
@@ -163,25 +163,25 @@ export default function Controls({
             // Muted macOS-style speaker icon (gray-400 for header)
             <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
               <g>
-                <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
-                <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                <rect x="2" y="8" width="5" height="8" rx="1" fill="currentColor" />
+                <polygon points="7,8 14,3 14,21 7,16" fill="currentColor" />
                 <path
                   d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                  stroke="#9ca3af"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   fill="none"
                   strokeLinecap="round"
                 />
                 <path
                   d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                  stroke="#9ca3af"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   fill="none"
                   strokeLinecap="round"
                 />
                 <path
                   d="M24 3.5c3.5 4 3.5 13 0 17"
-                  stroke="#9ca3af"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   fill="none"
                   strokeLinecap="round"
@@ -196,25 +196,25 @@ export default function Controls({
             // Unmuted macOS-style speaker icon (gray-400 for header)
             <svg width="22" height="22" viewBox="0 0 28 24" fill="none">
               <g>
-                <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
-                <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                <rect x="2" y="8" width="5" height="8" rx="1" fill="currentColor" />
+                <polygon points="7,8 14,3 14,21 7,16" fill="currentColor" />
                 <path
                   d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                  stroke="#9ca3af"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   fill="none"
                   strokeLinecap="round"
                 />
                 <path
                   d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                  stroke="#9ca3af"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   fill="none"
                   strokeLinecap="round"
                 />
                 <path
                   d="M24 3.5c3.5 4 3.5 13 0 17"
-                  stroke="#9ca3af"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   fill="none"
                   strokeLinecap="round"
@@ -228,7 +228,7 @@ export default function Controls({
         <div className="relative mr-2" ref={timerDropdownRef}>
           <button
             onClick={() => setShowTimerDropdown(!showTimerDropdown)}
-            className={`group relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
+            className={`group relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 cursor-pointer sf-control ${
               showTimerDropdown ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
             }`}
           >
@@ -249,7 +249,7 @@ export default function Controls({
 
           {/* Dropdown Menu */}
           {showTimerDropdown && (
-            <div className="absolute top-full mt-2 right-0 w-64 bg-[#0E1119]/90 backdrop-blur-sm border border-gray-800 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="absolute top-full mt-2 right-0 w-64 bg-[#0E1119]/90 backdrop-blur-sm border border-gray-800 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200 sf-mode-dropdown">
               <div className="p-1">
                 {/* Timer Option */}
                 <button
@@ -265,9 +265,9 @@ export default function Controls({
                       }));
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer sf-mode-item ${
                     !isPomodoroMode
-                      ? "bg-[#FFAA00]/10 text-[#FFAA00]"
+                      ? "bg-[#FFAA00]/10 text-[#FFAA00] sf-mode-selected"
                       : "text-gray-400 hover:bg-gray-800 hover:text-gray-300"
                   }`}
                 >
@@ -298,9 +298,9 @@ export default function Controls({
                       }));
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer sf-mode-item ${
                     isPomodoroMode
-                      ? "bg-[#FFAA00]/10 text-[#FFAA00]"
+                      ? "bg-[#FFAA00]/10 text-[#FFAA00] sf-mode-selected"
                       : "text-gray-400 hover:bg-gray-800 hover:text-gray-300"
                   }`}
                 >
@@ -334,7 +334,7 @@ export default function Controls({
         <div className="ml-auto hidden sm:block">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
+            className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer sf-control ${
               dropdownOpen ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
             }`}
           >
@@ -390,7 +390,7 @@ export default function Controls({
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 bg-[#0E1119]/90 backdrop-blur-sm text-gray-400 rounded-lg shadow-2xl py-4 px-2 min-w-[320px] border border-gray-800 z-50 hidden sm:block animate-in slide-in-from-top-2 fade-in duration-200"
+          className="absolute right-0 mt-2 bg-[#0E1119]/90 backdrop-blur-sm text-gray-400 rounded-lg shadow-2xl py-4 px-2 min-w-[320px] border border-gray-800 z-50 hidden sm:block animate-in slide-in-from-top-2 fade-in duration-200 sf-user-dropdown"
         >
           {/* User Header */}
           <div className="flex items-center mb-4 mx-3 pb-3 border-b border-gray-700/50">
@@ -467,30 +467,30 @@ export default function Controls({
           <div className="mb-3 mx-3 pb-3 border-b border-gray-700/50">
             <h4 className="text-xs font-medium text-gray-500 mb-2 font-mono uppercase tracking-wider">Sound</h4>
             <div className="relative flex items-center w-full h-8">
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 z-10 text-gray-400 pointer-events-none">
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 z-10 text-gray-400 pointer-events-none sf-control">
                 {localVolume === 0 ? (
                   // Muted speaker icon
                   <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
                     <g>
-                      <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
-                      <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                      <rect x="2" y="8" width="5" height="8" rx="1" fill="currentColor" />
+                      <polygon points="7,8 14,3 14,21 7,16" fill="currentColor" />
                       <path
                         d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                        stroke="#9ca3af"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
                       />
                       <path
                         d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                        stroke="#9ca3af"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
                       />
                       <path
                         d="M24 3.5c3.5 4 3.5 13 0 17"
-                        stroke="#9ca3af"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
@@ -503,25 +503,25 @@ export default function Controls({
                   // Unmuted speaker icon
                   <svg width="18" height="18" viewBox="0 0 28 24" fill="none">
                     <g>
-                      <rect x="2" y="8" width="5" height="8" rx="1" fill="#9ca3af" />
-                      <polygon points="7,8 14,3 14,21 7,16" fill="#9ca3af" />
+                      <rect x="2" y="8" width="5" height="8" rx="1" fill="currentColor" />
+                      <polygon points="7,8 14,3 14,21 7,16" fill="currentColor" />
                       <path
                         d="M17 8c1.333 1.333 1.333 6.667 0 8"
-                        stroke="#9ca3af"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
                       />
                       <path
                         d="M20.5 6c2.5 2.667 2.5 10.667 0 13.334"
-                        stroke="#9ca3af"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
                       />
                       <path
                         d="M24 3.5c3.5 4 3.5 13 0 17"
-                        stroke="#9ca3af"
+                        stroke="currentColor"
                         strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
@@ -557,7 +557,7 @@ export default function Controls({
             {/* Account Button - Only for authenticated users */}
             {!reduxUser.isGuest && (
               <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer sf-user-item"
                 onClick={() => {
                   setShowAccountModal(true);
                   setDropdownOpen(false);
@@ -578,7 +578,7 @@ export default function Controls({
 
             {/* Preferences Button */}
             <button
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer sf-user-item"
               onClick={() => {
                 closeAllModals();
                 setShowPreferences(true);
@@ -600,7 +600,7 @@ export default function Controls({
             {/* Plans and Billing Button - Only for authenticated users */}
             {!reduxUser.isGuest && (
               <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-gray-400 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] cursor-pointer sf-user-item"
                 onClick={() => {
                   setShowBillingModal(true);
                   setDropdownOpen(false);
@@ -1175,7 +1175,7 @@ export default function Controls({
                 </>
               ) : (
                 <button
-                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer"
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors flex items-center group cursor-pointer sf-user-item"
                   onClick={async () => {
                     await signOutUser();
                   }}

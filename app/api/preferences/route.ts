@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
         weekly_analytics_email: true,
         weekly_leaderboard_email: true,
         mode: true,
+        paused_flash: true,
+        theme: true,
       }
     });
 
@@ -104,6 +106,8 @@ export async function PATCH(request: NextRequest) {
           weekly_analytics_email: true,
           weekly_leaderboard_email: true,
           mode: true,
+          paused_flash: true,
+          theme: true,
         }
       });
       return NextResponse.json({ success: true, preferences: newPreferences });
@@ -127,6 +131,8 @@ export async function PATCH(request: NextRequest) {
         weekly_analytics_email: true,
         weekly_leaderboard_email: true,
         mode: true,
+        paused_flash: true,
+        theme: true,
       }
     });
 

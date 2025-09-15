@@ -46,7 +46,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
               <h3 className="text-base font-bold text-white mb-3">Theme</h3>
               <p className="text-sm text-gray-400 mb-4">Choose a theme. This updates Redux only for now.</p>
               {/* Visual theme previews */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
                 {[
                   {
                     value: 'dark',
@@ -67,10 +67,18 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   {
                     value: 'light',
                     label: 'Light',
-                    bg: '#f6f1e7',
+                    bg: '#ffffff',
                     text: '#262626',
                     card: '#ffffff',
                     border: '#e5e7eb',
+                  },
+                  {
+                    value: 'purple',
+                    label: 'Purple',
+                    bg: 'radial-gradient(1200px 800px at 10% 10%, #2a0f4a 0%, #1e0b35 40%, #140a28 100%)',
+                    text: '#f2e9ff',
+                    card: 'rgba(255,255,255,0.08)',
+                    border: 'rgba(255,255,255,0.12)',
                   },
                 ].map((opt) => {
                   const selected = preferences.theme === opt.value;
@@ -78,7 +86,16 @@ export default function Preferences({ onClose }: PreferencesProps) {
                     <button
                       type="button"
                       key={opt.value}
-                      onClick={() => dispatch(setPreference({ key: 'theme', value: opt.value }))}
+                      onClick={async () => {
+                        dispatch(setPreference({ key: 'theme', value: opt.value }));
+                        if (reduxUser.user_id && reduxUser.isGuest === false) {
+                          try {
+                            await dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { theme: opt.value } })).unwrap();
+                          } catch {
+                            // ignore API errors; local state already updated
+                          }
+                        }
+                      }}
                       className={`group w-full rounded-xl overflow-hidden border transition-all ${
                         selected ? 'border-[#FFAA00] ring-2 ring-[#FFAA00]/40' : 'border-gray-700 hover:border-gray-600'
                       }`}
@@ -127,7 +144,17 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
                   style={{ accentColor: '#FFAA00' }}
                   checked={Boolean(preferences.paused_flash)}
-                  onChange={(e) => dispatch(setPreference({ key: 'paused_flash', value: e.target.checked }))}
+                  onChange={async (e) => {
+                    const value = e.target.checked;
+                    dispatch(setPreference({ key: 'paused_flash', value }));
+                    if (reduxUser.user_id && reduxUser.isGuest === false) {
+                      try {
+                        await dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { paused_flash: value } })).unwrap();
+                      } catch {
+                        // ignore API errors
+                      }
+                    }
+                  }}
                 />
                 <span className="text-gray-200 text-sm">Flash screen when paused</span>
               </label>

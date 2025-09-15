@@ -288,7 +288,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="relative">
           <div 
-            className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer hover:border-gray-700/50 transition-colors"
+            className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer hover:border-gray-700/50 transition-colors sf-statsbar"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
             onClick={onClick}
@@ -326,7 +326,7 @@ export default function PersonalStats({ onClick }: PersonalStatsProps = {}) {
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="relative">
         <div
-          className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer"
+          className="bg-gray-900/45 backdrop-blur-sm rounded-full px-2 py-0.5 border border-gray-800/30 shadow-sm w-fit cursor-pointer sf-statsbar"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
           onClick={onClick}

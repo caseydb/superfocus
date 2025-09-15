@@ -316,7 +316,7 @@ export default function MobileMenu({
             className="w-full p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors flex items-center gap-3"
           >
             <div
-              className="w-5 h-5 bg-gray-400"
+              className="w-5 h-5 bg-gray-400 sf-navicon"
               style={{
                 WebkitMask: `url(/analytics-icon.svg) no-repeat center`,
                 mask: `url(/analytics-icon.svg) no-repeat center`,
@@ -332,7 +332,7 @@ export default function MobileMenu({
             className="w-full p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors flex items-center gap-3"
           >
             <div
-              className="w-5 h-5 bg-gray-400"
+              className="w-5 h-5 bg-gray-400 sf-navicon"
               style={{
                 WebkitMask: `url(/crown-icon.svg) no-repeat center`,
                 mask: `url(/crown-icon.svg) no-repeat center`,
@@ -348,7 +348,7 @@ export default function MobileMenu({
             className="w-full p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors flex items-center gap-3"
           >
             <div
-              className="w-5 h-5 bg-gray-400"
+              className="w-5 h-5 bg-gray-400 sf-navicon"
               style={{
                 WebkitMask: `url(/history-icon.svg) no-repeat center`,
                 mask: `url(/history-icon.svg) no-repeat center`,
@@ -366,7 +366,7 @@ export default function MobileMenu({
             onClick={() => handleMenuItemClick(() => setShowRoomsModal(true))}
             className="w-full p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors flex items-center gap-3"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400 sf-navicon-svg">
               <path
                 d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z"
                 stroke="currentColor"
