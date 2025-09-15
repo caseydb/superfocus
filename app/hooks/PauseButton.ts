@@ -126,7 +126,7 @@ export function usePauseButton() {
         PresenceService.updateUserPresence(user.id, currentInstance.id, false);
       }
     },
-    [dispatch, user, activeTaskId, currentTaskId, currentInstance]
+    [dispatch, user, activeTaskId, currentTaskId, currentInstance, reduxUser.isGuest]
   );
 
   return { handleStop };

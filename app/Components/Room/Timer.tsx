@@ -27,7 +27,6 @@ export default function Timer({
   lastStartTime = 0,
   initialRunning = false,
   isQuittingRef,
-  onFocusCheckReset,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
@@ -42,7 +41,6 @@ export default function Timer({
   lastStartTime?: number;
   initialRunning?: boolean;
   isQuittingRef?: React.MutableRefObject<boolean>;
-  onFocusCheckReset?: (dueAtMs: number) => void;
 }) {
   const { user, currentInstance } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
@@ -646,7 +644,7 @@ export default function Timer({
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("blur", handleBlur);
     };
-  }, [running, activeTaskId, user?.id, secondsRef]); // Added secondsRef dependency
+  }, [running, activeTaskId, user?.id, secondsRef, reduxUser.isGuest]);
 
   // Inactivity detection based on timer duration
   useEffect(() => {
@@ -672,10 +670,7 @@ export default function Timer({
       }
     }, inactivityDurationRef.current * 1000); // Convert seconds to milliseconds
 
-    // Inform parent when next focus check will occur
-    if (onFocusCheckReset) {
-      onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
-    }
+    // Removed: no external countdown sync
 
     return () => {
       if (inactivityTimeoutRef.current) {
@@ -845,10 +840,7 @@ export default function Timer({
       }
     }, inactivityDurationRef.current * 1000);
 
-    // Inform parent of new focus check due time
-    if (onFocusCheckReset) {
-      onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
-    }
+    // Removed: no external countdown sync
   };
 
   // Handle "No, pause it" response

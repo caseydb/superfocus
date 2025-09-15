@@ -212,7 +212,7 @@ export function useQuitButton() {
       // Ensure input is unlocked (in case something re-locked it)
       dispatch(unlockInput());
     },
-    [dispatch, user, currentInstance, reduxTasks, activeTaskId, notifyEvent]
+    [dispatch, user, currentInstance, reduxTasks, activeTaskId, notifyEvent, reduxUser.isGuest]
   );
 
   const handlePushOn = useCallback((setShowQuitModal: (show: boolean) => void) => {

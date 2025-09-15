@@ -40,7 +40,6 @@ import PersonalStats from "./PersonalStats";
 import WelcomeBackMessage from "./WelcomeBackMessage";
 import WelcomePopup from "./WelcomePopup";
 import RoomsModal from "./RoomsModal";
-import Notes from "./Notes";
 import TaskNotes from "./TaskNotes";
 import Preferences from "./Preferences";
 import InvitePopup from "./InvitePopup";
@@ -120,8 +119,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "dnd" | "offline">("available");
   const [showTaskList, setShowTaskList] = useState(false);
   const [showRoomsModal, setShowRoomsModal] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
   // Sign-in modal removed - guests can now access rooms
   const [showInvitePopup, setShowInvitePopup] = useState(false);
@@ -323,7 +320,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     setShowInviteModal(false);
     setShowTaskList(false);
     setShowRoomsModal(false);
-    setShowNotes(false);
     setShowPreferences(false);
     setShowAnalytics(false);
     // setShowContacts(false); // People Modal - Feature deprioritized
@@ -417,19 +413,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   }, [user?.id, dispatch]);
 
-  // Find taskId for current task
-  useEffect(() => {
-    if (!user?.id || !task.trim()) {
-      setCurrentTaskId(null);
-      return;
-    }
-
-    // Task list operations removed from TaskBuffer
-    // Task ID should come from Redux state
-    const activeTask = reduxTasks.find((t) => t.name === task.trim());
-    setCurrentTaskId(activeTask?.id || null);
-  }, [user?.id, task, reduxTasks]);
-
   // Restore active task from Redux when page loads or activeTaskId changes
   useEffect(() => {
     if (activeTaskId && !task) {
@@ -438,7 +421,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
       // Only restore if task is not completed
       if (activeTask && activeTask.status !== "completed" && !activeTask.completed) {
         dispatch(setCurrentInput(activeTask.name));
-        setCurrentTaskId(activeTask.id);
 
         // Lock the input if the task is in progress
         if (activeTask.status === "in_progress" || activeTask.status === "paused") {
@@ -1379,13 +1361,27 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
         closeAllModals();
         setShowTaskList(!wasOpen);
       }
-      // Cmd/Ctrl+J: Toggle Notes (only if task exists)
+      // Cmd/Ctrl+J: Toggle Notes (preference-driven, only if task exists)
       else if (key === "j") {
         if (task.trim()) {
           e.preventDefault();
-          const wasOpen = showNotes;
           closeAllModals();
-          setShowNotes(!wasOpen);
+          const newValue = !showDeepWorkNotes;
+          dispatch(setPreference({ key: "toggle_notes", value: newValue }));
+          if (newValue && showCounter) {
+            dispatch(setPreference({ key: "toggle_counter", value: false }));
+          }
+          if (reduxUser?.user_id) {
+            dispatch(
+              updatePreferences({
+                userId: reduxUser.user_id,
+                updates: {
+                  toggle_notes: newValue,
+                  toggle_counter: newValue ? false : showCounter,
+                },
+              })
+            );
+          }
         }
       }
       // Cmd/Ctrl+M: Toggle Mute
@@ -1432,25 +1428,35 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     previousVolume,
     currentInstance?.type,
     showTaskList,
-    showNotes,
+    showDeepWorkNotes,
+    showCounter,
     showHistory,
     showLeaderboard,
     showAnalytics,
     // showContacts, // People Modal - Feature deprioritized
     closeAllModals,
     setLocalVolume,
+    dispatch,
+    reduxUser.user_id,
   ]);
 
-  // Shortcut: Press 'p' to toggle Preferences when not typing in an input
+  // Shortcuts without modifiers when not typing (p, t, a, l, h, w, j, m)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Ignore when modifier keys are active
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       const key = e.key?.toLowerCase();
-      if (key !== 'p') return;
+      if (!key) return;
 
-      // Do not trigger if focused element is a text input/textarea/contenteditable
+      // Allow closing Workspace with 'w' even when typing inside it
+      if (key === 'w' && showRooms) {
+        e.preventDefault();
+        setShowRooms(false);
+        return;
+      }
+
+      // Do not trigger other shortcuts if focused element is a text input/textarea/contenteditable
       const ae = document.activeElement as HTMLElement | null;
       const tag = ae?.tagName?.toLowerCase();
       const isTyping =
@@ -1462,15 +1468,90 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
         );
       if (isTyping) return;
 
-      e.preventDefault();
-      const wasOpen = showPreferences;
-      closeAllModals();
-      setShowPreferences(!wasOpen);
+      if (key === 'p') {
+        e.preventDefault();
+        const wasOpen = showPreferences;
+        closeAllModals();
+        setShowPreferences(!wasOpen);
+      } else if (key === 't') {
+        e.preventDefault();
+        const wasOpen = showTaskList;
+        closeAllModals();
+        setShowTaskList(!wasOpen);
+      } else if (key === 'j') {
+        // Notes (preference-driven) only if a task exists
+        if (task.trim()) {
+          e.preventDefault();
+          closeAllModals();
+          const newValue = !showDeepWorkNotes;
+          dispatch(setPreference({ key: "toggle_notes", value: newValue }));
+          if (newValue && showCounter) {
+            dispatch(setPreference({ key: "toggle_counter", value: false }));
+          }
+          if (reduxUser?.user_id) {
+            dispatch(
+              updatePreferences({
+                userId: reduxUser.user_id,
+                updates: {
+                  toggle_notes: newValue,
+                  toggle_counter: newValue ? false : showCounter,
+                },
+              })
+            );
+          }
+        }
+      } else if (key === 'm') {
+        // Mute toggle
+        e.preventDefault();
+        if (localVolume === 0) {
+          setLocalVolume(previousVolume);
+        } else {
+          setPreviousVolume(localVolume);
+          setLocalVolume(0);
+        }
+      } else if (key === 'a') {
+        e.preventDefault();
+        const wasOpen = showAnalytics;
+        closeAllModals();
+        setShowAnalytics(!wasOpen);
+      } else if (key === 'l') {
+        e.preventDefault();
+        const wasOpen = showLeaderboard;
+        closeAllModals();
+        setShowLeaderboard(!wasOpen);
+      } else if (key === 'h') {
+        e.preventDefault();
+        const wasOpen = showHistory;
+        closeAllModals();
+        setShowHistory(!wasOpen);
+      } else if (key === 'w') {
+        e.preventDefault();
+        const wasOpen = showRooms;
+        if (!wasOpen) closeAllModals();
+        setShowRooms(!wasOpen);
+      }
     };
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showPreferences, closeAllModals]);
+  }, [
+    task,
+    showPreferences,
+    showTaskList,
+    showDeepWorkNotes,
+    showCounter,
+    showAnalytics,
+    showLeaderboard,
+    showHistory,
+    showRoomsModal,
+    showRooms,
+    currentInstance?.type,
+    localVolume,
+    previousVolume,
+    closeAllModals,
+    dispatch,
+    reduxUser.user_id,
+  ]);
 
   // Remove the login wall - allow guest users to access rooms
   if (!userReady) {
@@ -1775,8 +1856,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           </div>
           {/* Timer/Pomodoro is always mounted */}
           <div className="flex flex-col items-center justify-center w-full">
-            {/* Notes - inline above timer, only show when task exists */}
-            {task.trim() && <Notes isOpen={showNotes} task={task} taskId={currentTaskId} />}
+            {/* Notes (legacy inline) removed; using TaskNotes via preference toggle */}
 
             {/* Conditionally render Timer or Pomodoro based on mode */}
             {!isPomodoroMode ? (

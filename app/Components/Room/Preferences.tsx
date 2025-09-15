@@ -341,28 +341,36 @@ export default function Preferences({ onClose }: PreferencesProps) {
               <h3 className="text-base font-bold text-white mb-2 text-center">Keyboard Shortcuts</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘K</kbd>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">P</kbd>
+                  <span className="text-gray-400 text-sm">Preferences</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">T</kbd>
                   <span className="text-gray-400 text-sm">Tasks</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘J</kbd>
-                  <span className="text-gray-400 text-sm">Notes</span>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">A</kbd>
+                  <span className="text-gray-400 text-sm">Analytics</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘M</kbd>
-                  <span className="text-gray-400 text-sm">Mute</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘H</kbd>
-                  <span className="text-gray-400 text-sm">History</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘L</kbd>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">L</kbd>
                   <span className="text-gray-400 text-sm">Leaderboard</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">⌘S</kbd>
-                  <span className="text-gray-400 text-sm">Analytics</span>
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">H</kbd>
+                  <span className="text-gray-400 text-sm">History</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">W</kbd>
+                  <span className="text-gray-400 text-sm">Workspace</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">J</kbd>
+                  <span className="text-gray-400 text-sm">Notes</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">M</kbd>
+                  <span className="text-gray-400 text-sm">Mute</span>
                 </div>
               </div>
             </div>

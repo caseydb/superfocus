@@ -35,7 +35,6 @@ interface PomodoroProps {
   onNotesToggle?: () => void;
   onCounterToggle?: () => void;
   hasActiveTask?: boolean;
-  onFocusCheckReset?: (dueAtMs: number) => void;
 }
 
 export default function Pomodoro({
@@ -60,7 +59,6 @@ export default function Pomodoro({
   onNotesToggle,
   onCounterToggle,
   hasActiveTask = false,
-  onFocusCheckReset,
 }: PomodoroProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
@@ -253,7 +251,7 @@ export default function Pomodoro({
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [isRunning, remainingSeconds, activeTaskId, user?.id, task]);
+  }, [isRunning, remainingSeconds, activeTaskId, user?.id, task, dispatch, isGuest]);
 
   // Inactivity detection based on configured focus check duration
   useEffect(() => {
@@ -275,9 +273,7 @@ export default function Pomodoro({
       }
     }, inactivityDurationRef.current * 1000);
 
-    if (onFocusCheckReset) {
-      onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
-    }
+    // Removed: no external countdown sync
 
     return () => {
       if (inactivityTimeoutRef.current) {
@@ -466,7 +462,7 @@ export default function Pomodoro({
         if (localVolumeRef.current > 0) playAudio("/inactive.mp3", localVolumeRef.current);
       }
     }, inactivityDurationRef.current * 1000);
-    if (onFocusCheckReset) onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
+    // Removed: no external countdown sync
   };
 
   const handlePauseFromInactivity = () => {

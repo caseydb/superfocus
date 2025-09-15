@@ -39,7 +39,7 @@ model preference {
   focus_check_time    Int     @default(120)
   mode                String  @default("countdown")
   paused_flash        Boolean @default(false)
-  theme               String  @default("dark")
+  theme               String  @default("blue")
   pomodoro_duration   Int     @default(30)
   analytics_date_pick String  @default("this_week")
   analytics_overview  String  @default("tasks")
