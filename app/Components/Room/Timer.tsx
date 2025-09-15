@@ -27,6 +27,7 @@ export default function Timer({
   lastStartTime = 0,
   initialRunning = false,
   isQuittingRef,
+  onFocusCheckReset,
 }: {
   onActiveChange?: (isActive: boolean) => void;
   disabled?: boolean;
@@ -41,6 +42,7 @@ export default function Timer({
   lastStartTime?: number;
   initialRunning?: boolean;
   isQuittingRef?: React.MutableRefObject<boolean>;
+  onFocusCheckReset?: (dueAtMs: number) => void;
 }) {
   const { user, currentInstance } = useInstance();
   const dispatch = useDispatch<AppDispatch>();
@@ -72,7 +74,8 @@ export default function Timer({
   const [isInitialized, setIsInitialized] = useState(false);
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
+  const MODAL_CONFIRM_SECONDS = 300; // 5 minutes
+  const [modalCountdown, setModalCountdown] = useState(MODAL_CONFIRM_SECONDS);
 
   // Mark as initialized once we have a user
   // This is now just for tracking, not for blocking the start button
@@ -450,9 +453,11 @@ export default function Timer({
     localVolumeRef.current = localVolume;
   }, [localVolume]);
 
-  // Keep inactivityDurationRef in sync with preferences focus_check_time (convert minutes to seconds)
+  // Keep inactivityDurationRef in sync with preferences focus_check_time (minutes)
+  // Clamp to minimum 15 minutes; ignore any legacy seconds values
   useEffect(() => {
-    inactivityDurationRef.current = preferences.focus_check_time * 60;
+    const minutes = Math.max(15, preferences.focus_check_time || 15);
+    inactivityDurationRef.current = minutes * 60;
   }, [preferences.focus_check_time]);
 
   // Timer state tracking for drift correction
@@ -658,7 +663,7 @@ export default function Timer({
     inactivityTimeoutRef.current = setTimeout(() => {
       if (running) {
         setShowStillWorkingModal(true);
-        setModalCountdown(300); // Reset countdown to 5 minutes
+        setModalCountdown(MODAL_CONFIRM_SECONDS);
 
         // Play inactive sound locally only if not muted (check current volume from ref)
         if (localVolumeRef.current > 0) {
@@ -666,6 +671,11 @@ export default function Timer({
         }
       }
     }, inactivityDurationRef.current * 1000); // Convert seconds to milliseconds
+
+    // Inform parent when next focus check will occur
+    if (onFocusCheckReset) {
+      onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
+    }
 
     return () => {
       if (inactivityTimeoutRef.current) {
@@ -817,7 +827,7 @@ export default function Timer({
   // Handle "Yes, still working" response
   const handleStillWorking = () => {
     setShowStillWorkingModal(false);
-    setModalCountdown(300); // Reset countdown to 5 minutes for next time
+    setModalCountdown(MODAL_CONFIRM_SECONDS);
     // Reset the inactivity timer
     if (inactivityTimeoutRef.current) {
       clearTimeout(inactivityTimeoutRef.current);
@@ -826,7 +836,7 @@ export default function Timer({
     inactivityTimeoutRef.current = setTimeout(() => {
       if (running) {
         setShowStillWorkingModal(true);
-        setModalCountdown(300); // 5 minutes
+        setModalCountdown(MODAL_CONFIRM_SECONDS);
 
         // Play inactive sound locally only if not muted (check current volume from ref)
         if (localVolumeRef.current > 0) {
@@ -834,6 +844,11 @@ export default function Timer({
         }
       }
     }, inactivityDurationRef.current * 1000);
+
+    // Inform parent of new focus check due time
+    if (onFocusCheckReset) {
+      onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
+    }
   };
 
   // Handle "No, pause it" response
@@ -981,7 +996,7 @@ export default function Timer({
                   stroke="#FFAA00"
                   strokeWidth="4"
                   fill="none"
-                  strokeDasharray={`${(modalCountdown / 300) * 163.36} 163.36`}
+                  strokeDasharray={`${(modalCountdown / MODAL_CONFIRM_SECONDS) * 163.36} 163.36`}
                   className="transition-all duration-1000 ease-linear"
                 />
               </svg>
@@ -1000,13 +1015,14 @@ export default function Timer({
 
             <h2 className="text-2xl font-bold text-white mb-4 text-center">Are you still working?</h2>
             <p className="text-gray-300 mb-6 text-center">
-              Your timer has been going for{" "}
-              {preferences.focus_check_time < 60
-                ? `${preferences.focus_check_time} minute${preferences.focus_check_time !== 1 ? "s" : ""}`
-                : `${Math.floor(preferences.focus_check_time / 60)} hour${
-                    Math.floor(preferences.focus_check_time / 60) !== 1 ? "s" : ""
-                  }`}
-              . Are you still working on &quot;{task}&quot;?
+              {(() => {
+                const minutes = Math.max(15, preferences.focus_check_time || 15);
+                if (minutes < 60) {
+                  return `Your timer has been going for ${minutes} minute${minutes !== 1 ? 's' : ''}. Are you still working on \"${task}\"?`;
+                }
+                const hours = Math.floor(minutes / 60);
+                return `Your timer has been going for ${hours} hour${hours !== 1 ? 's' : ''}. Are you still working on \"${task}\"?`;
+              })()}
             </p>
             <div className="flex gap-4">
               <button

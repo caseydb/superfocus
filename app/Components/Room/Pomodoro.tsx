@@ -35,6 +35,7 @@ interface PomodoroProps {
   onNotesToggle?: () => void;
   onCounterToggle?: () => void;
   hasActiveTask?: boolean;
+  onFocusCheckReset?: (dueAtMs: number) => void;
 }
 
 export default function Pomodoro({
@@ -59,6 +60,7 @@ export default function Pomodoro({
   onNotesToggle,
   onCounterToggle,
   hasActiveTask = false,
+  onFocusCheckReset,
 }: PomodoroProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useInstance();
@@ -94,6 +96,14 @@ export default function Pomodoro({
   const isInitializedRef = useRef(false);
   const [underlineWidth, setUnderlineWidth] = useState<string>("340px"); // Default to placeholder width
   const hiddenSpanRef = useRef<HTMLSpanElement>(null); // To measure text width
+  // Focus-check (inactivity) support
+  const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
+  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityDurationRef = useRef(120 * 60); // seconds, updated from preferences
+  const localVolumeRef = useRef(localVolume);
+  const MODAL_CONFIRM_SECONDS = 300; // 5 minutes (keep in sync with Timer)
+  const [modalCountdown, setModalCountdown] = useState(MODAL_CONFIRM_SECONDS);
+  const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
   
   // Filter out completed tasks and sort by most recent
   const availableTasks = reduxTasks
@@ -125,6 +135,18 @@ export default function Pomodoro({
       setRemainingSeconds(seconds);
     }
   }, [preferences.pomodoro_duration, isRunning, isPaused, selectedMinutes]);
+
+  // Keep inactivityDurationRef in sync with preferences.focus_check_time (minutes)
+  // Clamp to minimum 15 minutes; ignore any legacy seconds values
+  useEffect(() => {
+    const minutes = Math.max(15, preferences.focus_check_time || 15);
+    inactivityDurationRef.current = minutes * 60;
+  }, [preferences.focus_check_time]);
+
+  // Keep localVolumeRef current
+  useEffect(() => {
+    localVolumeRef.current = localVolume;
+  }, [localVolume]);
 
   // Update total and remaining seconds when selected minutes change
   useEffect(() => {
@@ -233,6 +255,47 @@ export default function Pomodoro({
     }
   }, [isRunning, remainingSeconds, activeTaskId, user?.id, task]);
 
+  // Inactivity detection based on configured focus check duration
+  useEffect(() => {
+    if (!isRunning || showStillWorkingModal) {
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+        inactivityTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (isRunning) {
+        setShowStillWorkingModal(true);
+        setModalCountdown(MODAL_CONFIRM_SECONDS);
+        if (localVolumeRef.current > 0) {
+          playAudio("/inactive.mp3", localVolumeRef.current);
+        }
+      }
+    }, inactivityDurationRef.current * 1000);
+
+    if (onFocusCheckReset) {
+      onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
+    }
+
+    return () => {
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+      }
+    };
+  }, [isRunning, showStillWorkingModal]);
+
+  // Modal countdown ticking
+  useEffect(() => {
+    if (showStillWorkingModal && modalCountdown > 0) {
+      modalCountdownRef.current = setTimeout(() => setModalCountdown((s) => s - 1), 1000);
+      return () => {
+        if (modalCountdownRef.current) clearTimeout(modalCountdownRef.current);
+      };
+    }
+  }, [showStillWorkingModal, modalCountdown]);
+
   // Auto-pause when timer reaches zero
   useEffect(() => {
     if (isRunning && remainingSeconds === 0) {
@@ -248,18 +311,22 @@ export default function Pomodoro({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, remainingSeconds, totalSeconds, localVolume]);
 
+
   // Notify parent of running state
   useEffect(() => {
     if (onActiveChange) onActiveChange(isRunning);
   }, [isRunning, onActiveChange]);
 
-  // Sync with shared secondsRef on mount and when switching between running states
+  // Sync from shared secondsRef on mount and when switching running state
+  // Note: secondsRef.current may be set by Deep Work restore before Pomodoro mounts
   useEffect(() => {
-    // Read from secondsRef when component first mounts or when not actively counting
     if (secondsRef?.current !== undefined && !isRunning) {
-      setElapsedSeconds(secondsRef.current);
+      const v = secondsRef.current || 0;
+      setElapsedSeconds(v);
+      // Do not derive remainingSeconds from elapsed; keep countdown preset unless starting fresh
     }
-  }, [isRunning, secondsRef]); // Update when running state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning]);
 
   // Update secondsRef and ref with elapsed seconds
   useEffect(() => {
@@ -326,9 +393,10 @@ export default function Pomodoro({
     // This ensures task switches always show the correct time
     const activeTask = reduxTasks.find(t => t.id === activeTaskId);
     if (activeTask && activeTask.timeSpent !== undefined) {
-      setElapsedSeconds(activeTask.timeSpent);
+      const elapsed = activeTask.timeSpent;
+      setElapsedSeconds(elapsed);
       if (secondsRef) {
-        secondsRef.current = activeTask.timeSpent;
+        secondsRef.current = elapsed;
       }
     } else {
       // New task with no time
@@ -336,9 +404,24 @@ export default function Pomodoro({
       if (secondsRef) {
         secondsRef.current = 0;
       }
+      setRemainingSeconds(selectedMinutes * 60);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTaskId, isRunning, reduxTasks, secondsRef, user?.id]);
+
+  // Also react to task time updates (not just task switches)
+  useEffect(() => {
+    if (!activeTaskId) return;
+    // Only adjust from external updates when not running
+    if (isRunning) return;
+    const t = reduxTasks.find((x) => x.id === activeTaskId);
+    if (!t) return;
+    const newElapsed = t.timeSpent || 0;
+    if (newElapsed !== elapsedSeconds) {
+      setElapsedSeconds(newElapsed);
+      if (secondsRef) secondsRef.current = newElapsed;
+    }
+  }, [activeTaskId, reduxTasks, isRunning, elapsedSeconds, secondsRef]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -370,6 +453,26 @@ export default function Pomodoro({
       }
     }
   }, [task]);
+
+  // Handlers for focus-check modal actions
+  const handleStillWorking = () => {
+    setShowStillWorkingModal(false);
+    setModalCountdown(MODAL_CONFIRM_SECONDS);
+    if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (isRunning) {
+        setShowStillWorkingModal(true);
+        setModalCountdown(MODAL_CONFIRM_SECONDS);
+        if (localVolumeRef.current > 0) playAudio("/inactive.mp3", localVolumeRef.current);
+      }
+    }, inactivityDurationRef.current * 1000);
+    if (onFocusCheckReset) onFocusCheckReset(Date.now() + inactivityDurationRef.current * 1000);
+  };
+
+  const handlePauseFromInactivity = () => {
+    setShowStillWorkingModal(false);
+    pauseTimer();
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -591,6 +694,14 @@ export default function Pomodoro({
       pauseRef.current = pauseTimer;
     }
   });
+
+  // Auto-pause when focus-check modal countdown hits zero
+  useEffect(() => {
+    if (showStillWorkingModal && modalCountdown === 0) {
+      setShowStillWorkingModal(false);
+      pauseTimer();
+    }
+  }, [showStillWorkingModal, modalCountdown]);
 
 
   return (
@@ -1081,6 +1192,63 @@ export default function Pomodoro({
               Notes
             </button>
           )}
+        </div>
+      )}
+
+      {/* Still Working Modal */}
+      {showStillWorkingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-800 relative">
+            {/* Elegant countdown circle */}
+            <div className="absolute top-4 right-4 w-14 h-14">
+              <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="26" stroke="#374151" strokeWidth="4" fill="none" />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  stroke="#FFAA00"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeDasharray={`${(modalCountdown / MODAL_CONFIRM_SECONDS) * 163.36} 163.36`}
+                  className="transition-all duration-1000 ease-linear"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-white font-mono text-sm">
+                {(() => {
+                  const minutes = Math.floor(modalCountdown / 60);
+                  const seconds = modalCountdown % 60;
+                  return minutes > 0 ? `${minutes}:${seconds.toString().padStart(2, "0")}` : String(seconds);
+                })()}
+              </span>
+            </div>
+
+            <h2 className="text-2xl font-bold text-white mb-4 text-center">Are you still working?</h2>
+            <p className="text-gray-300 mb-6 text-center">
+              {(() => {
+                const minutes = Math.max(15, preferences.focus_check_time || 15);
+                if (minutes < 60) {
+                  return `Your timer has been going for ${minutes} minute${minutes !== 1 ? 's' : ''}. Are you still working on \"${task}\"?`;
+                }
+                const hours = Math.floor(minutes / 60);
+                return `Your timer has been going for ${hours} hour${hours !== 1 ? 's' : ''}. Are you still working on \"${task}\"?`;
+              })()}
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleStillWorking}
+                className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold cursor-pointer"
+              >
+                Yes
+              </button>
+              <button
+                onClick={handlePauseFromInactivity}
+                className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-semibold cursor-pointer"
+              >
+                No
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

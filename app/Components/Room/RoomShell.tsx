@@ -116,6 +116,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
   // const [showContacts, setShowContacts] = useState(false); // People Modal - Feature deprioritized
   const [showRooms, setShowRooms] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
+  
   const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "dnd" | "offline">("available");
   const [showTaskList, setShowTaskList] = useState(false);
   const [showRoomsModal, setShowRoomsModal] = useState(false);

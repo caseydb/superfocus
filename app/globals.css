@@ -302,6 +302,7 @@
   --link-hover: #cfb3ff;
 }
 
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0b0b;
