@@ -22,6 +22,7 @@ interface PreferenceState {
   paused_flash?: boolean; // flash screen while paused
   loading: boolean;
   error: string | null;
+  hydrated: boolean; // indicates preferences fetched/ready
 }
 
 // Load initial state from cache if available
@@ -46,6 +47,7 @@ const getInitialState = (): PreferenceState => {
     paused_flash: false,
     loading: false,
     error: null,
+    hydrated: false,
   };
 
   return defaults;
@@ -130,15 +132,19 @@ const preferenceSlice = createSlice({
       .addCase(fetchPreferences.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.hydrated = false;
       })
       .addCase(fetchPreferences.fulfilled, (state, action) => {
         state.loading = false;
         // Update all preference fields
         Object.assign(state, action.payload);
+        state.hydrated = true;
       })
       .addCase(fetchPreferences.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch preferences";
+        // Mark hydrated to avoid blocking UI/apply logic even on error
+        state.hydrated = true;
       })
       // Update preferences
       .addCase(updatePreferences.pending, (state) => {

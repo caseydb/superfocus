@@ -256,18 +256,26 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
   const appliedPrefVolumeRef = useRef(false);
   const localVolumeRef = useRef(localVolume);
   localVolumeRef.current = localVolume;
+  // Suppress first persist when applying hydrated server preference
+  const suppressPersistRef = useRef(false);
 
   useEffect(() => {
-    if (!appliedPrefVolumeRef.current && typeof preferences.sound_volume === "number") {
+    if (
+      !appliedPrefVolumeRef.current &&
+      preferences.hydrated &&
+      typeof preferences.sound_volume === "number"
+    ) {
       const prefVolume = Math.max(0, Math.min(100, preferences.sound_volume));
       const normalized = prefVolume / 100;
       // Only apply if significantly different from current local volume
       if (Math.abs(localVolumeRef.current - normalized) > 0.001) {
+        // prevent the apply from triggering a server PATCH
+        suppressPersistRef.current = true;
         setLocalVolume(normalized);
       }
       appliedPrefVolumeRef.current = true;
     }
-  }, [preferences.sound_volume, setLocalVolume]);
+  }, [preferences.hydrated, preferences.sound_volume, setLocalVolume]);
 
   // Console log preference slice changes (including sound_volume)
   // Removed console logging of preferences slice changes for production cleanliness
@@ -285,14 +293,19 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     dispatch(setPreference({ key: "sound_volume", value: volumeInt }));
 
     // Debounce persistent update to Postgres
-    if (volumePersistTimeoutRef.current) {
-      clearTimeout(volumePersistTimeoutRef.current);
-    }
-    volumePersistTimeoutRef.current = setTimeout(() => {
-      if (reduxUser.user_id) {
-        dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { sound_volume: volumeInt } }));
+    if (suppressPersistRef.current) {
+      // Skip the first server persist when applying hydrated value
+      suppressPersistRef.current = false;
+    } else {
+      if (volumePersistTimeoutRef.current) {
+        clearTimeout(volumePersistTimeoutRef.current);
       }
-    }, 300);
+      volumePersistTimeoutRef.current = setTimeout(() => {
+        if (reduxUser.user_id) {
+          dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { sound_volume: volumeInt } }));
+        }
+      }, 300);
+    }
 
     return () => {
       if (volumePersistTimeoutRef.current) {
