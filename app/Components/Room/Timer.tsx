@@ -4,13 +4,7 @@ import { useInstance } from "../../Components/Instances";
 import { useDispatch, useSelector } from "react-redux";
 import { setIsActive } from "../../store/realtimeSlice";
 import { RootState, AppDispatch } from "../../store/store";
-import {
-  updateTask,
-  addTask,
-  setActiveTask,
-  updateTaskTime,
-  saveToCache,
-} from "../../store/taskSlice";
+import { updateTask, addTask, setActiveTask, updateTaskTime, saveToCache } from "../../store/taskSlice";
 import { rtdb } from "../../../lib/firebase";
 import { ref, set, remove, get, update, onValue, off, type DataSnapshot } from "firebase/database";
 import { useStartButton } from "../../hooks/StartButton";
@@ -53,24 +47,22 @@ export default function Timer({
   const { currentInput: task, currentTaskId } = useSelector((state: RootState) => state.taskInput);
   const activeTaskId = useSelector((state: RootState) => state.tasks.activeTaskId);
   const checkingTaskBuffer = useSelector((state: RootState) => state.tasks.checkingTaskBuffer);
-  
-  
-  
+
   // Initialize from secondsRef if switching from Pomodoro
   const [seconds, setSeconds] = useState(secondsRef?.current || 0);
   const [running, setRunning] = useState(initialRunning);
   const [justPaused, setJustPaused] = useState(false);
-  
+
   // Sync with secondsRef on mount
   useEffect(() => {
     if (secondsRef?.current !== undefined && secondsRef.current !== seconds) {
       setSeconds(secondsRef.current);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
   const reduxTasks = useSelector((state: RootState) => state.tasks.tasks);
   const { hasStarted } = useSelector((state: RootState) => state.taskInput);
-  
+
   // Use button hooks
   const { handleStart } = useStartButton();
   const { handleStop } = usePauseButton();
@@ -81,8 +73,7 @@ export default function Timer({
   const [showStillWorkingModal, setShowStillWorkingModal] = useState(false);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [modalCountdown, setModalCountdown] = useState(300); // 5 minutes
-  
-  
+
   // Mark as initialized once we have a user
   // This is now just for tracking, not for blocking the start button
   React.useEffect(() => {
@@ -90,26 +81,26 @@ export default function Timer({
       const initTimeout = setTimeout(() => {
         setIsInitialized(true);
       }, 500);
-      
+
       return () => clearTimeout(initTimeout);
     }
   }, [user?.id, isInitialized]);
   const modalCountdownRef = useRef<NodeJS.Timeout | null>(null);
-  const inactivityDurationRef = useRef(120); // Track timeout duration in ref to avoid effect re-runs
+  const inactivityDurationRef = useRef(120 * 60); // Track timeout duration in seconds (120 minutes default)
   const localVolumeRef = useRef(localVolume); // Track current volume for timeout callbacks
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const localIsQuittingRef = useRef(false); // Local flag to prevent saves during quit
-  
+
   // Local cooldown state (start cooldown now comes from props)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [localCompleteCooldown, setLocalCompleteCooldown] = useState(0);
   const localCooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const MIN_DURATION_MS = 5 * 60 * 1000; // 5 minutes for complete/quit
-  
+
   // Get preferences from Redux
   const preferences = useSelector((state: RootState) => state.preferences);
   const reduxUser = useSelector((state: RootState) => state.user);
-  
+
   // Update local cooldowns every second (only complete cooldown now)
   useEffect(() => {
     const updateCooldowns = () => {
@@ -121,14 +112,14 @@ export default function Timer({
         setLocalCompleteCooldown(0);
       }
     };
-    
+
     // Update immediately
     updateCooldowns();
-    
+
     // Then update every second
     const interval = setInterval(updateCooldowns, 1000);
     localCooldownIntervalRef.current = interval;
-    
+
     return () => {
       if (localCooldownIntervalRef.current) {
         clearInterval(localCooldownIntervalRef.current);
@@ -143,10 +134,10 @@ export default function Timer({
       if ((isQuittingRef && isQuittingRef.current) || localIsQuittingRef.current) {
         return;
       }
-      
+
       // Use currentTaskId from Redux (which tracks the selected task)
       const taskId = currentTaskId || activeTaskId;
-      
+
       if (taskId && user?.id) {
         // For guests, persist locally only
         if (reduxUser.isGuest) {
@@ -160,21 +151,21 @@ export default function Timer({
         const timerState = {
           running: isRunning,
           startTime: isRunning ? Date.now() : null,
-          baseSeconds: baseSeconds,  // Always save the base seconds
+          baseSeconds: baseSeconds, // Always save the base seconds
           totalSeconds: !isRunning ? baseSeconds : 0,
           lastUpdate: Date.now(),
           taskId: taskId,
         };
 
         set(timerRef, timerState);
-        
+
         // Also update LastTask whenever we save timer state
         if (taskId && !reduxUser.isGuest) {
           const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
           set(lastTaskRef, {
             taskId: taskId,
             taskName: task || "",
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         }
       }
@@ -210,7 +201,7 @@ export default function Timer({
     if (!user?.id) {
       return;
     }
-    
+
     // Only run restoration once on mount, not when isInitialized changes
     if (isInitialized) {
       return;
@@ -247,7 +238,7 @@ export default function Timer({
       // First check for LastTask
       const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
       const lastTaskSnapshot = await get(lastTaskRef);
-      
+
       if (lastTaskSnapshot.exists()) {
         const lastTaskData = lastTaskSnapshot.val();
         // Load this task's data from TaskBuffer
@@ -265,70 +256,79 @@ export default function Timer({
           return;
         }
       }
-      
+
       // Fallback to checking timer_state (for backward compatibility)
       const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-      get(timerRef).then((snapshot) => {
-        const timerState = snapshot.val();
-        if (timerState && timerState.taskId) {
-          const isRunning = timerState.running || false;
-          let currentSeconds = 0;
-          if (isRunning && timerState.startTime) {
-            const elapsedMs = Date.now() - timerState.startTime;
-            const elapsedSeconds = Math.floor(elapsedMs / 1000);
-            currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
-            startTimeRef.current = timerState.startTime;
-            baseSecondsRef.current = timerState.baseSeconds || 0;
-          } else {
-            currentSeconds = timerState.totalSeconds || 0;
-            pausedSecondsRef.current = currentSeconds;
-          }
-          setSeconds(currentSeconds);
-          setRunning(isRunning);
-          if (secondsRef) secondsRef.current = currentSeconds;
-          if (timerState.taskId) {
-            const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
-            if (restoredTask) {
-              if (restoredTask.completed || restoredTask.status === "completed") {
-                return;
-              }
-              dispatch(setActiveTask(timerState.taskId));
-              dispatch(updateTask({
-                id: timerState.taskId,
-                updates: { status: isRunning ? "in_progress" : "paused", timeSpent: currentSeconds },
-              }));
-              if (onTaskRestore) onTaskRestore(restoredTask.name, isRunning, timerState.taskId);
+      get(timerRef)
+        .then((snapshot) => {
+          const timerState = snapshot.val();
+          if (timerState && timerState.taskId) {
+            const isRunning = timerState.running || false;
+            let currentSeconds = 0;
+            if (isRunning && timerState.startTime) {
+              const elapsedMs = Date.now() - timerState.startTime;
+              const elapsedSeconds = Math.floor(elapsedMs / 1000);
+              currentSeconds = (timerState.baseSeconds || 0) + elapsedSeconds;
+              startTimeRef.current = timerState.startTime;
+              baseSecondsRef.current = timerState.baseSeconds || 0;
             } else {
-              const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
-              get(taskRef).then((taskSnapshot) => {
-                const taskData = taskSnapshot.val();
-                if (taskData && taskData.name) {
-                  const existingTask = reduxTasks.find((t) => t.id === timerState.taskId);
-                  if (!existingTask) {
-                    dispatch(addTask({ id: timerState.taskId, name: taskData.name }));
-                  }
-                  dispatch(setActiveTask(timerState.taskId));
-                  dispatch(updateTask({
-                    id: timerState.taskId,
-                    updates: { status: isRunning ? "in_progress" : "paused", timeSpent: taskData.total_time || currentSeconds },
-                  }));
-                  if (onTaskRestore) onTaskRestore(taskData.name, isRunning, timerState.taskId);
+              currentSeconds = timerState.totalSeconds || 0;
+              pausedSecondsRef.current = currentSeconds;
+            }
+            setSeconds(currentSeconds);
+            setRunning(isRunning);
+            if (secondsRef) secondsRef.current = currentSeconds;
+            if (timerState.taskId) {
+              const restoredTask = reduxTasks.find((t) => t.id === timerState.taskId);
+              if (restoredTask) {
+                if (restoredTask.completed || restoredTask.status === "completed") {
+                  return;
                 }
-              });
+                dispatch(setActiveTask(timerState.taskId));
+                dispatch(
+                  updateTask({
+                    id: timerState.taskId,
+                    updates: { status: isRunning ? "in_progress" : "paused", timeSpent: currentSeconds },
+                  })
+                );
+                if (onTaskRestore) onTaskRestore(restoredTask.name, isRunning, timerState.taskId);
+              } else {
+                const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
+                get(taskRef).then((taskSnapshot) => {
+                  const taskData = taskSnapshot.val();
+                  if (taskData && taskData.name) {
+                    const existingTask = reduxTasks.find((t) => t.id === timerState.taskId);
+                    if (!existingTask) {
+                      dispatch(addTask({ id: timerState.taskId, name: taskData.name }));
+                    }
+                    dispatch(setActiveTask(timerState.taskId));
+                    dispatch(
+                      updateTask({
+                        id: timerState.taskId,
+                        updates: {
+                          status: isRunning ? "in_progress" : "paused",
+                          timeSpent: taskData.total_time || currentSeconds,
+                        },
+                      })
+                    );
+                    if (onTaskRestore) onTaskRestore(taskData.name, isRunning, timerState.taskId);
+                  }
+                });
+              }
             }
           }
-        }
-        setIsInitialized(true);
-      }).catch(() => setIsInitialized(true));
+          setIsInitialized(true);
+        })
+        .catch(() => setIsInitialized(true));
     }, 1000);
-    
+
     return () => clearTimeout(initTimer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, reduxTasks, onTaskRestore, dispatch, hasStarted, task, secondsRef]); // Dependencies for initialization
 
   // Store previous activeTaskId to detect actual task changes
   const previousActiveTaskIdRef = useRef<string | null>(null);
-  
+
   // Watch for active task changes and load the task's accumulated time
   useEffect(() => {
     // Handle null activeTaskId (after quit) by resetting timer to 0
@@ -344,89 +344,92 @@ export default function Timer({
       setRunning(false);
       return;
     }
-    
+
     if (!user?.id || !isInitialized) {
       return;
     }
-    
+
     // Check if this is actually a task change
     const isTaskChange = previousActiveTaskIdRef.current !== activeTaskId;
     previousActiveTaskIdRef.current = activeTaskId;
-    
+
     // Only load time if it's an actual task change
     if (!isTaskChange) {
       return;
     }
-    
+
     // Skip if timer is currently running - don't interrupt an active timer
     if (running) {
       return;
     }
-    
+
     // Skip if we just paused AND it's the same task to avoid race condition
     // But allow loading if it's a different task (task switch)
     if (justPaused && !isTaskChange) {
       return;
     }
-    
-    
+
     // Always load the task's time from TaskBuffer for consistency
     const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
-    
-    get(taskRef).then((snapshot) => {
-      // Double-check we're still on the same task
-      if (activeTaskId !== previousActiveTaskIdRef.current) {
-        return;
-      }
 
-      if (snapshot.exists()) {
-        const taskData = snapshot.val();
-        const totalTime = taskData.total_time || 0;
-        
-        // Update Redux with the time from TaskBuffer
-        dispatch(updateTask({
-          id: activeTaskId,
-          updates: { timeSpent: totalTime }
-        }));
-        
-        // Set the timer display to the task's total_time
-        setSeconds(totalTime);
-        if (secondsRef) {
-          secondsRef.current = totalTime;
+    get(taskRef)
+      .then((snapshot) => {
+        // Double-check we're still on the same task
+        if (activeTaskId !== previousActiveTaskIdRef.current) {
+          return;
         }
-        // Set pausedSecondsRef to this task's time (not the previous task's)
-        pausedSecondsRef.current = totalTime;
-      } else {
-        // No data in TaskBuffer, check Redux for the task
-        const reduxTask = reduxTasks.find(t => t.id === activeTaskId);
-        if (reduxTask && reduxTask.timeSpent > 0) {
-          setSeconds(reduxTask.timeSpent);
+
+        if (snapshot.exists()) {
+          const taskData = snapshot.val();
+          const totalTime = taskData.total_time || 0;
+
+          // Update Redux with the time from TaskBuffer
+          dispatch(
+            updateTask({
+              id: activeTaskId,
+              updates: { timeSpent: totalTime },
+            })
+          );
+
+          // Set the timer display to the task's total_time
+          setSeconds(totalTime);
           if (secondsRef) {
-            secondsRef.current = reduxTask.timeSpent;
+            secondsRef.current = totalTime;
           }
-          // Set pausedSecondsRef to this task's time
-          pausedSecondsRef.current = reduxTask.timeSpent;
+          // Set pausedSecondsRef to this task's time (not the previous task's)
+          pausedSecondsRef.current = totalTime;
         } else {
-          // This is truly a new task with no time
-          setSeconds(0);
-          if (secondsRef) {
-            secondsRef.current = 0;
+          // No data in TaskBuffer, check Redux for the task
+          const reduxTask = reduxTasks.find((t) => t.id === activeTaskId);
+          if (reduxTask && reduxTask.timeSpent > 0) {
+            setSeconds(reduxTask.timeSpent);
+            if (secondsRef) {
+              secondsRef.current = reduxTask.timeSpent;
+            }
+            // Set pausedSecondsRef to this task's time
+            pausedSecondsRef.current = reduxTask.timeSpent;
+          } else {
+            // This is truly a new task with no time
+            setSeconds(0);
+            if (secondsRef) {
+              secondsRef.current = 0;
+            }
+            // Reset pausedSecondsRef for new task
+            pausedSecondsRef.current = 0;
           }
-          // Reset pausedSecondsRef for new task
-          pausedSecondsRef.current = 0;
         }
-      }
-    }).catch(() => {
-      // Error loading task data
-      // On error, default to 0 for new task
-      setSeconds(0);
-      if (secondsRef) {
-        secondsRef.current = 0;
-      }
-      // Reset pausedSecondsRef on error
-      pausedSecondsRef.current = 0;
-    });
-    
+      })
+      .catch(() => {
+        // Error loading task data
+        // On error, default to 0 for new task
+        setSeconds(0);
+        if (secondsRef) {
+          secondsRef.current = 0;
+        }
+        // Reset pausedSecondsRef on error
+        pausedSecondsRef.current = 0;
+      });
+
     // Note: Don't change running state here, let StartButton handle it
   }, [activeTaskId, user?.id, secondsRef, dispatch, running, justPaused, reduxTasks, isInitialized]);
 
@@ -459,7 +462,7 @@ export default function Timer({
   const lastCorrectionRef = useRef<number>(0);
   const pausedSecondsRef = useRef<number>(0); // Track seconds when paused
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track interval to prevent duplicates
-  
+
   // Update display every second with drift correction
   useEffect(() => {
     // Clear any existing interval first
@@ -467,7 +470,7 @@ export default function Timer({
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    
+
     if (running) {
       // Initialize timing references when starting
       if (!startTimeRef.current) {
@@ -477,50 +480,48 @@ export default function Timer({
         baseSecondsRef.current = secondsRef?.current || 0;
         lastCorrectionRef.current = 0;
       }
-      
+
       timerIntervalRef.current = setInterval(() => {
         const now = Date.now();
         const elapsedMs = now - startTimeRef.current!;
         const expectedSeconds = baseSecondsRef.current + Math.floor(elapsedMs / 1000);
-        
+
         setSeconds((currentSeconds) => {
           const drift = expectedSeconds - currentSeconds;
-          
+
           // Detect significant drift (more than 1 second)
           if (Math.abs(drift) >= 1) {
-            
             // Track drift history
             driftHistoryRef.current.push(drift);
             if (driftHistoryRef.current.length > 10) {
               driftHistoryRef.current.shift();
             }
-            
+
             // Apply drift correction
             lastCorrectionRef.current = expectedSeconds;
             if (secondsRef) {
               secondsRef.current = expectedSeconds;
             }
-            
+
             // Save corrected time immediately (authenticated only)
             if (activeTaskId && user?.id && !reduxUser.isGuest) {
               const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
               update(taskRef, {
                 total_time: expectedSeconds,
                 updated_at: Date.now(),
-                drift_corrected: true
+                drift_corrected: true,
               }).catch(() => {});
             }
-            
+
             return expectedSeconds;
           }
-          
+
           // Normal increment
           const newSeconds = currentSeconds + 1;
           if (secondsRef) {
             secondsRef.current = newSeconds;
           }
-          
-          
+
           // Persist progress
           if (activeTaskId) {
             if (reduxUser.isGuest) {
@@ -535,26 +536,26 @@ export default function Timer({
                 const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${activeTaskId}`);
                 update(taskRef, {
                   total_time: newSeconds,
-                  updated_at: Date.now()
+                  updated_at: Date.now(),
                 }).catch(() => {
                   // Task might have been deleted, ignore error
                 });
-                
+
                 // Also update LastTask to ensure it's current
                 const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
                 set(lastTaskRef, {
                   taskId: activeTaskId,
                   taskName: task || "",
-                  timestamp: Date.now()
+                  timestamp: Date.now(),
                 });
               }
             }
           }
-          
+
           return newSeconds;
         });
       }, 1000);
-      
+
       return () => {
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
@@ -565,26 +566,25 @@ export default function Timer({
       // Timer stopped/paused - log final stats and reset
       if (startTimeRef.current) {
         const finalSeconds = seconds;
-        
+
         // Save paused seconds for resume
         pausedSecondsRef.current = finalSeconds;
-        
       }
-      
+
       // Reset tracking refs for next session
       startTimeRef.current = null;
       baseSecondsRef.current = 0;
       driftHistoryRef.current = [];
       lastCorrectionRef.current = 0;
     }
-  }, [running, activeTaskId, user?.id, task, isQuittingRef, seconds, secondsRef]);  // Added required dependencies
+  }, [running, activeTaskId, user?.id, task, isQuittingRef, secondsRef]); // Removed 'seconds' to prevent effect re-running every second
 
   // Monitor visibility changes and correct drift immediately when tab regains focus
   useEffect(() => {
     if (!running || !startTimeRef.current) return;
 
     const handleVisibilityChange = () => {
-      const isVisible = document.visibilityState === 'visible';
+      const isVisible = document.visibilityState === "visible";
 
       // When tab becomes visible again, immediately check and correct any drift
       if (isVisible && startTimeRef.current) {
@@ -595,7 +595,6 @@ export default function Timer({
         const drift = expectedSeconds - currentSeconds;
 
         if (Math.abs(drift) > 0) {
-
           // Apply immediate correction
           setSeconds(expectedSeconds);
           if (secondsRef) {
@@ -614,7 +613,7 @@ export default function Timer({
             update(taskRef, {
               total_time: expectedSeconds,
               updated_at: Date.now(),
-              visibility_corrected: true
+              visibility_corrected: true,
             }).catch(() => {});
           }
         }
@@ -622,27 +621,27 @@ export default function Timer({
     };
 
     // Add visibility change listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     // Also listen for focus/blur events as additional detection
     const handleFocus = () => {
       // Trigger visibility check on focus
       handleVisibilityChange();
     };
-    
+
     const handleBlur = () => {
       // Window lost focus
     };
 
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
     };
-  }, [running, activeTaskId, user?.id, secondsRef]);  // Added secondsRef dependency
+  }, [running, activeTaskId, user?.id, secondsRef]); // Added secondsRef dependency
 
   // Inactivity detection based on timer duration
   useEffect(() => {
@@ -694,9 +693,10 @@ export default function Timer({
   useEffect(() => {
     const handleBeforeUnload = () => {
       // Save timer state if there are seconds accumulated (whether running or paused)
-      if (seconds > 0 && activeTaskId) {
+      const currentSeconds = secondsRef?.current || 0;
+      if (currentSeconds > 0 && activeTaskId) {
         // Save as paused state
-        saveTimerState(false, seconds);
+        saveTimerState(false, currentSeconds);
       }
     };
 
@@ -705,32 +705,30 @@ export default function Timer({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [running, seconds, task, saveTimerState, user?.id, activeTaskId]);
+  }, [running, task, saveTimerState, user?.id, activeTaskId]); // Removed 'seconds' - use secondsRef instead
 
   async function startTimer() {
-    
     // Only prevent starting if TaskBuffer is still being checked
     // We removed the isInitialized check because after task completion,
     // when a new task is selected, we should be able to start immediately
     if (checkingTaskBuffer) {
       return;
     }
-    
 
     // Check if task is empty and provide feedback
     if (!task.trim()) {
       // Find TaskInput component and trigger feedback
-      const taskInputElement = document.querySelector('textarea');
+      const taskInputElement = document.querySelector("textarea");
       if (taskInputElement) {
         taskInputElement.focus();
-        
+
         // Add red underline temporarily
         const underlineElement = taskInputElement.parentElement?.querySelector('div[style*="height"]');
         if (underlineElement && underlineElement instanceof HTMLElement) {
           const originalBg = underlineElement.style.background;
-          underlineElement.style.background = '#ef4444'; // red-500
-          underlineElement.style.transition = 'background 200ms';
-          
+          underlineElement.style.background = "#ef4444"; // red-500
+          underlineElement.style.transition = "background 200ms";
+
           setTimeout(() => {
             underlineElement.style.background = originalBg;
           }, 2000);
@@ -743,18 +741,17 @@ export default function Timer({
     if (running && activeTaskId && currentTaskId && activeTaskId !== currentTaskId) {
       pauseTimer();
       // Wait for pause to complete
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     // Check if this task has accumulated time (making it a resume)
     let isResume = false;
     if (activeTaskId) {
-      const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+      const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
       isResume = (activeTask?.timeSpent || 0) > 0 || seconds > 0;
     } else {
       isResume = seconds > 0;
     }
-
 
     await handleStart({
       task: task || "",
@@ -770,18 +767,17 @@ export default function Timer({
       pauseTimer,
       running,
     });
-    
   }
 
   // Pause function using hook
   const pauseTimer = useCallback(() => {
     const currentSeconds = secondsRef?.current || seconds;
-    
+
     // Save current seconds for resume
     pausedSecondsRef.current = currentSeconds;
-    
+
     setJustPaused(true);
-    
+
     handleStop({
       task: task || "",
       seconds: currentSeconds,
@@ -790,7 +786,7 @@ export default function Timer({
       setIsStarting,
       heartbeatIntervalRef,
     });
-    
+
     // Clear the flag after a short delay
     setTimeout(() => {
       setJustPaused(false);
@@ -859,20 +855,20 @@ export default function Timer({
       pauseRef.current = pauseTimer;
     }
   });
-  
+
   // Listen for active state changes in other rooms and pause if needed
   React.useEffect(() => {
     if (!user?.id || !currentInstance?.id) return;
-    
+
     // Listen to all room indexes to detect when user becomes active elsewhere
-    const roomIndexRef = ref(rtdb, 'RoomIndex');
-    
+    const roomIndexRef = ref(rtdb, "RoomIndex");
+
     const handleActiveStateChange = (snapshot: DataSnapshot) => {
       if (!snapshot.exists()) return;
-      
+
       const allRooms = snapshot.val();
       let userActiveElsewhere = false;
-      
+
       // Check if user is active in any other room
       for (const [roomId, users] of Object.entries(allRooms)) {
         if (roomId !== currentInstance.id && users && (users as Record<string, unknown>)[user.id]) {
@@ -883,18 +879,18 @@ export default function Timer({
           }
         }
       }
-      
+
       // If user is active elsewhere and timer is running here, pause it
       if (userActiveElsewhere && running) {
         // User became active in another room, pausing timer
         pauseTimer();
       }
     };
-    
+
     onValue(roomIndexRef, handleActiveStateChange);
-    
+
     return () => {
-      off(roomIndexRef, 'value', handleActiveStateChange);
+      off(roomIndexRef, "value", handleActiveStateChange);
     };
   }, [user?.id, currentInstance?.id, running, pauseTimer]);
 
@@ -902,7 +898,7 @@ export default function Timer({
   React.useEffect(() => {
     if (secondsRef) secondsRef.current = seconds;
   }, [seconds, secondsRef]);
-  
+
   // Sync local quit flag with external quit flag
   React.useEffect(() => {
     if (isQuittingRef) {
@@ -917,7 +913,7 @@ export default function Timer({
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
       }
-      
+
       // Cleanup handled by PresenceService
     };
   }, []);
@@ -930,9 +926,7 @@ export default function Timer({
           <div className="flex flex-col items-center gap-2">
             <button
               className={`bg-white text-black font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-105 w-full sm:w-auto ${
-                !task.trim() || checkingTaskBuffer 
-                  ? "cursor-not-allowed" 
-                  : "cursor-pointer"
+                !task.trim() || checkingTaskBuffer ? "cursor-not-allowed" : "cursor-pointer"
               }`}
               onClick={startTimer}
               disabled={disabled || checkingTaskBuffer}
@@ -940,7 +934,7 @@ export default function Timer({
               {(() => {
                 // Always show the appropriate Start/Resume text, even while loading
                 if (activeTaskId) {
-                  const activeTask = reduxTasks.find(t => t.id === activeTaskId);
+                  const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
                   return (activeTask?.timeSpent || 0) > 0 || seconds > 0 ? "Resume" : "Start";
                 }
                 return seconds > 0 ? "Resume" : "Start";
@@ -957,11 +951,15 @@ export default function Timer({
             </button>
             <div className="flex flex-col items-center gap-2">
               <button
-                className={`${showCompleteFeedback ? 'bg-green-600' : 'bg-green-500'} text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${seconds < 1 ? 'cursor-not-allowed' : 'cursor-pointer'} flex items-center justify-center`}
+                className={`${
+                  showCompleteFeedback ? "bg-green-600" : "bg-green-500"
+                } text-white font-extrabold text-xl sm:text-2xl px-8 sm:px-12 py-3 sm:py-4 rounded-xl shadow-lg transition hover:scale-102 w-full sm:w-48 ${
+                  seconds < 1 ? "cursor-not-allowed" : "cursor-pointer"
+                } flex items-center justify-center`}
                 onClick={completeTimer}
                 disabled={isCompleting || seconds < 1}
               >
-                {showCompleteFeedback ? 'Wait...' : 'Complete'}
+                {showCompleteFeedback ? "Wait..." : "Complete"}
               </button>
             </div>
           </>

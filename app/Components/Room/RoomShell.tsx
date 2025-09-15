@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, memo } from "react";
 import { useInstance } from "../Instances";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { Route } from "next";
@@ -72,7 +72,7 @@ type MilestoneData = {
   };
 };
 
-export default function RoomShell({ roomUrl }: { roomUrl: string }) {
+const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
   const { currentInstance, user, userReady, setPublicRoomInstance } = useInstance();
   const [loading, setLoading] = useState(true);
   const [roomFound, setRoomFound] = useState(false);
@@ -135,6 +135,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Treat undefined isGuest as guest mode (safer default)
   const reduxCounterValue = useSelector((state: RootState) => state.counter.value);
   const isGuestUser = reduxUser.isGuest !== false; // true or undefined = guest mode
+  // Flashing is handled globally via body class in ThemeController
 
   // Load counter from cache when task changes (for guests)
   useEffect(() => {
@@ -255,17 +256,20 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Apply server preference for volume on first load
   const appliedPrefVolumeRef = useRef(false);
+  const localVolumeRef = useRef(localVolume);
+  localVolumeRef.current = localVolume;
+
   useEffect(() => {
     if (!appliedPrefVolumeRef.current && typeof preferences.sound_volume === "number") {
       const prefVolume = Math.max(0, Math.min(100, preferences.sound_volume));
       const normalized = prefVolume / 100;
       // Only apply if significantly different from current local volume
-      if (Math.abs(localVolume - normalized) > 0.001) {
+      if (Math.abs(localVolumeRef.current - normalized) > 0.001) {
         setLocalVolume(normalized);
       }
       appliedPrefVolumeRef.current = true;
     }
-  }, [preferences.sound_volume]);
+  }, [preferences.sound_volume, setLocalVolume]);
 
   // Console log preference slice changes (including sound_volume)
   // Removed console logging of preferences slice changes for production cleanliness
@@ -529,8 +533,8 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Listen for welcome popup events (after successful signup)
   useEffect(() => {
     const handleWelcome = () => setShowWelcomePopup(true);
-    window.addEventListener('showWelcomePopup', handleWelcome);
-    return () => window.removeEventListener('showWelcomePopup', handleWelcome);
+    window.addEventListener("showWelcomePopup", handleWelcome);
+    return () => window.removeEventListener("showWelcomePopup", handleWelcome);
   }, []);
 
   // Pause timer when switching modes
@@ -545,7 +549,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
-      console.log('[RoomShell] checkRoom start', { roomUrl, userId: user?.id, instance: currentInstance });
+      console.log("[RoomShell] checkRoom start", { roomUrl, userId: user?.id, instance: currentInstance });
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
@@ -583,7 +587,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const publicRoom = await getPublicRoomByUrl(roomUrl);
         if (publicRoom) {
-          console.log('[RoomShell] Found public room by URL', { id: publicRoom.id });
+          console.log("[RoomShell] Found public room by URL", { id: publicRoom.id });
           // Only join if we're not already in this room
           if (!publicRoomId || publicRoomId !== publicRoom.id) {
             // Create presence manager
@@ -624,7 +628,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
-          console.log('[RoomShell] Public room setup complete, loading=false');
+          console.log("[RoomShell] Public room setup complete, loading=false");
           return;
         }
       } catch {
@@ -635,7 +639,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const privateRoom = await getPrivateRoomByUrl(roomUrl);
         if (privateRoom) {
-          console.log('[RoomShell] Found private room by URL', { id: privateRoom.id });
+          console.log("[RoomShell] Found private room by URL", { id: privateRoom.id });
           // Only join if we're not already in this room
           if (!privateRoomId || privateRoomId !== privateRoom.id) {
             try {
@@ -697,7 +701,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
-          console.log('[RoomShell] Private room setup complete, loading=false');
+          console.log("[RoomShell] Private room setup complete, loading=false");
           return;
         }
       } catch {
@@ -710,7 +714,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         const roomResult = await roomResponse.json();
 
         if (roomResult.success && roomResult.room) {
-          console.log('[RoomShell] Found permanent room via API', { id: roomResult.room.id });
+          console.log("[RoomShell] Found permanent room via API", { id: roomResult.room.id });
           // Found a permanent public room
           setRoomFound(true);
 
@@ -734,7 +738,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance
           setPublicRoomInstance(tempInstance);
           setLoading(false);
-          console.log('[RoomShell] Permanent room setup complete, loading=false');
+          console.log("[RoomShell] Permanent room setup complete, loading=false");
           return;
         }
       } catch (error) {
@@ -743,7 +747,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
 
       setRoomFound(false);
       setLoading(false);
-      console.warn('[RoomShell] No room found for URL', { roomUrl });
+      console.warn("[RoomShell] No room found for URL", { roomUrl });
     };
 
     if (userReady) {
@@ -761,19 +765,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
         clearTimeout(timer);
       };
     }
-  }, [
-    roomUrl,
-    currentInstance,
-    userReady,
-    reduxUser.user_id,
-    reduxUser.auth_id,
-    reduxUser.isGuest,
-    publicRoomId,
-    privateRoomId,
-    setPublicRoomInstance,
-    user,
-    roomPresence,
-  ]);
+  }, [roomUrl, currentInstance, userReady, reduxUser.user_id, reduxUser.auth_id, reduxUser.isGuest, publicRoomId, privateRoomId, setPublicRoomInstance, user, roomPresence]);
 
   // Track user tab count to handle multi-tab scenarios
   const userTabCountRef = React.useRef(0);
@@ -898,23 +890,36 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     };
   }, [roomPresence, user?.id]); // Also cleanup if user ID changes
 
+  // Create refs for stable access to current values
+  const currentInstanceRef = useRef(currentInstance);
+  const userRef = useRef(user);
+  const roomPresenceRef = useRef(roomPresence);
+
+  // Keep refs up to date
+  currentInstanceRef.current = currentInstance;
+  userRef.current = user;
+  roomPresenceRef.current = roomPresence;
+
   // Track active user status
-  const handleActiveChange = (isActive: boolean) => {
-    if (!currentInstance || !user) return;
-    setTimerRunning(isActive);
+  const handleActiveChange = useCallback(
+    (isActive: boolean) => {
+      if (!currentInstanceRef.current || !userRef.current) return;
+      setTimerRunning(isActive);
 
-    // Update presence service - this handles all presence tracking now
-    if (roomPresence) {
-      roomPresence.setActive(isActive);
-    }
+      // Update presence service - this handles all presence tracking now
+      if (roomPresenceRef.current) {
+        roomPresenceRef.current.setActive(isActive);
+      }
 
-    if (isActive) {
-      dispatch(lockInput());
-      dispatch(setHasStartedRedux(true));
-    } else {
-      // Don't change lock state here - let complete/clear/quit handle unlocking
-    }
-  };
+      if (isActive) {
+        dispatch(lockInput());
+        dispatch(setHasStartedRedux(true));
+      } else {
+        // Don't change lock state here - let complete/clear/quit handle unlocking
+      }
+    },
+    [dispatch]
+  );
 
   // Helper to format time as mm:ss or hh:mm:ss based on duration
   function formatTime(s: number) {
@@ -1435,10 +1440,41 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     setLocalVolume,
   ]);
 
+  // Shortcut: Press 'p' to toggle Preferences when not typing in an input
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore when modifier keys are active
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const key = e.key?.toLowerCase();
+      if (key !== 'p') return;
+
+      // Do not trigger if focused element is a text input/textarea/contenteditable
+      const ae = document.activeElement as HTMLElement | null;
+      const tag = ae?.tagName?.toLowerCase();
+      const isTyping =
+        !!ae && (
+          ae.isContentEditable ||
+          tag === 'input' ||
+          tag === 'textarea' ||
+          (ae.getAttribute && ae.getAttribute('role') === 'textbox')
+        );
+      if (isTyping) return;
+
+      e.preventDefault();
+      const wasOpen = showPreferences;
+      closeAllModals();
+      setShowPreferences(!wasOpen);
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showPreferences, closeAllModals]);
+
   // Remove the login wall - allow guest users to access rooms
   if (!userReady) {
-    if (typeof window !== 'undefined') {
-      console.log('[RoomShell] userReady=false. Waiting for Firebase auth/anonymous sign-in', {
+    if (typeof window !== "undefined") {
+      console.log("[RoomShell] userReady=false. Waiting for Firebase auth/anonymous sign-in", {
         currentInstance,
       });
     }
@@ -1479,6 +1515,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     return (
       <>
         {/* Active work border overlay */}
+        
         {timerRunning && <div className="fixed inset-0 border-4 border-[#FFAA00] pointer-events-none z-50"></div>}
 
         {/* Feedback Button - Right Side */}
@@ -1490,7 +1527,7 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
           ✨ Feedback
         </button>
 
-        <div className="min-h-screen flex flex-col items-center justify-center bg-elegant-dark text-white relative">
+        <div className={`min-h-screen flex flex-col items-center justify-center bg-elegant-dark text-white relative z-10 theme-surface`}>
           {/* Mobile Menu - visible only on mobile */}
           <MobileMenu
             localVolume={localVolume}
@@ -2401,4 +2438,6 @@ export default function RoomShell({ roomUrl }: { roomUrl: string }) {
     );
   }
   return null;
-}
+});
+
+export default RoomShell;

@@ -13,7 +13,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
   const preferences = useSelector((state: RootState) => state.preferences);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
       <div
         className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative"
         onClick={(e) => e.stopPropagation()}
@@ -41,6 +41,98 @@ export default function Preferences({ onClose }: PreferencesProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar">
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+            {/* Theme Section (Redux-only for now) */}
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
+              <h3 className="text-base font-bold text-white mb-3">Theme</h3>
+              <p className="text-sm text-gray-400 mb-4">Choose a theme. This updates Redux only for now.</p>
+              {/* Visual theme previews */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                {[
+                  {
+                    value: 'dark',
+                    label: 'Dark',
+                    bg: '#0a0b0b',
+                    text: '#ededed',
+                    card: '#181a1b',
+                    border: '#23272b',
+                  },
+                  {
+                    value: 'blue',
+                    label: 'Blue',
+                    bg: 'radial-gradient(1200px 800px at 10% 10%, #0f224a 0%, #0b1835 40%, #0a1228 100%)',
+                    text: '#e6f2ff',
+                    card: 'rgba(255,255,255,0.06)',
+                    border: 'rgba(255,255,255,0.08)',
+                  },
+                  {
+                    value: 'light',
+                    label: 'Light',
+                    bg: '#f6f1e7',
+                    text: '#262626',
+                    card: '#ffffff',
+                    border: '#e5e7eb',
+                  },
+                ].map((opt) => {
+                  const selected = preferences.theme === opt.value;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      onClick={() => dispatch(setPreference({ key: 'theme', value: opt.value }))}
+                      className={`group w-full rounded-xl overflow-hidden border transition-all ${
+                        selected ? 'border-[#FFAA00] ring-2 ring-[#FFAA00]/40' : 'border-gray-700 hover:border-gray-600'
+                      }`}
+                      style={{ background: 'transparent' }}
+                    >
+                      {/* Mini window preview */}
+                      <div
+                        className="w-full h-28 relative"
+                        style={{ background: opt.bg }}
+                      >
+                        <div
+                          className="absolute inset-x-3 top-3 rounded-lg"
+                          style={{ background: opt.card, border: `1px solid ${opt.border}` }}
+                        >
+                          <div className="flex items-center justify-between px-3 py-2">
+                            <div className="h-3 w-16 rounded" style={{ background: opt.border }} />
+                            <div className="flex gap-2">
+                              <div className="h-3 w-3 rounded-full" style={{ background: opt.border }} />
+                              <div className="h-3 w-3 rounded-full" style={{ background: opt.border }} />
+                            </div>
+                          </div>
+                          <div className="px-3 pb-3">
+                            <div className="h-5 w-24 rounded mb-1" style={{ background: opt.border }} />
+                            <div className="h-3 w-32 rounded" style={{ background: opt.border }} />
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
+                          <div className="h-2 w-20 rounded" style={{ background: opt.border }} />
+                          <div className="h-2 w-14 rounded" style={{ background: opt.border }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2 flex items-center justify-between" style={{ color: '#ffffff' }}>
+                        <span className="font-medium text-sm">{opt.label}</span>
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${selected ? 'bg-[#FFAA00]' : 'bg-gray-500 group-hover:bg-gray-400'}`}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
+                  style={{ accentColor: '#FFAA00' }}
+                  checked={Boolean(preferences.paused_flash)}
+                  onChange={(e) => dispatch(setPreference({ key: 'paused_flash', value: e.target.checked }))}
+                />
+                <span className="text-gray-200 text-sm">Flash screen when paused</span>
+              </label>
+            </div>
+
             {/* Timer and Task Settings Section */}
             <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
               <h3 className="text-base font-bold text-white mb-3">Timer and Task Settings</h3>

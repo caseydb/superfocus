@@ -15,6 +15,9 @@ interface PreferencesCache {
   mode?: "stopwatch" | "countdown";
   weekly_analytics_email?: boolean;
   weekly_leaderboard_email?: boolean;
+  // UI theme
+  theme?: string;
+  paused_flash?: boolean;
 }
 
 class LocalPreferencesCache {

@@ -38,6 +38,23 @@
   --color-elegant-dark: #0a0b0b;
 }
 
+/* Theme variables applied via data-theme attribute */
+[data-theme="dark"] {
+  --app-bg: #0a0b0b; /* original black */
+  --app-text: #ededed;
+}
+
+[data-theme="light"] {
+  --app-bg: #f6f1e7; /* warm paper-like */
+  --app-text: #262626; /* near black for contrast */
+}
+
+[data-theme="blue"] {
+  /* soft blue gradient background */
+  --app-bg: radial-gradient(1200px 800px at 10% 10%, #0f224a 0%, #0b1835 40%, #0a1228 100%);
+  --app-text: #e6f2ff;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0b0b;
@@ -104,12 +121,19 @@ body {
   animation: fly-across 6s linear forwards;
 }
 
-html,
 body,
 #__next {
   min-height: 100%;
   width: 100%;
-  background: #0a0b0b !important;
+  background: var(--app-bg) !important;
+  color: var(--app-text);
+}
+
+/* Make central surface follow theme colors without changing structure */
+.theme-surface {
+  /* Let the page chrome show through so body background can flash */
+  background-color: transparent !important;
+  color: var(--app-text) !important;
 }
 
 /* Custom range slider thumb for full-height blue circle */
@@ -335,6 +359,64 @@ body,
 .animation-delay-600 {
   animation-delay: 600ms;
 }
+
+/* RoomShell paused flashing (dark red) */
+/* Overlay version: preserve original background by animating an overlay from transparent to dark red */
+@keyframes room-flash-red-overlay {
+  0%, 100% {
+    background-color: rgba(58, 0, 0, 0); /* transparent */
+  }
+  50% {
+    background-color: rgba(58, 0, 0, 1); /* exact #3a0000 */
+  }
+}
+
+.roomshell-flash {
+  animation: room-flash-red-overlay 1s ease-in-out infinite;
+}
+
+/* Background version: animate between the exact base and dark red using theme variable */
+@keyframes room-flash-red-bg {
+  0%, 100% { background-color: var(--app-bg); }
+  50% { background-color: #3a0000; }
+}
+
+.roomshell-flash-bg {
+  animation: room-flash-red-bg 1s ease-in-out infinite;
+}
+
+/* Gutters/background flashing for dark theme: animate the CSS variable itself */
+@keyframes flash-app-bg-dark {
+  0%, 100% { --app-bg: #0a0b0b; }
+  50% { --app-bg: #3a0000; }
+}
+
+[data-theme="dark"] body.app-flash-bg {
+  animation: flash-app-bg-dark 1s ease-in-out infinite;
+}
+
+/* Gutters/background flashing for blue theme: switch base blue to same red */
+@keyframes flash-app-bg-blue {
+  0%, 100% { --app-bg: #0a1228; } /* solid base close to current gradient */
+  50% { --app-bg: #3a0000; }
+}
+
+[data-theme="blue"] body.app-flash-bg {
+  animation: flash-app-bg-blue 1s ease-in-out infinite;
+}
+
+/* Gutters/background flashing for light theme */
+@keyframes flash-app-bg-light {
+  0%, 100% { --app-bg: #f6f1e7; }
+  50% { --app-bg: #3a0000; }
+}
+
+[data-theme="light"] body.app-flash-bg {
+  animation: flash-app-bg-light 1s ease-in-out infinite;
+}
+
+/* Global paused flashing overlay using body pseudo-element for uniform coverage */
+/* (Reverted) Using local overlay element for flashing to ensure reliability across themes */
 
 /* Epic blaze effect for high activity days */
 @keyframes blaze {

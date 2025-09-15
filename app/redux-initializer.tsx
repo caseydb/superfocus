@@ -27,6 +27,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   const hasCheckedTimezone = useRef(false);
   const isGuest = useSelector((state: RootState) => state.user.isGuest);
   const currentUser = useSelector((state: RootState) => state.user);
+  const currentPreferences = useSelector((state: RootState) => state.preferences);
 
   // Debug: log the entire user slice when it becomes available or changes
   useEffect(() => {
@@ -34,6 +35,13 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
       console.log('[Redux] User slice:', currentUser);
     }
   }, [currentUser]);
+
+  // Log preferences slice entirely whenever it changes (debug visibility)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Redux] Preferences slice:', currentPreferences);
+    }
+  }, [currentPreferences]);
 
   useEffect(() => {
     console.log('[ReduxInitializer] Mounting ReduxInitializer');

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import LocalPreferencesCache from "@/app/utils/localPreferencesCache";
+// Note: For now, preferences are Redux-only (no persistence)
 
 interface PreferenceState {
   toggle_notes: boolean;
@@ -17,6 +17,9 @@ interface PreferenceState {
   mode: "stopwatch" | "countdown";
   weekly_analytics_email: boolean; // local-only opt-in for now
   weekly_leaderboard_email: boolean;
+  // UI theme preferences (local-first; safe to keep client-side)
+  theme?: string; // e.g. "dark" | "light" | "blue"
+  paused_flash?: boolean; // flash screen while paused
   loading: boolean;
   error: string | null;
 }
@@ -39,41 +42,35 @@ const getInitialState = (): PreferenceState => {
     mode: "stopwatch",
     weekly_analytics_email: true,
     weekly_leaderboard_email: true,
+    theme: "dark",
+    paused_flash: false,
     loading: false,
     error: null,
   };
-  
-  if (typeof window !== 'undefined') {
-    const cached = LocalPreferencesCache.getPreferences();
-    return { ...defaults, ...cached };
-  }
-  
+
   return defaults;
 };
 
 const initialState: PreferenceState = getInitialState();
 
 // Async thunk to fetch preferences
-export const fetchPreferences = createAsyncThunk(
-  "preferences/fetch",
-  async (userId: string, { getState }) => {
-    // Check if user is guest
-    const state = getState() as { user?: { isGuest?: boolean }; preferences: PreferenceState };
-    if (state.user?.isGuest) {
-      // For guest users, return default preferences (already in Redux state)
-      return state.preferences;
-    }
-    
-    const response = await fetch(`/api/preferences?userId=${userId}`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to fetch preferences");
-    }
-    
-    return data.preferences;
+export const fetchPreferences = createAsyncThunk("preferences/fetch", async (userId: string, { getState }) => {
+  // Check if user is guest
+  const state = getState() as { user?: { isGuest?: boolean }; preferences: PreferenceState };
+  if (state.user?.isGuest) {
+    // For guest users, return default preferences (already in Redux state)
+    return state.preferences;
   }
-);
+
+  const response = await fetch(`/api/preferences?userId=${userId}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to fetch preferences");
+  }
+
+  return data.preferences;
+});
 
 // Async thunk to update preferences
 export const updatePreferences = createAsyncThunk(
@@ -86,7 +83,7 @@ export const updatePreferences = createAsyncThunk(
       // The preferences are already updated in Redux via setPreference
       return updates;
     }
-    
+
     const response = await fetch("/api/preferences", {
       method: "PATCH",
       headers: {
@@ -97,13 +94,13 @@ export const updatePreferences = createAsyncThunk(
         ...updates,
       }),
     });
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error || "Failed to update preferences");
     }
-    
+
     return data.preferences;
   }
 );
@@ -121,11 +118,8 @@ const preferenceSlice = createSlice({
       if (key in state && key !== "loading" && key !== "error") {
         // Type-safe assignment
         Object.assign(state, { [key]: value });
-        
-        // Save to cache for persistence (will be used for guest users)
-        if (typeof window !== 'undefined') {
-          LocalPreferencesCache.savePreferences({ [key]: value });
-        }
+
+        // No persistence for now; Redux-only state updates
       }
     },
     resetPreferences: () => initialState,
