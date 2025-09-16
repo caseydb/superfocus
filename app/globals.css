@@ -177,6 +177,8 @@
   color: #0A0B0B !important;
 }
 
+/* (reverted) previously used to hide workspace while Preferences open */
+
 /* Light theme: Controls user dropdown restyle */
 [data-theme="light"] .sf-user-dropdown {
   background: #ffffff !important;
@@ -213,6 +215,173 @@
 [data-theme="light"] .sf-mode-dropdown .text-gray-300,
 [data-theme="light"] .sf-mode-dropdown .text-gray-400,
 [data-theme="light"] .sf-mode-dropdown .text-gray-500 {
+  color: #0A0B0B !important;
+}
+
+/* Blue theme: deep blue modal and accents */
+[data-theme="blue"] .sf-preferences {
+  /* Deep blue container at ~95% opacity */
+  background: rgba(15, 34, 74, 0.95) !important; /* #0F224A */
+  background-color: rgba(15, 34, 74, 0.95) !important;
+  border-color: rgba(105, 166, 255, 0.18) !important; /* blue-tinted */
+  color: var(--text-primary) !important;
+}
+[data-theme="blue"] .sf-preferences .sf-header {
+  border-bottom-color: rgba(105, 166, 255, 0.18) !important;
+}
+[data-theme="blue"] .sf-preferences .sf-close {
+  background: rgba(11, 24, 53, 0.9) !important;
+  border: 1px solid rgba(105, 166, 255, 0.18) !important;
+}
+[data-theme="blue"] .sf-preferences .sf-close:hover {
+  background: rgba(11, 24, 53, 1) !important;
+}
+[data-theme="blue"] .sf-preferences .sf-card {
+  background: #0B1835 !important; /* mid-blue */
+  border-color: rgba(105, 166, 255, 0.18) !important;
+}
+[data-theme="blue"] .sf-preferences select {
+  background: #0B1835 !important;
+  border-color: rgba(105, 166, 255, 0.22) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Blue theme: tint the modal overlay */
+[data-theme="blue"] .sf-preferences-overlay {
+  background: rgba(15, 34, 74, 0.22) !important; /* replaces bg-black/30 */
+}
+
+/* Purple theme: translucent violet modal */
+[data-theme="purple"] .sf-preferences {
+  background: rgba(42, 15, 74, 0.9) !important; /* 90% opacity */
+  background-color: rgba(42, 15, 74, 0.9) !important;
+  border-color: rgba(180, 140, 255, 0.2) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="purple"] .sf-preferences .sf-header {
+  border-bottom-color: rgba(180, 140, 255, 0.2) !important;
+}
+[data-theme="purple"] .sf-preferences .sf-close {
+  background: rgba(30, 11, 53, 0.9) !important;
+  border: 1px solid rgba(180, 140, 255, 0.25) !important;
+}
+[data-theme="purple"] .sf-preferences .sf-close:hover {
+  background: rgba(30, 11, 53, 1) !important;
+}
+[data-theme="purple"] .sf-preferences .sf-card {
+  background: #1e0b35 !important;
+  border-color: rgba(180, 140, 255, 0.2) !important;
+}
+[data-theme="purple"] .sf-preferences select {
+  background: #1e0b35 !important;
+  border-color: rgba(180, 140, 255, 0.25) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="purple"] .sf-preferences-overlay {
+  background: rgba(42, 15, 74, 0.22) !important;
+}
+
+/* Light theme: airy modal with softer cards */
+[data-theme="light"] .sf-preferences {
+  background: #F3F4F6 !important;
+  background-color: #F3F4F6 !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  box-shadow: 0 20px 45px -22px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-preferences .sf-header {
+  border-bottom-color: rgba(203, 213, 225, 0.85) !important;
+}
+[data-theme="light"] .sf-preferences .sf-header h2 {
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-preferences .sf-close {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(229, 231, 235, 0.96)) !important;
+  border: 1px solid rgba(209, 213, 219, 0.85) !important;
+  color: #1f2937 !important;
+  box-shadow: 0 6px 16px -10px rgba(15, 23, 42, 0.4) !important;
+}
+[data-theme="light"] .sf-preferences .sf-close:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(229, 231, 235, 1)) !important;
+}
+[data-theme="light"] .sf-preferences .custom-scrollbar::-webkit-scrollbar-track {
+  background: #e5e7eb !important;
+}
+[data-theme="light"] .sf-preferences .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #0A0B0B !important;
+}
+[data-theme="light"] .sf-preferences .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(10, 11, 11, 0.85) !important;
+}
+[data-theme="light"] .sf-preferences .custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: rgba(10, 11, 11, 0.95) !important;
+}
+[data-theme="light"] .sf-preferences .custom-scrollbar {
+  scrollbar-color: #0A0B0B #e5e7eb !important;
+}
+[data-theme="light"] .sf-preferences .custom-scrollbar:hover {
+  scrollbar-color: rgba(10, 11, 11, 0.85) #e5e7eb !important;
+}
+[data-theme="light"] .sf-preferences .sf-card {
+  background: #ffffff !important;
+  border-color: rgba(214, 219, 230, 0.9) !important;
+  box-shadow: 0 12px 28px -24px rgba(148, 163, 184, 0.8) !important;
+}
+[data-theme="light"] .sf-preferences select {
+  background: #ffffff !important;
+  border-color: rgba(209, 213, 219, 0.9) !important;
+  color: #0A0B0B !important;
+}
+[data-theme="light"] .sf-preferences-overlay {
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+[data-theme="light"] .sf-preferences .text-white,
+[data-theme="light"] .sf-preferences .text-gray-100,
+[data-theme="light"] .sf-preferences .text-gray-200 {
+  color: #0A0B0B !important;
+}
+
+/* Dark theme: subtle depth between frame and content */
+[data-theme="dark"] .sf-preferences {
+  background: rgba(14, 17, 25, 0.92) !important;
+  background-color: rgba(14, 17, 25, 0.92) !important;
+  border-color: rgba(55, 65, 81, 0.65) !important; /* gray-700 */
+  color: #e5e7eb !important;
+}
+[data-theme="dark"] .sf-preferences .sf-header {
+  border-bottom-color: rgba(55, 65, 81, 0.65) !important;
+}
+[data-theme="dark"] .sf-preferences .sf-close {
+  background: rgba(17, 24, 39, 0.9) !important;
+  border: 1px solid rgba(55, 65, 81, 0.65) !important;
+}
+[data-theme="dark"] .sf-preferences .sf-close:hover {
+  background: rgba(17, 24, 39, 1) !important;
+}
+[data-theme="dark"] .sf-preferences .sf-card {
+  background: rgba(6, 10, 18, 0.95) !important;
+  border-color: rgba(55, 65, 81, 0.65) !important;
+}
+[data-theme="dark"] .sf-preferences select {
+  background: rgba(6, 10, 18, 0.95) !important;
+  border-color: rgba(75, 85, 99, 0.7) !important;
+  color: #e5e7eb !important;
+}
+[data-theme="dark"] .sf-preferences-overlay {
+  background: rgba(8, 11, 20, 0.32) !important;
+}
+
+/* Dark theme: ensure Preferences modal dropdowns are dark */
+[data-theme="dark"] .sf-preferences select option,
+[data-theme="dark"] .sf-preferences select optgroup {
+  background: rgba(6, 10, 18, 0.95) !important;
+  color: #e5e7eb !important;
+}
+[data-theme="light"] .sf-preferences select option,
+[data-theme="light"] .sf-preferences select optgroup {
+  background: #ffffff !important;
   color: #0A0B0B !important;
 }
 [data-theme="light"] .sf-mode-item:hover {
@@ -645,22 +814,32 @@ body,
 
 /* Gutters/background flashing for blue theme: switch base blue to same red */
 @keyframes flash-app-bg-blue {
-  0%, 100% { --app-bg: #0a1228; } /* solid base close to current gradient */
-  50% { --app-bg: #3a0000; }
+  0%, 100% { --app-bg: #0b1835; }
+  50% { --app-bg: #0f2d6d; }
 }
 
 [data-theme="blue"] body.app-flash-bg {
   animation: flash-app-bg-blue 1s ease-in-out infinite;
 }
 
-/* Gutters/background flashing for light theme (use pale red so black text remains readable) */
+/* Gutters/background flashing for light theme (use brand shell shade) */
 @keyframes flash-app-bg-light {
   0%, 100% { --app-bg: #ffffff; }
-  50% { --app-bg: #ffcccc; } /* light red, slightly deeper */
+  50% { --app-bg: #d1d5db; }
 }
 
 [data-theme="light"] body.app-flash-bg {
   animation: flash-app-bg-light 1s ease-in-out infinite;
+}
+
+/* Gutters/background flashing for purple theme */
+@keyframes flash-app-bg-purple {
+  0%, 100% { --app-bg: #1e0b35; }
+  50% { --app-bg: #4d103c; }
+}
+
+[data-theme="purple"] body.app-flash-bg {
+  animation: flash-app-bg-purple 1s ease-in-out infinite;
 }
 
 /* Global paused flashing overlay using body pseudo-element for uniform coverage */

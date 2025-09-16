@@ -13,19 +13,19 @@ export default function Preferences({ onClose }: PreferencesProps) {
   const preferences = useSelector((state: RootState) => state.preferences);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 sf-preferences-overlay" onClick={onClose}>
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative sf-preferences"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative flex items-center justify-center px-5 py-4 border-b border-gray-800/50">
+        <div className="relative flex items-center justify-center px-5 py-4 border-b border-gray-800/50 sf-header">
           <h2 className="text-xl sm:text-2xl font-extrabold text-[#FFAA00]">Preferences</h2>
           
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-5 w-7 h-7 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute right-5 w-7 h-7 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-close"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -42,9 +42,30 @@ export default function Preferences({ onClose }: PreferencesProps) {
         <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar">
           <div className="flex flex-col gap-4 max-w-3xl mx-auto">
             {/* Theme Section (Redux-only for now) */}
-            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
-              <h3 className="text-base font-bold text-white mb-3">Theme</h3>
-              <p className="text-sm text-gray-400 mb-4">Choose a theme. This updates Redux only for now.</p>
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md sf-card">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+                <h3 className="text-base font-bold text-white">Theme</h3>
+                <label className="flex items-center gap-3 cursor-pointer select-none self-start">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
+                    style={{ accentColor: '#FFAA00' }}
+                    checked={Boolean(preferences.paused_flash)}
+                    onChange={async (e) => {
+                      const value = e.target.checked;
+                      dispatch(setPreference({ key: 'paused_flash', value }));
+                      if (reduxUser.user_id && reduxUser.isGuest === false) {
+                        try {
+                          await dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { paused_flash: value } })).unwrap();
+                        } catch {
+                          // ignore API errors
+                        }
+                      }
+                    }}
+                  />
+                  <span className="text-gray-200 text-sm">Flash screen when paused</span>
+                </label>
+              </div>
               {/* Visual theme previews */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
                 {[
@@ -127,7 +148,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                           <div className="h-2 w-14 rounded" style={{ background: opt.border }} />
                         </div>
                       </div>
-                      <div className="px-3 py-2 flex items-center justify-between" style={{ color: '#ffffff' }}>
+                      <div className="px-3 py-2 flex items-center justify-between text-white">
                         <span className="font-medium text-sm">{opt.label}</span>
                         <span
                           className={`h-2.5 w-2.5 rounded-full ${selected ? 'bg-[#FFAA00]' : 'bg-gray-500 group-hover:bg-gray-400'}`}
@@ -137,31 +158,84 @@ export default function Preferences({ onClose }: PreferencesProps) {
                   );
                 })}
               </div>
+            </div>
 
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
-                  style={{ accentColor: '#FFAA00' }}
-                  checked={Boolean(preferences.paused_flash)}
-                  onChange={async (e) => {
-                    const value = e.target.checked;
-                    dispatch(setPreference({ key: 'paused_flash', value }));
-                    if (reduxUser.user_id && reduxUser.isGuest === false) {
-                      try {
-                        await dispatch(updatePreferences({ userId: reduxUser.user_id, updates: { paused_flash: value } })).unwrap();
-                      } catch {
-                        // ignore API errors
-                      }
-                    }
-                  }}
-                />
-                <span className="text-gray-200 text-sm">Flash screen when paused</span>
-              </label>
+            {/* Notifications Section */}
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md sf-card">
+              <h3 className="text-base font-bold text-white mb-3">Email Notifications</h3>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <label className="text-white font-medium">Weekly Analytics</label>
+                  <p className="text-sm text-gray-500 mt-1">Get a weekly analytics email summarizing your last 7 days.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
+                      style={{ accentColor: '#FFAA00' }}
+                      checked={Boolean(preferences.weekly_analytics_email)}
+                      onChange={async (e) => {
+                        const value = e.target.checked;
+                        // Optimistic update
+                        dispatch(setPreference({ key: 'weekly_analytics_email', value }));
+                        // Persist for authenticated users
+                        if (reduxUser.user_id && reduxUser.isGuest === false) {
+                          try {
+                            await dispatch(updatePreferences({
+                              userId: reduxUser.user_id,
+                              updates: { weekly_analytics_email: value }
+                            })).unwrap();
+                          } catch {
+                            // Revert on failure
+                            dispatch(setPreference({ key: 'weekly_analytics_email', value: !value }));
+                          }
+                        }
+                      }}
+                    />
+                    <span className="text-gray-200 text-sm">Weekly Analytics</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex items-start justify-between gap-4 mt-4">
+                <div>
+                  <label className="text-white font-medium">Weekly Leaderboard</label>
+                  <p className="text-sm text-gray-500 mt-1">Get a weekly email where you placed on the leaderboard.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
+                      style={{ accentColor: '#FFAA00' }}
+                      checked={Boolean(preferences.weekly_leaderboard_email)}
+                      onChange={async (e) => {
+                        const value = e.target.checked;
+                        // Optimistic update
+                        dispatch(setPreference({ key: 'weekly_leaderboard_email', value }));
+                        // Persist for authenticated users
+                        if (reduxUser.user_id && reduxUser.isGuest === false) {
+                          try {
+                            await dispatch(updatePreferences({
+                              userId: reduxUser.user_id,
+                              updates: { weekly_leaderboard_email: value }
+                            })).unwrap();
+                          } catch {
+                            // Revert on failure
+                            dispatch(setPreference({ key: 'weekly_leaderboard_email', value: !value }));
+                          }
+                        }
+                      }}
+                    />
+                    <span className="text-gray-200 text-sm">Weekly Leaderboard</span>
+                  </label>
+                </div>
+              </div>
+              
             </div>
 
             {/* Timer and Task Settings Section */}
-            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
+            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md sf-card">
               <h3 className="text-base font-bold text-white mb-3">Timer and Task Settings</h3>
 
               <div className="space-y-4">
@@ -169,7 +243,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="md:flex-1">
                     <label className="text-white font-medium">Task Selection Mode</label>
-                    <p className="text-sm text-gray-400 mt-1">Choose how to select tasks when clicking the input field</p>
+                    <p className="text-sm text-gray-500 mt-1">Choose how to select tasks when clicking the input field</p>
                   </div>
                   <div className="relative md:flex-none">
                 <select
@@ -215,7 +289,7 @@ export default function Preferences({ onClose }: PreferencesProps) {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="md:flex-1">
                     <label className="text-white font-medium">Focus Check</label>
-                    <p className="text-sm text-gray-400 mt-1">Check if still working after this duration before pausing timer</p>
+                    <p className="text-sm text-gray-500 mt-1">Check if still working after this duration before pausing timer</p>
                   </div>
                   <div className="relative md:flex-none">
                     <select
@@ -262,115 +336,43 @@ export default function Preferences({ onClose }: PreferencesProps) {
               </div>
             </div>
 
-            {/* Notifications Section */}
-            <div className="bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
-              <h3 className="text-base font-bold text-white mb-3">Email Notifications</h3>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <label className="text-white font-medium">Weekly Analytics</label>
-                  <p className="text-sm text-gray-400 mt-1">Get a weekly analytics email summarizing your last 7 days.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
-                      style={{ accentColor: '#FFAA00' }}
-                      checked={Boolean(preferences.weekly_analytics_email)}
-                      onChange={async (e) => {
-                        const value = e.target.checked;
-                        // Optimistic update
-                        dispatch(setPreference({ key: 'weekly_analytics_email', value }));
-                        // Persist for authenticated users
-                        if (reduxUser.user_id && reduxUser.isGuest === false) {
-                          try {
-                            await dispatch(updatePreferences({
-                              userId: reduxUser.user_id,
-                              updates: { weekly_analytics_email: value }
-                            })).unwrap();
-                          } catch {
-                            // Revert on failure
-                            dispatch(setPreference({ key: 'weekly_analytics_email', value: !value }));
-                          }
-                        }
-                      }}
-                    />
-                    <span className="text-gray-200 text-sm">Weekly Analytics</span>
-                  </label>
-                </div>
-              </div>
-              <div className="flex items-start justify-between gap-4 mt-4">
-                <div>
-                  <label className="text-white font-medium">Weekly Leaderboard</label>
-                  <p className="text-sm text-gray-400 mt-1">Get a weekly email where you placed on the leaderboard.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 rounded border border-gray-600 bg-gray-800"
-                      style={{ accentColor: '#FFAA00' }}
-                      checked={Boolean(preferences.weekly_leaderboard_email)}
-                      onChange={async (e) => {
-                        const value = e.target.checked;
-                        // Optimistic update
-                        dispatch(setPreference({ key: 'weekly_leaderboard_email', value }));
-                        // Persist for authenticated users
-                        if (reduxUser.user_id && reduxUser.isGuest === false) {
-                          try {
-                            await dispatch(updatePreferences({
-                              userId: reduxUser.user_id,
-                              updates: { weekly_leaderboard_email: value }
-                            })).unwrap();
-                          } catch {
-                            // Revert on failure
-                            dispatch(setPreference({ key: 'weekly_leaderboard_email', value: !value }));
-                          }
-                        }
-                      }}
-                    />
-                    <span className="text-gray-200 text-sm">Weekly Leaderboard</span>
-                  </label>
-                </div>
-              </div>
-              
-            </div>
+            
 
             {/* Shortcuts Section - Hidden on mobile */}
-            <div className="hidden md:block bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md">
+            <div className="hidden md:block bg-[#0B0E16] border border-gray-800 rounded-2xl p-4 shadow-md sf-card">
               <h3 className="text-base font-bold text-white mb-2 text-center">Keyboard Shortcuts</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">P</kbd>
-                  <span className="text-gray-400 text-sm">Preferences</span>
+                  <span className="text-gray-500 text-sm">Preferences</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">T</kbd>
-                  <span className="text-gray-400 text-sm">Tasks</span>
+                  <span className="text-gray-500 text-sm">Tasks</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">A</kbd>
-                  <span className="text-gray-400 text-sm">Analytics</span>
+                  <span className="text-gray-500 text-sm">Analytics</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">L</kbd>
-                  <span className="text-gray-400 text-sm">Leaderboard</span>
+                  <span className="text-gray-500 text-sm">Leaderboard</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">H</kbd>
-                  <span className="text-gray-400 text-sm">History</span>
+                  <span className="text-gray-500 text-sm">History</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">W</kbd>
-                  <span className="text-gray-400 text-sm">Workspace</span>
+                  <span className="text-gray-500 text-sm">Workspace</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">J</kbd>
-                  <span className="text-gray-400 text-sm">Notes</span>
+                  <span className="text-gray-500 text-sm">Notes</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300 text-sm font-mono">M</kbd>
-                  <span className="text-gray-400 text-sm">Mute</span>
+                  <span className="text-gray-500 text-sm">Mute</span>
                 </div>
               </div>
             </div>
