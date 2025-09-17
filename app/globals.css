@@ -99,6 +99,16 @@
   color: #0A0B0B !important;
 }
 
+html[data-theme]:not([data-theme="light"]) .sf-taskinput-text,
+html[data-theme]:not([data-theme="light"]) .sf-notes-text {
+  color: var(--text-primary) !important;
+  caret-color: var(--text-primary);
+}
+html[data-theme]:not([data-theme="light"]) .sf-taskinput-text::placeholder,
+html[data-theme]:not([data-theme="light"]) .sf-notes-text::placeholder {
+  color: var(--text-secondary) !important;
+}
+
 /* Light theme: labels */
 [data-theme="light"] .sf-counter-label,
 [data-theme="light"] .sf-notes-label {
