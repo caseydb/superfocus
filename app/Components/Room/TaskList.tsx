@@ -441,7 +441,7 @@ function SortableTask({
           : isCurrentTask
           ? "sf-task-active transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-[#FFAA00] shadow-md shadow-[#FFAA00]/20"
           : "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800"
-      }`}
+      } ${isCurrentTask ? "sf-task-active" : ""}`}
     >
       <div className={`${isExpanded ? "space-y-3" : ""}`}>
         <div className={`flex gap-2 ${isEditing ? "items-start" : "items-center"}`}>

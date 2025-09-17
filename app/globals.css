@@ -614,6 +614,10 @@ html[data-theme]:not([data-theme="light"]) .sf-notes-text::placeholder {
 [data-theme="blue"] .sf-input::placeholder {
   color: rgba(229, 239, 255, 0.45) !important;
 }
+[data-theme="blue"] .sf-tasklist .sf-task-card:hover {
+  background: #0B1835 !important;
+  border-color: rgba(105, 166, 255, 0.35) !important;
+}
 [data-theme="blue"] .sf-mode-dropdown {
   background: rgba(15, 34, 74, 0.95) !important;
   border-color: rgba(105, 166, 255, 0.25) !important;
@@ -808,6 +812,10 @@ html[data-theme]:not([data-theme="light"]) .sf-notes-text::placeholder {
 }
 [data-theme="purple"] .sf-input::placeholder {
   color: rgba(232, 221, 255, 0.5) !important;
+}
+[data-theme="purple"] .sf-tasklist .sf-task-card:hover {
+  background: rgba(30, 11, 53, 0.95) !important;
+  border-color: rgba(180, 140, 255, 0.35) !important;
 }
 [data-theme="purple"] .sf-mode-dropdown {
   background: rgba(30, 11, 53, 0.92) !important;
