@@ -94,6 +94,10 @@
   color: #0A0B0B !important;
   caret-color: #0A0B0B;
 }
+[data-theme="light"] .sf-taskinput-text::placeholder,
+[data-theme="light"] .sf-notes-text::placeholder {
+  color: #0A0B0B !important;
+}
 
 /* Light theme: labels */
 [data-theme="light"] .sf-counter-label,
