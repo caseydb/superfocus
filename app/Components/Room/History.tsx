@@ -420,7 +420,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay">
         <DotSpinner size="40" speed="0.9" color="#FFAA00" />
       </div>
     );
@@ -428,18 +428,18 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   if (history.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay" onClick={onClose}>
         <div
-          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp`}
+          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp sf-modal sf-history`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex flex-col items-center w-full relative">
+          <div className="flex flex-col items-center w-full relative sf-modal-header">
             {/* Title on first line */}
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">History</h2>
             {/* Total on second line - hide for guest users */}
             {!currentUser.isGuest && (
               <span className="text-sm text-gray-400 font-mono mb-1">
-                <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">0s</span>
+              <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold sf-history-total">0s</span>
               </span>
             )}
             
@@ -481,7 +481,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
                 {!isPublicRoom && (
                   <div className="relative">
                     <select
-                      className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                      className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center sf-select"
                       value={showOnlyMine ? "mine" : "all"}
                       onChange={(e) => handleUserFilterChange(e.target.value)}
                     >
@@ -508,7 +508,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
                 {/* Time Range Dropdown */}
                 <div className="relative">
                   <select
-                    className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center"
+                    className="border border-gray-700 rounded-lg px-2 pr-7 py-1.5 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 min-w-[120px] text-center sf-select"
                     value={selectedTimeRange}
                     onChange={(e) => handleDateFilterChange(e.target.value)}
                   >
@@ -532,13 +532,11 @@ export default function History({ onClose }: { onClose?: () => void }) {
               </div>
             )}
             {/* Keyboard Shortcut Tip */}
-            <div className="absolute -top-1 -left-6 hidden md:block">
-              <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
-            </div>
+            
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+              className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
             >
               <svg
                 className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -557,20 +555,20 @@ export default function History({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay" onClick={onClose}>
       <div
-        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp`}
+        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp sf-modal sf-history`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col items-center w-full relative">
+        <div className="flex flex-col items-center w-full relative sf-modal-header">
           {/* Title on first line */}
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">History</h2>
           
           {/* Total on second line - hide for guest users */}
           {!currentUser.isGuest && (
             <span className="text-sm text-gray-400 font-mono mb-1">
-              <span className="text-gray-500">Total:</span>{" "}
-              <span className="text-[#FFAA00] font-semibold">{totalTime}</span>
+            <span className="text-gray-500">Total:</span>{" "}
+            <span className="text-[#FFAA00] font-semibold sf-history-total">{totalTime}</span>
             </span>
           )}
           
@@ -664,12 +662,12 @@ export default function History({ onClose }: { onClose?: () => void }) {
           )}
           {/* Keyboard Shortcut Tip */}
           <div className="absolute -top-1 -left-6 hidden md:block">
-            <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘H</span>
+            
           </div>
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -688,7 +686,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
             {displayEntries.map((entry, i) => (
               <div
                 key={i}
-                className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group"
+                className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full min-w-[300px] min-[500px]:min-w-[400px] sm:min-w-[500px] min-[769px]:min-w-[600px] group sf-card"
               >
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex-1 min-w-0">
@@ -850,7 +848,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
             </p>
 
             {/* Note */}
-            <div className="bg-gray-800/50 rounded-lg p-2 mb-6">
+            <div className="bg-gray-800/50 sf-card rounded-lg p-2 mb-6">
               <p className="text-sm text-gray-400 text-center">
                 <span className="text-[#FFAA00]">💡</span> You can return to Private Mode at any time to hide all tasks.
               </p>
@@ -919,7 +917,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
             </p>
 
             {/* Note */}
-            <div className="bg-gray-800/50 rounded-lg p-2 mb-6">
+            <div className="bg-gray-800/50 sf-card rounded-lg p-2 mb-6">
               <p className="text-sm text-gray-400 text-center">
                 <span className="text-[#FFAA00]">💡</span> You can return to Public Mode at any time to share task details again.
               </p>

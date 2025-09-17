@@ -108,6 +108,8 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
     id: room.id,
     animateLayoutChanges: () => true,
   });
+  const theme = useSelector((state: RootState) => state.preferences.theme);
+  const isLightTheme = theme === "light";
 
   // (hover state removed; no cross-element highlighting in Workspace)
 
@@ -130,7 +132,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-3 bg-gray-800/50 rounded-lg border transition-all duration-200 group flex flex-col min-h-[180px] ${
+      className={`p-3 bg-gray-800/50 sf-card rounded-lg border transition-all duration-200 group flex flex-col min-h-[180px] ${
         isCurrentRoom ? "border-[#FFAA00] bg-gray-800/70" : "border-gray-700 hover:border-gray-600"
       } ${isDragging ? "shadow-2xl shadow-[#FFAA00]/20" : ""}`}
     >
@@ -213,9 +215,14 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
             {/* Hover Tooltip - Shows all workers */}
             {roomUsers && roomUsers.length > 0 && (
               <div className={`absolute ${index > 1 ? 'bottom-full mb-2' : 'top-full mt-2'} left-0 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 z-50`}>
-                <div className="bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-3 min-w-[200px] max-w-[300px]">
+                <div
+                  className={`${isLightTheme
+                    ? 'bg-white border border-slate-200 shadow-xl text-[#0A0B0B]'
+                    : 'bg-gray-800 border border-gray-700 shadow-xl text-gray-200'
+                  } rounded-lg p-3 min-w-[200px] max-w-[300px]`}
+                >
                   {/* Header with total count */}
-                  <div className="text-xs text-gray-400 font-medium mb-2">
+                  <div className={`text-xs font-medium mb-2 ${isLightTheme ? 'text-slate-500' : 'text-gray-400'}`}>
                     {roomUsers.length} {roomUsers.length === 1 ? 'person' : 'people'} in room
                   </div>
                   
@@ -224,7 +231,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                     {/* Active Workers */}
                     {roomUsers.filter(u => u.isActive).length > 0 && (
                       <>
-                        <div className="text-xs text-green-400 font-semibold mb-1">Active ({roomUsers.filter(u => u.isActive).length})</div>
+                        <div className={`text-xs font-semibold mb-1 ${isLightTheme ? 'text-emerald-600' : 'text-green-400'}`}>Active ({roomUsers.filter(u => u.isActive).length})</div>
                         {roomUsers.filter(u => u.isActive).map(roomUser => {
                           const firstName = roomUser.firstName || "";
                           const lastName = roomUser.lastName || "";
@@ -232,7 +239,7 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                           return (
                             <div key={roomUser.userId} className="flex items-center gap-2">
                               <div className="w-2 h-2 bg-green-500 rounded-full animate-sync-pulse flex-shrink-0" />
-                              <span className="text-sm text-gray-200 truncate">{fullName}</span>
+                              <span className={`text-sm truncate ${isLightTheme ? 'text-[#0A0B0B]' : 'text-gray-200'}`}>{fullName}</span>
                             </div>
                           );
                         })}
@@ -242,16 +249,18 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
                     {/* Idle Workers */}
                     {roomUsers.filter(u => !u.isActive).length > 0 && (
                       <>
-                        {roomUsers.filter(u => u.isActive).length > 0 && <div className="border-t border-gray-700 my-2" />}
-                        <div className="text-xs text-yellow-400 font-semibold mb-1">Idle ({roomUsers.filter(u => !u.isActive).length})</div>
+                        {roomUsers.filter(u => u.isActive).length > 0 && (
+                          <div className={`${isLightTheme ? 'border-t border-slate-200' : 'border-t border-gray-700'} my-2`} />
+                        )}
+                        <div className={`text-xs font-semibold mb-1 ${isLightTheme ? 'text-amber-500' : 'text-yellow-400'}`}>Idle ({roomUsers.filter(u => !u.isActive).length})</div>
                         {roomUsers.filter(u => !u.isActive).map(roomUser => {
                           const firstName = roomUser.firstName || "";
                           const lastName = roomUser.lastName || "";
                           const fullName = `${firstName} ${lastName}`.trim() || "Guest User";
                           return (
                             <div key={roomUser.userId} className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0" />
-                              <span className="text-sm text-gray-400 truncate">{fullName}</span>
+                              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isLightTheme ? 'bg-amber-400' : 'bg-yellow-500'}`} />
+                              <span className={`text-sm truncate ${isLightTheme ? 'text-slate-600' : 'text-gray-400'}`}>{fullName}</span>
                             </div>
                           );
                         })}
@@ -369,9 +378,9 @@ const SortableRoomCard: React.FC<SortableRoomCardProps> = ({
       {/* Join Button - Always at bottom */}
       <button
         onClick={() => onJoinRoom(room.url)}
-        className={`w-full py-1.5 rounded-lg font-medium transition-all duration-200 ${
+        className={`sf-room-button w-full py-1.5 rounded-lg font-medium transition-all duration-200 ${
           isCurrentRoom
-            ? "bg-gray-700 text-gray-400 cursor-default"
+            ? "bg-gray-700 text-gray-400 cursor-default sf-room-button-current"
             : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black cursor-pointer"
         }`}
         disabled={isCurrentRoom}
@@ -1340,19 +1349,19 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   // };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sf-modal-overlay" onClick={onClose}>
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative sf-modal sf-workspace"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative flex items-center justify-center mb-4">
+        <div className="relative flex items-center justify-center mb-4 sf-modal-header">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Workspace</h2>
 
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -1366,7 +1375,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 bg-gray-800/50 rounded-full p-1 mb-4">
+        <div className="flex items-center gap-1 bg-gray-800/50 sf-card rounded-full p-1 mb-4">
           <button
             onClick={() => setActiveTab("experiment")}
             className={`flex-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
@@ -1391,7 +1400,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             // Experiment Tab - Combined Quick Join and My Rooms
             <div className="flex flex-col h-full space-y-4">
               {/* Compact Quick Join Section */}
-              <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <div className="p-4 bg-gray-800/50 sf-card rounded-lg border border-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
                     <svg
@@ -1466,12 +1475,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       placeholder="Search rooms..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-gray-800 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:bg-gray-700 transition-all duration-200 border border-transparent"
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-800 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:bg-gray-700 transition-all duration-200 border border-transparent sf-input"
                     />
                   </div>
                   <button
                     onClick={handleCreateRoom}
-                    className="px-4 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-[#FFAA00] transition-all duration-200 flex items-center gap-2 whitespace-nowrap border border-gray-700 hover:border-[#FFAA00] cursor-pointer"
+                    className="px-4 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-[#FFAA00] transition-all duration-200 flex items-center gap-2 whitespace-nowrap border border-gray-700 hover:border-[#FFAA00] cursor-pointer sf-button"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1482,7 +1491,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                 {/* Create Room Form */}
                 {showCreateRoom && (
-                  <div className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="mb-4 p-4 bg-gray-800/50 sf-card rounded-lg border border-gray-700">
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-400 mb-1">Room Name</label>
@@ -1704,9 +1713,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   <div className={selectedTeam === "create" ? "flex flex-col justify-center h-full" : "space-y-6"}>
                     {selectedTeam === "create" ? (
                       // Create Team Form
-                      <div className="bg-gray-800/50 rounded-lg px-6 py-4 border border-gray-700">
+                      <div className="bg-gray-800/50 sf-card rounded-lg px-6 py-4 border border-gray-700">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-xl font-bold text-[#FFAA00]">Create New Team</h3>
+                          <h3 className="text-xl font-bold text-white sf-team-heading">Create New Team</h3>
                           {/* Only show X button if user has teams to go back to */}
                           {teamIds.length > 0 && (
                             <button
@@ -1716,10 +1725,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 setTeamCreationError("");
                                 setInviteEmails("");
                               }}
-                              className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+                              className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group sf-team-close"
                             >
                               <svg
-                                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+                                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors sf-team-close-icon"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -1745,7 +1754,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700">
+                            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700 sf-team-feature">
                               <div className="flex items-start gap-3">
                                 <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                                   <svg
@@ -1771,7 +1780,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               </div>
                             </div>
 
-                            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700">
+                            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700 sf-team-feature">
                               <div className="flex items-start gap-3">
                                 <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                                   <svg
@@ -1803,7 +1812,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               </div>
                             </div>
 
-                            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700">
+                            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700 sf-team-feature">
                               <div className="flex items-start gap-3">
                                 <div className="w-10 h-10 bg-[#FFAA00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                                   <svg
@@ -1908,7 +1917,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           </div>
 
                           {/* What happens next */}
-                          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                          <div className="bg-gray-800/50 sf-card rounded-lg p-4 border border-gray-700">
                             <div className="flex items-start gap-3">
                               <svg
                                 className="w-5 h-5 text-green-500 flex-shrink-0"
@@ -1998,7 +2007,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                   setTeamCreationError(""); // Clear error when typing
                                 }}
                                 maxLength={30}
-                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
+                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16 sf-input"
                               />
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
                                 {newTeamName.length}/30
@@ -2049,7 +2058,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 setTeamCreationError(`"${newTeamName}" is already taken. Please choose a different name.`);
                               }
                             }}
-                            className="px-6 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            className="sf-team-button px-6 py-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                           >
                             Create Team
                           </button>
@@ -2062,7 +2071,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                 setTeamCreationError("");
                                 setInviteEmails("");
                               }}
-                              className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                              className="sf-team-button px-4 py-2 rounded-lg transition-colors"
                             >
                               Cancel
                             </button>
@@ -2072,7 +2081,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                     ) : (
                       <>
                         {/* Team Overview Header */}
-                        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                        <div className="bg-gray-800/50 sf-card rounded-lg p-4 border border-gray-700">
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
@@ -2082,7 +2091,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                     onChange={(e) => {
                                       setSelectedTeam(e.target.value);
                                     }}
-                                    className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer"
+                                    className="appearance-none bg-gray-800 text-gray-200 text-lg font-semibold px-4 py-2 pr-10 rounded-lg border border-gray-700 hover:border-gray-600 focus:outline-none focus:border-[#FFAA00] transition-all cursor-pointer sf-team-select"
                                   >
                                     {teamIds.map((teamId) => (
                                       <option key={teamId} value={teamId}>
@@ -2187,7 +2196,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               {teamRooms.map((room) => (
                                 <div
                                   key={room.id}
-                                  className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all"
+                                  className="bg-gray-800/50 sf-card rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all"
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
@@ -2225,7 +2234,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                     </div>
                                     <button
                                       onClick={() => handleJoinRoom(room.url)}
-                                      className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 cursor-pointer"
+                                      className="px-4 py-1.5 bg-gray-700 text-gray-300 text-sm rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 cursor-pointer sf-room-button"
                                     >
                                       Join Room
                                     </button>
@@ -2245,7 +2254,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                               .map((member) => (
                                 <div
                                   key={member.id}
-                                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-all group"
+                                  className="bg-gray-800/50 sf-card rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-all group"
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
@@ -2284,7 +2293,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                               <img
                                                 src={profilePicture}
                                                 alt={member.name}
-                                                className="w-12 h-12 rounded-full object-cover hover:ring-2 hover:ring-[#FFAA00] transition-all"
+                                                className="w-12 h-12 rounded-full object-cover hover:ring-2 hover:ring-[#FFAA00] transition-all sf-team-avatar"
                                                 onError={(e) => {
                                                   // If image fails to load, hide it and show initials
                                                   e.currentTarget.style.display = "none";
@@ -2297,7 +2306,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                                           return null;
                                         })()}
                                         <div
-                                          className={`w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all ${
+                                          className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-medium text-gray-300 hover:ring-2 hover:ring-[#FFAA00] transition-all sf-team-avatar ${
                                             userLastActiveData[member.id]?.profile_image ||
                                             member.picture ||
                                             member.profileImage
@@ -2380,7 +2389,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               {filteredRooms.map((room) => (
                 <div
                   key={room.id}
-                  className={`p-4 bg-gray-800/50 rounded-lg border transition-all duration-200 group flex flex-col min-h-[200px] ${
+                  className={`p-4 bg-gray-800/50 sf-card rounded-lg border transition-all duration-200 group flex flex-col min-h-[200px] ${
                     currentRoomUrl === room.url
                       ? "border-[#FFAA00] bg-gray-800/70"
                       : "border-gray-700 hover:border-gray-600"
@@ -2577,9 +2586,9 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                   {/* Join Button - Always at bottom */}
                   <button
                     onClick={() => handleJoinRoom(room.url)}
-                    className={`w-full py-2 rounded-lg font-medium transition-all duration-200 ${
+                    className={`sf-room-button w-full py-2 rounded-lg font-medium transition-all duration-200 ${
                       currentRoomUrl === room.url
-                        ? "bg-gray-700 text-gray-400 cursor-default"
+                        ? "bg-gray-700 text-gray-400 cursor-default sf-room-button-current"
                         : "bg-gray-700 text-gray-300 hover:bg-[#FFAA00] hover:text-black cursor-pointer"
                     }`}
                     disabled={currentRoomUrl === room.url}
@@ -2647,7 +2656,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-2">Room URL</label>
-                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 sf-card border border-gray-700 rounded-lg">
                         <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
@@ -2813,7 +2822,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               {showMembersModal.members
                 .filter((member) => member.name.toLowerCase().includes(memberSearchQuery.toLowerCase()))
                 .map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800/50 sf-card rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">
@@ -3420,7 +3429,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                       value={newTeamName}
                       onChange={(e) => setNewTeamName(e.target.value.slice(0, 30))}
                       maxLength={30}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#FFAA00] transition-colors pr-16 sf-input"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
                       {newTeamName.length}/30
@@ -3442,7 +3451,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                 </div>
               </div>
               
-              <div className="bg-gray-800/50 rounded-lg p-4 mb-6 border border-gray-700">
+              <div className="bg-gray-800/50 sf-card rounded-lg p-4 mb-6 border border-gray-700">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">What happens next?</h4>
                 <ul className="space-y-2 text-sm text-gray-500">
                   <li className="flex items-start gap-2">

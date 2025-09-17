@@ -9,21 +9,21 @@ interface BillingModalProps {
 const BillingModal: React.FC<BillingModalProps> = ({ onClose }) => {
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/95" 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0b0b]/45 sf-modal-overlay" 
       onClick={onClose}
     >
       <div 
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[800px] h-[85vh] flex flex-col border border-gray-800 relative sf-modal"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative flex items-center justify-center mb-4">
+        <div className="relative flex items-center justify-center mb-4 sf-modal-header">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Plan & Billing</h2>
           
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -54,7 +54,7 @@ const BillingModal: React.FC<BillingModalProps> = ({ onClose }) => {
             </div>
 
             {/* Features Preview */}
-            <div className="bg-gray-800/50 rounded-xl p-6 space-y-4">
+            <div className="bg-gray-800/50 rounded-xl p-6 space-y-4 sf-card">
               <h4 className="text-sm font-medium text-gray-400 uppercase tracking-wide">What to expect</h4>
               <div className="space-y-3 text-left">
                 <div className="flex items-start gap-3">
@@ -85,7 +85,7 @@ const BillingModal: React.FC<BillingModalProps> = ({ onClose }) => {
             </div>
 
             {/* Current Status */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-full">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800/60 rounded-full sf-card">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-sm text-gray-300">Currently in free beta</span>
             </div>

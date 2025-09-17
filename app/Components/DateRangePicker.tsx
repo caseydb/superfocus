@@ -247,7 +247,7 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
         {/* Time Range Dropdown */}
         <div className="w-full sm:w-auto flex-shrink-0 relative">
         <select
-          className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none w-full cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 text-center"
+          className="border border-gray-700 rounded-lg px-3 pr-8 py-2 bg-gray-900 text-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFAA00] focus:border-[#FFAA00] appearance-none w-full cursor-pointer hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 text-center sf-select"
           value={selectedRange}
           onChange={handleRangeChange}
         >
@@ -270,10 +270,10 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
       </div>
 
       {/* Date Picker */}
-      <div className="flex items-center justify-center border border-gray-700 rounded-lg px-3 py-2 bg-gray-900 w-full sm:w-auto hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 group focus-within:ring-2 focus-within:ring-[#FFAA00] focus-within:border-[#FFAA00] focus-within:shadow-[0_0_0_4px_rgba(255,170,0,0.1)]">
+      <div className="flex items-center justify-center border border-gray-700 rounded-lg px-3 py-2 bg-gray-900 w-full sm:w-auto hover:border-gray-600 transition-all duration-200 hover:bg-gray-800 group focus-within:ring-2 focus-within:ring-[#FFAA00] focus-within:border-[#FFAA00] focus-within:shadow-[0_0_0_4px_rgba(255,170,0,0.1)] sf-date-range">
         <input
           type="date"
-          className="outline-none text-gray-100 text-xs bg-transparent cursor-pointer [color-scheme:dark] focus:text-[#FFAA00] font-mono w-[115px]"
+          className="outline-none text-gray-100 text-xs bg-transparent cursor-pointer [color-scheme:dark] focus:text-[#FFAA00] font-mono w-[115px] sf-date-input"
           value={formatDateForInput(currentRange.start)}
           onChange={(e) => handleDateChange("start", e.target.value)}
           max={formatDateForInput(currentRange.end || getTodayDate())}
@@ -281,7 +281,7 @@ export default function DateRangePicker({ value, onChange, firstTaskDate }: Date
         <span className="mx-2 text-gray-500 text-xs font-medium select-none">to</span>
         <input
           type="date"
-          className="outline-none text-gray-100 text-xs bg-transparent cursor-pointer [color-scheme:dark] focus:text-[#FFAA00] font-mono w-[115px]"
+          className="outline-none text-gray-100 text-xs bg-transparent cursor-pointer [color-scheme:dark] focus:text-[#FFAA00] font-mono w-[115px] sf-date-input"
           value={formatDateForInput(currentRange.end)}
           onChange={(e) => handleDateChange("end", e.target.value)}
           min={formatDateForInput(currentRange.start || new Date("2020-01-01"))}

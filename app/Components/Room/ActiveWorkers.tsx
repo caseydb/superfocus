@@ -631,7 +631,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
             >
               {/* Invisible bridge to maintain hover */}
               <div className="absolute inset-y-0 -left-2 w-4" />
-              <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 overflow-hidden w-64 ml-2 relative">
+              <div className="rounded-xl shadow-2xl border overflow-hidden w-64 ml-2 relative sf-card sf-active-tooltip">
                 {/* LinkedIn link for hovered user (if available) */}
                 {(() => {
                   const url = (postgresUsers[u.id]?.linkedin_url) || (currentUser?.auth_id === u.id ? currentUser.linkedin_url : null);
@@ -652,7 +652,7 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
                   ) : null;
                 })()}
                 {/* Stats Section */}
-                <div className="px-4 py-3 border-b border-gray-800/50">
+                <div className="px-4 py-3 border-b border-gray-800/50 sf-active-tooltip-section">
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       {userWeeklyStats[u.id] ? (

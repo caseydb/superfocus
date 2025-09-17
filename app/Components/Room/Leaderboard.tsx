@@ -305,19 +305,17 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   // Don't show initial loading state to prevent flicker
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sf-modal-overlay" onClick={onClose}>
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative sf-modal sf-leaderboard"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Keyboard Shortcut Tip - positioned at top left */}
-        <div className="absolute top-2 left-3 hidden md:block">
-          <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘L</span>
-        </div>
+        
         {/* Close button - positioned absolutely */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
         >
           <svg
             className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -334,7 +332,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00] mb-2">Leaderboard</h2>
           
           {/* Beautiful Switch Component */}
-          <div className="flex items-center gap-1 bg-gray-800/50 rounded-full p-1 mb-2">
+          <div className="flex items-center gap-1 bg-gray-800/50 sf-card rounded-full p-1 mb-2">
             <button
               onClick={() => {
                 setPage(1);
@@ -366,7 +364,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
           {/* Total and countdown on second line */}
           <div className="flex flex-col items-center gap-1 mb-2">
             <span className="text-sm text-gray-400 font-mono">
-              <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold">{formatTime(totalTimeAllUsers)}</span>
+            <span className="text-gray-500">Total:</span> <span className="text-[#FFAA00] font-semibold sf-leaderboard-total">{formatTime(totalTimeAllUsers)}</span>
             </span>
             {timeFilter === 'this_week' && countdown && (
               <span className="text-xs text-gray-500 font-mono">
@@ -492,7 +490,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
               paginatedEntries.map((entry, i) => (
                 <div
                   key={`${entry.displayName}-${(page - 1) * PAGE_SIZE + i}`}
-                  className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full"
+                  className="bg-gray-800 rounded-lg px-4 py-1.5 border border-gray-700 w-full sf-card"
                 >
                   <div className="flex justify-between items-center gap-3">
                     <div className="flex-1">

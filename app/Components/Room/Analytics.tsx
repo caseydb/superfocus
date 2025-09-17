@@ -660,15 +660,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center ${isGuest ? 'bg-black/80' : 'bg-black/50'} animate-fadeIn`}
+      className={`fixed inset-0 z-50 flex items-center justify-center ${isGuest ? 'bg-black/80' : 'bg-black/50'} animate-fadeIn sf-modal-overlay`}
       onClick={handleBackdropClick}
     >
       <div
-        className={`${isGuest ? 'bg-[#0E1119]/95' : 'bg-[#0E1119]/90'} backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar`}
+        className={`${isGuest ? 'bg-[#0E1119]/95' : 'bg-[#0E1119]/90'} backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar sf-modal sf-analytics`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
-        <div className="mb-6 text-center relative">
+        <div className="mb-6 text-center relative sf-modal-header">
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFAA00] via-[#FFAA00] to-[#e69500]">
             {reduxUser.isGuest 
                 ? "My Analytics" 
@@ -679,13 +679,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                     : "Analytics Dashboard"}
           </h2>
           {/* Keyboard Shortcut Tip */}
-          <div className="absolute -top-2 -left-1 hidden md:block">
-            <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500">⌘S</span>
-          </div>
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -768,7 +765,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                 </div>
                 
                 {/* Activity grid that spells "LOCK IN" */}
-                <div className="inline-block relative bg-gray-800/50 rounded-xl p-3 backdrop-blur border border-gray-700 overflow-hidden max-[820px]:overflow-x-auto max-[820px]:block max-[820px]:w-full">
+                <div className="inline-block relative bg-gray-800/50 sf-card rounded-xl p-3 backdrop-blur border border-gray-700 overflow-hidden max-[820px]:overflow-x-auto max-[820px]:block max-[820px]:w-full">
                   <div className="inline-flex gap-1 relative">
                     <div className="flex gap-0.5 ml-9">
                       {/* Generate grid - 52 weeks x 7 days */}
@@ -927,7 +924,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                   <span className={colorByTime ? "text-white font-medium" : "text-gray-500"}>Time</span>
                 </button>
               </div>
-              <div className="inline-block relative bg-gray-800/50 rounded-xl p-3 backdrop-blur border border-gray-700 overflow-hidden max-[820px]:overflow-x-auto max-[820px]:block max-[820px]:w-full">
+              <div className="inline-block relative bg-gray-800/50 sf-card rounded-xl p-3 backdrop-blur border border-gray-700 overflow-hidden max-[820px]:overflow-x-auto max-[820px]:block max-[820px]:w-full">
                 {/* Month labels - dynamically positioned */}
                 <div className="relative mb-2 ml-9 h-4">
                   {(() => {
@@ -1203,7 +1200,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
             {/* Streak Analytics & Rank - Always shows all-time data */}
             {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               {/* Current Streak */}
-              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+              {/* <div className="bg-gray-800/50 sf-card rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
                 <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">🔥</span>
                   <h4 className="text-sm font-bold text-white">Current Streak</h4>
@@ -1213,7 +1210,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div> */}
 
               {/* Longest Streak */}
-              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+              {/* <div className="bg-gray-800/50 sf-card rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
                 <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">🏆</span>
                   <h4 className="text-sm font-bold text-white">Best Streak</h4>
@@ -1223,7 +1220,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div> */}
 
               {/* Weekly Rank */}
-              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+              {/* <div className="bg-gray-800/50 sf-card rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
                 <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">📈</span>
                   <h4 className="text-sm font-bold text-white">This Week</h4>
@@ -1233,7 +1230,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
               </div> */}
 
               {/* All-Time Rank */}
-              {/* <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
+              {/* <div className="bg-gray-800/50 sf-card rounded-lg p-3 border border-gray-700 backdrop-blur text-center">
                 <div className="flex items-center gap-2 mb-1 justify-center">
                   <span className="text-lg">👑</span>
                   <h4 className="text-sm font-bold text-white">All Time</h4>

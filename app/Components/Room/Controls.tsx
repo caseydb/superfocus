@@ -78,6 +78,9 @@ export default function Controls({
 
   // Get user data from Redux store
   const reduxUser = useSelector((state: RootState) => state.user);
+  const theme = useSelector((state: RootState) => state.preferences.theme);
+  const isLightTheme = theme === "light";
+  const hoverBorderAccentSoft = isLightTheme ? "hover:border-[#0A0B0B]/50" : "hover:border-[#FFAA00]/50";
   const dispatch = useDispatch<AppDispatch>();
 
   // Close menus on outside click
@@ -146,7 +149,7 @@ export default function Controls({
         {/* Speaker icon - leftmost */}
         <button
           className={`group relative flex items-center px-4 py-2 mr-3 rounded-lg transition-all duration-300 cursor-pointer sf-control text-gray-400 ${
-            localVolume === 0 ? "border border-[#ef4444]/50" : "border border-transparent hover:border-[#FFAA00]/50"
+            localVolume === 0 ? "border border-[#ef4444]/50" : `border border-transparent ${hoverBorderAccentSoft}`
           }`}
           onClick={() => {
             if (localVolume === 0) {
@@ -229,7 +232,7 @@ export default function Controls({
           <button
             onClick={() => setShowTimerDropdown(!showTimerDropdown)}
             className={`group relative flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 cursor-pointer sf-control ${
-              showTimerDropdown ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
+              showTimerDropdown ? 'border border-gray-700' : `border border-transparent ${hoverBorderAccentSoft}`
             }`}
           >
             {/* Label */}
@@ -335,7 +338,7 @@ export default function Controls({
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer sf-control ${
-              dropdownOpen ? 'border border-gray-700' : 'border border-transparent hover:border-[#FFAA00]/50'
+              dropdownOpen ? 'border border-gray-700' : `border border-transparent ${hoverBorderAccentSoft}`
             }`}
           >
             {/* Avatar with status indicator */}

@@ -435,11 +435,11 @@ function SortableTask({
       data-task-id={task.id}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`group p-2 mx-2 my-1 rounded-lg border ${
+      className={`group sf-task-card p-2 mx-2 my-1 rounded-lg border ${
         isDragging
           ? "opacity-50 bg-gray-800 border-gray-600"
           : isCurrentTask
-          ? "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-[#FFAA00] shadow-md shadow-[#FFAA00]/20"
+          ? "sf-task-active transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-[#FFAA00] shadow-md shadow-[#FFAA00]/20"
           : "transition-all duration-200 hover:shadow-lg hover:scale-[1.01] bg-gray-850 border-gray-700 hover:border-gray-600 hover:bg-gray-800"
       }`}
     >
@@ -682,7 +682,7 @@ function SortableTask({
                 return (
                   <div className="flex items-center">
                     {/* Timer Display - visible by default, hidden on hover */}
-                    <div className="text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
+                    <div className="sf-task-timer text-[#FFAA00] text-xs font-mono font-medium group-hover:opacity-0 transition-opacity duration-200">
                       {formatTime(timerSeconds || 0)}
                     </div>
                     {/* Delete Button - allowed for active tasks (will clear state) */}
@@ -712,7 +712,7 @@ function SortableTask({
                   <div className="flex items-center">
                     {/* Time Display for non-active tasks with time */}
                     {taskTime > 0 && (
-                      <div className="text-gray-500 text-xs font-mono font-medium mr-2 group-hover:opacity-0 transition-opacity duration-200">
+                      <div className="sf-task-timer text-gray-500 text-xs font-mono font-medium mr-2 group-hover:opacity-0 transition-opacity duration-200">
                         {formatTime(taskTime)}
                       </div>
                     )}
@@ -1168,20 +1168,19 @@ export default function TaskList({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] pointer-events-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[70] pointer-events-none animate-in fade-in duration-300 sf-modal-overlay">
       {/* Click-outside-to-close backdrop */}
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
 
       <div
-        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] min-h-[400px] max-h-[calc(100vh-8rem)] bg-[#141821]/95 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden"
+        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] min-h-[400px] max-h-[calc(100vh-8rem)] bg-[#141821]/95 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden sf-modal sf-tasklist"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="border-b border-gray-800">
+        <div className="border-b border-gray-800 sf-modal-header">
           <div className="flex items-center justify-between p-6 pb-4">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold text-white">Task List</h2>
-              <span className="px-2.5 py-1 bg-gray-800 rounded text-xs text-gray-500 hidden md:inline">⌘K</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">
@@ -1204,7 +1203,7 @@ export default function TaskList({
                   </svg>
                 </button>
                 {showClearMenu && (
-                  <div className="absolute right-0 top-8 bg-[#0E1119]/95 border border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px]">
+                  <div className="absolute right-0 top-8 bg-[#0E1119]/95 border border-gray-700 rounded-lg shadow-lg z-10 min-w-[180px] sf-card">
                     <button
                       onClick={clearAll}
                       disabled={incompleteTasks === 0}
@@ -1215,7 +1214,7 @@ export default function TaskList({
                   </div>
                 )}
               </div>
-              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer">
+              <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer sf-modal-close">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
@@ -1255,7 +1254,7 @@ export default function TaskList({
                   });
                 }}
                 placeholder="Add a new task..."
-                className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors resize-none overflow-hidden leading-normal"
+                className="w-full bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#FFAA00] focus:outline-none transition-colors resize-none overflow-hidden leading-normal sf-input"
                 maxLength={100}
                 rows={1}
                 style={{ minHeight: "48px" }}

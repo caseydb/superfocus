@@ -47,21 +47,21 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65" 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 sf-modal-overlay" 
       onClick={onClose}
     >
       <div 
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative sf-modal"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative flex items-center justify-center px-6 py-6 border-b border-gray-800/50">
+        <div className="relative flex items-center justify-center px-6 py-6 border-b border-gray-800/50 sf-modal-header">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Account</h2>
           
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer"
+            className="absolute right-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -263,7 +263,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
           </div>
 
             {/* Personal Information Section */}
-            <div className="bg-gray-800/50 rounded-xl p-6">
+            <div className="bg-gray-800/50 rounded-xl p-6 sf-card">
               <h3 className="text-lg font-bold text-white mb-6">Personal Information</h3>
               
               <div className="space-y-4">
@@ -279,7 +279,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                       setFirstName(e.target.value);
                       setNameError("");
                     }}
-                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500"
+                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500 sf-input"
                     placeholder="Enter your first name"
                     maxLength={32}
                   />
@@ -295,7 +295,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                       setLastName(e.target.value);
                       setNameError("");
                     }}
-                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500"
+                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500 sf-input"
                     placeholder="Enter your last name (optional)"
                     maxLength={32}
                   />
@@ -311,7 +311,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                       setLinkedinUrl(e.target.value);
                       setNameError("");
                     }}
-                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500"
+                    className="w-full px-4 py-3 bg-gray-700/50 text-white rounded-lg border border-gray-600 focus:border-[#FFAA00] focus:bg-gray-700 outline-none transition-all duration-200 placeholder-gray-500 sf-input"
                     placeholder="https://linkedin.com/in/yourprofile"
                   />
                 </div>
@@ -382,15 +382,13 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                         // Show success feedback (optional)
                         const button = document.getElementById('save-account-btn');
                         if (button) {
-                          const originalText = button.innerHTML;
+                          const originalText = button.getAttribute('data-original-label') || button.innerHTML;
+                          button.setAttribute('data-original-label', originalText);
                           button.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Saved!';
-                          button.classList.add('bg-green-600', 'hover:bg-green-700');
-                          button.classList.remove('bg-gray-700', 'hover:bg-[#FFAA00]', 'hover:text-black');
-                          button.classList.add('text-white');
+                          button.classList.add('sf-button-success');
                           setTimeout(() => {
-                            button.innerHTML = originalText;
-                            button.classList.remove('bg-green-600', 'hover:bg-green-700');
-                            button.classList.add('bg-gray-700', 'hover:bg-[#FFAA00]', 'hover:text-black');
+                            button.innerHTML = button.getAttribute('data-original-label') || originalText;
+                            button.classList.remove('sf-button-success');
                           }, 2000);
                         }
                       } catch {
@@ -406,7 +404,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ onClose }) => {
                       }
                     }}
                     id="save-account-btn"
-                    className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-[#FFAA00] hover:text-black transition-all duration-200 font-semibold cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full px-4 py-3 text-white rounded-lg transition-all duration-200 font-semibold cursor-pointer flex items-center justify-center gap-2 sf-button"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
