@@ -697,7 +697,7 @@ export default function Pomodoro({
       setShowStillWorkingModal(false);
       pauseTimer();
     }
-  }, [showStillWorkingModal, modalCountdown]);
+  }, [showStillWorkingModal, modalCountdown, pauseTimer]);
 
 
   return (

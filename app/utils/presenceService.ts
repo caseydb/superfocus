@@ -1,6 +1,8 @@
 import { rtdb } from "@/lib/firebase";
 import { ref, set, onDisconnect, onValue, off, get, remove, push, serverTimestamp, update } from "firebase/database";
 import type { DataSnapshot } from "firebase/database";
+import { removeUserFromPublicRoom } from "./publicRooms";
+import { removeUserFromPrivateRoom } from "./privateRooms";
 
 interface SessionData {
   roomId: string;
@@ -22,6 +24,9 @@ export interface PresenceSession extends SessionData {
 const HEARTBEAT_INTERVAL = 30000;
 // Consider offline after 65 seconds (just over 2 heartbeats)
 const OFFLINE_THRESHOLD = 65000;
+const TAB_COUNT_OFFLINE_THRESHOLD = 70000;
+
+type RoomType = 'public' | 'private' | 'unknown';
 
 // Debug logging helper  
 const log = (level: 'info' | 'warn' | 'error', message: string, data?: unknown) => {
@@ -46,6 +51,8 @@ const log = (level: 'info' | 'warn' | 'error', message: string, data?: unknown) 
   }
 };
 
+type FirebaseUpdateValue = string | number | boolean | null | ReturnType<typeof serverTimestamp>;
+
 export class PresenceService {
   private userId: string;
   private roomId: string;
@@ -53,6 +60,7 @@ export class PresenceService {
   private sessionRef: ReturnType<typeof ref>;
   private userPresenceRef: ReturnType<typeof ref>;
   private roomIndexRef: ReturnType<typeof ref>;
+  private tabSessionRef: ReturnType<typeof ref>;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private visibilityHandler: (() => void) | null = null;
   private connectionHandler: ((snap: DataSnapshot) => void) | null = null;
@@ -60,29 +68,41 @@ export class PresenceService {
   private sessionMonitorHandler: ((snap: DataSnapshot) => void) | null = null;
   private disconnectRef: ReturnType<typeof onDisconnect> | null = null;
   private roomIndexDisconnectRef: ReturnType<typeof onDisconnect> | null = null;
+  private tabSessionDisconnectRef: ReturnType<typeof onDisconnect> | null = null;
   private isInitialized = false;
   private reconnectTimeout: NodeJS.Timeout | null = null;
-  private lastActiveState: boolean | null = null;
+  private lastActiveState = false;
   private heartbeatFailures = 0;
   private maxHeartbeatFailures = 3;
+  private roomType: RoomType;
 
-  constructor(userId: string, roomId: string) {
+  constructor(userId: string, roomId: string, options: { roomType?: 'public' | 'private' } = {}) {
     if (!userId || !roomId) {
       log('error', 'Invalid constructor params', { userId, roomId });
     }
     this.userId = userId;
     this.roomId = roomId;
+    this.roomType = options.roomType ?? 'unknown';
     // Generate a unique session ID
     this.sessionId = push(ref(rtdb, 'sessions')).key!;
     this.sessionRef = ref(rtdb, `Presence/${userId}/sessions/${this.sessionId}`);
     this.userPresenceRef = ref(rtdb, `Presence/${userId}`);
     this.roomIndexRef = ref(rtdb, `RoomIndex/${roomId}/${userId}`);
+    this.tabSessionRef = ref(rtdb, `tabCounts/${userId}/sessions/${this.sessionId}`);
     
     log('info', 'PresenceService created', {
       userId,
-      roomId,
+      roomId, 
       sessionId: this.sessionId
     });
+  }
+
+  getSessionId(): string {
+    return this.sessionId;
+  }
+
+  getUserId(): string {
+    return this.userId;
   }
 
   async initialize(): Promise<boolean> {
@@ -118,19 +138,48 @@ export class PresenceService {
       
       // Set up onDisconnect for room index  
       this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
-      await this.roomIndexDisconnectRef.remove();
+      await this.roomIndexDisconnectRef.update({
+        lastUpdated: serverTimestamp()
+      });
+      
+      this.tabSessionDisconnectRef = onDisconnect(this.tabSessionRef);
+      await this.tabSessionDisconnectRef.remove();
       log('info', 'onDisconnect handlers configured', { sessionId: this.sessionId });
 
       // Now set the presence
       log('info', 'Setting initial presence', { sessionId: this.sessionId, sessionData });
       await set(this.sessionRef, sessionData);
       
-      // Also set initial room index entry (only meaningful data)
-      await set(this.roomIndexRef, {
+      // Also set initial room index entry (preserve existing active state if present)
+      const existingRoomIndex = await get(this.roomIndexRef);
+      const existingData: { isActive?: boolean; joinedAt?: number | object } | null = existingRoomIndex.exists()
+        ? (existingRoomIndex.val() as { isActive?: boolean; joinedAt?: number | object })
+        : null;
+      const roomIndexPayload: {
+        userId: string;
+        joinedAt: number | object;
+        lastUpdated: number | object;
+        isActive?: boolean;
+      } = {
         userId: this.userId,
-        isActive: false,
-        joinedAt: serverTimestamp()
+        joinedAt: existingData?.joinedAt ?? serverTimestamp(),
+        lastUpdated: serverTimestamp()
+      };
+      if (existingData?.isActive === true) {
+        roomIndexPayload.isActive = true;
+      } else if (!existingRoomIndex.exists()) {
+        roomIndexPayload.isActive = false;
+      }
+      await update(this.roomIndexRef, roomIndexPayload);
+      const initialHeartbeat = Date.now();
+      await set(this.tabSessionRef, {
+        userId: this.userId,
+        sessionId: this.sessionId,
+        roomId: this.roomId,
+        roomType: this.roomType,
+        lastSeen: initialHeartbeat
       });
+      
       log('info', 'Initial presence set successfully', { sessionId: this.sessionId });
 
       // Set up visibility tracking
@@ -150,6 +199,11 @@ export class PresenceService {
         userId: this.userId,
         roomId: this.roomId,
         sessionId: this.sessionId
+      });
+
+      await this.refreshTabCount(initialHeartbeat, {
+        roomId: this.roomId,
+        roomType: this.roomType
       });
       return true;
     } catch (error) {
@@ -204,24 +258,11 @@ export class PresenceService {
       this.sessionMonitorHandler = null;
     }
 
-    // Cancel onDisconnect handlers first
-    if (this.disconnectRef) {
-      await this.disconnectRef.cancel();
-      this.disconnectRef = null;
-    }
-    
-    if (this.roomIndexDisconnectRef) {
-      await this.roomIndexDisconnectRef.cancel();
-      this.roomIndexDisconnectRef = null;
-    }
-
-    // Remove presence immediately (no grace period needed for explicit cleanup)
+    // Remove presence nodes; allow heartbeat/offline sweep to tidy room index
     try {
       await remove(this.sessionRef);
-      await remove(this.roomIndexRef);
-      log('info', '✅ Presence removed successfully', { sessionId: this.sessionId });
+      await remove(this.tabSessionRef);
     } catch (error) {
-      // Session might already be removed
       log('warn', 'Presence already removed or error during removal', { 
         error, 
         sessionId: this.sessionId 
@@ -252,6 +293,17 @@ export class PresenceService {
       return;
     }
 
+    if (this.lastActiveState === isActive) {
+      if (!isActive) {
+        // Still refresh lastSeen to keep session warm
+        await update(this.sessionRef, {
+          lastSeen: serverTimestamp(),
+          roomId: this.roomId
+        }).catch(() => {});
+      }
+      return;
+    }
+
     log('info', `🔄 Setting active status: ${isActive}`, {
       sessionId: this.sessionId,
       userId: this.userId,
@@ -263,7 +315,7 @@ export class PresenceService {
     try {
       // If becoming active, ALWAYS deactivate all other sessions regardless of current state
       if (isActive) {
-        const updates: Record<string, boolean | object | string | null> = {};
+        const updates: Record<string, FirebaseUpdateValue> = {};
         
         // Get all sessions for this user
         const allSessionsRef = ref(rtdb, `Presence/${this.userId}/sessions`);
@@ -388,7 +440,23 @@ export class PresenceService {
             await this.roomIndexDisconnectRef.cancel();
           }
           this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
-          await this.roomIndexDisconnectRef.remove();
+          await this.roomIndexDisconnectRef.update({
+            lastUpdated: serverTimestamp()
+          });
+
+          if (this.tabSessionDisconnectRef) {
+            await this.tabSessionDisconnectRef.cancel();
+          }
+          this.tabSessionDisconnectRef = onDisconnect(this.tabSessionRef);
+          await this.tabSessionDisconnectRef.remove();
+          await update(this.tabSessionRef, {
+            userId: this.userId,
+            sessionId: this.sessionId,
+            roomId: this.roomId,
+            roomType: this.roomType,
+            lastSeen: Date.now()
+          });
+          await this.refreshTabCount(Date.now());
           
           log('info', '✅ onDisconnect handlers re-established', { sessionId: this.sessionId });
         } catch (error) {
@@ -404,6 +472,14 @@ export class PresenceService {
           tabVisible: document.visibilityState === 'visible',
           roomId: this.roomId  // Ensure roomId is never lost
         });
+          const roomIndexUpdate: { userId: string; lastUpdated: number | object; isActive?: boolean } = {
+            userId: this.userId,
+            lastUpdated: serverTimestamp()
+          };
+        if (this.lastActiveState) {
+          roomIndexUpdate.isActive = true;
+        }
+        await update(this.roomIndexRef, roomIndexUpdate);
         
         // Restart heartbeat if it was stopped
         if (!this.heartbeatInterval && this.isInitialized) {
@@ -439,6 +515,13 @@ export class PresenceService {
         roomId: this.roomId  // Ensure roomId is never lost
       }).catch(() => {
         // Failed to update visibility
+      });
+
+      update(this.roomIndexRef, {
+        userId: this.userId,
+        lastUpdated: serverTimestamp()
+      }).catch(() => {
+        // Visibility update might race with disconnect; ignore errors
       });
 
       if (isVisible && !this.heartbeatInterval) {
@@ -487,6 +570,20 @@ export class PresenceService {
         lastSeen: serverTimestamp(),
         roomId: this.roomId  // Ensure roomId is always present
       });
+
+      await update(this.tabSessionRef, {
+        lastSeen: heartbeatTimestamp,
+        roomId: this.roomId,
+        roomType: this.roomType
+      });
+      const roomIndexUpdate: { userId: string; lastUpdated: number | object; isActive?: boolean } = {
+        userId: this.userId,
+        lastUpdated: serverTimestamp()
+      };
+      if (this.lastActiveState) {
+        roomIndexUpdate.isActive = true;
+      }
+      await update(this.roomIndexRef, roomIndexUpdate);
       
       // Reset failure count on success
       if (this.heartbeatFailures > 0) {
@@ -500,6 +597,8 @@ export class PresenceService {
         sessionId: this.sessionId,
         timestamp: new Date(heartbeatTimestamp).toISOString()
       });
+
+      await this.refreshTabCount(heartbeatTimestamp);
     } catch (error) {
       this.heartbeatFailures++;
       
@@ -531,6 +630,152 @@ export class PresenceService {
     }
   }
   
+  private async refreshTabCount(now: number, context?: { roomId?: string; roomType?: RoomType }): Promise<void> {
+    try {
+      const sessionsRef = ref(rtdb, `tabCounts/${this.userId}/sessions`);
+      const snapshot = await get(sessionsRef);
+      const threshold = now - TAB_COUNT_OFFLINE_THRESHOLD;
+      const updates: Record<string, FirebaseUpdateValue> = {};
+      let activeCount = 0;
+      const activeRooms = new Set<string>();
+      const staleRooms: Array<{ roomId?: string; roomType?: RoomType }> = [];
+
+      if (snapshot.exists()) {
+      const sessions = snapshot.val() as Record<string, { lastSeen?: number; roomId?: string; roomType?: RoomType }>;
+        for (const [sessionId, sessionData] of Object.entries(sessions)) {
+          const lastSeen = typeof sessionData?.lastSeen === 'number' ? sessionData.lastSeen : 0;
+          const sessionRoomId = sessionData?.roomId as string | undefined;
+          const sessionRoomType = (sessionData?.roomType as RoomType | undefined) ?? 'unknown';
+
+          if (lastSeen > threshold) {
+            activeCount += 1;
+            if (sessionRoomId) {
+              activeRooms.add(sessionRoomId);
+            }
+          } else {
+            updates[`tabCounts/${this.userId}/sessions/${sessionId}`] = null;
+            staleRooms.push({ roomId: sessionRoomId, roomType: sessionRoomType });
+          }
+        }
+      }
+
+      if (context) {
+        staleRooms.push(context);
+      }
+
+      if (activeCount > 0) {
+        updates[`tabCounts/${this.userId}/count`] = activeCount;
+        updates[`tabCounts/${this.userId}/lastUpdated`] = now;
+
+        if (Object.keys(updates).length > 0) {
+          await update(ref(rtdb), updates);
+        }
+
+        // Clean up any rooms that no longer have active sessions for this user
+        const roomsToCleanup = staleRooms.filter(({ roomId }) => {
+          if (!roomId) return false;
+          return !activeRooms.has(roomId);
+        });
+
+        if (roomsToCleanup.length > 0) {
+          await this.cleanupRoomMembershipIfNoTabs(roomsToCleanup);
+        }
+      } else {
+        await remove(ref(rtdb, `tabCounts/${this.userId}`)).catch(() => {
+          // Node might already be gone; ignore
+        });
+        await this.cleanupRoomMembershipIfNoTabs(staleRooms);
+      }
+    } catch (error) {
+      log('error', 'Failed to refresh tab count', {
+        error,
+        userId: this.userId,
+        sessionId: this.sessionId
+      });
+    }
+  }
+
+  private async cleanupRoomMembershipIfNoTabs(roomInfos: Array<{ roomId?: string; roomType?: RoomType }>): Promise<void> {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const uniqueRooms = new Map<string, RoomType>();
+    roomInfos.forEach(({ roomId, roomType }) => {
+      if (!roomId) return;
+      if (!uniqueRooms.has(roomId)) {
+        uniqueRooms.set(roomId, roomType ?? 'unknown');
+      }
+    });
+
+    const removals: Promise<void>[] = [];
+    uniqueRooms.forEach((roomType, roomId) => {
+      removals.push((async () => {
+        const stillActive = await this.hasActiveTabSessions(roomId);
+        if (stillActive) {
+          return;
+        }
+
+        if (roomType === 'public') {
+          await removeUserFromPublicRoom(roomId, this.userId).catch((error) => {
+            log('error', 'Failed to remove user from public room on tab cleanup', {
+              error,
+              roomId,
+              userId: this.userId
+            });
+          });
+        } else if (roomType === 'private') {
+          await removeUserFromPrivateRoom(roomId, this.userId).catch((error) => {
+            log('error', 'Failed to remove user from private room on tab cleanup', {
+              error,
+              roomId,
+              userId: this.userId
+            });
+          });
+        }
+
+        await remove(ref(rtdb, `RoomIndex/${roomId}/${this.userId}`)).catch((error) => {
+          log('error', 'Failed to remove user from RoomIndex on tab cleanup', {
+            error,
+            roomId,
+            userId: this.userId
+          });
+        });
+      })());
+    });
+
+    if (removals.length > 0) {
+      await Promise.all(removals);
+    }
+  }
+
+  private async hasActiveTabSessions(roomIdFilter?: string): Promise<boolean> {
+    const sessionsRef = ref(rtdb, `tabCounts/${this.userId}/sessions`);
+    const snapshot = await get(sessionsRef);
+    if (!snapshot.exists()) {
+      return false;
+    }
+
+    const now = Date.now();
+    const threshold = now - TAB_COUNT_OFFLINE_THRESHOLD;
+    const sessions = snapshot.val() as Record<string, { lastSeen?: number; roomId?: string | null }>;
+
+    for (const [sessionId, sessionData] of Object.entries(sessions)) {
+      if (sessionId === this.sessionId) {
+        continue;
+      }
+      if (roomIdFilter && sessionData?.roomId !== roomIdFilter) {
+        continue;
+      }
+      const lastSeen = typeof sessionData?.lastSeen === 'number' ? sessionData.lastSeen : 0;
+      if (lastSeen > threshold) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+  
   private async recoverPresence(): Promise<void> {
     log('info', `🔄 Attempting presence recovery`, { sessionId: this.sessionId });
     
@@ -546,8 +791,10 @@ export class PresenceService {
         await this.roomIndexDisconnectRef.cancel();
       }
       this.roomIndexDisconnectRef = onDisconnect(this.roomIndexRef);
-      await this.roomIndexDisconnectRef.remove();
-      
+      await this.roomIndexDisconnectRef.update({
+        lastUpdated: serverTimestamp()
+      });
+
       // Force update presence with current state
       await update(this.sessionRef, {
         roomId: this.roomId,
@@ -565,6 +812,16 @@ export class PresenceService {
         isActive: this.lastActiveState || false,
         lastUpdated: serverTimestamp()
       });
+
+      await update(this.tabSessionRef, {
+        userId: this.userId,
+        sessionId: this.sessionId,
+        roomId: this.roomId,
+        roomType: this.roomType,
+        lastSeen: Date.now()
+      });
+
+      await this.refreshTabCount(Date.now());
       
       // Reset failure count
       this.heartbeatFailures = 0;
@@ -610,7 +867,7 @@ export class PresenceService {
       if (this.isInitialized) {
         // These are fire-and-forget, best effort during unload
         remove(this.sessionRef);
-        remove(this.roomIndexRef);
+        remove(this.tabSessionRef);
       }
     };
     
@@ -978,7 +1235,7 @@ export class PresenceService {
     // Update user presence
     
     try {
-      const updates: Record<string, boolean | object | string | null> = {};
+      const updates: Record<string, FirebaseUpdateValue> = {};
       
       // If becoming active, we need to deactivate all other rooms first
       if (isActive) {

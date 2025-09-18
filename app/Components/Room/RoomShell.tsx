@@ -16,13 +16,13 @@ import {
   onValue,
   off,
   remove,
-  runTransaction,
   get,
   set,
   query,
   orderByChild,
   limitToLast,
 } from "firebase/database";
+import type { DataSnapshot } from "firebase/database";
 import ActiveWorkers from "./ActiveWorkers";
 import TaskInput from "./TaskInput";
 import Timer from "./Timer";
@@ -44,12 +44,12 @@ import TaskNotes from "./TaskNotes";
 import Preferences from "./Preferences";
 import InvitePopup from "./InvitePopup";
 import MobileMenu from "./MobileMenu";
-import { getPublicRoomByUrl, addUserToPublicRoom, removeUserFromPublicRoom } from "@/app/utils/publicRooms";
+import { getPublicRoomByUrl, addUserToPublicRoom } from "@/app/utils/publicRooms";
 import { PresenceService } from "@/app/utils/presenceService";
 import { DotSpinner } from "ldrs/react";
 import "ldrs/react/DotSpinner.css";
 import { startCleanupScheduler } from "@/app/utils/cleanupScheduler";
-import { getPrivateRoomByUrl, addUserToPrivateRoom, removeUserFromPrivateRoom } from "@/app/utils/privateRooms";
+import { getPrivateRoomByUrl, addUserToPrivateRoom } from "@/app/utils/privateRooms";
 import { useClearButton } from "@/app/hooks/ClearButton";
 import { useQuitButton } from "@/app/hooks/QuitButton";
 import {
@@ -545,7 +545,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
-      console.log("[RoomShell] checkRoom start", { roomUrl, userId: user?.id, instance: currentInstance });
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
@@ -556,14 +555,9 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
 
           // Initialize presence if not already done
           if (!roomPresence) {
-            console.log("[RoomShell] Initializing presence for user:", {
-              userId: user.id,
-              roomId: currentInstance.id,
-              reduxUserId: reduxUser.user_id,
-              reduxAuthId: reduxUser.auth_id,
-              isGuest: reduxUser.isGuest,
+            const presence = new PresenceService(user.id, currentInstance.id, {
+              roomType: currentInstance.type,
             });
-            const presence = new PresenceService(user.id, currentInstance.id);
             const initialized = await presence.initialize();
             if (initialized) {
               setRoomPresence(presence);
@@ -583,11 +577,12 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const publicRoom = await getPublicRoomByUrl(roomUrl);
         if (publicRoom) {
-          console.log("[RoomShell] Found public room by URL", { id: publicRoom.id });
           // Only join if we're not already in this room
           if (!publicRoomId || publicRoomId !== publicRoom.id) {
             // Create presence manager
-            const presence = new PresenceService(user.id, publicRoom.id);
+            const presence = new PresenceService(user.id, publicRoom.id, {
+              roomType: "public",
+            });
             const initialized = await presence.initialize();
 
             if (!initialized) {
@@ -624,7 +619,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
-          console.log("[RoomShell] Public room setup complete, loading=false");
           return;
         }
       } catch {
@@ -635,7 +629,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
       try {
         const privateRoom = await getPrivateRoomByUrl(roomUrl);
         if (privateRoom) {
-          console.log("[RoomShell] Found private room by URL", { id: privateRoom.id });
           // Only join if we're not already in this room
           if (!privateRoomId || privateRoomId !== privateRoom.id) {
             try {
@@ -660,7 +653,9 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
               }
 
               // Create presence manager for private rooms
-              const presence = new PresenceService(user.id, privateRoom.id);
+              const presence = new PresenceService(user.id, privateRoom.id, {
+                roomType: "private",
+              });
               const initialized = await presence.initialize();
 
               if (initialized) {
@@ -697,7 +692,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance in the context
           setPublicRoomInstance(tempInstance);
           setLoading(false);
-          console.log("[RoomShell] Private room setup complete, loading=false");
           return;
         }
       } catch {
@@ -710,12 +704,13 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
         const roomResult = await roomResponse.json();
 
         if (roomResult.success && roomResult.room) {
-          console.log("[RoomShell] Found permanent room via API", { id: roomResult.room.id });
           // Found a permanent public room
           setRoomFound(true);
 
           // Initialize presence for permanent public rooms
-          const presence = new PresenceService(user.id, roomResult.room.id);
+          const presence = new PresenceService(user.id, roomResult.room.id, {
+            roomType: "public",
+          });
           const initialized = await presence.initialize();
 
           if (initialized) {
@@ -734,7 +729,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Set this as the current instance
           setPublicRoomInstance(tempInstance);
           setLoading(false);
-          console.log("[RoomShell] Permanent room setup complete, loading=false");
           return;
         }
       } catch (error) {
@@ -763,108 +757,56 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     }
   }, [roomUrl, currentInstance, userReady, reduxUser.user_id, reduxUser.auth_id, reduxUser.isGuest, publicRoomId, privateRoomId, setPublicRoomInstance, user, roomPresence]);
 
-  // Track user tab count to handle multi-tab scenarios
-  const userTabCountRef = React.useRef(0);
-
-  // Clean up on unmount or room change - only if this is the last tab
   useEffect(() => {
-    if (!currentInstance || !user) return;
+    if (!roomPresence || !user?.id) return;
 
-    // Path to user's tab count
-    const tabCountRef = ref(rtdb, `tabCounts/${user.id}`);
+    const sessionId = roomPresence.getSessionId();
+    if (!sessionId) return;
 
-    // Increment tab count when this tab opens/joins room
-    runTransaction(tabCountRef, (currentData) => {
-      const currentCount = currentData?.count || 0;
-      const newCount = currentCount + 1;
-      return {
-        count: newCount,
-        displayName: user.displayName,
-        lastUpdated: Date.now(),
-      };
-    });
-
-    // Listen to tab count changes
-    const handle = onValue(tabCountRef, (snapshot) => {
+    const sessionRef = ref(rtdb, `Presence/${user.id}/sessions/${sessionId}`);
+    const sessionHandler = (snapshot: DataSnapshot) => {
       const data = snapshot.val();
-      const tabCount = data?.count || 0;
-      userTabCountRef.current = tabCount;
-
-      // NOTE: Removed onDisconnect handlers - they conflict with our tab counting system
-      // We rely entirely on manual tab counting via beforeunload and useEffect cleanup
-    });
-
-    // Add beforeunload listener to track page navigation/refresh
-    const handleBeforeUnload = async () => {
-      // Decrement tab count immediately on beforeunload for reliability
-      runTransaction(tabCountRef, (currentData) => {
-        const currentCount = currentData?.count || 0;
-        const newCount = Math.max(0, currentCount - 1);
-
-        if (newCount === 0) {
-          // Remove the tab count entry if this was the last tab
-
-          // Also remove from PublicRooms if this is a public room
-          if (currentInstance.type === "public" && publicRoomId) {
-            removeUserFromPublicRoom(publicRoomId, user.id);
-          }
-
-          // Also remove from PrivateRooms if this is a private room
-          // The removeUserFromPrivateRoom function will handle it gracefully if user wasn't in the room
-          // (superadmin viewing without membership won't be in the room, so removal will be a no-op)
-          if (currentInstance.type === "private" && privateRoomId) {
-            removeUserFromPrivateRoom(privateRoomId, user.id);
-          }
-
-          return null; // Remove the entire node
-        } else {
-          // Just decrement the count - user still has other tabs open
-          return {
-            count: newCount,
-            displayName: user.displayName,
-            lastUpdated: Date.now(),
-          };
-        }
+      console.log('[PresenceDebug] Session status', {
+        sessionId,
+        isActive: !!data?.isActive,
+        exists: snapshot.exists(),
       });
-
-      // PublicRoom cleanup is now handled by presence system
     };
+    onValue(sessionRef, sessionHandler);
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    const roomId = currentInstance?.id;
+    let roomIndexRef: ReturnType<typeof ref> | null = null;
+    let roomIndexHandler: ((snapshot: DataSnapshot) => void) | null = null;
+    if (roomId) {
+      roomIndexRef = ref(rtdb, `RoomIndex/${roomId}/${user.id}`);
+      roomIndexHandler = (snapshot: DataSnapshot) => {
+        console.log('[PresenceDebug] RoomIndex entry', {
+          roomId,
+          userId: user.id,
+          exists: snapshot.exists(),
+          isActive: !!snapshot.val()?.isActive,
+        });
+      };
+      onValue(roomIndexRef, roomIndexHandler);
+    }
+
+    const tabCountRef = ref(rtdb, `tabCounts/${user.id}`);
+    const tabCountHandler = (snapshot: DataSnapshot) => {
+      console.log('[PresenceDebug] Tab count state', {
+        userId: user.id,
+        count: snapshot.val()?.count ?? 0,
+      });
+    };
+    onValue(tabCountRef, tabCountHandler);
 
     return () => {
-      // Remove event listener
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-
-      // Fallback cleanup when component unmounts - only decrement if tab count is still > 0
-      // This handles edge cases where beforeunload didn't fire
-      if (userTabCountRef.current > 0) {
-        runTransaction(tabCountRef, (currentData) => {
-          const currentCount = currentData?.count || 0;
-          const newCount = Math.max(0, currentCount - 1);
-
-          if (newCount === 0) {
-            // Also remove from PublicRooms if this is a public room
-            if (currentInstance.type === "public") {
-              removeUserFromPublicRoom(currentInstance.id, user.id);
-            }
-
-            return null;
-          } else {
-            return {
-              count: newCount,
-              displayName: user.displayName,
-              lastUpdated: Date.now(),
-            };
-          }
-        });
-
-        // PublicRoom cleanup is now handled by presence system
+      off(sessionRef, 'value', sessionHandler);
+      if (roomIndexRef && roomIndexHandler) {
+        off(roomIndexRef, 'value', roomIndexHandler);
       }
-
-      off(tabCountRef, "value", handle);
+      off(tabCountRef, 'value', tabCountHandler);
     };
-  }, [currentInstance, user, publicRoomId, privateRoomId]);
+  }, [roomPresence, user?.id, currentInstance?.id]);
 
   // Clean up room presence when leaving
   useEffect(() => {
@@ -1561,6 +1503,8 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     currentInstance?.type,
     localVolume,
     previousVolume,
+    setLocalVolume,
+    setPreviousVolume,
     closeAllModals,
     dispatch,
     reduxUser.user_id,
@@ -1568,11 +1512,6 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   // Remove the login wall - allow guest users to access rooms
   if (!userReady) {
-    if (typeof window !== "undefined") {
-      console.log("[RoomShell] userReady=false. Waiting for Firebase auth/anonymous sign-in", {
-        currentInstance,
-      });
-    }
     // Still loading, show a loading state
     return (
       <div className="min-h-screen flex items-center justify-center bg-elegant-dark text-white">

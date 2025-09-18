@@ -13,25 +13,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// Basic, non-sensitive init logging
-try {
-  // Avoid logging secrets; only log identifiers
-  console.log("[Firebase] App initialized", {
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain,
-  });
-} catch {}
 const auth = getAuth(app);
 
 // Ensure Firebase auth persists across page reloads
 if (typeof window !== 'undefined') {
-  setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-      console.log("[Firebase] Auth persistence set: browserLocalPersistence");
-    })
-    .catch((error) => {
-      console.error("[Firebase] Failed to set persistence:", error);
-    });
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error("[Firebase] Failed to set persistence:", error);
+  });
 }
 
 const db = getFirestore(app);

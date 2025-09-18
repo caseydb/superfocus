@@ -580,7 +580,7 @@ export default function Timer({
       driftHistoryRef.current = [];
       lastCorrectionRef.current = 0;
     }
-  }, [running, activeTaskId, user?.id, task, isQuittingRef, secondsRef]); // Removed 'seconds' to prevent effect re-running every second
+  }, [running, activeTaskId, user?.id, task, isQuittingRef, secondsRef, seconds, dispatch, reduxUser.isGuest]);
 
   // Monitor visibility changes and correct drift immediately when tab regains focus
   useEffect(() => {
@@ -710,7 +710,7 @@ export default function Timer({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [running, task, saveTimerState, user?.id, activeTaskId]); // Removed 'seconds' - use secondsRef instead
+  }, [running, task, saveTimerState, user?.id, activeTaskId, secondsRef]);
 
   async function startTimer() {
     // Only prevent starting if TaskBuffer is still being checked
