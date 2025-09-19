@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 // Note: For now, preferences are Redux-only (no persistence)
+import LocalPreferencesCache from "../utils/localPreferencesCache";
 
-interface PreferenceState {
+export interface PreferenceState {
   toggle_notes: boolean;
   toggle_counter: boolean;
   toggle_pomodoro: boolean;
@@ -26,6 +27,18 @@ interface PreferenceState {
 }
 
 // Load initial state from cache if available
+const mergeWithCache = (base: PreferenceState): PreferenceState => {
+  const cached = LocalPreferencesCache.getPreferences();
+  if (!cached || Object.keys(cached).length === 0) {
+    return base;
+  }
+
+  return {
+    ...base,
+    ...cached,
+  };
+};
+
 const getInitialState = (): PreferenceState => {
   const defaults: PreferenceState = {
     toggle_notes: false,
@@ -50,7 +63,7 @@ const getInitialState = (): PreferenceState => {
     hydrated: false,
   };
 
-  return defaults;
+  return mergeWithCache(defaults);
 };
 
 const initialState: PreferenceState = getInitialState();
@@ -60,8 +73,12 @@ export const fetchPreferences = createAsyncThunk("preferences/fetch", async (use
   // Check if user is guest
   const state = getState() as { user?: { isGuest?: boolean }; preferences: PreferenceState };
   if (state.user?.isGuest) {
-    // For guest users, return default preferences (already in Redux state)
-    return state.preferences;
+    // For guest users, merge Redux state with cached preferences
+    const merged = mergeWithCache(state.preferences);
+    return {
+      ...merged,
+      hydrated: true,
+    };
   }
 
   const response = await fetch(`/api/preferences?userId=${userId}`);
@@ -111,6 +128,16 @@ const preferenceSlice = createSlice({
   name: "preferences",
   initialState,
   reducers: {
+    hydrateFromCache: (state) => {
+      const cached = LocalPreferencesCache.getPreferences();
+      if (!cached || Object.keys(cached).length === 0) {
+        state.hydrated = true;
+        return;
+      }
+
+      Object.assign(state, cached);
+      state.hydrated = true;
+    },
     // Local state updates (optimistic updates)
     setPreference: <K extends keyof PreferenceState>(
       state: PreferenceState,
@@ -160,5 +187,5 @@ const preferenceSlice = createSlice({
   },
 });
 
-export const { setPreference, resetPreferences } = preferenceSlice.actions;
+export const { setPreference, resetPreferences, hydrateFromCache } = preferenceSlice.actions;
 export default preferenceSlice.reducer;

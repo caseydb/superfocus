@@ -10,7 +10,7 @@ import {
   upgradeToAuthenticatedUser
 } from "./store/userSlice";
 import { fetchTasks, checkForActiveTask, clearCache, loadFromCache } from "./store/taskSlice";
-import { fetchPreferences } from "./store/preferenceSlice";
+import { fetchPreferences, hydrateFromCache } from "./store/preferenceSlice";
 import { fetchHistory } from "./store/historySlice";
 import { fetchLeaderboard } from "./store/leaderboardSlice";
 import { fetchWorkspace } from "./store/workspaceSlice";
@@ -28,6 +28,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hasLoadedGuestTasks.current) {
       dispatch(loadFromCache());
+      dispatch(hydrateFromCache());
       hasLoadedGuestTasks.current = true;
     }
   }, [dispatch]);

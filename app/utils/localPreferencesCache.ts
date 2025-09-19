@@ -1,5 +1,5 @@
 // Local storage cache for guest users' preferences
-interface PreferencesCache {
+export interface PreferencesCache {
   toggle_notes?: boolean;
   toggle_counter?: boolean;
   toggle_pomodoro?: boolean;
