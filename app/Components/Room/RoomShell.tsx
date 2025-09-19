@@ -1663,7 +1663,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           <WelcomeBackMessage roomId={currentInstance.id} />
           <WelcomePopup isOpen={showWelcomePopup} onClose={() => setShowWelcomePopup(false)} />
           <Sounds roomId={currentInstance.id} localVolume={localVolume} currentUserId={user?.id} />
-          <ActiveWorkers roomId={currentInstance.id} />
+          <ActiveWorkers roomId={currentInstance.id} roomSlug={currentInstance.url} />
           {/* Main content: TaskInput or Timer/room UI - hidden when welcome message is showing */}
           <div className="flex flex-col items-center justify-center">
             {/* Only show TaskInput when in Timer mode */}

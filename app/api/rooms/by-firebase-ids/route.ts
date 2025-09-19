@@ -6,6 +6,7 @@ interface RoomMetadata {
   name: string;
   slug: string;
   description?: string;
+  firebaseId?: string;
 }
 
 const normalizeIdentifier = (value: string): string => value.trim().replace(/^\/+/, "").toLowerCase();
@@ -66,6 +67,7 @@ const resolveRoomMetadata = async (identifiers: string[]): Promise<Record<string
     name: room.name,
     slug: room.slug,
     description: room.description ?? undefined,
+    firebaseId: room.firebase_id ?? undefined,
   });
 
   for (const identifier of originalCandidates) {

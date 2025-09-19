@@ -18,7 +18,15 @@ interface PostgresUser {
   linkedin_url?: string | null;
 }
 
-export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: string; flyingUserIds?: string[] }) {
+export default function ActiveWorkers({
+  roomId,
+  roomSlug,
+  flyingUserIds = [],
+}: {
+  roomId: string;
+  roomSlug?: string;
+  flyingUserIds?: string[];
+}) {
   const currentUser = useSelector((state: RootState) => state.user);
   const leaderboardEntries = useSelector((state: RootState) => state.leaderboard.entries);
   const leaderboardTimeFilter = useSelector((state: RootState) => state.leaderboard.timeFilter);
@@ -374,56 +382,149 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     }
   }, [activeUsers, userInfoMap, postgresUsers, firebaseUserNames, guestAvatars, userProfileImages]);
 
+  const isGuestMode = currentUser?.isGuest ?? false;
+  const [slugFirebaseId, setSlugFirebaseId] = useState<string | null>(null);
+  const presenceRoomKey = React.useMemo(() => {
+    const normalizedSlug = roomSlug ? roomSlug.replace(/^\/+/, "").toLowerCase() : "";
+    if (isGuestMode) {
+      if (slugFirebaseId) return slugFirebaseId;
+      if (normalizedSlug) return normalizedSlug;
+    }
+    if (roomId) return roomId;
+    if (slugFirebaseId) return slugFirebaseId;
+    if (normalizedSlug) return normalizedSlug;
+    return "";
+  }, [roomId, roomSlug, isGuestMode, slugFirebaseId]);
+
+  useEffect(() => {
+    if (!isGuestMode) {
+      setSlugFirebaseId(null);
+      return;
+    }
+
+    const normalizedSlug = roomSlug ? roomSlug.replace(/^\/+/, "").toLowerCase() : "";
+    if (!normalizedSlug) {
+      setSlugFirebaseId(null);
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.append("firebaseId", normalizedSlug);
+    if (roomId) {
+      params.append("firebaseId", roomId);
+    }
+
+    let cancelled = false;
+
+    const fetchMetadata = async () => {
+      try {
+        console.log("[ActiveWorkers] Resolving firebaseId for slug", { normalizedSlug, roomId });
+        const response = await fetch(`/api/rooms/by-firebase-ids?${params.toString()}`);
+        if (!response.ok) {
+          console.warn("[ActiveWorkers] Failed to resolve firebaseId", { status: response.status });
+          return;
+        }
+        const data = await response.json();
+        const rooms: Record<string, { firebaseId?: string }> = data.rooms || {};
+        const normalizedRoomId = roomId ? roomId.replace(/^\/+/, "").toLowerCase() : "";
+        const candidates = [normalizedSlug, normalizedRoomId].filter(Boolean);
+        for (const candidate of candidates) {
+          const match = rooms[candidate];
+          if (match?.firebaseId) {
+            if (!cancelled) {
+              console.log("[ActiveWorkers] Resolved firebaseId", { candidate, firebaseId: match.firebaseId });
+              setSlugFirebaseId(match.firebaseId);
+            }
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("[ActiveWorkers] Error resolving firebaseId", error);
+      }
+    };
+
+    fetchMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isGuestMode, roomSlug, roomId]);
+
   // Listen to room presence using new PresenceService
   useEffect(() => {
-    if (!roomId) return;
+    if (!presenceRoomKey) return;
 
-    const unsubscribe = PresenceService.listenToRoomPresence(roomId, (sessions) => {
+    previousStateRef.current = "";
+
+    console.log("[ActiveWorkers] Setting up listener", {
+      presenceRoomKey,
+      roomId,
+      roomSlug,
+      isGuestMode,
+      slugFirebaseId,
+    });
+
+    const unsubscribe = PresenceService.listenToRoomPresence(presenceRoomKey, (sessions) => {
       // Process updates immediately - PresenceService already filters out non-meaningful changes
-      
-      // Separate active and idle users
+
+      console.log("[ActiveWorkers] Presence update", {
+        presenceRoomKey,
+        sessionCount: sessions.length,
+        sessionSample: sessions.slice(0, 5),
+      });
+
       const active: { id: string; displayName: string }[] = [];
       const idle: { id: string; displayName: string }[] = [];
-      
-      // Group sessions by user (handle multiple tabs)
+
       const userMap = new Map<string, boolean>();
-      
-      sessions.forEach(session => {
+
+      sessions.forEach((session) => {
         const currentStatus = userMap.get(session.userId);
-        // User is active if ANY of their sessions are active
         userMap.set(session.userId, currentStatus || session.isActive);
       });
-      
-      // Convert to arrays
+
       userMap.forEach((isActive, userId) => {
         const userObj = {
           id: userId,
-          displayName: "Guest User" // Will be replaced by Firebase user data
+          displayName: "Guest User",
         };
-        
+
         if (isActive) {
           active.push(userObj);
         } else {
           idle.push(userObj);
         }
       });
-      
-      setActiveUsers(active);
-      
-      // Only log when there's an actual change in user count or active status
-      const activeIds = active.map(u => u.id).sort().join(',');
-      const idleIds = idle.map(u => u.id).sort().join(',');
+
+      const activeIds = active.map((u) => u.id).sort().join(",");
+      const idleIds = idle.map((u) => u.id).sort().join(",");
       const currentState = `active:${activeIds}|idle:${idleIds}`;
-      
+
       if (currentState !== previousStateRef.current) {
         previousStateRef.current = currentState;
+        setActiveUsers(active);
+
+        if (isGuestMode) {
+          const roomLabel = roomSlug || presenceRoomKey;
+          if (active.length > 0) {
+            console.log(`Guest view active workers for ${roomLabel}:`, active);
+          } else {
+            console.log(`Guest view active workers for ${roomLabel}: none active`);
+          }
+        }
       }
     });
-    
+
     return () => {
-      unsubscribe();
+      try {
+        unsubscribe();
+      } catch {
+        // ignore cleanup errors
+      }
+
+      console.log("[ActiveWorkers] Listener removed", { presenceRoomKey });
     };
-  }, [roomId]);
+  }, [presenceRoomKey, roomId, roomSlug, isGuestMode, slugFirebaseId]);
 
 
 
@@ -435,13 +536,21 @@ export default function ActiveWorkers({ roomId, flyingUserIds = [] }: { roomId: 
     return rankA - rankB;
   });
 
+  const instanceUserId = instanceUser?.id;
+  const visibleUsers = React.useMemo(() => {
+    if (!isGuestMode || !instanceUserId) {
+      return sortedUsers;
+    }
+    return sortedUsers.filter((user) => user.id !== instanceUserId);
+  }, [sortedUsers, isGuestMode, instanceUserId]);
+
   // Log render details with component ID - removed to reduce console noise
 
-  if (activeUsers.length === 0) return null;
+  if (visibleUsers.length === 0) return null;
 
   return (
     <div className="fixed top-4 left-8 z-40 text-base font-mono opacity-70 select-none sf-active-workers">
-      {sortedUsers.map((u, index) => (
+      {visibleUsers.map((u, index) => (
           <div
             key={u.id}
             className={`relative text-gray-400 transition-opacity duration-300 flex items-center ${
