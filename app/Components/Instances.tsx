@@ -113,7 +113,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Create a new instance and join it
   const createInstance = useCallback(
     async (type: InstanceType, customUrl?: string) => {
-      if (!userReady) {
+      if (!userReady || reduxUser.isGuest) {
         return;
       }
       
@@ -153,7 +153,7 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
     },
-    [user, userReady]
+    [user, userReady, reduxUser.isGuest]
   );
 
   // Set a PublicRoom as the current instance (for new PublicRooms system)

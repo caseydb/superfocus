@@ -56,7 +56,7 @@ interface Room {
   name: string;
   url: string;
   type: "public" | "private";
-  members: RoomMember[];
+  members?: RoomMember[];
   activeCount: number;
   weeklyStats: {
     totalTime: string;
@@ -914,6 +914,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Listen to Firebase Presence to get active user counts and user data for each room
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     // Create listeners for both Presence and Users
     const presenceRef = ref(rtdb, "Presence");
     const usersRef = ref(rtdb, "Users");
@@ -1206,8 +1210,152 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     };
   }, [persistedRooms, ephemeralRooms, isAuthenticated]);
 
+  // Guest presence polling through API proxy
+  useEffect(() => {
+    if (isAuthenticated) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeout: NodeJS.Timeout | null = null;
+
+    const resolvePresenceKey = (room: Room): string | null => {
+      if (room.firebaseId && room.firebaseId.trim() !== "") {
+        return room.firebaseId;
+      }
+      const legacyFirebaseId = (room as { firebase_id?: string | null }).firebase_id;
+      if (legacyFirebaseId && legacyFirebaseId.trim() !== "") {
+        return legacyFirebaseId;
+      }
+      if (room.url) {
+        const normalizedUrl = room.url.replace(/^\/+/, "").trim();
+        if (normalizedUrl) {
+          return normalizedUrl.toLowerCase();
+        }
+      }
+      if (room.id) {
+        return room.id;
+      }
+      return null;
+    };
+
+    const gatherRooms = () => {
+      const combined: Room[] = [...persistedRooms, ...presenceDerivedRooms];
+      const seen = new Map<string, { presenceKey: string; storeKey: string }>();
+
+      combined.forEach((room) => {
+        if (!room) return;
+        const storeKey = room.id || room.firebaseId || room.url || "";
+        if (!storeKey) return;
+        const presenceKey = resolvePresenceKey(room);
+        if (!presenceKey) return;
+        if (!seen.has(storeKey)) {
+          seen.set(storeKey, { presenceKey, storeKey });
+        }
+      });
+
+      return Array.from(seen.values());
+    };
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timeout = setTimeout(fetchPresence, 5000);
+    };
+
+    const fetchPresence = async () => {
+      const roomsToQuery = gatherRooms();
+
+      if (roomsToQuery.length === 0) {
+        if (!cancelled) {
+          setRoomActiveCounts({});
+          setRoomUsers({});
+          setGlobalActiveUsers(0);
+        }
+        scheduleNext();
+        return;
+      }
+
+      const responses = await Promise.all(
+        roomsToQuery.map(async ({ presenceKey }) => {
+          try {
+            const response = await fetch(`/api/rooms/${encodeURIComponent(presenceKey)}/presence`);
+            if (!response.ok) {
+              return null;
+            }
+            return await response.json();
+          } catch (error) {
+            console.error("[WorkSpace] Failed to fetch guest presence", { presenceKey, error });
+            return null;
+          }
+        })
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const nextActiveCounts: Record<string, number> = {};
+      const nextRoomUsers: Record<
+        string,
+        Array<{ userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean }>
+      > = {};
+      const uniqueUsers = new Set<string>();
+
+      responses.forEach((payload, index) => {
+        if (!payload) return;
+        const { storeKey } = roomsToQuery[index];
+        const users = Array.isArray(payload.users) ? payload.users : [];
+
+        nextActiveCounts[storeKey] = payload.summary?.active ?? users.filter((user: { isActive?: boolean }) => user.isActive).length;
+
+        nextRoomUsers[storeKey] = users.map(
+          (user: {
+            id: string;
+            firstName?: string | null;
+            lastName?: string | null;
+            profileImage?: string | null;
+            firebasePicture?: string | null;
+            isActive?: boolean;
+          }) => ({
+            userId: user.id,
+            firstName: user.firstName ?? undefined,
+            lastName: user.lastName ?? undefined,
+            picture: user.profileImage ?? user.firebasePicture ?? null,
+            isActive: Boolean(user.isActive),
+          })
+        );
+
+        users.forEach((user: { id?: string }) => {
+          if (user?.id) {
+            uniqueUsers.add(user.id);
+          }
+        });
+      });
+
+      setRoomActiveCounts(nextActiveCounts);
+      setRoomUsers(nextRoomUsers);
+      setGlobalActiveUsers(uniqueUsers.size);
+
+      scheduleNext();
+    };
+
+    fetchPresence();
+
+    return () => {
+      cancelled = true;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isAuthenticated, persistedRooms, presenceDerivedRooms]);
+
   // Listen to Firebase EphemeralRooms for temporary rooms
   useEffect(() => {
+    if (!isAuthenticated) {
+      setEphemeralRooms([]);
+      return;
+    }
+
     const ephemeralRoomsRef = ref(rtdb, "EphemeralRooms");
 
     const handleRoomsUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
@@ -1272,7 +1420,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     return () => {
       off(ephemeralRoomsRef, "value", handleRoomsUpdate);
     };
-  }, [persistedRooms]);
+  }, [persistedRooms, isAuthenticated]);
 
   // Get pathname using Next.js hook
   const pathname = usePathname();
@@ -1399,6 +1547,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Listen to real-time online user count and public room count
   useEffect(() => {
+    if (!isAuthenticated) {
+      setGlobalActiveUsers(0);
+      return;
+    }
+
     // Initial fetch for online users
     const fetchOnlineUsers = async () => {
       try {
@@ -1460,7 +1613,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       off(publicRoomsRef, "value", publicRoomHandler);
       off(privateRoomsRef, "value", privateRoomHandler);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const handleJoinRoom = (roomUrl: string) => {
     const normalized = roomUrl.startsWith("/") ? roomUrl.slice(1) : roomUrl;
@@ -3072,7 +3225,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
               <div>
                 <h3 className="text-xl font-bold text-[#FFAA00]">Manage Members</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {showMembersModal.members.length} members • {showMembersModal.maxMembers || 50} max
+                  {(showMembersModal.members?.length ?? 0)} members • {showMembersModal.maxMembers || 50} max
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -3130,7 +3283,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
             {/* Members List */}
             <div className="space-y-2 mb-6">
-              {showMembersModal.members
+              {(showMembersModal.members ?? [])
                 .filter((member) => member.name.toLowerCase().includes(memberSearchQuery.toLowerCase()))
                 .map((member) => (
                   <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800/50 sf-card rounded-lg">

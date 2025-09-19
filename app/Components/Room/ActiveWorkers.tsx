@@ -41,6 +41,7 @@ export default function ActiveWorkers({
   const [globalDotOpacity, setGlobalDotOpacity] = useState(1);
   const [syncedUsers, setSyncedUsers] = useState<Set<string>>(new Set());
   const [guestAvatars, setGuestAvatars] = useState<Record<string, string>>({});
+  const isGuestMode = currentUser?.isGuest ?? false;
   
   // Subscribe to the global singleton pulse ticker
   useEffect(() => {
@@ -143,6 +144,11 @@ export default function ActiveWorkers({
     }
   };
 
+  const resolveDisplayName = (firstName?: string | null, lastName?: string | null) => {
+    const combined = `${firstName ?? ""} ${lastName ?? ""}`.trim();
+    return combined.length > 0 ? combined : "Guest User";
+  };
+
   // Get ordinal suffix for rank - commented out for now
   // const getOrdinalSuffix = (rank: number): string => {
   //   const j = rank % 10;
@@ -203,6 +209,7 @@ export default function ActiveWorkers({
 
   // Listen to GlobalEffects events and refresh weekly leaderboard on task completion
   useEffect(() => {
+    if (isGuestMode) return;
     if (!roomId) return;
 
     // Only observe recent events
@@ -248,7 +255,7 @@ export default function ActiveWorkers({
       off(eventsQuery, 'value', handle);
       if (debounceTimer) clearTimeout(debounceTimer);
     };
-  }, [roomId, fetchWeeklyData]);
+  }, [roomId, fetchWeeklyData, isGuestMode]);
 
   // The leaderboard will now automatically update when tasks are completed
   // via the Redux store updates from CompleteButton.ts
@@ -261,6 +268,7 @@ export default function ActiveWorkers({
 
   // Fetch PostgreSQL users for profile images when active users change
   useEffect(() => {
+    if (isGuestMode) return;
     if (activeUsers.length === 0) return;
     
     const fetchPostgresUsers = async () => {
@@ -301,10 +309,11 @@ export default function ActiveWorkers({
     
     fetchPostgresUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUserIdsKey, userProfileImages]);
+  }, [activeUserIdsKey, userProfileImages, isGuestMode]);
 
   // Fetch user names from Firebase Users instead of API
   useEffect(() => {
+    if (isGuestMode) return;
     if (activeUsers.length === 0) return;
     
     const fetchFirebaseUsers = async () => {
@@ -343,7 +352,7 @@ export default function ActiveWorkers({
     
     fetchFirebaseUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUserIdsKey, userInfoMap]);
+  }, [activeUserIdsKey, userInfoMap, isGuestMode]);
 
   // Track previous state to avoid logging on every heartbeat
   const previousStateRef = React.useRef<string>('');
@@ -382,7 +391,6 @@ export default function ActiveWorkers({
     }
   }, [activeUsers, userInfoMap, postgresUsers, firebaseUserNames, guestAvatars, userProfileImages]);
 
-  const isGuestMode = currentUser?.isGuest ?? false;
   const [slugFirebaseId, setSlugFirebaseId] = useState<string | null>(null);
   const presenceRoomKey = React.useMemo(() => {
     const normalizedSlug = roomSlug ? roomSlug.replace(/^\/+/, "").toLowerCase() : "";
@@ -452,6 +460,9 @@ export default function ActiveWorkers({
 
   // Listen to room presence using new PresenceService
   useEffect(() => {
+    if (isGuestMode) {
+      return;
+    }
     if (!presenceRoomKey) return;
 
     previousStateRef.current = "";
@@ -525,6 +536,118 @@ export default function ActiveWorkers({
       console.log("[ActiveWorkers] Listener removed", { presenceRoomKey });
     };
   }, [presenceRoomKey, roomId, roomSlug, isGuestMode, slugFirebaseId]);
+
+  useEffect(() => {
+    if (!isGuestMode) {
+      return;
+    }
+    if (!presenceRoomKey) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeout: NodeJS.Timeout | null = null;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timeout = setTimeout(fetchPresence, 5000);
+    };
+
+    const fetchPresence = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${encodeURIComponent(presenceRoomKey)}/presence`);
+        if (!response.ok) {
+          console.warn("[ActiveWorkers] Failed to load guest presence", {
+            presenceRoomKey,
+            status: response.status,
+          });
+          return;
+        }
+
+        const payload: {
+          users: Array<{
+            id: string;
+            isActive: boolean;
+            firstName?: string | null;
+            lastName?: string | null;
+            firebasePicture?: string | null;
+            profileImage?: string | null;
+            linkedinUrl?: string | null;
+          }>;
+        } = await response.json();
+
+        if (cancelled || !payload?.users) {
+          return;
+        }
+
+        const activeUsersFromPayload = payload.users
+          .filter((user) => user.isActive)
+          .map((user) => ({
+            id: user.id,
+            displayName: resolveDisplayName(user.firstName, user.lastName),
+          }));
+
+        const idleUsersFromPayload = payload.users
+          .filter((user) => !user.isActive)
+          .map((user) => user.id);
+
+        const stateSignature = `active:${activeUsersFromPayload
+          .map((user) => user.id)
+          .sort()
+          .join(",")}|idle:${idleUsersFromPayload.sort().join(",")}`;
+
+        if (stateSignature !== previousStateRef.current) {
+          previousStateRef.current = stateSignature;
+          setActiveUsers(activeUsersFromPayload);
+        }
+
+        const firebaseUpdates: Record<string, { firstName: string; lastName: string | null; picture?: string | null }> = {};
+        const postgresUpdates: Record<string, PostgresUser> = {};
+
+        payload.users.forEach((user) => {
+          const firstName = user.firstName ?? "";
+          const lastName = user.lastName ?? null;
+
+          firebaseUpdates[user.id] = {
+            firstName,
+            lastName,
+            picture: user.firebasePicture ?? null,
+          };
+
+          if (user.profileImage || user.linkedinUrl) {
+            postgresUpdates[user.id] = {
+              auth_id: user.id,
+              firstName,
+              lastName: lastName ?? "",
+              profile_image: user.profileImage ?? null,
+              linkedin_url: user.linkedinUrl ?? null,
+            };
+          }
+        });
+
+        if (Object.keys(firebaseUpdates).length > 0) {
+          setFirebaseUserNames((prev) => ({ ...prev, ...firebaseUpdates }));
+        }
+
+        if (Object.keys(postgresUpdates).length > 0) {
+          setPostgresUsers((prev) => ({ ...prev, ...postgresUpdates }));
+        }
+      } catch (error) {
+        console.error("[ActiveWorkers] Guest presence fetch error", { presenceRoomKey, error });
+      } finally {
+        scheduleNext();
+      }
+    };
+
+    fetchPresence();
+
+    return () => {
+      cancelled = true;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isGuestMode, presenceRoomKey]);
 
 
 
