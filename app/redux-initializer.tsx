@@ -7,7 +7,7 @@ import {
   fetchUserData, 
   updateUser, 
   updateUserData, 
-  upgradeToAuthenticatedUser 
+  upgradeToAuthenticatedUser
 } from "./store/userSlice";
 import { fetchTasks, checkForActiveTask, clearCache } from "./store/taskSlice";
 import { fetchPreferences } from "./store/preferenceSlice";
@@ -27,6 +27,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
+      console.info('[ReduxInitializer] Redux initializer mounted');
     }
 
     // Check auth state and load authenticated data if available
@@ -40,10 +41,11 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
           }
         }
         hasAttemptedFetch.current = false;
+        console.info('[ReduxInitializer] Awaiting authenticated Firebase user...');
         return;
       }
-      
-      if (firebaseUser && !hasAttemptedFetch.current) {
+
+      if (!hasAttemptedFetch.current) {
         dispatch(clearCache());
         
         hasAttemptedFetch.current = true;
@@ -83,6 +85,7 @@ export function ReduxInitializer({ children }: { children: React.ReactNode }) {
 
         // Try to fetch user data
         try {
+          console.info('[ReduxInitializer] Fetching user data for Firebase user', { uid: firebaseUser.uid });
           const userData = await dispatch(fetchUserData()).unwrap();
           
           // If user data is fetched successfully, we're fully authenticated

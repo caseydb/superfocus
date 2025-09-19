@@ -33,6 +33,8 @@ interface WorkSpaceProps {
   onClose: () => void;
 }
 
+const VISITOR_ROOM_SLUG = "gsd";
+
 type TabType = "experiment" | "team";
 
 interface RoomMember {
@@ -568,6 +570,8 @@ const deriveTeamsFromRooms = (rooms: Room[], userId: string) => {
   return teams;
 };
 
+type DerivedTeams = ReturnType<typeof deriveTeamsFromRooms>;
+
 const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
@@ -576,21 +580,83 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const { rooms: reduxRooms } = useSelector((state: RootState) => state.workspace);
   const user = useSelector((state: RootState) => state.user);
   const { user: firebaseUser } = useInstance();
+  const isAuthenticated = Boolean(user?.user_id);
+  const [guestRooms, setGuestRooms] = useState<Room[]>([]);
+  const persistedRooms = useMemo(
+    () => (isAuthenticated ? reduxRooms : guestRooms),
+    [isAuthenticated, reduxRooms, guestRooms]
+  );
 
-  // Force refresh workspace data when component mounts to ensure we have latest data
+  // Force refresh workspace data when component mounts for authenticated users
   React.useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     dispatch(fetchWorkspace());
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
+
+  // Fetch public rooms directly for guest users so the workspace modal reflects real data
+  useEffect(() => {
+    if (isAuthenticated) {
+      setGuestRooms([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchPublicRooms = async () => {
+      try {
+        const response = await fetch("/api/public-rooms");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch public rooms: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (cancelled) {
+          return;
+        }
+
+        type ApiRoom = Omit<Room, "members" | "weeklyStats"> & {
+          members?: RoomMember[];
+          weeklyStats?: Room["weeklyStats"];
+        };
+
+        const apiRooms = Array.isArray(data?.rooms) ? (data.rooms as ApiRoom[]) : [];
+        const normalizedRooms: Room[] = apiRooms.map((room) => ({
+          ...room,
+          members: room.members ?? [],
+          weeklyStats: room.weeklyStats ?? { totalTime: "0m", totalTasks: 0 },
+        }));
+
+        setGuestRooms(normalizedRooms);
+      } catch (error) {
+        console.error("Failed to fetch public rooms for guest workspace:", error);
+        if (!cancelled) {
+          setGuestRooms([]);
+        }
+      }
+    };
+
+    fetchPublicRooms();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   const [activeTab, setActiveTab] = useState<TabType>("experiment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
 
   // Derive teams from actual rooms
-  const derivedTeams = React.useMemo(() => {
-    const allRooms = [...reduxRooms.map((r) => ({ ...r, members: r.members || [] }))];
+  const derivedTeams = React.useMemo<DerivedTeams>(() => {
+    if (!isAuthenticated) {
+      return {};
+    }
+
+    const allRooms = [...persistedRooms.map((r) => ({ ...r, members: r.members || [] }))];
     return deriveTeamsFromRooms(allRooms, user.user_id || "");
-  }, [reduxRooms, user.user_id]);
+  }, [persistedRooms, user.user_id, isAuthenticated]);
   const teamIds = Object.keys(derivedTeams);
   // Default to "create" if user has no teams (but not for guests - they'll get the login prompt)
   const [selectedTeam, setSelectedTeam] = useState(teamIds.length > 0 ? teamIds[0] : "create");
@@ -617,6 +683,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const [myRoomsOrder, setMyRoomsOrder] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [presenceDerivedRooms, setPresenceDerivedRooms] = useState<Room[]>([]);
 
   // Store active counts for each room
   const [roomActiveCounts, setRoomActiveCounts] = useState<Record<string, number>>({});
@@ -819,7 +886,11 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Update myRoomsOrder when rooms change
   useEffect(() => {
-    const allRooms = [...reduxRooms.map((r) => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
+    const allRooms = [
+      ...persistedRooms.map((r) => ({ ...r, members: r.members || [] })),
+      ...ephemeralRooms,
+      ...presenceDerivedRooms,
+    ];
     const allRoomIds = allRooms.map((room) => room.id);
 
     setMyRoomsOrder((prevOrder) => {
@@ -837,7 +908,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       // Return previous order if no changes needed
       return prevOrder;
     });
-  }, [reduxRooms, ephemeralRooms]);
+  }, [persistedRooms, ephemeralRooms, isAuthenticated, presenceDerivedRooms]);
 
   // Listen to Firebase Presence to get active user counts and user data for each room
   useEffect(() => {
@@ -878,6 +949,42 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
         string,
         Array<{ userId: string; firstName?: string; lastName?: string; picture?: string | null; isActive: boolean }>
       > = {};
+      const fallbackRoomMeta: Record<string, { name: string; url: string; originalId?: string; slugKey?: string }> = {};
+      const visitorRoom = persistedRooms.find((room) => {
+        const normalizedUrl = room.url.replace(/^\//, "").toLowerCase();
+        return normalizedUrl === VISITOR_ROOM_SLUG;
+      });
+      const visitorRoomId = visitorRoom?.id;
+      const visitorRoomUrl = visitorRoom?.url
+        ? visitorRoom.url.startsWith("/")
+          ? visitorRoom.url
+          : `/${visitorRoom.url}`
+        : `/${VISITOR_ROOM_SLUG}`;
+      const visitorRoomName = visitorRoom?.name ?? "Get Sh!t Done";
+      const mapRoomUsersToMembers = (
+        users: Array<{
+          userId: string;
+          firstName?: string;
+          lastName?: string;
+          picture?: string | null;
+          isActive: boolean;
+        }>
+      ): RoomMember[] =>
+        users.map((user) => {
+          const firstInitial = user.firstName?.[0]?.toUpperCase() ?? "";
+          const lastInitial = user.lastName?.[0]?.toUpperCase() ?? "";
+          const initials = `${firstInitial}${lastInitial}`.trim() || "??";
+
+          return {
+            id: user.userId,
+            name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Guest",
+            avatar: initials,
+            status: user.isActive ? "online" : "idle",
+            profileImage: user.picture ?? null,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          };
+        });
 
       // Iterate through all users in Presence
       for (const [userId, userData] of Object.entries(presenceData)) {
@@ -906,36 +1013,66 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
           // Process all sessions that have a roomId (both active and idle)
           if (session.roomId) {
-            // Find the room that matches this Firebase roomId
-            const matchingReduxRoom = reduxRooms.find((r) => r.firebaseId === session.roomId);
+            const normalizedRoomId = session.roomId.replace(/^\//, "").toLowerCase();
+            const matchingPersistedRoom = persistedRooms.find((r) => r.firebaseId === session.roomId);
             const matchingEphemeralRoom = ephemeralRooms.find((r) => r.firebaseId === session.roomId);
-            const matchingRoom = matchingReduxRoom || matchingEphemeralRoom;
+            const matchingRoom = matchingPersistedRoom || matchingEphemeralRoom;
 
+            let targetRoomId: string | null = null;
             if (matchingRoom) {
-              // Only increment count if session is active
-              if (session.isActive) {
-                roomCounts[matchingRoom.id] = (roomCounts[matchingRoom.id] || 0) + 1;
+              targetRoomId = matchingRoom.id;
+            } else if (!isAuthenticated) {
+              if (normalizedRoomId === VISITOR_ROOM_SLUG) {
+                if (visitorRoomId) {
+                  targetRoomId = visitorRoomId;
+                } else {
+                  targetRoomId = session.roomId;
+                  if (!fallbackRoomMeta[targetRoomId]) {
+                    fallbackRoomMeta[targetRoomId] = {
+                      name: visitorRoomName,
+                      url: visitorRoomUrl,
+                      originalId: session.roomId,
+                      slugKey: normalizedRoomId,
+                    };
+                  }
+                }
+              } else if (session.roomId) {
+                targetRoomId = session.roomId;
+                if (!fallbackRoomMeta[targetRoomId]) {
+                  const shortId = session.roomId.slice(-6);
+                  fallbackRoomMeta[targetRoomId] = {
+                    name: `Room ${shortId}`,
+                    url: `/${VISITOR_ROOM_SLUG}`,
+                    originalId: session.roomId,
+                    slugKey: normalizedRoomId,
+                  };
+                }
               }
+            }
 
-              // Initialize array if needed
-              if (!roomUsers[matchingRoom.id]) {
-                roomUsers[matchingRoom.id] = [];
-              }
+            if (!targetRoomId) {
+              continue;
+            }
 
-              // Add user to room's users list (avoid duplicates)
-              const existingUser = roomUsers[matchingRoom.id].find((u) => u.userId === userId);
-              if (!existingUser) {
-                roomUsers[matchingRoom.id].push({
-                  userId,
-                  firstName: userInfo?.firstName || "",
-                  lastName: userInfo?.lastName || "",
-                  picture: userInfo?.picture || null,
-                  isActive: session.isActive || false,
-                });
-              } else if (session.isActive && !existingUser.isActive) {
-                // Update existing user to active if any of their sessions is active
-                existingUser.isActive = true;
-              }
+            if (session.isActive) {
+              roomCounts[targetRoomId] = (roomCounts[targetRoomId] || 0) + 1;
+            }
+
+            if (!roomUsers[targetRoomId]) {
+              roomUsers[targetRoomId] = [];
+            }
+
+            const existingUser = roomUsers[targetRoomId].find((u) => u.userId === userId);
+            if (!existingUser) {
+              roomUsers[targetRoomId].push({
+                userId,
+                firstName: userInfo?.firstName || "",
+                lastName: userInfo?.lastName || "",
+                picture: userInfo?.picture || null,
+                isActive: session.isActive || false,
+              });
+            } else if (session.isActive && !existingUser.isActive) {
+              existingUser.isActive = true;
             }
           }
         }
@@ -943,6 +1080,93 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
       setRoomActiveCounts(roomCounts);
       setRoomUsers(roomUsers);
+
+      if (!isAuthenticated) {
+        const existingIds = new Set<string>([...persistedRooms.map((r) => r.id), ...ephemeralRooms.map((r) => r.id)]);
+
+        const unresolved = Object.entries(fallbackRoomMeta)
+          .filter(([roomId]) => !existingIds.has(roomId))
+          .map(([roomId, meta]) => ({ roomId, meta }));
+
+        if (unresolved.length === 0) {
+          setPresenceDerivedRooms([]);
+        } else {
+          const uniqueFirebaseIds = Array.from(
+            new Set(
+              unresolved
+                .map(({ meta }) => meta.slugKey)
+                .filter((slugKey): slugKey is string => Boolean(slugKey))
+            )
+          );
+
+          fetch(`/api/rooms/by-firebase-ids`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ firebaseIds: uniqueFirebaseIds }),
+          })
+            .then(async (response) => {
+              if (!response.ok) throw new Error("Failed to fetch room metadata");
+              const data = await response.json();
+              const roomsByFirebaseId: Record<string, { name: string; slug: string; description?: string }> =
+                data.rooms || {};
+
+              const derivedRooms: Room[] = unresolved.map(({ roomId, meta }) => {
+                const slugKey = meta.slugKey;
+                const matched = slugKey ? roomsByFirebaseId[slugKey] : undefined;
+                return {
+                  id: roomId,
+                  name: matched?.name || meta.name,
+                  url: matched?.slug ? `/${matched.slug}` : meta.url,
+                  type: "public",
+                  members: mapRoomUsersToMembers(roomUsers[roomId] || []),
+                  activeCount: roomCounts[roomId] || 0,
+                  weeklyStats: {
+                    totalTime: "0m",
+                    totalTasks: 0,
+                  },
+                  description: matched?.description || "Public room (view only).",
+                  createdBy: "Unknown",
+                  isPinned: false,
+                  isOwner: false,
+                  isAdmin: false,
+                  admins: [],
+                  maxMembers: 500,
+                  isEphemeral: false,
+                  firebaseId: meta.originalId,
+                };
+              });
+
+              setPresenceDerivedRooms(derivedRooms);
+            })
+            .catch((error) => {
+              console.error("Failed to resolve presence-derived rooms:", error);
+              const derivedRoomsFallback: Room[] = unresolved.map(({ roomId, meta }) => ({
+                id: roomId,
+                name: meta.name,
+                url: meta.url,
+                type: "public",
+                members: mapRoomUsersToMembers(roomUsers[roomId] || []),
+                activeCount: roomCounts[roomId] || 0,
+                weeklyStats: {
+                  totalTime: "0m",
+                  totalTasks: 0,
+                },
+                description: "Public room (view only).",
+                createdBy: "Unknown",
+                isPinned: false,
+                isOwner: false,
+                isAdmin: false,
+                admins: [],
+                maxMembers: 500,
+                isEphemeral: false,
+                firebaseId: meta.originalId,
+              }));
+              setPresenceDerivedRooms(derivedRoomsFallback);
+            });
+        }
+      } else {
+        setPresenceDerivedRooms([]);
+      }
     };
 
     const handlePresenceUpdate = (snapshot: import("firebase/database").DataSnapshot) => {
@@ -977,7 +1201,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       off(presenceRef, "value", handlePresenceUpdate);
       off(usersRef, "value", handleUsersUpdate);
     };
-  }, [reduxRooms, ephemeralRooms]);
+  }, [persistedRooms, ephemeralRooms, isAuthenticated]);
 
   // Listen to Firebase EphemeralRooms for temporary rooms
   useEffect(() => {
@@ -1045,7 +1269,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     return () => {
       off(ephemeralRoomsRef, "value", handleRoomsUpdate);
     };
-  }, [reduxRooms]);
+  }, [persistedRooms]);
 
   // Get pathname using Next.js hook
   const pathname = usePathname();
@@ -1055,13 +1279,13 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     // Remove the leading slash to get the room URL
     const roomUrl = pathname ? pathname.substring(1) : ""; // e.g., "/test" becomes "test"
     
-    // If we're on the base URL ("/"), we're in the GSD room
-    if (roomUrl === "" || roomUrl === "/") {
-      return "gsd";
+    // Visitors always operate in the base GSD room
+    if (!isAuthenticated || roomUrl === "" || roomUrl === "/") {
+      return VISITOR_ROOM_SLUG;
     }
     
     return roomUrl;
-  }, [pathname]);
+  }, [pathname, isAuthenticated]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -1077,8 +1301,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Filter rooms based on search and tab
   const filteredRooms = useMemo(() => {
-    // Merge Redux rooms with ephemeral rooms
-    const allRooms = [...reduxRooms.map((r) => ({ ...r, members: r.members || [] })), ...ephemeralRooms];
+    const allRooms = [
+      ...persistedRooms.map((r) => ({ ...r, members: r.members || [] })),
+      ...ephemeralRooms,
+      ...presenceDerivedRooms,
+    ];
+
     let filteredRooms = allRooms;
 
     // For experiment tab, show all rooms (both public and private/Vendorsage)
@@ -1093,6 +1321,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
           r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (r.members || []).some((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
       );
+    }
+
+    if (!isAuthenticated) {
+      filteredRooms = filteredRooms.filter((room) => room.type === "public");
     }
 
     // Sort based on tab
@@ -1151,7 +1383,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
       // Default sort by active count for quick-join
       return [...filteredRooms].sort((a, b) => b.activeCount - a.activeCount);
     }
-  }, [activeTab, searchQuery, myRoomsOrder, reduxRooms, ephemeralRooms, currentRoomUrl]);
+  }, [activeTab, searchQuery, myRoomsOrder, persistedRooms, ephemeralRooms, currentRoomUrl, isAuthenticated, presenceDerivedRooms]);
 
   // const totalActiveUsers = reduxRooms.reduce((sum, room) => sum + room.activeCount, 0); // Unused - commented out
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
@@ -1223,24 +1455,35 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   }, []);
 
   const handleJoinRoom = (roomUrl: string) => {
+    const normalized = roomUrl.startsWith("/") ? roomUrl.slice(1) : roomUrl;
+    if (!isAuthenticated && normalized.toLowerCase() !== VISITOR_ROOM_SLUG) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
+    const targetPath = roomUrl.startsWith("/") ? roomUrl : `/${normalized}`;
     onClose();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    router.push(roomUrl as any);
+    router.push(targetPath as any);
   };
 
   const handleQuickJoin = async () => {
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+      return;
+    }
     try {
       // Get current user ID
       const userId = user?.user_id || "anonymous";
 
       // Get all public rooms (combining redux rooms and ephemeral rooms)
-      const allPublicRooms = [...reduxRooms, ...ephemeralRooms].filter(
+      const allPublicRooms = [...persistedRooms, ...ephemeralRooms].filter(
         (room) => room.type === "public" || !room.type // Some rooms might not have type specified
       );
 
       // Separate permanent rooms (like GSD) from ephemeral rooms
       const permanentRooms = allPublicRooms.filter(
-        (room) => room.url === "gsd" || room.url === "/gsd" || reduxRooms.some((r) => r.id === room.id)
+        (room) => room.url === "gsd" || room.url === "/gsd" || persistedRooms.some((r) => r.id === room.id)
       );
       const ephemeralRoomsFiltered = allPublicRooms.filter(
         (room) => ephemeralRooms.some((e) => e.id === room.id) && room.url !== "gsd" && room.url !== "/gsd"
@@ -1290,6 +1533,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Handler for Quick Join text - always creates a new ephemeral room
   const handleQuickJoinTextClick = async () => {
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+      return;
+    }
     try {
       const userId = user?.user_id || "anonymous";
       // Always create a new ephemeral room, bypassing capacity checks
@@ -1302,9 +1549,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   };
 
   const handleCreateRoom = () => {
-    // Check if user is a guest
-    if (user.isGuest !== false) {
-      // Show login prompt for guests
+    if (!isAuthenticated) {
       setShowLoginPrompt(true);
       return;
     }
@@ -1540,6 +1785,10 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           className="px-4 py-2 bg-[#FFAA00] text-black font-medium rounded-lg hover:bg-[#FFB700] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={!newRoomName || newRoomName.length < 3}
                           onClick={async () => {
+                            if (!isAuthenticated) {
+                              setShowLoginPrompt(true);
+                              return;
+                            }
                             if (!newRoomName || newRoomName.length < 3) return;
 
                             // Convert to slug format for URL
@@ -1601,7 +1850,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                             currentRoomUrl={currentRoomUrl}
                             onJoinRoom={handleJoinRoom}
                             onSettingsClick={setEditingRoom}
-                            activeCount={roomActiveCounts[room.id] || 0}
+                            activeCount={roomActiveCounts[room.id] ?? room.activeCount}
                             roomUsers={roomUsers[room.id] || []}
                             currentUser={user}
                             firebaseUserId={firebaseUser.id}
@@ -2030,9 +2279,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
                           <button
                             disabled={!newTeamName.trim() || newTeamName.trim().length < 3}
                             onClick={async () => {
-                              // Check if user is a guest
-                              if (user.isGuest !== false) {
-                                // Show login prompt for guests
+                              if (!isAuthenticated) {
                                 setShowLoginPrompt(true);
                                 return;
                               }

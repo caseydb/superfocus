@@ -96,6 +96,9 @@ export const InstanceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else {
         // No Firebase auth yet - wait for anonymous auth to kick in
         // Don't set userReady to true yet
+        console.info('[InstanceProvider] No Firebase auth user; using visitor context');
+        setUser({ id: '', displayName: 'Visitor', isPremium: false });
+        setUserReady(true);
       }
     });
     return () => unsub();

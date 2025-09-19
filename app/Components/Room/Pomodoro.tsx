@@ -612,7 +612,7 @@ export default function Pomodoro({
     hasPlayedZeroNotificationRef.current = false;
   };
 
-  const pauseTimer = () => {
+  const pauseTimer = useCallback(() => {
     // Optimistically update UI immediately
     setIsRunning(false);
     setIsPaused(true);
@@ -625,7 +625,7 @@ export default function Pomodoro({
       setIsStarting,
       heartbeatIntervalRef,
     });
-  };
+  }, [handleStop, task, elapsedSeconds, saveTimerState, heartbeatIntervalRef]);
 
   const resumeTimer = async () => {
     await startTimer();

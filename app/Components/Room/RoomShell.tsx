@@ -114,6 +114,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
   // Weekly analytics email trigger state (temporarily disabled)
   // const [showContacts, setShowContacts] = useState(false); // People Modal - Feature deprioritized
   const [showRooms, setShowRooms] = useState(false);
+  const [loginPromptVisible, setLoginPromptVisible] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
   
   const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "dnd" | "offline">("available");
@@ -545,12 +546,14 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
 
   useEffect(() => {
     const checkRoom = async () => {
+      const canUsePresence = Boolean(user?.id);
+
       // If we already have a currentInstance that matches this room URL, we're good
       if (currentInstance && currentInstance.url === roomUrl) {
         setRoomFound(true);
         setLoading(false);
         // If this is a public room, store its ID and init presence
-        if (currentInstance.type === "public" && !publicRoomId) {
+        if (currentInstance.type === "public" && !publicRoomId && canUsePresence) {
           setPublicRoomId(currentInstance.id);
 
           // Initialize presence if not already done
@@ -559,15 +562,15 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
               roomType: currentInstance.type,
             });
             const initialized = await presence.initialize();
-            if (initialized) {
-              setRoomPresence(presence);
+              if (initialized) {
+                setRoomPresence(presence);
 
-              // Add user to PublicRoom users list and update count
-              await addUserToPublicRoom(currentInstance.id, user.id, user.displayName);
+                // Add user to PublicRoom users list and update count
+                await addUserToPublicRoom(currentInstance.id, user.id, user.displayName);
 
-              // Start cleanup scheduler to ensure orphaned rooms are cleaned
-              startCleanupScheduler();
-            }
+                // Start cleanup scheduler to ensure orphaned rooms are cleaned
+                startCleanupScheduler();
+              }
           }
         }
         return;
@@ -580,26 +583,28 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           // Only join if we're not already in this room
           if (!publicRoomId || publicRoomId !== publicRoom.id) {
             // Create presence manager
-            const presence = new PresenceService(user.id, publicRoom.id, {
-              roomType: "public",
-            });
-            const initialized = await presence.initialize();
+            if (canUsePresence) {
+              const presence = new PresenceService(user.id, publicRoom.id, {
+                roomType: "public",
+              });
+              const initialized = await presence.initialize();
 
-            if (!initialized) {
-              // Failed to initialize presence
-              setRoomFound(false);
-              setLoading(false);
-              return;
+              if (!initialized) {
+                // Failed to initialize presence
+                setRoomFound(false);
+                setLoading(false);
+                return;
+              }
+
+              // Store presence manager
+              setRoomPresence(presence);
+
+              // Add user to PublicRoom users list and update count
+              await addUserToPublicRoom(publicRoom.id, user.id, user.displayName);
+
+              // Start cleanup scheduler to ensure orphaned rooms are cleaned
+              startCleanupScheduler();
             }
-
-            // Store presence manager
-            setRoomPresence(presence);
-
-            // Add user to PublicRoom users list and update count
-            await addUserToPublicRoom(publicRoom.id, user.id, user.displayName);
-
-            // Start cleanup scheduler to ensure orphaned rooms are cleaned
-            startCleanupScheduler();
           }
 
           setRoomFound(true);
@@ -653,23 +658,24 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
               }
 
               // Create presence manager for private rooms
-              const presence = new PresenceService(user.id, privateRoom.id, {
-                roomType: "private",
-              });
-              const initialized = await presence.initialize();
+              if (canUsePresence) {
+                const presence = new PresenceService(user.id, privateRoom.id, {
+                  roomType: "private",
+                });
+                const initialized = await presence.initialize();
 
-              if (initialized) {
-                // Store presence manager
-                setRoomPresence(presence);
+                if (initialized) {
+                  // Store presence manager
+                  setRoomPresence(presence);
 
-                // Only add user to PrivateRoom users list if they're not superadmin OR if they're a member
-                // This prevents superadmin from appearing in the room unless they're actually a member
-                if (!isSuperadmin || isMember) {
-                  await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
+                  // Only add user to PrivateRoom users list if they're not superadmin OR if they're a member
+                  if (!isSuperadmin || isMember) {
+                    await addUserToPrivateRoom(privateRoom.id, user.id, user.displayName);
+                  }
+
+                  // Store the private room ID for cleanup later
+                  setPrivateRoomId(privateRoom.id);
                 }
-
-                // Store the private room ID for cleanup later
-                setPrivateRoomId(privateRoom.id);
               }
             } catch {
               setRoomFound(false);
@@ -708,13 +714,14 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           setRoomFound(true);
 
           // Initialize presence for permanent public rooms
-          const presence = new PresenceService(user.id, roomResult.room.id, {
-            roomType: "public",
-          });
-          const initialized = await presence.initialize();
-
-          if (initialized) {
-            setRoomPresence(presence);
+          if (canUsePresence) {
+            const presence = new PresenceService(user.id, roomResult.room.id, {
+              roomType: "public",
+            });
+            const initialized = await presence.initialize();
+            if (initialized) {
+              setRoomPresence(presence);
+            }
           }
 
           // Create a temporary Instance object for compatibility
@@ -756,6 +763,20 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
       };
     }
   }, [roomUrl, currentInstance, userReady, reduxUser.user_id, reduxUser.auth_id, reduxUser.isGuest, publicRoomId, privateRoomId, setPublicRoomInstance, user, roomPresence]);
+
+  const handleSetShowRooms = useCallback(
+    (next: boolean) => {
+      setShowRooms(next);
+    },
+    []
+  );
+
+  const handleSetShowRoomsModal = useCallback(
+    (next: boolean) => {
+      setShowRoomsModal(next);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!roomPresence || !user?.id) return;
@@ -1483,7 +1504,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
         e.preventDefault();
         const wasOpen = showRooms;
         if (!wasOpen) closeAllModals();
-        setShowRooms(!wasOpen);
+        handleSetShowRooms(!wasOpen);
       }
     };
 
@@ -1508,6 +1529,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
     closeAllModals,
     dispatch,
     reduxUser.user_id,
+    handleSetShowRooms,
   ]);
 
   // Remove the login wall - allow guest users to access rooms
@@ -1571,7 +1593,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             setShowAnalytics={setShowAnalytics}
             setShowTaskList={setShowTaskList}
             setShowPreferences={setShowPreferences}
-            setShowRoomsModal={setShowRoomsModal}
+            setShowRoomsModal={handleSetShowRoomsModal}
             setShowInviteModal={setShowInviteModal}
             instanceType={currentInstance.type}
             closeAllModals={closeAllModals}
@@ -1596,7 +1618,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
               setShowInviteModal={setShowInviteModal}
               showLeaderboard={showLeaderboard}
               setShowLeaderboard={setShowLeaderboard}
-              setShowRoomsModal={setShowRoomsModal}
+              setShowRoomsModal={handleSetShowRoomsModal}
               setShowPreferences={setShowPreferences}
               showAnalytics={showAnalytics}
               setShowAnalytics={setShowAnalytics}
@@ -2332,7 +2354,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
               setRequestsNotificationCount={setRequestsNotificationCount}
             />
           )} */}
-          {showRooms && <WorkSpace onClose={() => setShowRooms(false)} />}
+          {showRooms && <WorkSpace onClose={() => handleSetShowRooms(false)} />}
           {showPreferences && <Preferences onClose={handleClosePreferences} />}
         </div>
         {/* Invite Modal - rendered as separate overlay */}
@@ -2418,7 +2440,35 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
         />
 
         {/* Rooms Modal */}
-        <RoomsModal isOpen={showRoomsModal} onClose={() => setShowRoomsModal(false)} />
+        <RoomsModal isOpen={showRoomsModal && !!user?.id} onClose={() => setShowRoomsModal(false)} />
+
+        {loginPromptVisible && !user?.id && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+            <div className="bg-gray-900/95 rounded-2xl shadow-2xl p-8 w-full max-w-md flex flex-col gap-6 border border-yellow-500/60">
+              <div className="flex justify-between items-start">
+                <h2 className="text-2xl font-bold text-white">Login Required</h2>
+                <button
+                  className="text-gray-400 hover:text-white transition"
+                  onClick={() => setLoginPromptVisible(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-gray-300">
+                You need to sign in to switch rooms or access private workspaces. Please log in and try again.
+              </p>
+              <button
+                className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-yellow-400 transition"
+                onClick={() => {
+                  setLoginPromptVisible(false);
+                  window.location.href = '/login';
+                }}
+              >
+                Go to Login
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Invite Popup */}
         <InvitePopup
