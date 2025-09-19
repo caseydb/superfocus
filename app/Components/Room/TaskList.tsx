@@ -1173,7 +1173,7 @@ export default function TaskList({
       <div className="absolute inset-0 pointer-events-auto" onClick={onClose} />
 
       <div
-        className="absolute bottom-4 right-4 w-[480px] max-w-[calc(100vw-2rem)] sm:max-w-[480px] min-h-[400px] max-h-[calc(100vh-8rem)] bg-[#141821]/95 rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden sf-modal sf-tasklist"
+        className="absolute bottom-0 left-0 right-0 w-full max-w-full md:bottom-4 md:left-auto md:right-4 md:w-[480px] md:max-w-[calc(100vw-2rem)] min-h-[400px] max-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-8rem)] bg-[#141821]/95 rounded-t-3xl md:rounded-2xl shadow-2xl border border-gray-800 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto overflow-hidden sf-modal sf-tasklist"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
