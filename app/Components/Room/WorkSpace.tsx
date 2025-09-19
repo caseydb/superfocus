@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
@@ -581,6 +582,7 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   const user = useSelector((state: RootState) => state.user);
   const { user: firebaseUser } = useInstance();
   const isAuthenticated = Boolean(user?.user_id);
+  const isGuest = !isAuthenticated;
   const [guestRooms, setGuestRooms] = useState<Room[]>([]);
   const persistedRooms = useMemo(
     () => (isAuthenticated ? reduxRooms : guestRooms),
@@ -1099,11 +1101,12 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
             )
           );
 
-          fetch(`/api/rooms/by-firebase-ids`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firebaseIds: uniqueFirebaseIds }),
-          })
+          const params = new URLSearchParams();
+          uniqueFirebaseIds.forEach((id) => params.append("firebaseId", id));
+          const queryString = params.toString();
+          const metadataUrl = queryString ? `/api/rooms/by-firebase-ids?${queryString}` : `/api/rooms/by-firebase-ids`;
+
+          fetch(metadataUrl)
             .then(async (response) => {
               if (!response.ok) throw new Error("Failed to fetch room metadata");
               const data = await response.json();
@@ -1276,15 +1279,20 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   // Simple approach: Get current room from URL
   const currentRoomUrl = useMemo(() => {
-    // Remove the leading slash to get the room URL
-    const roomUrl = pathname ? pathname.substring(1) : ""; // e.g., "/test" becomes "test"
-    
-    // Visitors always operate in the base GSD room
-    if (!isAuthenticated || roomUrl === "" || roomUrl === "/") {
-      return VISITOR_ROOM_SLUG;
+    // Remove leading slashes (Next.js paths never include query/hash)
+    const trimmedPath = pathname ? pathname.replace(/^\/+/, "") : "";
+    const segments = trimmedPath.split("/").filter(Boolean);
+    const lastSegment = segments.length > 0 ? segments[segments.length - 1] : "";
+    const normalizedLastSegment = lastSegment.toLowerCase();
+
+    if (!isAuthenticated) {
+      if (!normalizedLastSegment || normalizedLastSegment === VISITOR_ROOM_SLUG) {
+        return VISITOR_ROOM_SLUG;
+      }
+      return lastSegment;
     }
-    
-    return roomUrl;
+
+    return trimmedPath || VISITOR_ROOM_SLUG;
   }, [pathname, isAuthenticated]);
 
   // Drag and drop sensors
@@ -1456,10 +1464,6 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
 
   const handleJoinRoom = (roomUrl: string) => {
     const normalized = roomUrl.startsWith("/") ? roomUrl.slice(1) : roomUrl;
-    if (!isAuthenticated && normalized.toLowerCase() !== VISITOR_ROOM_SLUG) {
-      setShowLoginPrompt(true);
-      return;
-    }
 
     const targetPath = roomUrl.startsWith("/") ? roomUrl : `/${normalized}`;
     onClose();
@@ -1548,6 +1552,14 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Sign in failed:", error);
+    }
+  };
+
   const handleCreateRoom = () => {
     if (!isAuthenticated) {
       setShowLoginPrompt(true);
@@ -1596,27 +1608,79 @@ const WorkSpace: React.FC<WorkSpaceProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sf-modal-overlay" onClick={onClose}>
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative sf-modal sf-workspace"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-8 py-4 w-[95%] max-w-[900px] h-[85vh] flex flex-col border border-gray-800 relative sf-modal sf-workspace overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {isGuest && (
+          <div className="absolute inset-0 z-40 bg-black/85 rounded-2xl flex flex-col items-center justify-center px-6 text-center">
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-800/70 hover:bg-gray-700 transition-colors flex items-center justify-center group"
+              aria-label="Close workspace"
+            >
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="max-w-sm w-full space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-white">Sign In To Unlock Everything</h3>
+                <p className="text-gray-400 text-sm">Continue to see others, switch rooms or join teams.</p>
+              </div>
+
+              <button
+                onClick={handleGoogleSignIn}
+                className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-5 bg-white text-gray-900 text-base font-semibold shadow-sm hover:border-[#FFAA00] transition"
+              >
+                <Image src="/google.png" alt="Google logo" width={20} height={20} />
+                Continue with Google
+              </button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-800"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-transparent text-gray-500">or</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowLoginPrompt(true)}
+                className="w-full text-gray-400 hover:text-white text-sm transition-colors"
+              >
+                Sign in with email
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="relative flex items-center justify-center mb-4 sf-modal-header">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#FFAA00]">Workspace</h2>
 
           {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
-          >
-            <svg
-              className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {!isGuest && (
+            <button
+              onClick={onClose}
+              className="absolute right-0 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Tabs */}
