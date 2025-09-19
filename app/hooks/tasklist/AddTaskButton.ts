@@ -13,37 +13,40 @@ export function useAddTaskButton() {
 
   const handleAddTask = useCallback(
     (newTaskText: string, setNewTaskText: (text: string) => void) => {
-      if (newTaskText.trim() && user?.id) {
-        // Generate proper UUID
-        const taskId = uuidv4();
+      const trimmedTask = newTaskText.trim();
+      if (!trimmedTask) {
+        return;
+      }
 
-        // Add optimistic task immediately (works for both guests and authenticated users)
+      // Generate proper UUID
+      const taskId = uuidv4();
+
+      // Add optimistic task immediately (works for both guests and authenticated users)
+      dispatch(
+        addTask({
+          id: taskId,
+          name: trimmedTask,
+        })
+      );
+
+      if (reduxUser.isGuest) {
+        // For guest users, just save to cache
+        dispatch(saveToCache());
+      } else if (reduxUser.user_id && user?.id) {
+        // For authenticated users, persist to database
         dispatch(
-          addTask({
+          createTaskThunk({
             id: taskId,
-            name: newTaskText.trim(),
+            name: trimmedTask,
+            userId: reduxUser.user_id, // Use PostgreSQL UUID
           })
         );
 
-        if (reduxUser.isGuest) {
-          // For guest users, just save to cache
-          dispatch(saveToCache());
-        } else if (reduxUser.user_id) {
-          // For authenticated users, persist to database
-          dispatch(
-            createTaskThunk({
-              id: taskId,
-              name: newTaskText.trim(),
-              userId: reduxUser.user_id, // Use PostgreSQL UUID
-            })
-          );
-
-          // Update user's last_active timestamp (only for authenticated users)
-          updateUserActivity();
-        }
-
-        setNewTaskText("");
+        // Update user's last_active timestamp (only for authenticated users)
+        updateUserActivity();
       }
+
+      setNewTaskText("");
     },
     [dispatch, user, reduxUser]
   );

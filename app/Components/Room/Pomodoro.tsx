@@ -157,7 +157,7 @@ export default function Pomodoro({
 
   // One-time restoration on mount
   useEffect(() => {
-    if (!user?.id || isInitializedRef.current) {
+    if (isInitializedRef.current) {
       return;
     }
 
@@ -169,14 +169,35 @@ export default function Pomodoro({
 
     // Wait a bit to ensure Redux has loaded tasks
     const initTimer = setTimeout(async () => {
+      if (isGuest) {
+        // Guest: restore from Redux/local cache if possible
+        if (activeTaskId) {
+          const task = reduxTasks.find((t) => t.id === activeTaskId);
+          if (task) {
+            const totalTime = task.timeSpent || 0;
+            setElapsedSeconds(totalTime);
+            if (secondsRef) secondsRef.current = totalTime;
+          }
+        }
+        isInitializedRef.current = true;
+        return;
+      }
+
+      if (!user?.id) {
+        isInitializedRef.current = true;
+        return;
+      }
+
+      const firebaseUserId = user.id;
+
       if (!isGuest) {
         // Authenticated: try to restore from Firebase LastTask
-        const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+        const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
         const lastTaskSnapshot = await get(lastTaskRef);
         if (lastTaskSnapshot.exists()) {
           const lastTaskData = lastTaskSnapshot.val();
           // Load this task's data from TaskBuffer
-          const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
+          const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${lastTaskData.taskId}`);
           const taskSnapshot = await get(taskRef);
           if (taskSnapshot.exists()) {
             const taskData = taskSnapshot.val();
@@ -186,21 +207,13 @@ export default function Pomodoro({
             dispatch(setActiveTask(lastTaskData.taskId));
             if (onTaskRestore) onTaskRestore(lastTaskData.taskName || taskData.name, false, lastTaskData.taskId);
             isInitializedRef.current = true;
-          }
-        }
-      } else {
-        // Guest: restore from Redux/local cache if possible
-        // If activeTaskId is set by Redux, use that task's timeSpent
-        if (activeTaskId) {
-          const task = reduxTasks.find((t) => t.id === activeTaskId);
-          if (task) {
-            const totalTime = task.timeSpent || 0;
-            setElapsedSeconds(totalTime);
-            if (secondsRef) secondsRef.current = totalTime;
-            isInitializedRef.current = true;
+            return;
           }
         }
       }
+
+      // If no restoration occurred, mark as initialized to allow normal flow
+      isInitializedRef.current = true;
     }, 500);
 
     return () => clearTimeout(initTimer);
@@ -370,7 +383,7 @@ export default function Pomodoro({
     }
     
     // If timer was running and we had a previous task, save its time first
-    if (isRunning && previousTaskId && user?.id && elapsedSecondsRef.current > 0) {
+    if (!isGuest && isRunning && previousTaskId && user?.id && elapsedSecondsRef.current > 0) {
       const previousTaskRef = ref(rtdb, `TaskBuffer/${user.id}/${previousTaskId}`);
       update(previousTaskRef, {
         total_time: elapsedSecondsRef.current,
@@ -403,7 +416,7 @@ export default function Pomodoro({
       setRemainingSeconds(selectedMinutes * 60);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTaskId, isRunning, reduxTasks, secondsRef, user?.id]);
+  }, [activeTaskId, isRunning, reduxTasks, secondsRef, user?.id, isGuest]);
 
   // Also react to task time updates (not just task switches)
   useEffect(() => {
@@ -538,36 +551,45 @@ export default function Pomodoro({
         const activeTask = reduxTasks.find((t) => t.name === task?.trim());
         taskId = activeTask?.id || null;
       }
-      
-      if (taskId && user?.id) {
-        if (isGuest) {
-          // For guests, keep Redux/local cache only
-          dispatch(updateTaskTime({ id: taskId, timeSpent: baseSeconds }));
-          dispatch(saveToCache());
-          return;
-        }
-        const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
 
-        const timerState = {
-          running: isRunning,
-          startTime: isRunning ? Date.now() : null,
-          baseSeconds: isRunning ? baseSeconds : 0,
-          totalSeconds: !isRunning ? baseSeconds : 0,
-          lastUpdate: Date.now(),
-          taskId: taskId,
-        };
-
-        set(timerRef, timerState);
+      if (!taskId) {
+        return;
       }
+
+      if (isGuest) {
+        // For guests, keep Redux/local cache only
+        dispatch(updateTaskTime({ id: taskId, timeSpent: baseSeconds }));
+        dispatch(saveToCache());
+        return;
+      }
+
+      if (!user?.id) {
+        return;
+      }
+
+      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+
+      const timerState = {
+        running: isRunning,
+        startTime: isRunning ? Date.now() : null,
+        baseSeconds: isRunning ? baseSeconds : 0,
+        totalSeconds: !isRunning ? baseSeconds : 0,
+        lastUpdate: Date.now(),
+        taskId: taskId,
+      };
+
+      set(timerRef, timerState);
     },
     [reduxTasks, task, user?.id, activeTaskId, isGuest, dispatch]
   );
 
   const clearTimerState = React.useCallback(() => {
-    if (user?.id && !isGuest) {
-      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-      remove(timerRef);
+    if (isGuest || !user?.id) {
+      return;
     }
+
+    const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+    remove(timerRef);
   }, [user?.id, isGuest]);
 
   // Save timer state when user leaves the page (closes tab, refreshes, or navigates away)

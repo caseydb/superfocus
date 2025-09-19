@@ -80,33 +80,34 @@ export function useStartButton() {
 
   const notifyEvent = useCallback(
     async (type: "start") => {
-      if (currentInstance && user?.id) {
-        // Use Redux user data which is already loaded and accurate
-        const firstName = reduxUser?.first_name || "";
-        const lastName = reduxUser?.last_name || "";
-        
-        const eventId = `${user.id}-${type}-${Date.now()}`;
-        const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
-        const eventData = {
-          displayName: user.displayName, // Keep for backward compatibility
-          firstName,
-          lastName,
-          userId: user.id,
-          authId: reduxUser?.auth_id, // Add auth ID to event data
-          type,
-          timestamp: Date.now(),
-        };
-
-        set(eventRef, eventData);
-
-        // Auto-cleanup event after 5 seconds (ephemeral)
-        setTimeout(() => {
-          const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
-          import("firebase/database").then(({ remove }) => {
-            remove(eventRef);
-          });
-        }, 5000);
+      if (reduxUser.isGuest || !currentInstance || !user?.id) {
+        return;
       }
+      // Use Redux user data which is already loaded and accurate
+      const firstName = reduxUser?.first_name || "";
+      const lastName = reduxUser?.last_name || "";
+
+      const eventId = `${user.id}-${type}-${Date.now()}`;
+      const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
+      const eventData = {
+        displayName: user.displayName, // Keep for backward compatibility
+        firstName,
+        lastName,
+        userId: user.id,
+        authId: reduxUser?.auth_id, // Add auth ID to event data
+        type,
+        timestamp: Date.now(),
+      };
+
+      set(eventRef, eventData);
+
+      // Auto-cleanup event after 5 seconds (ephemeral)
+      setTimeout(() => {
+        const eventRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/events/${eventId}`);
+        import("firebase/database").then(({ remove }) => {
+          remove(eventRef);
+        });
+      }, 5000);
     },
     [currentInstance, user, reduxUser]
   );
@@ -133,11 +134,12 @@ export function useStartButton() {
 
       // First, determine what task ID we're about to start
       let taskIdToStart = "";
+      const trimmedTask = task?.trim() || "";
       
       if (isResume) {
         // If resuming, find the currently active/paused task
         const activeTask = reduxTasks.find((t) => 
-          t.name === task?.trim() && 
+          t.name === trimmedTask && 
           (t.status === "in_progress" || t.status === "paused")
         );
         
@@ -146,11 +148,11 @@ export function useStartButton() {
         }
       } else {
         // If not resuming (starting fresh)
-        if (task?.trim()) {
+        if (trimmedTask) {
           // First check if there's an activeTaskId set (from dropdown selection)
           if (activeTaskId) {
             const activeTask = reduxTasks.find((t) => t.id === activeTaskId);
-            if (activeTask && activeTask.name === task.trim()) {
+            if (activeTask && activeTask.name === trimmedTask) {
               taskIdToStart = activeTaskId;
             }
           }
@@ -158,7 +160,7 @@ export function useStartButton() {
           // If no activeTaskId or it doesn't match, check if there's already a task with this name
           if (!taskIdToStart) {
             const existingTask = reduxTasks.find((t) => 
-              t.name === task.trim() && 
+              t.name === trimmedTask && 
               t.status === "not_started"
             );
             
@@ -186,8 +188,8 @@ export function useStartButton() {
       }
 
       // Move task to position #1 in task list BEFORE starting timer (only for new starts)
-      if (!isResume && task && task.trim() && user?.id) {
-        await moveTaskToTop(task);
+      if (!isResume && trimmedTask) {
+        await moveTaskToTop(trimmedTask);
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
@@ -200,24 +202,24 @@ export function useStartButton() {
       }
       
       // Create new task if needed (only when not resuming and no existing task was found)
-      if (!isResume && task?.trim() && user?.id && currentInstance) {
-        if (taskId === taskIdToStart && !reduxTasks.find(t => t.id === taskId)) {
+      if (!isResume && trimmedTask) {
+        if (taskId === taskIdToStart && !reduxTasks.find((t) => t.id === taskId)) {
           // This is a new task that needs to be created
-          
+
           // Add optimistic task immediately
           dispatch(
             addTask({
               id: taskId,
-              name: task.trim(),
+              name: trimmedTask,
             })
           );
 
           // Only persist to PostgreSQL database for authenticated users
-          if (reduxUser.user_id && !reduxUser.isGuest) {
+          if (reduxUser.user_id && !reduxUser.isGuest && user?.id) {
             dispatch(
               createTaskThunk({
                 id: taskId,
-                name: task.trim(),
+                name: trimmedTask,
                 userId: reduxUser.user_id,
               })
             );
@@ -247,7 +249,7 @@ export function useStartButton() {
         await dispatch(
           addTaskToBufferWhenStarted({
             id: taskId,
-            name: task!.trim(),
+            name: trimmedTask,
             userId: reduxUser.user_id!,
             roomId: currentInstance.id,
             firebaseUserId: user.id,
@@ -305,10 +307,10 @@ export function useStartButton() {
       setIsStarting(false);
 
       // Update presence to active with task info (all users)
-      if (currentInstance && user?.id) {
+      if (!reduxUser.isGuest && currentInstance && user?.id) {
         PresenceService.updateUserPresence(user.id, currentInstance.id, true, {
           taskId,
-          taskName: task?.trim() || "Untitled Task",
+          taskName: trimmedTask || "Untitled Task",
         });
       }
 
@@ -317,7 +319,7 @@ export function useStartButton() {
         const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
         set(lastTaskRef, {
           taskId: taskId,
-          taskName: task?.trim() || "",
+          taskName: trimmedTask || "",
           timestamp: Date.now()
         });
         
@@ -351,7 +353,9 @@ export function useStartButton() {
       }
 
       // Update user's last_active timestamp
-      updateUserActivity();
+      if (!reduxUser.isGuest) {
+        updateUserActivity();
+      }
     },
     [dispatch, user, currentInstance, reduxTasks, reduxUser, activeTaskId, moveTaskToTop, notifyEvent]
   );

@@ -15,25 +15,29 @@ export function useDeleteTaskButton() {
 
   const removeTask = useCallback(
     (id: string) => {
-      if (!user?.id) return;
+      const firebaseUserId = user?.id;
+      const isGuest = reduxUser.isGuest;
 
       // Determine if this task has any time or is currently active
-      const task = reduxTasks.find(t => t.id === id);
+      const task = reduxTasks.find((t) => t.id === id);
       const hasTime = (task?.timeSpent || 0) > 0;
       const isActive = activeTaskId === id;
 
-      // If there is time or the task is active, clear from TaskBuffer first
-      if (!reduxUser.isGuest && (hasTime || isActive)) {
-        dispatch(cleanupTaskFromBuffer({ taskId: id, firebaseUserId: user.id }));
+      // If there is time or the task is active, clear from TaskBuffer first (authenticated users only)
+      if (!isGuest && firebaseUserId && (hasTime || isActive)) {
+        dispatch(cleanupTaskFromBuffer({ taskId: id, firebaseUserId }));
 
         // Trigger global effect: folded like a lawn chair
         if (currentInstance) {
-          const flyingMessageId = `${user.id}-delete-${Date.now()}`;
-          const flyingMessageRef = ref(rtdb, `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`);
+          const flyingMessageId = `${firebaseUserId}-delete-${Date.now()}`;
+          const flyingMessageRef = ref(
+            rtdb,
+            `GlobalEffects/${currentInstance.id}/flyingMessages/${flyingMessageId}`
+          );
           set(flyingMessageRef, {
-            text: `💀 ${user.displayName} folded faster than a lawn chair.`,
+            text: `💀 ${(user?.displayName ?? "Guest")} folded faster than a lawn chair.`,
             color: "text-red-500",
-            userId: user.id,
+            userId: firebaseUserId,
             timestamp: Date.now(),
           });
           // Auto-remove after 5 seconds
@@ -49,16 +53,16 @@ export function useDeleteTaskButton() {
         dispatch(setActiveTask(null));
       }
 
-      if (reduxUser.isGuest) {
+      if (isGuest) {
         // Persist local changes for guests
         dispatch(saveToCache());
-      } else if (reduxUser.user_id) {
+      } else if (reduxUser.user_id && firebaseUserId) {
         // Authenticated: delete from Postgres and remove from TaskBuffer
         dispatch(
           deleteTaskThunk({
             id,
             userId: reduxUser.user_id,
-            firebaseUserId: user.id,
+            firebaseUserId,
           })
         );
       }

@@ -56,7 +56,9 @@ export function useCompleteButton() {
 
   const notifyEvent = useCallback(
     async (type: "complete", duration: number) => {
-      if (currentInstance && user?.id) {
+      if (reduxUser.isGuest || !currentInstance || !user?.id) {
+        return;
+      }
         // Use Redux user data which is already loaded and accurate
         const firstName = reduxUser?.first_name || "";
         const lastName = reduxUser?.last_name || "";
@@ -76,13 +78,12 @@ export function useCompleteButton() {
 
         set(eventRef, eventData);
 
-        // Auto-cleanup event after 5 seconds (ephemeral)
-        setTimeout(() => {
-          import("firebase/database").then(({ remove }) => {
-            remove(eventRef);
-          });
-        }, 5000);
-      }
+      // Auto-cleanup event after 5 seconds (ephemeral)
+      setTimeout(() => {
+        import("firebase/database").then(({ remove }) => {
+          remove(eventRef);
+        });
+      }, 5000);
     },
     [currentInstance, user, reduxUser]
   );
@@ -120,10 +121,12 @@ export function useCompleteButton() {
       }
 
       // Update user's last_active timestamp
-      updateUserActivity();
+      if (!reduxUser.isGuest) {
+        updateUserActivity();
+      }
 
       // PRIORITY 4: Update presence to inactive
-      if (user?.id && currentInstance) {
+      if (!reduxUser.isGuest && user?.id && currentInstance) {
         PresenceService.updateUserPresence(user.id, currentInstance.id, false);
       }
 

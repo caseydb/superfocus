@@ -122,7 +122,7 @@ export function usePauseButton() {
       setIsStarting(false);
 
       // Update presence to inactive (all users)
-      if (currentInstance && user?.id) {
+      if (!reduxUser.isGuest && currentInstance && user?.id) {
         PresenceService.updateUserPresence(user.id, currentInstance.id, false);
       }
     },

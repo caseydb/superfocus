@@ -51,8 +51,7 @@ export default function Timer({
   // Initialize from secondsRef if switching from Pomodoro
   const [seconds, setSeconds] = useState(secondsRef?.current || 0);
   const [running, setRunning] = useState(initialRunning);
-  const [justPaused, setJustPaused] = useState(false);
-
+  
   // Sync with secondsRef on mount
   useEffect(() => {
     if (secondsRef?.current !== undefined && secondsRef.current !== seconds) {
@@ -139,36 +138,41 @@ export default function Timer({
       // Use currentTaskId from Redux (which tracks the selected task)
       const taskId = currentTaskId || activeTaskId;
 
-      if (taskId && user?.id) {
-        // For guests, persist locally only
-        if (reduxUser.isGuest) {
-          dispatch(updateTaskTime({ id: taskId, timeSpent: baseSeconds }));
-          dispatch(saveToCache());
-          return;
-        }
+      if (!taskId) {
+        return;
+      }
 
-        const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+      if (reduxUser.isGuest) {
+        dispatch(updateTaskTime({ id: taskId, timeSpent: baseSeconds }));
+        dispatch(saveToCache());
+        return;
+      }
 
-        const timerState = {
-          running: isRunning,
-          startTime: isRunning ? Date.now() : null,
-          baseSeconds: baseSeconds, // Always save the base seconds
-          totalSeconds: !isRunning ? baseSeconds : 0,
-          lastUpdate: Date.now(),
+      if (!user?.id) {
+        return;
+      }
+
+      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+
+      const timerState = {
+        running: isRunning,
+        startTime: isRunning ? Date.now() : null,
+        baseSeconds: baseSeconds, // Always save the base seconds
+        totalSeconds: !isRunning ? baseSeconds : 0,
+        lastUpdate: Date.now(),
+        taskId: taskId,
+      };
+
+      set(timerRef, timerState);
+
+      // Also update LastTask whenever we save timer state
+      if (taskId && !reduxUser.isGuest) {
+        const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+        set(lastTaskRef, {
           taskId: taskId,
-        };
-
-        set(timerRef, timerState);
-
-        // Also update LastTask whenever we save timer state
-        if (taskId && !reduxUser.isGuest) {
-          const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
-          set(lastTaskRef, {
-            taskId: taskId,
-            taskName: task || "",
-            timestamp: Date.now(),
-          });
-        }
+          taskName: task || "",
+          timestamp: Date.now(),
+        });
       }
     },
     [currentTaskId, activeTaskId, user?.id, isQuittingRef, task, reduxUser.isGuest, dispatch]
@@ -176,10 +180,12 @@ export default function Timer({
 
   // Helper to clear timer state from Firebase
   const clearTimerState = React.useCallback(() => {
-    if (user?.id && !reduxUser.isGuest) {
-      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
-      remove(timerRef);
+    if (reduxUser.isGuest || !user?.id) {
+      return;
     }
+
+    const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+    remove(timerRef);
   }, [user?.id, reduxUser.isGuest]);
 
   // Helper to format time as mm:ss or hh:mm:ss based on duration
@@ -199,10 +205,6 @@ export default function Timer({
 
   // One-time restoration from Firebase on mount
   useEffect(() => {
-    if (!user?.id) {
-      return;
-    }
-
     // Only run restoration once on mount, not when isInitialized changes
     if (isInitialized) {
       return;
@@ -235,15 +237,22 @@ export default function Timer({
         return;
       }
 
+      if (!user?.id) {
+        setIsInitialized(true);
+        return;
+      }
+
+      const firebaseUserId = user.id;
+
       // Authenticated: try Firebase restoration
       // First check for LastTask
-      const lastTaskRef = ref(rtdb, `TaskBuffer/${user.id}/LastTask`);
+      const lastTaskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/LastTask`);
       const lastTaskSnapshot = await get(lastTaskRef);
 
       if (lastTaskSnapshot.exists()) {
         const lastTaskData = lastTaskSnapshot.val();
         // Load this task's data from TaskBuffer
-        const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${lastTaskData.taskId}`);
+        const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${lastTaskData.taskId}`);
         const taskSnapshot = await get(taskRef);
         if (taskSnapshot.exists()) {
           const taskData = taskSnapshot.val();
@@ -259,7 +268,7 @@ export default function Timer({
       }
 
       // Fallback to checking timer_state (for backward compatibility)
-      const timerRef = ref(rtdb, `TaskBuffer/${user.id}/timer_state`);
+      const timerRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/timer_state`);
       get(timerRef)
         .then((snapshot) => {
           const timerState = snapshot.val();
@@ -294,7 +303,7 @@ export default function Timer({
                 );
                 if (onTaskRestore) onTaskRestore(restoredTask.name, isRunning, timerState.taskId);
               } else {
-                const taskRef = ref(rtdb, `TaskBuffer/${user.id}/${timerState.taskId}`);
+                const taskRef = ref(rtdb, `TaskBuffer/${firebaseUserId}/${timerState.taskId}`);
                 get(taskRef).then((taskSnapshot) => {
                   const taskData = taskSnapshot.val();
                   if (taskData && taskData.name) {
@@ -325,7 +334,7 @@ export default function Timer({
 
     return () => clearTimeout(initTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, reduxTasks, onTaskRestore, dispatch, hasStarted, task, secondsRef]); // Dependencies for initialization
+  }, [reduxUser.isGuest, user?.id, reduxTasks, onTaskRestore, dispatch, hasStarted, secondsRef, seconds, activeTaskId]);
 
   // Store previous activeTaskId to detect actual task changes
   const previousActiveTaskIdRef = useRef<string | null>(null);
@@ -346,7 +355,7 @@ export default function Timer({
       return;
     }
 
-    if (!user?.id || !isInitialized) {
+    if (!isInitialized) {
       return;
     }
 
@@ -364,9 +373,18 @@ export default function Timer({
       return;
     }
 
-    // Skip if we just paused AND it's the same task to avoid race condition
-    // But allow loading if it's a different task (task switch)
-    if (justPaused && !isTaskChange) {
+    if (reduxUser.isGuest) {
+      const reduxTask = reduxTasks.find((t) => t.id === activeTaskId);
+      const totalTime = reduxTask?.timeSpent || 0;
+      setSeconds(totalTime);
+      if (secondsRef) {
+        secondsRef.current = totalTime;
+      }
+      pausedSecondsRef.current = totalTime;
+      return;
+    }
+
+    if (!user?.id) {
       return;
     }
 
@@ -432,7 +450,7 @@ export default function Timer({
       });
 
     // Note: Don't change running state here, let StartButton handle it
-  }, [activeTaskId, user?.id, secondsRef, dispatch, running, justPaused, reduxTasks, isInitialized]);
+  }, [activeTaskId, user?.id, secondsRef, dispatch, running, reduxTasks, isInitialized, reduxUser.isGuest]);
 
   // Note: Room user count monitoring removed to keep all Firebase activity in TaskBuffer
   // If needed, this could be re-implemented using TaskBuffer/rooms/{roomId}/activeUsers
@@ -781,8 +799,6 @@ export default function Timer({
     // Save current seconds for resume
     pausedSecondsRef.current = currentSeconds;
 
-    setJustPaused(true);
-
     handleStop({
       task: task || "",
       seconds: currentSeconds,
@@ -791,11 +807,6 @@ export default function Timer({
       setIsStarting,
       heartbeatIntervalRef,
     });
-
-    // Clear the flag after a short delay
-    setTimeout(() => {
-      setJustPaused(false);
-    }, 1000);
   }, [handleStop, task, seconds, saveTimerState, secondsRef]);
 
   // Complete function using hook
@@ -865,7 +876,7 @@ export default function Timer({
 
   // Listen for active state changes in other rooms and pause if needed
   React.useEffect(() => {
-    if (!user?.id || !currentInstance?.id) return;
+    if (reduxUser.isGuest || !user?.id || !currentInstance?.id) return;
 
     // Listen to all room indexes to detect when user becomes active elsewhere
     const roomIndexRef = ref(rtdb, "RoomIndex");
@@ -899,7 +910,7 @@ export default function Timer({
     return () => {
       off(roomIndexRef, "value", handleActiveStateChange);
     };
-  }, [user?.id, currentInstance?.id, running, pauseTimer]);
+  }, [reduxUser.isGuest, user?.id, currentInstance?.id, running, pauseTimer]);
 
   // Update secondsRef with the current seconds value
   React.useEffect(() => {
