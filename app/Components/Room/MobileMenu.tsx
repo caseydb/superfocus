@@ -12,12 +12,12 @@ interface MobileMenuProps {
   setShowHistory: (show: boolean) => void;
   setShowLeaderboard: (show: boolean) => void;
   setShowAnalytics: (show: boolean) => void;
-  setShowTaskList: (show: boolean) => void;
   setShowPreferences: (show: boolean) => void;
   setShowRoomsModal: (show: boolean) => void;
   setShowInviteModal: (show: boolean) => void;
   instanceType?: string;
   closeAllModals: () => void;
+  isModalOpen?: boolean;
 }
 
 export default function MobileMenu({
@@ -26,12 +26,12 @@ export default function MobileMenu({
   setShowHistory,
   setShowLeaderboard,
   setShowAnalytics,
-  setShowTaskList,
   setShowPreferences,
   setShowRoomsModal,
   setShowInviteModal,
   instanceType,
   closeAllModals,
+  isModalOpen = false,
 }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [volumeSliderVisible, setVolumeSliderVisible] = useState(false);
@@ -68,6 +68,12 @@ export default function MobileMenu({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isModalOpen && isOpen) {
+      setIsOpen(false);
+    }
+  }, [isModalOpen, isOpen]);
+
   const handleMenuItemClick = (action: () => void) => {
     closeAllModals();
     action();
@@ -86,9 +92,9 @@ export default function MobileMenu({
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-300 ${
+        className={`relative w-10 h-10 items-center justify-center rounded-lg transition-all duration-300 ${
           isOpen ? 'bg-[#FFAA00]/20' : 'bg-gray-800/50 hover:bg-gray-800'
-        }`}
+        } ${isModalOpen ? 'hidden' : 'flex'}`}
         aria-label="Menu"
       >
         <div className="w-6 h-5 relative flex flex-col justify-between">
@@ -315,22 +321,6 @@ export default function MobileMenu({
           </div>
 
           {/* Navigation Items */}
-          <button
-            onClick={() => handleMenuItemClick(() => setShowTaskList(true))}
-            className="w-full p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors flex items-center gap-3"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400">
-              <path
-                d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="text-white">Tasks</span>
-          </button>
-
           <button
             onClick={() => handleMenuItemClick(() => setShowAnalytics(true))}
             className="w-full p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors flex items-center gap-3"

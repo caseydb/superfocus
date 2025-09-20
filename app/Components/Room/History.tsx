@@ -428,9 +428,13 @@ export default function History({ onClose }: { onClose?: () => void }) {
 
   if (history.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay" onClick={onClose}>
+      <div
+        className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay"
+        onClick={onClose}
+      >
         <div
-          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp sf-modal sf-history`}
+          className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-none md:rounded-2xl shadow-none md:shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} w-full h-full md:max-w-[800px] md:max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp sf-modal sf-history`}
+          style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex flex-col items-center w-full relative sf-modal-header">
@@ -536,7 +540,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
+              className="absolute top-3 right-3 md:-top-2 md:-right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
             >
               <svg
                 className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -555,9 +559,13 @@ export default function History({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/50 animate-fadeIn sf-modal-overlay"
+      onClick={onClose}
+    >
       <div
-        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} max-w-[800px] max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp sf-modal sf-history`}
+        className={`bg-[#0E1119]/90 backdrop-blur-sm rounded-none md:rounded-2xl shadow-none md:shadow-2xl px-4 sm:px-6 md:px-10 py-3 sm:py-4 ${dynamicWidthClasses} w-full h-full md:max-w-[800px] md:max-h-[90vh] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 overflow-y-auto custom-scrollbar animate-slideUp sf-modal sf-history`}
+        style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center w-full relative sf-modal-header">
@@ -667,7 +675,7 @@ export default function History({ onClose }: { onClose?: () => void }) {
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
+            className="absolute top-3 right-3 md:-top-2 md:-right-7 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"

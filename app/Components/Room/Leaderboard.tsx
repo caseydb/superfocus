@@ -305,9 +305,17 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   // Don't show initial loading state to prevent flicker
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sf-modal-overlay" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/50 sf-modal-overlay"
+      onClick={onClose}
+    >
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-[95%] max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-[90vh] overflow-y-auto custom-scrollbar relative sf-modal sf-leaderboard"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-none md:rounded-2xl shadow-none md:shadow-2xl px-4 sm:px-6 md:px-10 py-2.5 sm:py-3 w-full h-full md:w-[95%] md:max-w-[700px] flex flex-col items-center gap-1 sm:gap-2 border border-gray-800 max-h-full md:max-h-[90vh] overflow-y-auto custom-scrollbar relative sf-modal sf-leaderboard"
+        style={{
+          paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
+          paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
+          paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Keyboard Shortcut Tip - positioned at top left */}
@@ -315,7 +323,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
         {/* Close button - positioned absolutely */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
+          className="absolute top-4 right-4 md:right-6 md:top-6 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close z-10"
         >
           <svg
             className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"

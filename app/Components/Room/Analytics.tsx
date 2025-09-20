@@ -660,11 +660,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center ${isGuest ? 'bg-black/80' : 'bg-black/50'} animate-fadeIn sf-modal-overlay`}
+      className={`fixed inset-0 z-50 flex items-stretch md:items-center justify-center ${isGuest ? 'bg-black/80' : 'bg-black/50'} animate-fadeIn sf-modal-overlay`}
       onClick={handleBackdropClick}
     >
       <div
-        className={`${isGuest ? 'bg-[#0E1119]/95' : 'bg-[#0E1119]/90'} backdrop-blur-sm rounded-2xl shadow-2xl px-4 py-4 w-[95%] max-w-[790px] max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar sf-modal sf-analytics`}
+        className={`${isGuest ? 'bg-[#0E1119]/95' : 'bg-[#0E1119]/90'} backdrop-blur-sm rounded-none md:rounded-2xl shadow-none md:shadow-2xl px-4 py-4 w-full h-full md:w-[95%] md:max-w-[790px] max-h-full md:max-h-[90vh] overflow-y-auto border border-gray-700 animate-slideUp custom-scrollbar sf-modal sf-analytics`}
+        style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with gradient */}
@@ -682,7 +683,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
+            className="absolute top-3 right-3 md:-top-2 md:-right-2 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors flex items-center justify-center group cursor-pointer sf-modal-close"
           >
             <svg
               className="w-4 h-4 text-gray-400 group-hover:text-[#FFAA00] transition-colors"
@@ -731,23 +732,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
             <div className="opacity-30 pointer-events-none">
               {/* GitHub-style Activity Chart */}
               <div className="mb-4">
-                <div className="relative flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-white">{currentYear} Overview</h3>
+                <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-between gap-3 mb-2">
+                  <h3 className="hidden md:block text-lg font-bold text-white">{currentYear} Overview</h3>
                   
                   {/* Hero Stats inline - centered */}
-                  <div className="absolute left-1/2 transform -translate-x-1/2 inline-flex items-center gap-4">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center sm:text-left sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2">
                     {/* Rank */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5">
                       <span className="text-base">👑</span>
                       <span className="text-xs text-gray-400">Weekly Rank</span>
                       <span className="text-base font-black text-[#FFAA00]">Unranked</span>
                     </div>
 
                     {/* Divider */}
-                    <div className="h-5 w-px bg-gray-700"></div>
+                    <div className="hidden sm:block h-5 w-px bg-gray-700"></div>
 
                     {/* Streak */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5">
                       <span className="text-base">🔥</span>
                       <span className="text-xs text-gray-400">Streak</span>
                       <span className="text-base font-black text-[#FFAA00]">0</span>
@@ -755,7 +756,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                   </div>
                   
                   {/* Toggle switch */}
-                  <button className="flex items-center gap-2 text-xs text-gray-400 cursor-default">
+                  <button className="flex items-center justify-center gap-2 text-xs text-gray-400 cursor-default">
                     <span className="text-white font-medium">Tasks</span>
                     <div className="relative w-10 h-5 bg-gray-700 rounded-full">
                       <div className="absolute top-0.5 h-4 w-4 bg-white rounded-full translate-x-0.5" />
@@ -881,13 +882,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
           <div>
             {/* GitHub-style Activity Chart */}
             <div className="mb-4">
-              <div className="relative flex items-center justify-between mb-2">
-                <h3 className="text-lg font-bold text-white">{currentYear} Overview</h3>
+              <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-between gap-3 mb-2">
+                <h3 className="hidden md:block text-lg font-bold text-white">{currentYear} Overview</h3>
                 
                 {/* Hero Stats inline - centered */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 inline-flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center sm:text-left sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2">
                   {/* Rank */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5">
                     <span className="text-base">👑</span>
                     <span className="text-xs text-gray-400">
                       {calculateUserRank.weeklyRank !== '-' ? 'Weekly Rank' : ''}
@@ -898,10 +899,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                   </div>
 
                   {/* Divider */}
-                  <div className="h-5 w-px bg-gray-700"></div>
+                  <div className="hidden sm:block h-5 w-px bg-gray-700"></div>
 
                   {/* Streak */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5">
                     <span className="text-base">🔥</span>
                     <span className="text-xs text-gray-400">Streak</span>
                     <span className="text-base font-black text-[#FFAA00]">{streakMetrics.currentStreak}</span>
@@ -911,7 +912,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ displayName, onClose }) => {
                 {/* Toggle switch */}
                 <button
                   onClick={handleToggleChange}
-                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+                  className="flex items-center justify-center sm:justify-end gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
                 >
                   <span className={colorByTime ? "text-gray-500" : "text-white font-medium"}>Tasks</span>
                   <div className="relative w-10 h-5 bg-gray-700 rounded-full transition-colors">

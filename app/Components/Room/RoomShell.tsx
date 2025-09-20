@@ -150,6 +150,19 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editingCounterValue, setEditingCounterValue] = useState("");
 
+  const isModalOpen =
+    showTaskList ||
+    showPreferences ||
+    showInviteModal ||
+    showRoomsModal ||
+    showRooms ||
+    showHistory ||
+    showLeaderboard ||
+    showAnalytics ||
+    showInvitePopup ||
+    showWelcomePopup ||
+    loginPromptVisible;
+
   // Sync counter value when active task changes (only for authenticated users)
   useEffect(() => {
     if (!isGuestUser) {
@@ -1591,12 +1604,12 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
             setShowHistory={setShowHistory}
             setShowLeaderboard={setShowLeaderboard}
             setShowAnalytics={setShowAnalytics}
-            setShowTaskList={setShowTaskList}
             setShowPreferences={setShowPreferences}
             setShowRoomsModal={handleSetShowRoomsModal}
             setShowInviteModal={setShowInviteModal}
             instanceType={currentInstance.type}
             closeAllModals={closeAllModals}
+            isModalOpen={isModalOpen}
           />
 
           {/* Top right container for controls - hidden on mobile */}
@@ -1640,7 +1653,7 @@ const RoomShell = memo(function RoomShell({ roomUrl }: { roomUrl: string }) {
           {/* Tasks shortcut - mobile bottom center */}
           <button
             className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-5 py-2 text-gray-300 text-sm font-mono rounded-full bg-gray-900/70 border border-gray-800/60 shadow-lg backdrop-blur-sm transition-colors hover:text-[#FFAA00] hover:border-[#FFAA00]/60 md:hidden ${
-              showTaskList ? "!hidden" : ""
+              isModalOpen ? "!hidden" : ""
             }`}
             onClick={() => {
               closeAllModals();

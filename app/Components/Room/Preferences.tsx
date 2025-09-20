@@ -13,9 +13,12 @@ export default function Preferences({ onClose }: PreferencesProps) {
   const preferences = useSelector((state: RootState) => state.preferences);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 sf-preferences-overlay sf-modal-overlay" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/30 sf-preferences-overlay sf-modal-overlay"
+      onClick={onClose}
+    >
       <div
-        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-2xl shadow-2xl w-[95%] max-w-[800px] max-h-[85vh] flex flex-col border border-gray-800 relative sf-preferences sf-modal"
+        className="bg-[#0E1119]/90 backdrop-blur-sm rounded-none md:rounded-2xl shadow-none md:shadow-2xl w-full h-full md:w-[95%] md:max-w-[800px] max-h-full md:max-h-[85vh] flex flex-col border border-gray-800 relative sf-preferences sf-modal"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
